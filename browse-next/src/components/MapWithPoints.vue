@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import "leaflet/dist/leaflet.css";
 
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import type { RouteLocationRaw } from "vue-router";
 import type { CircleMarkerOptions, LatLngTuple } from "leaflet";
@@ -185,6 +185,7 @@ watch(
   () => props.highlightedPoint,
   (newP: NamedPoint | null) => {
     const key = (newP && pointKey(newP)) || "";
+    const bounds = mapEl.value.getBoundingClientRect();
     for (const [markerKey, pointMarker] of Object.entries(markers)) {
       if (key === markerKey) {
         // If the highlighted point is outside the current map bounds, pan to it and center it, or fit the bounds.
@@ -197,7 +198,7 @@ watch(
               pointMarker.foregroundMarker as unknown as LeafletInternalRawMarker
             )._map as LeafletMap
           ).panInside(pointMarker.foregroundMarker.getLatLng(), {
-            padding: [100, 30],
+            padding: [bounds.width / 2, bounds.height / 2],
           });
         }
       } else {
@@ -559,8 +560,10 @@ onMounted(() => {
     map.addControl(attributionToggle);
   }
   if (!props.center) {
-    map.invalidateSize();
-    fitMapBounds();
+    nextTick(() => {
+      (map as LeafletMap).invalidateSize();
+      fitMapBounds();
+    });
   }
   addPoints();
 });

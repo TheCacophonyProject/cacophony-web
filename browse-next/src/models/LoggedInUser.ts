@@ -5,7 +5,6 @@ import type {
 import {
   DEFAULT_AUTH_ID,
   type ErrorResult,
-  type JwtTokenPayload,
   type LoadedResource,
 } from "@apiClient/types";
 import { computed, reactive, ref, watch } from "vue";

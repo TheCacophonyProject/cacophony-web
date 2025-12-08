@@ -52,12 +52,14 @@ const submitLogin = async () => {
       };
       await router.push(to);
     } else {
-      await router.push({
-        name: "dashboard",
-        params: {
-          projectName: urlNormalisedCurrentProjectName.value || "",
-        },
-      });
+      if (urlNormalisedCurrentProjectName.value) {
+        await router.push({
+          name: "dashboard",
+          params: {
+            projectName: urlNormalisedCurrentProjectName.value,
+          },
+        });
+      }
     }
   }
 };

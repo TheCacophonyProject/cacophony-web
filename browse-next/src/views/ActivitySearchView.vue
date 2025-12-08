@@ -1791,6 +1791,25 @@ const selectedVisit = (visit: ApiVisitResponse) => {
   currentlySelectedVisit.value = visit;
 };
 
+const prevLocationTimeSet = ref<number>(0);
+const changedHighlightedLocation = (loc: LocationId | null) => {
+  // Some simple debouncing for change of highlight location.
+  if (currentlyHighlightedLocation.value && loc === null) {
+    // Wait.
+    setTimeout(() => {
+      if (performance.now() - prevLocationTimeSet.value > 30) {
+        // Don't set it.
+        currentlyHighlightedLocation.value = null;
+      }
+    }, 10);
+  } else {
+    currentlyHighlightedLocation.value = loc;
+    if (loc) {
+      prevLocationTimeSet.value = performance.now();
+    }
+  }
+};
+
 watch(
   currentlySelectedVisit,
   (visit: ApiVisitResponse | null, _prevVisit: ApiVisitResponse | null) => {
@@ -2036,9 +2055,7 @@ onBeforeUnmount(() => {
             :location="canonicalLatLngForActiveLocations"
             :highlighted-location="currentlyHighlightedLocation"
             @selected-visit="selectedVisit"
-            @change-highlighted-location="
-              (loc: LocationId | null) => (currentlyHighlightedLocation = loc)
-            "
+            @change-highlighted-location="changedHighlightedLocation"
           />
         </div>
         <div

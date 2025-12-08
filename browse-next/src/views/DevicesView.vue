@@ -26,6 +26,7 @@ import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import { type RouteLocationRaw, useRoute, useRouter } from "vue-router";
 import { urlNormaliseName } from "@/utils";
 import {
+  allHistoricLocations,
   currentSelectedProject,
   selectedProjectDevices,
   userIsProjectAdmin,
@@ -37,8 +38,13 @@ import {
 } from "@/components/DeviceUtils";
 import type { ApiStationResponse } from "@typedefs/api/station";
 import type { LoadedResource } from "@apiClient/types.ts";
-import { latestRecordingTimeForDeviceAtLocation } from "@/helpers/Location.ts";
+import {
+  latestRecordingTimeForDeviceAtLocation,
+  latLngApproxDistance,
+  MAX_DISTANCE_FROM_STATION_FOR_RECORDING,
+} from "@/helpers/Location.ts";
 import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
+import LocationName from "@/components/LocationName.vue";
 
 const activeProjectDevices = inject(selectedProjectDevices) as Ref<
   LoadedResource<ApiDeviceResponse[]>
@@ -46,6 +52,9 @@ const activeProjectDevices = inject(selectedProjectDevices) as Ref<
 const allProjectDevices = ref<LoadedResource<ApiDeviceResponse[]>>(null);
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
+const allLocations = inject(allHistoricLocations) as Ref<
+  LoadedResource<ApiStationResponse[]>
+>;
 const route = useRoute();
 const router = useRouter();
 const devices = computed<ApiDeviceResponse[]>(() => {
@@ -206,6 +215,36 @@ const statusForDevice = (device: ApiDeviceResponse): DeviceStatus => {
     : "-";
 };
 
+const locationNameForDevice = (device: ApiDeviceResponse): string => {
+  if (device.location) {
+    const stationDistances = [];
+    for (const station of allLocations.value || []) {
+      // See if any stations match: Looking at the location distance between this recording and the stations.
+      const distanceToStation = latLngApproxDistance(
+        station.location,
+        device.location,
+      );
+      stationDistances.push({ distanceToStation, station });
+    }
+    const validStationDistances = stationDistances.filter(
+      ({ distanceToStation }) =>
+        distanceToStation <= MAX_DISTANCE_FROM_STATION_FOR_RECORDING,
+    );
+
+    // There shouldn't really ever be more than one station within our threshold distance,
+    // since we check that stations aren't too close together when we add them.  However, on the off
+    // chance we *do* get two or more valid stations for a recording, take the closest one.
+    validStationDistances.sort((a, b) => {
+      return b.distanceToStation - a.distanceToStation;
+    });
+    const closest = validStationDistances.pop();
+    if (closest) {
+      return closest.station.name;
+    }
+  }
+  return "";
+};
+
 const batteryLevelForDevice = async (
   device: ApiDeviceResponse,
 ): Promise<"unknown" | number> => {
@@ -243,6 +282,7 @@ interface DeviceTableItem {
   lastSeen: string;
   __active: boolean;
   status: string | boolean;
+  __location: string;
   batteryLevel: ApiDeviceResponse;
 
   __id: string;
@@ -270,6 +310,7 @@ const tableItems = computed<
             : "never (offline device)",
         ),
         status: statusForDevice(device),
+        __location: locationNameForDevice(device),
         batteryLevel: device,
         _deleteAction: {
           value: device,
@@ -691,17 +732,19 @@ const isDevicesRoot = computed(() => {
           <template #card="{ card }: { card: DeviceTableItem }">
             <div class="d-flex flex-row">
               <div class="flex-grow-1">
-                <div class="d-flex align-items-center">
-                  <device-name
-                    :name="card.deviceName"
-                    :type="card.__type"
-                  /><b-badge class="ms-2" v-if="!card.__active"
-                    >inactive</b-badge
-                  >
-                  <device-battery-level
-                    :device="card.batteryLevel"
-                    class="ms-3"
-                  />
+                <div class="d-flex justify-content-between">
+                  <div class="d-flex align-items-center">
+                    <device-name
+                      :name="card.deviceName"
+                      :type="card.__type"
+                    /><b-badge class="ms-2" v-if="!card.__active"
+                      >inactive</b-badge
+                    >
+                    <device-battery-level
+                      :device="card.batteryLevel"
+                      class="ms-3"
+                    />
+                  </div>
                 </div>
                 <div>Last seen <span v-html="card.lastSeen"></span></div>
 
@@ -720,31 +763,52 @@ const isDevicesRoot = computed(() => {
                   }}</span>
                 </div>
               </div>
-              <div class="d-flex align-items-end justify-content-end">
-                <div v-if="!card._deleteAction.value.lastRecordingTime">
-                  No recordings
+              <div class="d-flex">
+                <div
+                  class="d-flex flex-column align-items-end"
+                  :class="{
+                    'justify-content-between': card.__location !== '',
+                    'justify-content-end': card.__location === '',
+                  }"
+                >
+                  <location-name
+                    @click.stop.prevent="
+                      () => {
+                        highlightedDeviceInternal = card;
+                      }
+                    "
+                    v-if="card.__location !== ''"
+                    :name="card.__location"
+                  />
+                  <div class="d-flex">
+                    <div v-if="!card._deleteAction.value.lastRecordingTime">
+                      No recordings
+                    </div>
+                    <two-step-action-button
+                      v-if="card.__active"
+                      :action="
+                        () => deleteOrArchiveDevice(card._deleteAction.value.id)
+                      "
+                      :icon="
+                        card._deleteAction.value.lastConnectionTime &&
+                        card._deleteAction.value.lastRecordingTime
+                          ? 'do_not_disturb_on'
+                          : 'delete'
+                      "
+                      :confirmation-label="
+                        deleteConfirmationLabelForDevice(
+                          card._deleteAction.value,
+                        )
+                      "
+                      :tooltip-label="
+                        card._deleteAction.value.lastConnectionTime &&
+                        card._deleteAction.value.lastRecordingTime
+                          ? 'Set as inactive'
+                          : 'Delete'
+                      "
+                    />
+                  </div>
                 </div>
-                <two-step-action-button
-                  v-if="card.__active"
-                  :action="
-                    () => deleteOrArchiveDevice(card._deleteAction.value.id)
-                  "
-                  :icon="
-                    card._deleteAction.value.lastConnectionTime &&
-                    card._deleteAction.value.lastRecordingTime
-                      ? 'do_not_disturb_on'
-                      : 'delete'
-                  "
-                  :confirmation-label="
-                    deleteConfirmationLabelForDevice(card._deleteAction.value)
-                  "
-                  :tooltip-label="
-                    card._deleteAction.value.lastConnectionTime &&
-                    card._deleteAction.value.lastRecordingTime
-                      ? 'Set as inactive'
-                      : 'Delete'
-                  "
-                />
               </div>
             </div>
           </template>

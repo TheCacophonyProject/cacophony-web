@@ -89,7 +89,7 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
         autofocus
         size="sm"
         placeholder="Enter the new name for this location"
-        @blur="saveLocationName"
+        @blur="exitEditMode"
         @keyup.enter="saveLocationName"
         @keyup.esc="exitEditMode"
       />
@@ -105,7 +105,7 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
       </h4>
       <b-spinner small v-if="savingLocation" class="ms-3" />
     </div>
-    <div class="d-flex align-items-center">
+    <div class="d-flex align-items-center" v-if="!editingLocationName">
       <span
         class="d-flex align-items-center"
         @mouseover.stop.prevent="showRenameHint"
@@ -129,6 +129,10 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
       >
         <material-symbol name="edit" size="1.125rem" />
       </b-button>
+    </div>
+    <div v-else>
+      <b-button @click="exitEditMode">Cancel</b-button>
+      <b-button @click="saveLocationName">Okay</b-button>
     </div>
   </div>
   <b-alert

@@ -200,6 +200,7 @@ const credentialsResolvers = {
         const refreshedToken = await refreshingToken.value;
         refreshingToken.value = null;
         if (!refreshedToken) {
+          // FIXME: If request token failed, we should maybe remove from localStorage?
           return false;
         }
       }

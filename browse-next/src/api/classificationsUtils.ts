@@ -153,7 +153,6 @@ export const getPathForLabel = (label: string): string | undefined => {
   label = label.toLowerCase();
   const classifications = flatClassifications.value;
   if (!classifications[label]) {
-    console.error(`Classification not found for label ${label}`);
     return;
   }
   return (classifications[label] as Classification).path;
@@ -168,7 +167,6 @@ export const getClassificationForLabel = (
   label = label.toLowerCase();
   const classifications = flatClassifications.value;
   if (!classifications[label]) {
-    console.error(`Classification not found for label ${label}`);
     return;
   }
   return classifications[label];

@@ -85,8 +85,10 @@
         @mouseenter="enteredItem(card as CardTableRow<unknown>)"
         @mouseleave="leftItem(card as CardTableRow<unknown>)"
         @click="
-          (e) =>
-            selectedItem(e, sortedItems[cardIndex] as CardTableRow<unknown>)
+          (e) => {
+            enteredItem(card as CardTableRow<unknown>);
+            selectedItem(e, sortedItems[cardIndex] as CardTableRow<unknown>);
+          }
         "
         class="card-table-card py-3 px-3 py-md-4 px-md-4 mb-3"
         :class="{ highlighted: eq(card, highlightedItem) }"
