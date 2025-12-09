@@ -617,6 +617,7 @@ const primaryBatteryDataType = computed<string>(() => {
   );
 
   if (hasPercentage && hasVoltage) {
+    // FIXME: Maybe don't display this on touch only devices.
     return "Battery Level (hover for voltage details)";
   } else if (hasPercentage) {
     return "Battery Percentage (%)";

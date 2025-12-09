@@ -90,7 +90,7 @@ watch(
   >
     <font-awesome-icon icon="plug" />
     <span v-if="props.showLevel" class="ms-1"
-      >{{ batteryLevelInfo.battery }}%</span
+      >{{ (batteryLevelInfo as BatteryInfoEvent).battery }}%</span
     >
     <span v-if="shouldShowVoltage" class="ms-1 text-muted small">{{
       formattedVoltage
@@ -122,9 +122,9 @@ watch(
       />
     </svg>
     <span v-if="props.showLevel" class="ms-1"
-      >{{ batteryLevelInfo.battery }}%</span
+      >{{ (batteryLevelInfo as BatteryInfoEvent).battery }}%</span
     >
-    <span v-if="shouldShowVoltage" class="ms-1 text-muted small">{{
+    <span v-if="shouldShowVoltage" class="ms-1 voltage small">{{
       formattedVoltage
     }}</span>
   </div>
@@ -136,8 +136,14 @@ watch(
   color: inherit;
 }
 
+.voltage {
+  color: var(--bs-secondary-color);
+}
 .inactive {
   color: rgba(0, 0, 0, 0.4);
+  .voltage {
+    color: inherit;
+  }
 }
 
 .active > .battery-warning {

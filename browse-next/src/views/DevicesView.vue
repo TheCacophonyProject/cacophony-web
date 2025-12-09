@@ -840,6 +840,7 @@ const isDevicesRoot = computed(() => {
 }
 .power-status-icon {
   border-radius: 50%;
+  min-width: 21px;
   width: 21px;
   height: 21px;
   color: white;

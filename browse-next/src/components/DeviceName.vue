@@ -28,11 +28,11 @@
       <material-symbol :name="deviceTypeIcon" size="1.125rem" />
     </span>
     {{ name }}</span
-  ><span><slot></slot></span>
+  ><span v-if="slots.default"><slot></slot></span>
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
+import { computed, useSlots } from "vue";
 import {
   type DeviceType,
   DeviceType as ConcreteDeviceType,
@@ -48,6 +48,7 @@ const props = defineProps<{
   color?: string;
   noMargin?: boolean;
 }>();
+const slots = useSlots();
 
 const deviceTypeIcon = computed<IconsProp | "">(() => {
   switch (props.type) {
