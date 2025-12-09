@@ -365,6 +365,23 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
+  /**
+   * @api {post} /api/v1/:id/tracksAndTags Add tracks and tags to a recording
+   * @apiName PostTracksAndTags
+   * @apiGroup Processing
+   *
+   * Requires super-admin user credentials
+   *
+   * @apiParam {JSON} data Data which defines the tracks and tags (type specific).
+   * @apiParam {Number} AlgorithmId Database ID of the Tracking algorithm details retrieved from
+   * (#FileProcessing:Algorithm) request
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {int[]} trackIds of the newly created track.
+   *
+   * @apiUse V1ResponseError
+   *
+   */
   app.post(
     `${apiUrl}/:id/tracksAndTags`,
     extractJwtAuthorisedSuperAdminUser,
@@ -536,9 +553,11 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/v1/processing/:id/tracks/:trackId/tags Add tags to track
+   * @api {post} /api/v1/processing/:id/tracks/:trackId/tags Add tag to track
    * @apiName PostTrackTag
    * @apiGroup Processing
+   * @apiDeprecated Use /api/v1/processing/:id/tracks/:trackId/tagsBulk
+
    *
    * Requires super-admin user credentials
    *
@@ -548,6 +567,62 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {int} trackTagId Unique id of the newly created track tag.
+   *
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/:id/tracks/:trackId/tags`,
+    extractJwtAuthorisedSuperAdminUser,
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      body("what").exists().isString(), // FIXME - Validate against valid tags?
+      body("confidence").isFloat().toFloat(),
+      body("data").isJSON().optional(),
+    ]),
+    (request, response, next) => {
+      const trackId = param("trackId");
+      const id = Number(extractValFromRequest(request, trackId));
+      if (id !== NULL_TRACK_ID) {
+        fetchUnauthorizedRequiredTrackById(trackId)(request, response, next);
+      } else {
+        response.locals.skip = true;
+        next();
+      }
+    },
+    parseJSONField(body("data")),
+    async (request: Request, response: Response) => {
+      if (!response.locals.skip) {
+        const tag = await response.locals.track.addTag(
+          request.body.what,
+          request.body.confidence,
+          true,
+          response.locals.data,
+          null,
+          false,
+        );
+        return successResponse(response, "Track tag added.", {
+          trackTagId: tag.id,
+        });
+      }
+      // Returns without creating track if this is a masked out track.
+      return successResponse(response, "Track tag added.", {
+        trackTagId: 1,
+      });
+    },
+  );
+
+  /**
+   * @api {post} /api/v1/processing/:id/tracks/:trackId/tagsBulk Add tags to track
+   * @apiName PostTrackTag
+   * @apiGroup Processing
+   *
+   * Requires super-admin user credentials
+   *
+   * @apiParam {JSON} data Describing track tags.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {int[]} trackTagIds Unique ids of the newly created track tags.
    *
    * @apiUse V1ResponseError
    */
