@@ -13,7 +13,7 @@ import {
 import { currentSelectedProject } from "@models/provides";
 import type { RecordingLabel } from "@typedefs/api/group";
 import SectionCard from "@/components/SectionCard.vue";
-import {BFormInput, BModal} from "bootstrap-vue-next";
+import { BFormInput, BModal } from "bootstrap-vue-next";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 

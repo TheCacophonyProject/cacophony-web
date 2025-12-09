@@ -40,7 +40,7 @@ import {
 import type { RouteLocationRaw } from "vue-router";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import type { IconsProp } from "@dbetka/vue-material-symbols/dist/jscache/icons-names";
-import {BLink} from "bootstrap-vue-next";
+import { BLink } from "bootstrap-vue-next";
 
 const props = defineProps<{
   name: string;

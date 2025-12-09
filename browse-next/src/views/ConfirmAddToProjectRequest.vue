@@ -16,7 +16,7 @@ import type {
 import { HttpStatusCode } from "@typedefs/api/consts.ts";
 import { urlNormaliseName } from "@/utils";
 import { decodeJWT } from "@apiClient/utils.ts";
-import {BSpinner} from "bootstrap-vue-next";
+import { BSpinner } from "bootstrap-vue-next";
 const checkingValidateEmailToken = ref(false);
 const validateToken = ref("");
 const isValidValidateToken = ref(false);

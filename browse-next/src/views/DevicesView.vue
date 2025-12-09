@@ -45,7 +45,7 @@ import {
 } from "@/helpers/Location.ts";
 import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
 import LocationName from "@/components/LocationName.vue";
-import {BBadge, BButton, BFormCheckbox, BSpinner} from "bootstrap-vue-next";
+import { BBadge, BButton, BFormCheckbox, BSpinner } from "bootstrap-vue-next";
 
 const activeProjectDevices = inject(selectedProjectDevices) as Ref<
   LoadedResource<ApiDeviceResponse[]>

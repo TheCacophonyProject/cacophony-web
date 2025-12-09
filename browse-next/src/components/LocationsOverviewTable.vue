@@ -12,7 +12,7 @@ import type { StationId as LocationId } from "@typedefs/api/common";
 import RenameableLocationName from "@/components/RenameableLocationName.vue";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import type { GenericCardTableValue } from "@/components/CardTableTypes.ts";
-import {BButton} from "bootstrap-vue-next";
+import { BButton } from "bootstrap-vue-next";
 
 const oneMinute = 1000 * 60;
 const oneHour = oneMinute * 60;

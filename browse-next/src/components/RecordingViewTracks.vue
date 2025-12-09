@@ -47,7 +47,7 @@ import {
 } from "@typedefs/api/consts.ts";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
-import {BFormCheckbox, BSpinner} from "bootstrap-vue-next";
+import { BFormCheckbox, BSpinner } from "bootstrap-vue-next";
 
 const route = useRoute();
 const router = useRouter();

@@ -24,7 +24,7 @@ import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/st
 import ProjectVisitsSummary from "@/components/ProjectVisitsSummary.vue";
 import LocationVisitSummary from "@/components/LocationVisitSummary.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
-import {BButton, BSpinner} from "bootstrap-vue-next";
+import { BButton, BSpinner } from "bootstrap-vue-next";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import { useMediaQuery } from "@vueuse/core";

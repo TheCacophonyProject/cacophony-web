@@ -24,7 +24,7 @@ import {
 } from "@/components/cptv-player/cptv-decoder/frameRenderUtils";
 import { ClientApi } from "@/api";
 import { DEFAULT_AUTH_ID, type LoadedResource } from "@apiClient/types.ts";
-import {BSpinner} from "bootstrap-vue-next";
+import { BSpinner } from "bootstrap-vue-next";
 
 const defaultPalette = computed(
   () =>

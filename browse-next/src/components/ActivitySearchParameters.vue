@@ -42,7 +42,7 @@ import {
   CurrentProjectAudioLabels,
   CurrentProjectCameraLabels,
 } from "@/helpers/Project.ts";
-import {BButton, BFormCheckbox, BPopover} from "bootstrap-vue-next";
+import { BButton, BFormCheckbox, BPopover } from "bootstrap-vue-next";
 
 const props = defineProps<{
   locations: Ref<LoadedResource<ApiLocationResponse[]>>;

@@ -10,7 +10,13 @@ import { isEmpty, formFieldInputText } from "@/utils";
 import type { FormInputValue, FormInputValidationState } from "@/utils";
 import { useRoute, useRouter } from "vue-router";
 import type { RouteLocationRaw } from "vue-router";
-import {BAlert, BForm, BFormInput, BFormInvalidFeedback, BSpinner} from "bootstrap-vue-next";
+import {
+  BAlert,
+  BForm,
+  BFormInput,
+  BFormInvalidFeedback,
+  BSpinner,
+} from "bootstrap-vue-next";
 
 const showPassword = ref(false);
 const togglePasswordVisibility = () => {

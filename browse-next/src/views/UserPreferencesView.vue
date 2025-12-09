@@ -12,7 +12,14 @@ import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import router from "@/router";
 import { currentUser as currentUserInfo } from "@models/provides";
 import SectionCard from "@/components/SectionCard.vue";
-import {BAlert, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BModal} from "bootstrap-vue-next";
+import {
+  BAlert,
+  BForm,
+  BFormGroup,
+  BFormInput,
+  BFormInvalidFeedback,
+  BModal,
+} from "bootstrap-vue-next";
 
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
 

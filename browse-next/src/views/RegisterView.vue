@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import {BAlert, BForm, BFormCheckbox, BFormInput, BFormInvalidFeedback} from "bootstrap-vue-next";
+import {
+  BAlert,
+  BForm,
+  BFormCheckbox,
+  BFormInput,
+  BFormInvalidFeedback,
+} from "bootstrap-vue-next";
 import { setLoggedInUserData } from "@models/LoggedInUser";
 import { ClientApi } from "@/api";
 import { formFieldInputText, isValidName } from "@/utils";

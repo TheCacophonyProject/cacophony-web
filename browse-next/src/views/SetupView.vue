@@ -27,7 +27,12 @@ import { useRoute, useRouter } from "vue-router";
 import { currentUser } from "@models/provides.ts";
 import { ClientApi } from "@/api";
 import { DEFAULT_AUTH_ID } from "@apiClient/types.ts";
-import {BAlert, BForm, BFormInput, BFormInvalidFeedback} from "bootstrap-vue-next";
+import {
+  BAlert,
+  BForm,
+  BFormInput,
+  BFormInvalidFeedback,
+} from "bootstrap-vue-next";
 
 const CurrentUser = inject(currentUser) as Ref<LoggedInUser | null>;
 

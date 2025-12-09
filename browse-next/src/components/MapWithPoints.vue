@@ -195,9 +195,9 @@ watch(
           if (props.centerOnHighlighted) {
             pointMarker.foregroundMarker.openTooltip();
             (
-                (
-                    pointMarker.foregroundMarker as unknown as LeafletInternalRawMarker
-                )._map as LeafletMap
+              (
+                pointMarker.foregroundMarker as unknown as LeafletInternalRawMarker
+              )._map as LeafletMap
             ).panInside(pointMarker.foregroundMarker.getLatLng(), {
               padding: [bounds.width / 2, bounds.height / 2],
             });

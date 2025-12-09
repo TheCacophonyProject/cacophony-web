@@ -10,7 +10,13 @@ import { computed, onMounted, ref } from "vue";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import { ClientApi } from "@/api";
 import type { LoadedResource } from "@apiClient/types.ts";
-import {BForm, BFormInput, BFormInvalidFeedback, BFormRadioGroup, BModal} from "bootstrap-vue-next";
+import {
+  BForm,
+  BFormInput,
+  BFormInvalidFeedback,
+  BFormRadioGroup,
+  BModal,
+} from "bootstrap-vue-next";
 
 const projectAdminEmailAddress = formFieldInputText();
 const submittingJoinRequest = ref(false);

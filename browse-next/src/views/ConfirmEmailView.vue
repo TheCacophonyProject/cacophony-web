@@ -13,7 +13,7 @@ import { DEFAULT_AUTH_ID, type ErrorResult } from "@apiClient/types";
 import { HttpStatusCode } from "@typedefs/api/consts.ts";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import { currentUser } from "@models/provides.ts";
-import {BSpinner} from "bootstrap-vue-next";
+import { BSpinner } from "bootstrap-vue-next";
 const CurrentUser = inject(currentUser) as Ref<LoggedInUser | null>;
 const checkingValidateEmailToken = ref(false);
 const validateToken = ref("");

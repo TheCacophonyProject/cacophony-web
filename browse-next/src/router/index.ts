@@ -499,6 +499,10 @@ router.afterEach(async (to, from, failure) => {
 
 router.beforeEach(async (to, from, next) => {
   const toName = to.name;
+  if (!toName && to.path === "/") {
+    to.name = "dashboard";
+    to.meta.requiresLogin = true;
+  }
   const requiresCreds = to.meta.requiresLogin || to.path === "/";
   if (!requiresCreds) {
     // If we don't require creds, we can just go to route most of the time
@@ -561,75 +565,70 @@ router.beforeEach(async (to, from, next) => {
     });
   }
   // Check to see if we match the first part of the path to any of our group names:
-  let potentialProjectName = to.path
-    .split("/")
-    .filter((item) => item !== "")
-    .shift();
-  if (potentialProjectName) {
-    potentialProjectName = urlNormaliseName(potentialProjectName);
-    let matchedProject = (
-      (UserProjects.value as ApiGroupResponse[]) || []
-    ).find(
+  let potentialProjectName =
+    to.path
+      .split("/")
+      .filter((item) => item !== "")
+      .shift() || "";
+  potentialProjectName = urlNormaliseName(potentialProjectName);
+  let matchedProject = ((UserProjects.value as ApiGroupResponse[]) || []).find(
+    ({ groupName }) => urlNormaliseName(groupName) === potentialProjectName,
+  );
+  if (!matchedProject && currentUserIsSuperUser.value) {
+    matchedProject = ((NonUserProjects.value as ApiGroupResponse[]) || []).find(
       ({ groupName }) => urlNormaliseName(groupName) === potentialProjectName,
     );
-    if (!matchedProject && currentUserIsSuperUser.value) {
-      matchedProject = (
-        (NonUserProjects.value as ApiGroupResponse[]) || []
-      ).find(
-        ({ groupName }) => urlNormaliseName(groupName) === potentialProjectName,
-      );
-    }
-    if (matchedProject) {
-      // Don't persist the admin property in user settings, since that could change
-      const switchedProject = switchCurrentProject({
-        groupName: matchedProject.groupName,
-        id: matchedProject.id,
-      });
-      if (currentSelectedProject.value) {
-        // Get the devices and locations for the current group.
-        if (
-          !DevicesForCurrentProject.value ||
-          !LocationsForCurrentProject.value ||
-          switchedProject
-        ) {
-          LocationsForCurrentProject.value = null;
-          DevicesForCurrentProject.value = null;
-          const [devices, locations] = await Promise.all([
-            ClientApi.Projects.getDevicesForProject(
-              currentSelectedProject.value.id,
-              false,
-              true,
-            ),
-            ClientApi.Projects.getLocationsForProject(
-              currentSelectedProject.value.id.toString(),
-              true,
-            ),
-          ]);
-          DevicesForCurrentProject.value = devices as LoadedResource<
-            ApiDeviceResponse[]
-          >;
-          LocationsForCurrentProject.value = locations as LoadedResource<
-            ApiLocationResponse[]
-          >;
-        }
-      } else {
+  }
+  if (matchedProject) {
+    // Don't persist the admin property in user settings, since that could change
+    const switchedProject = switchCurrentProject({
+      groupName: matchedProject.groupName,
+      id: matchedProject.id,
+    });
+    if (currentSelectedProject.value) {
+      // Get the devices and locations for the current group.
+      if (
+        !DevicesForCurrentProject.value ||
+        !LocationsForCurrentProject.value ||
+        switchedProject
+      ) {
         LocationsForCurrentProject.value = null;
         DevicesForCurrentProject.value = null;
+        const [devices, locations] = await Promise.all([
+          ClientApi.Projects.getDevicesForProject(
+            currentSelectedProject.value.id,
+            false,
+            true,
+          ),
+          ClientApi.Projects.getLocationsForProject(
+            currentSelectedProject.value.id.toString(),
+            true,
+          ),
+        ]);
+        DevicesForCurrentProject.value = devices as LoadedResource<
+          ApiDeviceResponse[]
+        >;
+        LocationsForCurrentProject.value = locations as LoadedResource<
+          ApiLocationResponse[]
+        >;
       }
     } else {
-      const unknownMatch =
-        to.matched.length === 1 && to.matched[0].name === "dashboard";
-      const unknownRoute =
-        to.name && !nonProjectPrefixedRouteNames.includes(to.name as string);
-      if (unknownMatch || unknownRoute) {
-        // Project in url not found, redirect to our last selected project dashboard.
-        return next({
-          name: "dashboard",
-          params: {
-            projectName: urlNormalisedCurrentProjectName.value,
-          },
-        });
-      }
+      LocationsForCurrentProject.value = null;
+      DevicesForCurrentProject.value = null;
+    }
+  } else {
+    const unknownMatch =
+      to.matched.length === 1 && to.matched[0].name === "dashboard";
+    const unknownRoute =
+      to.name && !nonProjectPrefixedRouteNames.includes(to.name as string);
+    if (unknownMatch || unknownRoute) {
+      // Project in url not found, redirect to our last selected project dashboard.
+      return next({
+        name: "dashboard",
+        params: {
+          projectName: urlNormalisedCurrentProjectName.value,
+        },
+      });
     }
   }
 
