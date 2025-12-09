@@ -4,6 +4,7 @@ import { computed, onBeforeMount, ref, watch } from "vue";
 import type { BatteryInfoEvent, LoadedResource } from "@apiClient/types.ts";
 import { ClientApi } from "@/api";
 import { resourceFailedLoading, resourceIsLoading } from "@/helpers/utils.ts";
+import {BSpinner} from "bootstrap-vue-next";
 
 const props = withDefaults(
   defineProps<{

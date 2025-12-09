@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BModal } from "bootstrap-vue-next";
+import {BForm, BFormCheckbox, BModal} from "bootstrap-vue-next";
 import { onMounted, ref } from "vue";
 import {
   hasAcceptedSomeEUA,

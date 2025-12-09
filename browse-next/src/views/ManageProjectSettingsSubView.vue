@@ -24,6 +24,7 @@ import {
 import { DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS } from "@/consts.ts";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import SectionCard from "@/components/SectionCard.vue";
+import {BFormCheckbox, BFormGroup, BModal, BSpinner} from "bootstrap-vue-next";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const currentProjectSettings = computed(() => {

@@ -39,7 +39,16 @@ import type { ApiDeviceResponse } from "@typedefs/api/device";
 import type { LoadedResource } from "@apiClient/types.ts";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
 import SectionCard from "@/components/SectionCard.vue";
-import { BButton } from "bootstrap-vue-next";
+import {
+  BBadge,
+  BButton,
+  BFormCheckbox,
+  BFormInput,
+  BFormRadio,
+  BFormRadioGroup,
+  BModal,
+  BSpinner
+} from "bootstrap-vue-next";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 
 const currentProject = inject(currentActiveProject) as ComputedRef<

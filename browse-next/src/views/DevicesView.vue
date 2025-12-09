@@ -45,6 +45,7 @@ import {
 } from "@/helpers/Location.ts";
 import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
 import LocationName from "@/components/LocationName.vue";
+import {BBadge, BButton, BFormCheckbox, BSpinner} from "bootstrap-vue-next";
 
 const activeProjectDevices = inject(selectedProjectDevices) as Ref<
   LoadedResource<ApiDeviceResponse[]>
@@ -245,24 +246,6 @@ const locationNameForDevice = (device: ApiDeviceResponse): string => {
   return "";
 };
 
-const batteryLevelForDevice = async (
-  device: ApiDeviceResponse,
-): Promise<"unknown" | number> => {
-  const status = statusForDevice(device);
-  if (status === "online" || status == "standby") {
-    const response = await ClientApi.Devices.getLastKnownDeviceBatteryLevel(
-      device.id,
-    );
-    if (response) {
-      if (response.battery === null) {
-        return "unknown";
-      }
-      return response.battery;
-    }
-  }
-  return "unknown";
-};
-
 const colorForStatus = (status: DeviceStatus): string => {
   switch (status) {
     case "-":
@@ -345,34 +328,6 @@ const deviceLocations = computed<NamedPoint[]>(() => {
     });
 });
 
-//provide("deviceLocations", deviceLocations);
-
-const devicesSeenInThePast24Hours = computed<NamedPoint[]>(() => {
-  const oneDayAgo = new Date();
-  oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-  return devices.value
-    .filter(
-      (device) =>
-        device.lastConnectionTime &&
-        new Date(device.lastConnectionTime) > oneDayAgo,
-    )
-    .filter((device) => device.location !== undefined)
-    .filter(
-      (device) => device.location?.lat !== 0 && device.location?.lng !== 0,
-    )
-    .map((device) => {
-      const { deviceName, location, groupName, id } = device;
-      return {
-        name: deviceName,
-        project: groupName,
-        location: location as LatLng,
-        id,
-        color: colorForStatus(statusForDevice(device)),
-        type: "device",
-      };
-    });
-});
-
 const highlightedDeviceInternal = ref<DeviceTableItem | null>(null);
 
 const highlightedPointInternal = ref<NamedPoint | null>(null);
@@ -397,13 +352,12 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
       Number((highlightedDeviceInternal.value as DeviceTableItem).__id) === id,
   );
   if (device && device.location) {
-    const point = {
+    return {
       name: device.deviceName,
       project: device.groupName,
       location: device.location,
       id: device.id,
     };
-    return point;
   }
   return null;
 });
@@ -840,9 +794,9 @@ const isDevicesRoot = computed(() => {
 }
 .power-status-icon {
   border-radius: 50%;
-  min-width: 21px;
-  width: 21px;
-  height: 21px;
+  min-width: 22px;
+  width: 22px;
+  height: 22px;
   color: white;
   &.stopped {
     background-color: darkred;

@@ -20,12 +20,16 @@ import {
   BBadge,
   BFormCheckbox,
   BFormGroup,
+  BFormSelect,
   BFormInput,
   BFormRadio,
   BFormRadioGroup,
+  BInput,
   BSpinner,
 } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import sunCalc from "suncalc";
+import { DateTime } from "luxon";
 type Time = { hours: number; minutes: number; seconds: number };
 const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
@@ -301,6 +305,91 @@ const customRecordingWindowStop = computed<Time>({
       settings.value.synced = false;
     }
   },
+});
+const msInDay = 1000 * 60 * 60 * 24;
+const getDayOfYYearForDate = (date: Date): number => {
+  const startOfYear = new Date(date);
+  startOfYear.setMonth(0);
+  startOfYear.setDate(1);
+  startOfYear.setHours(0, 0, 0, 0);
+  const thisDay = new Date(date);
+  thisDay.setHours(0, 0, 0, 0);
+  return (thisDay.getTime() - startOfYear.getTime()) / msInDay;
+};
+
+const dayOfYear = ref<number>(getDayOfYYearForDate(new Date()));
+const curveDay = computed<Date>(() => {
+  const startOfYear = new Date();
+  startOfYear.setMonth(0);
+  startOfYear.setDate(1);
+  startOfYear.setHours(0, 0, 0, 0);
+  const now = new Date(startOfYear.getTime() + dayOfYear.value * msInDay);
+  now.setHours(12, 0, 0, 0);
+  return now;
+});
+
+interface OffsetTimesX {
+  nightEnd: number;
+  dusk: number;
+  dawn: number;
+  sunriseStart: number;
+  sunriseEnd: number;
+  midday: number;
+  sunsetStart: number;
+  sunsetEnd: number;
+  night: number;
+  cameraEnd: number;
+  cameraStart: number;
+}
+
+const timesXPos = computed<OffsetTimesX | null>(() => {
+  const location = device.value?.location;
+  if (location) {
+    const width = 100;
+    const now = new Date(curveDay.value);
+    const times = sunCalc.getTimes(now, location.lat, location.lng, 0);
+    now.setHours(0, 0, 0, 0);
+    const startP = (times.nightEnd.getTime() - now.getTime()) / msInDay;
+    const endP = (times.night.getTime() - now.getTime()) / msInDay;
+    const noonP = (times.solarNoon.getTime() - now.getTime()) / msInDay;
+    const duskP = (times.dusk.getTime() - now.getTime()) / msInDay;
+    const dawnP = (times.dawn.getTime() - now.getTime()) / msInDay;
+    const sunriseStartP = (times.sunrise.getTime() - now.getTime()) / msInDay;
+    const sunsetEndP = (times.sunset.getTime() - now.getTime()) / msInDay;
+    const sunriseEndP = (times.sunriseEnd.getTime() - now.getTime()) / msInDay;
+    const sunsetStartP =
+      (times.sunsetStart.getTime() - now.getTime()) / msInDay;
+    const thirtyMins = 30 * 60 * 1000;
+    const thirtyMinsBeforeSunset =
+      (times.sunsetStart.getTime() - thirtyMins - now.getTime()) / msInDay;
+    const thirtyMinsAfterSunrise =
+      (times.sunrise.getTime() + thirtyMins - now.getTime()) / msInDay;
+
+    return {
+      midday: noonP * width,
+      nightEnd: startP * width,
+      night: endP * width,
+      dawn: dawnP * width,
+      dusk: duskP * width,
+      sunriseStart: sunriseStartP * width,
+      sunriseEnd: sunriseEndP * width,
+      sunsetStart: sunsetStartP * width,
+      sunsetEnd: sunsetEndP * width,
+      cameraStart: thirtyMinsBeforeSunset * width,
+      cameraEnd: thirtyMinsAfterSunrise * width,
+    };
+  }
+  return null;
+});
+
+const daylightCurve = computed<string>(() => {
+  const timesX = timesXPos.value;
+  if (timesX) {
+    const height = 19;
+    const top = 1;
+    return `M0,${height}L${timesX.nightEnd},${height}C${timesX.sunriseEnd},${height},${timesX.sunriseEnd},${top},${timesX.midday},${top}C${timesX.sunsetStart},${top},${timesX.sunsetStart},${height},${timesX.night},${height}L100,${height}`;
+  }
+  return "M0,0Z";
 });
 
 // Computed property for Audio Mode
@@ -783,9 +872,52 @@ watch(customRecordingWindowStop, async () => {
             Visualise how the recording settings and thermal video recording
             schedule are applied over a 24-hour period.
           </p>
-          <svg viewBox="0 0 500 50">
-            <path d="M0 50 C100 10Z" stroke-width="1" stroke="red" />
+          <svg viewBox="0 0 100 20">
+            <rect x="0" y="0" width="100" height="20" fill="#ccc" />
+            <text x="1" y="3" font-size="2">
+              {{
+                DateTime.fromJSDate(curveDay).toLocaleString({
+                  month: "short",
+                  day: "numeric",
+                })
+              }}
+            </text>
+            <path
+              :d="daylightCurve"
+              stroke-width="0.25"
+              stroke="#333"
+              fill="transparent"
+            />
+            <g v-if="timesXPos">
+              <circle r="1" fill="#444" :cx="timesXPos.nightEnd" cy="10" />
+              <circle r="1" fill="#444" :cx="timesXPos.dawn" cy="10" />
+              <circle
+                r="1"
+                fill="yellow"
+                :cx="timesXPos.sunriseStart"
+                cy="10"
+              />
+              <circle
+                r="1"
+                fill="goldenrod"
+                :cx="timesXPos.sunriseEnd"
+                cy="10"
+              />
+              <circle r="1" fill="#444" :cx="timesXPos.midday" cy="10" />
+              <circle r="1" fill="#444" :cx="timesXPos.dusk" cy="10" />
+              <circle r="1" fill="yellow" :cx="timesXPos.sunsetStart" cy="10" />
+              <circle
+                r="1"
+                fill="goldenrod"
+                :cx="timesXPos.sunsetEnd"
+                cy="10"
+              />
+              <circle r="1" fill="#444" :cx="timesXPos.night" cy="10" />
+              <circle r="1" fill="lime" :cx="timesXPos.cameraStart" cy="10" />
+              <circle r="1" fill="lime" :cx="timesXPos.cameraEnd" cy="10" />
+            </g>
           </svg>
+          <b-input type="range" min="1" max="365" v-model="dayOfYear" />
           <div
             class="mb-0 ps-3 pe-4 py-3 border-0 bg-light bg-opacity-75 rounded"
           >

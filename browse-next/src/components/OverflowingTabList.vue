@@ -11,6 +11,7 @@ import {
 } from "vue";
 import { useElementSize } from "@vueuse/core";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import {BDropdown, BDropdownItem} from "bootstrap-vue-next";
 
 const navList = ref<HTMLUListElement>();
 const slots = useSlots();

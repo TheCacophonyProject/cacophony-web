@@ -14,6 +14,7 @@ import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import { capitalize } from "@/utils";
 import { currentSelectedProject } from "@models/provides";
 import SectionCard from "@/components/SectionCard.vue";
+import {BModal} from "bootstrap-vue-next";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const customCameraTags = computed<string[]>(() => {

@@ -7,6 +7,7 @@ import type { ErrorResult } from "@apiClient/types";
 import { ClientApi } from "@/api";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import { useRoute, useRouter } from "vue-router";
+import {BAlert, BButton, BForm, BFormInput, BFormInvalidFeedback} from "bootstrap-vue-next";
 
 const userPassword: FormInputValue = formFieldInputText();
 const userPasswordConfirmation: FormInputValue = formFieldInputText();

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { BAlert } from "bootstrap-vue-next";
+import {BAlert, BForm, BFormInput, BFormInvalidFeedback} from "bootstrap-vue-next";
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState, FormInputValue } from "@/utils";
 

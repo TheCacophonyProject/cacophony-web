@@ -18,7 +18,7 @@ import CardTable from "@/components/CardTable.vue";
 import type { LoadedResource } from "@apiClient/types.ts";
 import SectionCard from "@/components/SectionCard.vue";
 import {
-  BButton,
+  BButton, BForm,
   BFormGroup,
   BFormInput,
   BFormInvalidFeedback,

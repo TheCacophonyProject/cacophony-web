@@ -17,6 +17,7 @@ import { HttpStatusCode } from "@typedefs/api/consts.ts";
 import { urlNormaliseName } from "@/utils";
 import { decodeJWT } from "@apiClient/utils.ts";
 import { ClientApi } from "@/api";
+import {BSpinner} from "bootstrap-vue-next";
 
 const alreadyPartOfProject = ref(false);
 const checkingValidateEmailToken = ref(false);

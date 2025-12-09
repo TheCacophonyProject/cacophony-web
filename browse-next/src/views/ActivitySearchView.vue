@@ -118,6 +118,7 @@ import type {
 import { ClientApi, CurrentViewAbortController } from "@/api";
 import type { VisitsQueryResult } from "@apiClient/Monitoring.ts";
 import type { NonEmptyArray } from "@/helpers/utils.ts";
+import {BButton, BModal, BOffcanvas, BSpinner} from "bootstrap-vue-next";
 
 const mapBuffer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();

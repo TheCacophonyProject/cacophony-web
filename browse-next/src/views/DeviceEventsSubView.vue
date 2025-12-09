@@ -18,6 +18,7 @@ import type { LoadedResource } from "@apiClient/types.ts";
 import { DateTime } from "luxon";
 import { ClientApi } from "@/api";
 import type { EventApiParams } from "@apiClient/Device.ts";
+import {BSpinner} from "bootstrap-vue-next";
 
 const route = useRoute();
 const deviceId = computed<DeviceId>(

@@ -51,6 +51,7 @@ import { ClientApi } from "@/api";
 import { currentSelectedProject as currentActiveProject } from "@models/provides.ts";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
 import { DEFAULT_AUTH_ID } from "@apiClient/types.ts";
+import {BFormCheckbox, BFormGroup, BProgress} from "bootstrap-vue-next";
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false

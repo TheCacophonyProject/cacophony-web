@@ -10,12 +10,10 @@ import {
   userIsLoggedIn,
 } from "@models/LoggedInUser";
 import { DEFAULT_AUTH_ID, type ErrorResult } from "@apiClient/types";
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import { HttpStatusCode } from "@typedefs/api/consts.ts";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import { currentUser } from "@models/provides.ts";
+import {BSpinner} from "bootstrap-vue-next";
 const CurrentUser = inject(currentUser) as Ref<LoggedInUser | null>;
 const checkingValidateEmailToken = ref(false);
 const validateToken = ref("");

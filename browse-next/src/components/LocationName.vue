@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import type { RouteLocationRaw } from "vue-router";
+import {BLink} from "bootstrap-vue-next";
 defineProps<{
   name: string;
   to?: RouteLocationRaw;

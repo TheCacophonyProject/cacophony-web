@@ -185,26 +185,28 @@ watch(
   () => props.highlightedPoint,
   (newP: NamedPoint | null) => {
     const key = (newP && pointKey(newP)) || "";
-    const bounds = mapEl.value.getBoundingClientRect();
-    for (const [markerKey, pointMarker] of Object.entries(markers)) {
-      if (key === markerKey) {
-        // If the highlighted point is outside the current map bounds, pan to it and center it, or fit the bounds.
-        pointMarker.foregroundMarker.bringToFront();
-        highlightMarker(pointMarker, markerKey);
-        if (props.centerOnHighlighted) {
-          pointMarker.foregroundMarker.openTooltip();
-          (
+    if (mapEl.value) {
+      const bounds = mapEl.value.getBoundingClientRect();
+      for (const [markerKey, pointMarker] of Object.entries(markers)) {
+        if (key === markerKey) {
+          // If the highlighted point is outside the current map bounds, pan to it and center it, or fit the bounds.
+          pointMarker.foregroundMarker.bringToFront();
+          highlightMarker(pointMarker, markerKey);
+          if (props.centerOnHighlighted) {
+            pointMarker.foregroundMarker.openTooltip();
             (
-              pointMarker.foregroundMarker as unknown as LeafletInternalRawMarker
-            )._map as LeafletMap
-          ).panInside(pointMarker.foregroundMarker.getLatLng(), {
-            padding: [bounds.width / 2, bounds.height / 2],
-          });
+                (
+                    pointMarker.foregroundMarker as unknown as LeafletInternalRawMarker
+                )._map as LeafletMap
+            ).panInside(pointMarker.foregroundMarker.getLatLng(), {
+              padding: [bounds.width / 2, bounds.height / 2],
+            });
+          }
+        } else {
+          cancelAnimationFrame(markerAnimationFrames[markerKey]);
+          unhighlightImmediately(pointMarker);
+          pointMarker.foregroundMarker.closeTooltip();
         }
-      } else {
-        cancelAnimationFrame(markerAnimationFrames[markerKey]);
-        unhighlightImmediately(pointMarker);
-        pointMarker.foregroundMarker.closeTooltip();
       }
     }
   },

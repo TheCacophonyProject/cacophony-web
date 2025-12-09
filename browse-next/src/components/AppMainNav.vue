@@ -28,7 +28,7 @@ import {
 } from "vue";
 import { currentSelectedProject, currentUser } from "@models/provides.ts";
 import type { LoadedResource } from "@apiClient/types.ts";
-import { BTooltip } from "bootstrap-vue-next";
+import {BDropdown, BDropdownItemButton, BTooltip} from "bootstrap-vue-next";
 
 const fallibleCurrentSelectedProject = inject(
   currentSelectedProject,

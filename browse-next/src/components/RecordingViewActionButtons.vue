@@ -11,6 +11,7 @@ import { currentSelectedProject, currentUser } from "@models/provides.ts";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import type { LoadedResource } from "@apiClient/types.ts";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
+import {BDropdown, BDropdownDivider, BDropdownItemButton} from "bootstrap-vue-next";
 
 const props = withDefaults(
   defineProps<{

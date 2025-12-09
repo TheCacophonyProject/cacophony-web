@@ -629,6 +629,10 @@ const primaryBatteryDataType = computed<string>(() => {
 
 const showSoftwareInformation = ref<boolean>(false);
 
+const canRecordAudio = computed<boolean>(() => {
+  return isTc2Device.value;
+});
+
 const audioRecordingMode = computed<AudioRecordingMode>(() => {
   if (
     deviceConfig.value &&
@@ -637,7 +641,10 @@ const audioRecordingMode = computed<AudioRecordingMode>(() => {
   ) {
     return deviceConfig.value["audio-recording"]["audio-mode"];
   }
-  return AudioRecordingMode.AudioAndThermal;
+  if (isTc2Device.value) {
+    return AudioRecordingMode.AudioAndThermal;
+  }
+  return AudioRecordingMode.Disabled;
 });
 
 const audioRecordingModeDisplay = computed<string>(() => {
@@ -655,6 +662,7 @@ const audioRecordingModeDisplay = computed<string>(() => {
 });
 
 const audioRecordingModeDescription = computed<string>(() => {
+  // FIXME: J+S How should this be displayed with non DOC AI cam devices?
   switch (audioRecordingMode.value) {
     case AudioRecordingMode.AudioOrThermal:
       return "Audio Or Thermal tooltip text";
@@ -675,7 +683,11 @@ const audioRecordingSchedule = computed<string>(() => {
     case AudioRecordingMode.AudioOnly:
       return "Makes an average of 32 one minute audio recordings per day, spread randomly across the day";
     case AudioRecordingMode.Disabled:
-      return "Takes no audio recordings, only thermal";
+      if (isTc2Device.value) {
+        return "Takes no audio recordings, only thermal";
+      } else {
+        return "This device is not capable of making audio recordings";
+      }
     case AudioRecordingMode.AudioAndThermal:
     default:
       return "Makes an average of 32 one minute audio recordings per day, spread randomly across the day, when not making a thermal recording";
@@ -872,7 +884,7 @@ const audioRecordingSchedule = computed<string>(() => {
                       <span v-else> Scheduled to record </span>
                       {{
                         DateTime.fromJSDate(
-                          scheduledRecordStartTime,
+                          scheduledRecordStartTime as Date,
                         ).toRelative()
                       }}</span
                     >
@@ -1147,7 +1159,7 @@ const audioRecordingSchedule = computed<string>(() => {
       </b-button>
     </div>
 
-    <div v-if="showSoftwareInformation">
+    <div v-if="showSoftwareInformation" class="mb-3">
       <!-- Channel -->
       <div class="bento-box mt-3" ref="software-information">
         <h4 class="h4">Channel</h4>
