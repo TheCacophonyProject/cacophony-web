@@ -17,8 +17,8 @@ import {
 } from "@api/classificationsUtils.ts";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import DeviceName from "@/components/DeviceName.vue";
-import {BAlert} from "bootstrap-vue-next";
-import {MaterialSymbol} from "@dbetka/vue-material-symbols";
+import { BAlert } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const COOL = "cool";
 const FLAG = "requires review";
@@ -121,28 +121,26 @@ const otherLabels = computed<string[]>(
 </script>
 
 <template>
-  <b-alert
-    :model-value="true"
-    variant="light"
-    class="mb-2 mb-sm-3"
-  >
+  <b-alert :model-value="true" variant="light" class="mb-2 mb-sm-3">
     <div class="description d-flex">
       <material-symbol name="info" class="me-2" size="1.25rem" />
       <div>
         <em v-if="hasStarred"> Starred</em
         ><span v-if="hasStarred && hasFlagged"> or </span
         ><em v-if="hasFlagged">{{ hasStarred ? "flagged" : "Flagged" }}</em>
-        <strong class="fw-semibold">{{
+        <strong class="fw-medium">{{
           !hasFlagged && !hasStarred
             ? upperFirst(searchParams.displayMode)
             : ` ${searchParams.displayMode}`
         }}</strong>
         <span
-          v-if="selectedLocations.length === 0 || selectedLocations.includes('any')"
+          v-if="
+            selectedLocations.length === 0 || selectedLocations.includes('any')
+          "
         >
           <span v-if="locationsInSelectedTimespan.length === 1">
             at
-            <strong class="fw-semibold">{{
+            <strong class="fw-medium">{{
               locationsInSelectedTimespan[0].name
             }}</strong>
           </span>
@@ -151,7 +149,7 @@ const otherLabels = computed<string[]>(
         <span v-else>
           <span v-if="selectedLocations.length === 1">
             at
-            <strong class="fw-semibold">{{
+            <strong class="fw-medium">{{
               (selectedLocations as ApiLocationResponse[])[0].name
             }}</strong>
           </span>
@@ -161,7 +159,7 @@ const otherLabels = computed<string[]>(
               :key="index"
               v-for="(loc, index) in selectedLocations as ApiLocationResponse[]"
             >
-              <strong class="fw-semibold">{{ loc.name }}</strong
+              <strong class="fw-medium">{{ loc.name }}</strong
               ><span v-if="index === selectedLocations.length - 2"> and </span
               ><span v-else-if="index < selectedLocations.length - 1"
                 >,
@@ -190,7 +188,9 @@ const otherLabels = computed<string[]>(
         <span>&nbsp;</span>
         <span>{{ timespan }}</span>
         <span
-          v-if="searchParams.displayMode === ActivitySearchDisplayMode.Recordings"
+          v-if="
+            searchParams.displayMode === ActivitySearchDisplayMode.Recordings
+          "
         >
           <span v-if="searchParams.tagMode === TagMode.UnTagged">
             that don't have any tag</span
@@ -225,7 +225,7 @@ const otherLabels = computed<string[]>(
                 (t) => t !== 'any',
               )"
             >
-              <strong class="fw-semibold"
+              <strong class="fw-medium"
                 ><span class="text-capitalize">{{
                   displayLabelForClassificationLabel(
                     tag,
@@ -234,7 +234,8 @@ const otherLabels = computed<string[]>(
                       ActivitySearchRecordingMode.Audio,
                   )
                 }}</span></strong
-              ><span v-if="index === searchParams.taggedWith.length - 2"> or </span
+              ><span v-if="index === searchParams.taggedWith.length - 2">
+                or </span
               ><span
                 v-else-if="
                   index < searchParams.taggedWith.length - 1 &&
@@ -251,16 +252,18 @@ const otherLabels = computed<string[]>(
                 searchParams.tagMode == TagMode.NoHuman)
             "
             >, excluding those with no tracks, or that are only tagged as
-            <strong class="fw-semibold text-capitalize">false trigger</strong>
+            <strong class="fw-medium text-capitalize">false trigger</strong>
           </span>
           <span v-if="otherLabels.length"
             >, labelled with
             <span :key="index" v-for="(label, index) in otherLabels">
-              <strong class="fw-semibold"
+              <strong class="fw-medium"
                 ><span class="text-capitalize">{{ label }}</span></strong
               ><span v-if="index === otherLabels.length - 2"> or </span
               ><span
-                v-else-if="index < otherLabels.length - 1 && otherLabels.length > 1"
+                v-else-if="
+                  index < otherLabels.length - 1 && otherLabels.length > 1
+                "
                 >,
               </span></span
             >

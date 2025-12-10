@@ -665,8 +665,10 @@ const audioRecordingModeDescription = computed<string>(() => {
   // FIXME: J+S How should this be displayed with non DOC AI cam devices?
   switch (audioRecordingMode.value) {
     case AudioRecordingMode.AudioOrThermal:
-      return "Record thermal video and a one-minute clip of audio 32 times a day, at random intervals during the day. " +
-        "The device won't be able to record thermal video while the audio is being recorded.";
+      return (
+        "Record thermal video and a one-minute clip of audio 32 times a day, at random intervals during the day. " +
+        "The device won't be able to record thermal video while the audio is being recorded."
+      );
     case AudioRecordingMode.AudioOnly:
       return "Device records only audio, thermal video recording is disabled.";
     case AudioRecordingMode.Disabled:
@@ -848,10 +850,15 @@ const audioRecordingScheduleDescription = computed<string>(() => {
 
             <div class="row">
               <dt
-                class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Recording settings</dt>
-              <dd class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
-                <span class="d-flex align-items-center"
-                >  {{ audioRecordingModeDisplay }}
+                class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium"
+              >
+                Recording settings
+              </dt>
+              <dd
+                class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2"
+              >
+                <span class="d-flex align-items-center">
+                  {{ audioRecordingModeDisplay }}
                   <b-button
                     variant="light"
                     size="sm"
@@ -919,11 +926,19 @@ const audioRecordingScheduleDescription = computed<string>(() => {
             </div>
             <div class="row">
               <dt
-                class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-0 pb-0 ps-0 py-sm-2 pb-sm-0 fw-medium">Audio recording schedule</dt>
-              <dd class="col-sm-8 d-sm-inline-flex mb-0 mb-sm-0 pt-1 px-0 py-sm-2 pb-sm-0 align-items-start">
+                class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-0 pb-0 ps-0 py-sm-2 pb-sm-0 fw-medium"
+              >
+                Audio recording schedule
+              </dt>
+              <dd
+                class="col-sm-8 d-sm-inline-flex mb-0 mb-sm-0 pt-1 px-0 py-sm-2 pb-sm-0 align-items-start"
+              >
                 <div class="d-flex align-items-center">
                   <span
-                    :class="{ 'text-secondary': audioRecordingMode === AudioRecordingMode.Disabled }"
+                    :class="{
+                      'text-secondary':
+                        audioRecordingMode === AudioRecordingMode.Disabled,
+                    }"
                     class="lh-base"
                   >
                     {{ audioRecordingSchedule }}
@@ -964,7 +979,8 @@ const audioRecordingScheduleDescription = computed<string>(() => {
           </div>
           <div
             v-else-if="currentLocationForDevice"
-            class="d-flex flex-column flex-fill">
+            class="d-flex flex-column flex-fill"
+          >
             <p class="mt-1">
               <location-name :name="currentLocationForDevice.name" />
             </p>
@@ -973,37 +989,49 @@ const audioRecordingScheduleDescription = computed<string>(() => {
               <div class="col col-12 col-sm-6">
                 <dl class="settings-summary container mb-0 mb-sm-3">
                   <div class="row">
-                    <dt class="col-sm-6 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Latitude</dt>
-                    <dd class="col-sm-6 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2">
-                      {{device.location.lat.toFixed(6)}}
+                    <dt
+                      class="col-sm-6 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium"
+                    >
+                      Latitude
+                    </dt>
+                    <dd
+                      class="col-sm-6 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2"
+                    >
+                      {{ device.location.lat.toFixed(6) }}
                     </dd>
                   </div>
                   <div class="row">
-                    <dt class="col-sm-6 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium">Longitude</dt>
-                    <dd class="col-sm-6 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2"
-                    >  {{device.location.lng.toFixed(6)}}
+                    <dt
+                      class="col-sm-6 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium"
+                    >
+                      Longitude
+                    </dt>
+                    <dd
+                      class="col-sm-6 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2"
+                    >
+                      {{ device.location.lng.toFixed(6) }}
                     </dd>
                   </div>
                 </dl>
-                <b-popover
-                  v-model="locationCopied"
-                  manual
-                >
-                <span class="d-flex">
-                  <material-symbol
-                    name="check"
-                    size="1.25rem"
-                    class="me-2 text-success"
-                  />
-                  Copied
-                </span>
+                <b-popover v-model="locationCopied" manual>
+                  <span class="d-flex">
+                    <material-symbol
+                      name="check"
+                      size="1.25rem"
+                      class="me-2 text-success"
+                    />
+                    Copied
+                  </span>
                   <template #target>
                     <b-button
                       variant="outline-secondary"
                       class="d-flex align-items-center mb-3"
                       @click="copyLocation"
                     >
-                      <material-symbol name="content_copy" size="1.25rem" class="me-2"
+                      <material-symbol
+                        name="content_copy"
+                        size="1.25rem"
+                        class="me-2"
                       />Copy coordinates
                     </b-button>
                   </template>
@@ -1023,7 +1051,6 @@ const audioRecordingScheduleDescription = computed<string>(() => {
                 />
               </div>
             </div>
-
           </div>
           <div
             v-else

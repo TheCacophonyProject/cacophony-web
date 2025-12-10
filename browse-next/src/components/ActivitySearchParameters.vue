@@ -42,12 +42,8 @@ import {
   CurrentProjectAudioLabels,
   CurrentProjectCameraLabels,
 } from "@/helpers/Project.ts";
-import {
-  BButton,
-  BFormCheckbox,
-  BPopover,
-} from "bootstrap-vue-next";
-import {MaterialSymbol} from "@dbetka/vue-material-symbols";
+import { BButton, BFormCheckbox, BPopover } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const props = defineProps<{
   locations: Ref<LoadedResource<ApiLocationResponse[]>>;
@@ -948,7 +944,6 @@ const { top: searchParamsOffsetTop } = useElementBounding(
 const scrolledToStickyPosition = computed<boolean>(() => {
   return searchParamsOffsetTop.value === 15;
 });
-
 </script>
 
 <template>
@@ -1088,9 +1083,10 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         size="lg"
       >
         <span class="d-flex justify-content-center">
-          <span>Include
+          <span
+            >Include
             <span v-if="recordingMode === ActivitySearchRecordingMode.Cameras">
-            false triggers
+              false triggers
             </span>
             <span v-if="recordingMode === ActivitySearchRecordingMode.Audio">
               redacted audio
@@ -1098,10 +1094,12 @@ const scrolledToStickyPosition = computed<boolean>(() => {
           </span>
         </span>
       </b-form-checkbox>
-      <span ref="falsePositiveInfoParent" class="text-secondary d-flex align-items-baseline">
+      <span
+        ref="falsePositiveInfoParent"
+        class="text-secondary d-flex align-items-baseline"
+      >
         <material-symbol name="help" size="1.25rem" />
       </span>
-
     </div>
     <b-popover
       v-model="toggleFalsePositiveFilterHelp"
@@ -1151,7 +1149,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         v-model="showUntaggedOnly"
         switch
         :disabled="showUntaggedByHumanOnly"
-      ><span class="text-muted">Not tagged</span></b-form-checkbox
+        ><span class="text-muted">Not tagged</span></b-form-checkbox
       >
       <b-form-checkbox
         v-model="showUntaggedByHumanOnly"
@@ -1177,9 +1175,12 @@ const scrolledToStickyPosition = computed<boolean>(() => {
           <b-form-checkbox
             v-model="includeSubSpeciesTags"
             :disabled="selectedTags.length === 0 || showUntaggedOnly"
-          >Include sub-species tags
+            >Include sub-species tags
           </b-form-checkbox>
-          <span ref="tagInfoParent" class="text-secondary d-flex align-items-baseline ms-3">
+          <span
+            ref="tagInfoParent"
+            class="text-secondary d-flex align-items-baseline ms-3"
+          >
             <material-symbol name="help" size="1.25rem" />
           </span>
         </div>
@@ -1190,10 +1191,14 @@ const scrolledToStickyPosition = computed<boolean>(() => {
           placement="right-start"
           :target="tagInfoParent"
         >
-          <p class="mb-1">If you select the tag 'mammal', having this option selected means
-            we'll search for all tags with 'mammal' as an ancestor.</p>
-          <p class="mb-0">Having the option disabled means we'll only search for recordings with the
-            explicit 'mammal' tag.</p>
+          <p class="mb-1">
+            If you select the tag 'mammal', having this option selected means
+            we'll search for all tags with 'mammal' as an ancestor.
+          </p>
+          <p class="mb-0">
+            Having the option disabled means we'll only search for recordings
+            with the explicit 'mammal' tag.
+          </p>
         </b-popover>
       </div>
     </div>

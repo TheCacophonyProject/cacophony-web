@@ -6,7 +6,7 @@ import {
   displayLabelForClassificationLabel,
   getClassificationForLabel,
 } from "@api/classificationsUtils.ts";
-import {MaterialSymbol} from "@dbetka/vue-material-symbols";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const props = withDefaults(
   defineProps<{
@@ -371,7 +371,11 @@ defineExpose({
           @click="() => setToPath(path)"
         >
           <span class="path-name">{{ path }}</span>
-          <material-symbol v-if="index !== currPath.length - 1" name="keyboard_arrow_right" size="1rem"/>
+          <material-symbol
+            v-if="index !== currPath.length - 1"
+            name="keyboard_arrow_right"
+            size="1rem"
+          />
         </div>
       </div>
       <div
@@ -445,8 +449,8 @@ defineExpose({
   min-height: 2.4em;
   padding: var(--cp-spacing-xxs);
   row-gap: var(--cp-spacing-xxs);
- /* color: rgb(128, 128, 128);*/
- /* background: rgb(248, 248, 248);*/
+  /* color: rgb(128, 128, 128);*/
+  /* background: rgb(248, 248, 248);*/
   border-bottom: 1px solid var(--bs-border-color);
   font-size: var(--cp-font-size-sm);
   .options-path {
@@ -475,9 +479,7 @@ defineExpose({
       }
     }
   }
-
 }
-
 
 .options-container:focus-within {
   color: rgb(46, 46, 46);

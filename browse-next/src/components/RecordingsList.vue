@@ -36,16 +36,18 @@
       >
         <div
           class="visit-time-duration d-flex flex-column flex-shrink-0"
-          :class="item.type !== 'recording'? 'py-2 py-sm-3' : 'py-2'"
+          :class="item.type !== 'recording' ? 'py-2 py-sm-3' : 'py-2'"
         >
           <span
             v-if="item.type === 'recording'"
             class="pb-1 fs-6 text-secondary lh-sm"
-          >{{timeAtLocation(item.data.recordingDateTime, canonicalLocation)}}</span>
-          <span
-            v-else
-            class="fs-6 text-secondary"
-          >{{timeAtLocation(item.data, canonicalLocation)}}</span>
+            >{{
+              timeAtLocation(item.data.recordingDateTime, canonicalLocation)
+            }}</span
+          >
+          <span v-else class="fs-6 text-secondary">{{
+            timeAtLocation(item.data, canonicalLocation)
+          }}</span>
           <span
             class="duration fs-6 text-secondary"
             v-if="
@@ -97,7 +99,10 @@
           </svg>
           <div v-else class="circle"></div>
         </div>
-        <div v-if="item.type !== 'recording'" class="py-2 py-sm-3 ps-2 text-capitalize fs-6">
+        <div
+          v-if="item.type !== 'recording'"
+          class="py-2 py-sm-3 ps-2 text-capitalize fs-6"
+        >
           {{ item.type }}
         </div>
         <div
@@ -105,7 +110,7 @@
           class="recording-detail d-flex align-items-start flex-fill overflow-hidden"
           :class="{
             redacted: (item.data as ApiRecordingResponse).redacted,
-            'mb-0': removeMarginBottom(day.items, index)
+            'mb-0': removeMarginBottom(day.items, index),
           }"
         >
           <div
@@ -119,9 +124,7 @@
               height="64"
             />
           </div>
-          <div
-            class="overflow-hidden"
-          >
+          <div class="overflow-hidden">
             <div
               class="tags-container d-flex justify-content-between flex-grow-1"
             >
@@ -137,7 +140,10 @@
                     >AI Queued</span
                   ></span
                 >
-                <span v-else-if="item && item.data" class="d-flex flex-wrap align-items-start gap-1">
+                <span
+                  v-else-if="item && item.data"
+                  class="d-flex flex-wrap align-items-start gap-1"
+                >
                   <span
                     class="visit-species-tag text-capitalize"
                     :class="(tag.path && tag.path.split('.')) || ''"
@@ -210,7 +216,11 @@
             </div>
 
             <span class="track-metadata d-flex align-items-center">
-              <location-name :name="(item as RecordingItem).data.stationName || ''" truncate class="fs-6" />
+              <location-name
+                :name="(item as RecordingItem).data.stationName || ''"
+                truncate
+                class="fs-6"
+              />
             </span>
             <div class="d-flex flex-wrap align-items-start">
               <span class="track-metadata d-flex fs-6 me-2">
@@ -222,9 +232,12 @@
                   :type="deviceTypeFor((item as RecordingItem).data.deviceId)"
                 ></device-name>
               </span>
-              <span class="track-metadata d-flex align-items-center fs-6"
-                >
-                <material-symbol name="clear_all" size="1.125rem" class="me-1" />
+              <span class="track-metadata d-flex align-items-center fs-6">
+                <material-symbol
+                  name="clear_all"
+                  size="1.125rem"
+                  class="me-1"
+                />
                 <span v-if="(item as RecordingItem).data.tracks.length === 0"
                   >No tracks</span
                 ><span
@@ -269,9 +282,9 @@ import type { ApiTrackTag } from "@typedefs/api/trackTag";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import DeviceName from "@/components/DeviceName.vue";
 import { ClientApi } from "@/api";
-import {MaterialSymbol} from "@dbetka/vue-material-symbols";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import LocationName from "@/components/LocationName.vue";
-import {BSpinner} from "bootstrap-vue-next";
+import { BSpinner } from "bootstrap-vue-next";
 
 type RecordingItem = { type: "recording"; data: ApiRecordingResponse };
 type SunItem = { type: "sunset" | "sunrise"; data: string };
@@ -402,7 +415,10 @@ const deviceTypeFor = (deviceId: DeviceId): DeviceType => {
   return DeviceType.Thermal;
 };
 
-const removeMarginBottom = (items:(RecordingItem | SunItem)[], index:number):boolean => {
+const removeMarginBottom = (
+  items: (RecordingItem | SunItem)[],
+  index: number,
+): boolean => {
   if (index === items.length - 1) {
     return true;
   }
@@ -411,7 +427,6 @@ const removeMarginBottom = (items:(RecordingItem | SunItem)[], index:number):boo
   }
   return false;
 };
-
 </script>
 
 <style scoped lang="less">
@@ -499,7 +514,6 @@ const removeMarginBottom = (items:(RecordingItem | SunItem)[], index:number):boo
   .visit-time-duration {
     width: calc(var(--cp-grid-base) * 13); // 64px
     text-align: right;
-
   }
   &.sunrise,
   &.sunset {
@@ -630,7 +644,9 @@ const removeMarginBottom = (items:(RecordingItem | SunItem)[], index:number):boo
     border-radius: var(--bs-border-radius);
     cursor: pointer;
     transform: translate3d(0, 0, 0);
-    transition: transform 0.1s, box-shadow 0.15s ;
+    transition:
+      transform 0.1s,
+      box-shadow 0.15s;
     .standard-shadow();
     @media (max-width: @breakpoint-xs-max) {
       padding: var(--cp-spacing-xs);
@@ -641,7 +657,7 @@ const removeMarginBottom = (items:(RecordingItem | SunItem)[], index:number):boo
       margin-bottom: var(--cp-spacing-sm);
     }
     &:hover {
-      box-shadow: 0 6px 12px 0 rgba(44, 79,1, 0.1);
+      box-shadow: 0 6px 12px 0 rgba(44, 79, 1, 0.1);
       transform: translate3d(0, -2px, 0);
     }
   }

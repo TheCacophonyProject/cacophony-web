@@ -1,10 +1,5 @@
 <template>
-  <b-link
-    class="d-inline-flex"
-    v-if="to"
-    :to="to"
-    variant="secondary"
-  >
+  <b-link class="d-inline-flex" v-if="to" :to="to" variant="secondary">
     <span class="me-2 align-self-center position-relative">
       <material-symbol :name="deviceTypeIcon" size="1.125rem" class="me-2" />
       <material-symbol
@@ -18,8 +13,9 @@
   </b-link>
   <span
     v-else
-    :class="{'overflow-hidden': truncate}"
-    class="d-inline-flex justify-content-center align-items-center">
+    :class="{ 'overflow-hidden': truncate }"
+    class="d-inline-flex justify-content-center align-items-center"
+  >
     <span
       class="d-flex align-self-center position-relative"
       :class="{
@@ -30,10 +26,9 @@
     >
       <material-symbol :name="deviceTypeIcon" size="1.125rem" />
     </span>
-    <span :class="{'text-truncate': truncate}">
+    <span :class="{ 'text-truncate': truncate }">
       {{ name }}
-    </span>
-    </span
+    </span> </span
   ><span v-if="slots.default"><slot></slot></span>
 </template>
 
@@ -44,9 +39,9 @@ import {
   DeviceType as ConcreteDeviceType,
 } from "@typedefs/api/consts.ts";
 import type { RouteLocationRaw } from "vue-router";
-import {MaterialSymbol} from "@dbetka/vue-material-symbols";
-import type {IconsProp} from "@dbetka/vue-material-symbols/dist/jscache/icons-names";
-import {BLink} from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import type { IconsProp } from "@dbetka/vue-material-symbols/dist/jscache/icons-names";
+import { BLink } from "bootstrap-vue-next";
 
 const props = defineProps<{
   name: string;
