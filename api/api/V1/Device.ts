@@ -692,9 +692,20 @@ export default function (app: Application, baseUrl: string) {
       const filteredTracks = Array.from(tracksById.values()).filter(
         (track) => track["TrackTags.what"] === tag,
       );
-      return successResponse(response, "Got tracks with tag", {
-        tracks: filteredTracks.map((x) => mapTrack(x)),
-      });
+      {
+        const trackDatas = [];
+        for (const track of filteredTracks) {
+          trackDatas.push(Track.getTrackData(track.id));
+        }
+        await Promise.all(trackDatas);
+        for (let i = 0; i < filteredTracks.length; i++) {
+          filteredTracks[i].data = trackDatas[i];
+        }
+        const tracks = filteredTracks.map((x) => mapTrack(x));
+        return successResponse(response, "Got tracks with tag", {
+          tracks,
+        });
+      }
     },
   );
 

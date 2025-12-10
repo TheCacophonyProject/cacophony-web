@@ -318,59 +318,61 @@ const initBatteryInfoTimeSeries = () => {
 
       // Add event listeners for tooltips
       chart.on("created", () => {
-        const points = batteryTimeSeries.value!.querySelectorAll(
-          ".ct-point",
-        ) as unknown as SVGElement[];
-        if (points) {
-          points.forEach((point) => {
-            point.addEventListener("mouseenter", (e: MouseEvent) => {
-              const target = e.target as SVGElement;
-              const ctValue = target.getAttribute("ct:value");
-              if (ctValue) {
-                const [x, y] = ctValue.split(",").map(Number);
-                const dataPoint = primaryData.find(
-                  (d) => d.x.getTime() === x && d.y === y,
-                );
+        if (batteryTimeSeries.value) {
+          const points = batteryTimeSeries.value.querySelectorAll(
+            ".ct-point",
+          ) as unknown as SVGElement[];
+          if (points) {
+            points.forEach((point) => {
+              point.addEventListener("mouseenter", (e: MouseEvent) => {
+                const target = e.target as SVGElement;
+                const ctValue = target.getAttribute("ct:value");
+                if (ctValue) {
+                  const [x, y] = ctValue.split(",").map(Number);
+                  const dataPoint = primaryData.find(
+                    (d) => d.x.getTime() === x && d.y === y,
+                  );
 
-                if (dataPoint && dataPoint.meta) {
-                  const date = new Date(dataPoint.meta.dateTime);
-                  let content = `<strong>${date.toLocaleDateString("en-NZ", {
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}</strong><br/>`;
+                  if (dataPoint && dataPoint.meta) {
+                    const date = new Date(dataPoint.meta.dateTime);
+                    let content = `<strong>${date.toLocaleDateString("en-NZ", {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}</strong><br/>`;
 
-                  if (dataPoint.meta.battery !== null) {
-                    content += `Battery: ${dataPoint.meta.battery}%`;
-                  }
-
-                  if (dataPoint.meta.voltage !== null) {
                     if (dataPoint.meta.battery !== null) {
-                      content += `<br/>`;
+                      content += `Battery: ${dataPoint.meta.battery}%`;
                     }
-                    content += `Voltage: ${dataPoint.meta.voltage.toFixed(2)}V`;
+
+                    if (dataPoint.meta.voltage !== null) {
+                      if (dataPoint.meta.battery !== null) {
+                        content += `<br/>`;
+                      }
+                      content += `Voltage: ${dataPoint.meta.voltage.toFixed(2)}V`;
+                    }
+
+                    tooltipContent.value = content;
+
+                    // Position tooltip near the point
+                    const rect = (e.target as Element).getBoundingClientRect();
+                    const containerRect =
+                      batteryTimeSeries.value!.getBoundingClientRect();
+                    tooltipPosition.value = {
+                      x: rect.left - containerRect.left + rect.width / 2,
+                      y: rect.top - containerRect.top - 10,
+                    };
+                    tooltipVisible.value = true;
                   }
-
-                  tooltipContent.value = content;
-
-                  // Position tooltip near the point
-                  const rect = (e.target as Element).getBoundingClientRect();
-                  const containerRect =
-                    batteryTimeSeries.value!.getBoundingClientRect();
-                  tooltipPosition.value = {
-                    x: rect.left - containerRect.left + rect.width / 2,
-                    y: rect.top - containerRect.top - 10,
-                  };
-                  tooltipVisible.value = true;
                 }
-              }
-            });
+              });
 
-            point.addEventListener("mouseleave", () => {
-              tooltipVisible.value = false;
+              point.addEventListener("mouseleave", () => {
+                tooltipVisible.value = false;
+              });
             });
-          });
+          }
         }
       });
     }
