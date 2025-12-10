@@ -1077,12 +1077,13 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         size="lg"
       >
         <span class="d-flex justify-content-center">
-          <span>Include&nbsp;</span>
-          <span v-if="recordingMode === ActivitySearchRecordingMode.Cameras">
+          <span>Include
+            <span v-if="recordingMode === ActivitySearchRecordingMode.Cameras">
             false triggers
-          </span>
-          <span v-if="recordingMode === ActivitySearchRecordingMode.Audio">
-            redacted audio
+            </span>
+            <span v-if="recordingMode === ActivitySearchRecordingMode.Audio">
+              redacted audio
+            </span>
           </span>
         </span>
       </b-form-checkbox>
@@ -1114,9 +1115,11 @@ const scrolledToStickyPosition = computed<boolean>(() => {
     class="btn mt-2 d-flex align-items-center justify-content-center w-100"
     @click="showAdvanced = !showAdvanced"
   >
-    <span v-if="!showAdvanced">Show&nbsp;</span>
-    <span v-else>Hide&nbsp;</span>
-    advanced search
+    <span>
+      <span v-if="!showAdvanced">Show </span>
+      <span v-else>Hide </span>
+      advanced search
+    </span>
     <material-symbol
       :name="!showAdvanced ? 'keyboard_arrow_down' : 'keyboard_arrow_up'"
       size="1.25rem"

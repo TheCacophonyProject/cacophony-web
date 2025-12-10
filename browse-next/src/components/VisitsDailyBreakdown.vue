@@ -487,7 +487,7 @@ const isStillProcessing = computed<boolean>(() => {
                 Controversial
               </span>
             </div>
-            <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
+            <span class="track-metadata text-truncate flex-shrink-1 pe-2"
               ><font-awesome-icon
                 icon="map-marker-alt"
                 size="xs"

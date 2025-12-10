@@ -110,19 +110,16 @@ import type { ApiDeviceResponse } from "@typedefs/api/device";
 import type { BulkRecordingsResponse, QueryRecordingsOptions } from "@apiClient/Recording.ts";
 import { ClientApi, CurrentViewAbortController } from "@/api";
 import type { VisitsQueryResult } from "@apiClient/Monitoring.ts";
+import {BButton, BOffcanvas, BSpinner} from "bootstrap-vue-next";
 
 const mapBuffer = ref<HTMLDivElement>();
+const mapContainer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
 const searchControls = ref<HTMLDivElement>();
 const searchResults = ref<HTMLDivElement>();
 const { left: searchContainerLeft, right: searchContainerRight } =
   useElementBounding(searchContainer);
 const { height: windowHeight, width: windowWidth } = useWindowSize();
-
-const mapBufferWidth = computed<number>(() => {
-  const right = windowWidth.value - searchContainerRight.value;
-  return Math.max(0, mapWidthPx.value - right);
-});
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
@@ -1869,16 +1866,17 @@ const projectHasLocationsWithRecordings = computed<boolean>(() => {
 });
 
 const mapWidthPx = computed<number>(() => {
-  if (windowWidth.value >= 1200) {
-    return Math.min(
-      500,
-      windowWidth.value - (searchContainerLeft.value + 810 + 24),
-    );
-  } else if (windowWidth.value >= 992) {
-    return 250;
-  } else {
+  if (!mapBuffer.value) {
     return 0;
   }
+  const mapBufferWidth = mapBuffer.value.offsetWidth;
+  if (windowWidth.value >= 1920) {
+    return mapBufferWidth + 128;
+  }
+  if (windowWidth.value >= 992) {
+    return mapBufferWidth;
+  }
+  return 0;
 });
 
 const showOffcanvasSearch = ref<boolean>(false);
@@ -1953,11 +1951,11 @@ onBeforeUnmount(() => {
   </div>
   <div
     v-else
-    class="d-flex flex-md-row flex-column-reverse flex-fill search-container"
+    class="d-flex flex-md-row flex-column-reverse flex-fill row search-container"
     ref="searchContainer"
   >
     <nav
-      class="navbar navbar-expand-md search-controls-outer me-md-3 d-flex py-md-0 align-items-md-start"
+      class="search-controls-wrapper col col-12 col-md-4 col-lg-3 col-xl-3 col-xxl-3 d-flex py-md-0 align-items-md-start"
       ref="searchControls"
     >
       <div class="search-results-toggle position-fixed d-md-none d-block">
@@ -1986,20 +1984,23 @@ onBeforeUnmount(() => {
           <b-button @click="showOffcanvasSearch = false">Search</b-button>
         </div>
       </b-offcanvas>
-      <div class="search-controls" v-if="shouldShowSearchControlsInline">
-        <activity-search-parameters
-          :params="searchParams"
-          :locations="ref(locations)"
-          :searching="searching"
-          :custom-set="customAutomaticallySet"
-          @accepted-custom-set="customAutomaticallySet = false"
-          @search-requested="doSearch"
-          @export-requested="doExport"
-        />
+      <div class="search-controls-scroll">
+        <div class="search-controls" v-if="shouldShowSearchControlsInline">
+          <activity-search-parameters
+            :params="searchParams"
+            :locations="ref(locations)"
+            :searching="searching"
+            :custom-set="customAutomaticallySet"
+            @accepted-custom-set="customAutomaticallySet = false"
+            @search-requested="doSearch"
+            @export-requested="doExport"
+          />
+        </div>
+
       </div>
     </nav>
     <div
-      class="search-results flex-grow-1 d-flex justify-content-center pb-3 me-lg-3"
+      class="search-results col col-12 col-md-8 col-lg-6 col-xl-6 col-xxl-6 flex-grow-1 d-flex justify-content-center pb-3"
       ref="searchResults"
     >
       <div class="search-results-inner d-flex flex-grow-1 flex-column">
@@ -2083,12 +2084,12 @@ onBeforeUnmount(() => {
       </div>
     </div>
     <div
-      class="map-buffer"
+      class="map-buffer d-none d-lg-flex col col-lg-3 col-xl-3 col-xxl-3"
       ref="mapBuffer"
-      :style="{ width: `${mapBufferWidth}px` }"
     ></div>
   </div>
   <map-with-points
+    ref="mapContainer"
     v-if="projectHasLocationsWithRecordings && mapWidthPx !== 0"
     :points="locationsForMap"
     :active-points="locationsInSelectedTimespanForMap"
@@ -2150,17 +2151,6 @@ onBeforeUnmount(() => {
 .centered-overlay {
   height: calc(100svh - 90px);
 }
-.search-results-inner {
-  max-width: calc(100svw - 48px);
-  @media screen and (min-width: 992px) {
-    max-width: 430px;
-    width: 430px;
-  }
-  @media screen and (min-width: 1200px) {
-    max-width: 540px;
-    width: 540px;
-  }
-}
 .box {
   background: #ccc;
   min-height: 100px;
@@ -2177,12 +2167,16 @@ onBeforeUnmount(() => {
 }
 </style>
 <style lang="less">
-.search-controls {
-  width: 250px !important;
-  position: sticky;
-  top: 15px;
-}
-.search-controls-outer {
+.search-controls-wrapper {
+  .search-controls-scroll {
+    max-height: 100cqh;
+    overflow-y: auto;
+    position: sticky;
+    top: 15px;
+  }
+  .search-controls {
+    max-width: 256px;
+  }
   .b-overlay-wrap .b-overlay {
     z-index: 1040 !important;
   }
