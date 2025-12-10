@@ -110,7 +110,7 @@ import type { ApiDeviceResponse } from "@typedefs/api/device";
 import type { BulkRecordingsResponse, QueryRecordingsOptions } from "@apiClient/Recording.ts";
 import { ClientApi, CurrentViewAbortController } from "@/api";
 import type { VisitsQueryResult } from "@apiClient/Monitoring.ts";
-import {BButton, BOffcanvas, BSpinner} from "bootstrap-vue-next";
+import {BButton, BModal, BOffcanvas, BProgress, BSpinner} from "bootstrap-vue-next";
 
 const mapBuffer = ref<HTMLDivElement>();
 const mapContainer = ref<HTMLDivElement>();

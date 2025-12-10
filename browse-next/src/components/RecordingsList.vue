@@ -271,6 +271,7 @@ import DeviceName from "@/components/DeviceName.vue";
 import { ClientApi } from "@/api";
 import {MaterialSymbol} from "@dbetka/vue-material-symbols";
 import LocationName from "@/components/LocationName.vue";
+import {BSpinner} from "bootstrap-vue-next";
 
 type RecordingItem = { type: "recording"; data: ApiRecordingResponse };
 type SunItem = { type: "sunset" | "sunrise"; data: string };

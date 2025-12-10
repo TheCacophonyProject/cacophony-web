@@ -22,6 +22,7 @@ import {
 import ImageLoader from "@/components/ImageLoader.vue";
 import { RecordingProcessingState } from "@typedefs/api/consts.ts";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
+import {BSpinner} from "bootstrap-vue-next";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
 // TODO: Empty nights in our time window should still show, assuming we had heartbeat events during them?
 //  Of course, we don't currently do this.
