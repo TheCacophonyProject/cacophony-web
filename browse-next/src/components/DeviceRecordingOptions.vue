@@ -4,7 +4,6 @@ import { selectedProjectDevices } from "@models/provides.ts";
 import type {
   ApiDeviceHistorySettings,
   ApiDeviceResponse,
-  AudioModes,
 } from "@typedefs/api/device";
 import { useRoute } from "vue-router";
 import type { DeviceId } from "@typedefs/api/common";
@@ -13,23 +12,25 @@ import { ClientApi } from "@/api";
 import Datepicker from "@vuepic/vue-datepicker";
 import { projectDevicesLoaded } from "@models/LoggedInUser.ts";
 import { resourceIsLoading } from "@/helpers/utils.ts";
-import type { DeviceTypeUnion } from "@typedefs/api/consts";
+import { AudioRecordingMode, type DeviceTypeUnion } from "@typedefs/api/consts";
 import SectionCard from "@/components/SectionCard.vue";
 import {
   BAlert,
   BBadge,
   BFormCheckbox,
   BFormGroup,
-  BFormSelect,
   BFormInput,
   BFormRadio,
   BFormRadioGroup,
+  BFormSelect,
   BInput,
   BSpinner,
 } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import sunCalc from "suncalc";
 import { DateTime } from "luxon";
+import { timezoneForLatLng } from "@models/visitsUtils.ts";
+
 type Time = { hours: number; minutes: number; seconds: number };
 const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null
@@ -107,9 +108,8 @@ const fetchSettings = async () => {
 const records247 = computed<boolean>(() => {
   // Device records 24/7 if power-on time is non-relative and is set to the same as power off time.
   if (settings.value) {
-    const windows = (settings.value as ApiDeviceHistorySettings).windows;
-    const start = (windows && windows.startRecording) || "-30m";
-    const end = (windows && windows.stopRecording) || "+30m";
+    const start = thermalStartTime.value;
+    const end = thermalStopTime.value;
     if (!start.endsWith("m") || !end.endsWith("m")) {
       return start === end;
     }
@@ -121,11 +121,10 @@ const recordingWindow = computed<string | null>(() => {
   if (records247.value) {
     return "Record 24/7";
   } else if (settings.value) {
-    const windows = (settings.value as ApiDeviceHistorySettings).windows;
-    const start = (windows && windows.startRecording) || "-30m";
-    const end = (windows && windows.stopRecording) || "+30m";
-    let startTime = "";
-    let endTime = "";
+    const start = thermalStartTime.value;
+    const end = thermalStopTime.value;
+    let startTime;
+    let endTime;
     if (start.startsWith("+") || start.startsWith("-")) {
       // Relative start time to sunset
       const beforeAfter = start.startsWith("-") ? "before" : "after";
@@ -318,13 +317,21 @@ const getDayOfYYearForDate = (date: Date): number => {
 };
 
 const dayOfYear = ref<number>(getDayOfYYearForDate(new Date()));
+const deviceTimezone = computed<string | null>(() => {
+  const location = device.value?.location;
+  if (location) {
+    // This needs to be adjusted for the device local timezone?
+    return timezoneForLatLng(location);
+  }
+  return null;
+});
 const curveDay = computed<Date>(() => {
   const startOfYear = new Date();
   startOfYear.setMonth(0);
   startOfYear.setDate(1);
   startOfYear.setHours(0, 0, 0, 0);
   const now = new Date(startOfYear.getTime() + dayOfYear.value * msInDay);
-  now.setHours(12, 0, 0, 0);
+  now.setHours(0, 0, 0, 0);
   return now;
 });
 
@@ -337,47 +344,99 @@ interface OffsetTimesX {
   midday: number;
   sunsetStart: number;
   sunsetEnd: number;
-  night: number;
+  nightStart: number;
   cameraEnd: number;
   cameraStart: number;
 }
 
 const timesXPos = computed<OffsetTimesX | null>(() => {
+  if (timesZeroOne.value) {
+    return multiplyTimes(timesZeroOne.value, 100);
+  }
+
+  return null;
+});
+
+const timesZeroOne = computed<OffsetTimesX | null>(() => {
   const location = device.value?.location;
   if (location) {
-    const width = 100;
+    // This needs to be adjusted for the device local timezone?
+    const timeZone = deviceTimezone.value as string;
     const now = new Date(curveDay.value);
-    const times = sunCalc.getTimes(now, location.lat, location.lng, 0);
-    now.setHours(0, 0, 0, 0);
-    const startP = (times.nightEnd.getTime() - now.getTime()) / msInDay;
-    const endP = (times.night.getTime() - now.getTime()) / msInDay;
-    const noonP = (times.solarNoon.getTime() - now.getTime()) / msInDay;
-    const duskP = (times.dusk.getTime() - now.getTime()) / msInDay;
-    const dawnP = (times.dawn.getTime() - now.getTime()) / msInDay;
-    const sunriseStartP = (times.sunrise.getTime() - now.getTime()) / msInDay;
-    const sunsetEndP = (times.sunset.getTime() - now.getTime()) / msInDay;
-    const sunriseEndP = (times.sunriseEnd.getTime() - now.getTime()) / msInDay;
-    const sunsetStartP =
-      (times.sunsetStart.getTime() - now.getTime()) / msInDay;
-    const thirtyMins = 30 * 60 * 1000;
+    let nowInTz = DateTime.fromJSDate(now).setZone(timeZone);
+    nowInTz = nowInTz.set({
+      hour: 12,
+    });
+    const times = sunCalc.getTimes(
+      nowInTz.toJSDate(),
+      location.lat,
+      location.lng,
+      0,
+    );
+    nowInTz = nowInTz.set({
+      hour: 0,
+      minute: 0,
+      second: 0,
+      millisecond: 0,
+    });
+    const startOfDay = nowInTz.toJSDate().getTime();
+    const nightEnd =
+      (times.nightEnd && times.nightEnd.getTime()) || startOfDay + 1000;
+    const nightStart =
+      (times.night && times.night.getTime()) || startOfDay + msInDay - 1000;
+    const startP = (nightEnd - startOfDay) / msInDay;
+    const endP = (nightStart - startOfDay) / msInDay;
+    const noonP = (times.solarNoon.getTime() - startOfDay) / msInDay;
+    const duskP = (times.dusk.getTime() - startOfDay) / msInDay;
+    const dawnP = (times.dawn.getTime() - startOfDay) / msInDay;
+    const sunriseStartP = (times.sunrise.getTime() - startOfDay) / msInDay;
+    const sunsetEndP = (times.sunset.getTime() - startOfDay) / msInDay;
+    const sunriseEndP = (times.sunriseEnd.getTime() - startOfDay) / msInDay;
+    const sunsetStartP = (times.sunsetStart.getTime() - startOfDay) / msInDay;
     const thirtyMinsBeforeSunset =
-      (times.sunsetStart.getTime() - thirtyMins - now.getTime()) / msInDay;
+      (times.sunsetStart.getTime() + relativeStartTimeMs.value - startOfDay) /
+      msInDay;
     const thirtyMinsAfterSunrise =
-      (times.sunrise.getTime() + thirtyMins - now.getTime()) / msInDay;
+      (times.sunrise.getTime() + relativeStopTimeMs.value - startOfDay) /
+      msInDay;
 
     return {
-      midday: noonP * width,
-      nightEnd: startP * width,
-      night: endP * width,
-      dawn: dawnP * width,
-      dusk: duskP * width,
-      sunriseStart: sunriseStartP * width,
-      sunriseEnd: sunriseEndP * width,
-      sunsetStart: sunsetStartP * width,
-      sunsetEnd: sunsetEndP * width,
-      cameraStart: thirtyMinsBeforeSunset * width,
-      cameraEnd: thirtyMinsAfterSunrise * width,
+      midday: noonP,
+      nightEnd: startP,
+      nightStart: endP,
+      dawn: dawnP,
+      dusk: duskP,
+      sunriseStart: sunriseStartP,
+      sunriseEnd: sunriseEndP,
+      sunsetStart: sunsetStartP,
+      sunsetEnd: sunsetEndP,
+      cameraStart: thirtyMinsBeforeSunset,
+      cameraEnd: thirtyMinsAfterSunrise,
     };
+  }
+  return null;
+});
+
+const multiplyTimes = (
+  times: OffsetTimesX,
+  multiplier: number,
+): OffsetTimesX => ({
+  midday: times.midday * multiplier,
+  nightEnd: times.nightEnd * multiplier,
+  nightStart: times.nightStart * multiplier,
+  dawn: times.dawn * multiplier,
+  dusk: times.dusk * multiplier,
+  sunriseStart: times.sunriseStart * multiplier,
+  sunriseEnd: times.sunriseEnd * multiplier,
+  sunsetStart: times.sunsetStart * multiplier,
+  sunsetEnd: times.sunsetEnd * multiplier,
+  cameraStart: times.cameraStart * multiplier,
+  cameraEnd: times.cameraEnd * multiplier,
+});
+
+const timesPercent = computed<OffsetTimesX | null>(() => {
+  if (timesZeroOne.value) {
+    return multiplyTimes(timesZeroOne.value, 100);
   }
   return null;
 });
@@ -387,20 +446,20 @@ const daylightCurve = computed<string>(() => {
   if (timesX) {
     const height = 19;
     const top = 1;
-    return `M0,${height}L${timesX.nightEnd},${height}C${timesX.sunriseEnd},${height},${timesX.sunriseEnd},${top},${timesX.midday},${top}C${timesX.sunsetStart},${top},${timesX.sunsetStart},${height},${timesX.night},${height}L100,${height}`;
+    return `M0,${height}L${timesX.nightEnd},${height}C${timesX.sunriseEnd},${height},${timesX.sunriseEnd},${top},${timesX.midday},${top}C${timesX.sunsetStart},${top},${timesX.sunsetStart},${height},${timesX.nightStart},${height}L100,${height}`;
   }
   return "M0,0Z";
 });
 
 // Computed property for Audio Mode
-const audioMode = computed<AudioModes>({
+const audioMode = computed<AudioRecordingMode>({
   get: () => {
     return (
       (settings.value as ApiDeviceHistorySettings)?.audioRecording?.audioMode ??
-      "Disabled"
+      AudioRecordingMode.Disabled
     );
   },
-  set: (val: AudioModes) => {
+  set: (val: AudioRecordingMode) => {
     if (settings.value) {
       (settings.value as ApiDeviceHistorySettings).audioRecording = {
         ...(settings.value as ApiDeviceHistorySettings).audioRecording,
@@ -410,6 +469,14 @@ const audioMode = computed<AudioModes>({
       settings.value.synced = false;
     }
   },
+});
+
+const audioEnabled = computed<boolean>(() => {
+  return audioMode.value !== AudioRecordingMode.Disabled;
+});
+
+const thermalEnabled = computed<boolean>(() => {
+  return audioMode.value !== AudioRecordingMode.AudioOnly;
 });
 
 function timeToMinutes(timeStr: string): number {
@@ -425,9 +492,14 @@ function timeToPercentage(timeStr: string): number {
 function calculateTimePercentagePoints(
   startTime: string,
   endTime: string,
-): Array<{ left: string; width: string }> {
-  if (startTime === "12:00" && endTime === "12:00") {
-    return [];
+): { x0: number; x1: number }[] {
+  if ((startTime === "12:00" && endTime === "12:00") || startTime === endTime) {
+    return [
+      {
+        x0: 0,
+        x1: 100,
+      },
+    ];
   }
   const startPercentage = timeToPercentage(startTime);
   const endPercentage = timeToPercentage(endTime);
@@ -435,145 +507,164 @@ function calculateTimePercentagePoints(
   if (startPercentage <= endPercentage) {
     return [
       {
-        left: `${startPercentage}%`,
-        width: `${endPercentage - startPercentage}%`,
+        x0: startPercentage,
+        x1: endPercentage,
       },
     ];
   } else {
     return [
-      { left: `${startPercentage}%`, width: `${100 - startPercentage}%` },
-      { left: `0%`, width: `${endPercentage}%` },
+      { x0: startPercentage, x1: 100 - startPercentage },
+      { x0: 0, x1: endPercentage },
     ];
   }
 }
 
-// Computed property for Thermal Bar Styles
-const thermalBarStyles = computed(() => {
-  if (audioMode.value === "AudioOnly") {
+const thermalStartTime = computed<string>(() => {
+  const setting = settings.value ? settings.value : undefined;
+  if (!setting) {
+    return "-30m";
+  }
+  const windows = setting.windows;
+  return windows?.startRecording || "-30m";
+});
+
+const thermalStopTime = computed<string>(() => {
+  const setting = settings.value ? settings.value : undefined;
+  if (!setting) {
+    return "+30m";
+  }
+  const windows = setting.windows;
+  return windows?.stopRecording || "+30m";
+});
+const offsetForThermalTimeMs = (time: string): number => {
+  let offset = 0;
+  if (time.startsWith("+")) {
+    offset = Number(time.slice(1).replace("m", ""));
+  } else if (time.startsWith("-")) {
+    offset = -Number(time.slice(1).replace("m", ""));
+  }
+  return offset * 60 * 1000;
+};
+
+const relativeStartTimeMs = computed<number>(() => {
+  return offsetForThermalTimeMs(thermalStartTime.value);
+});
+
+const relativeStopTimeMs = computed<number>(() => {
+  return offsetForThermalTimeMs(thermalStopTime.value);
+});
+
+const thermalStartTimePercent = computed<number>(() => {
+  const startRecording = thermalStartTime.value;
+  const hasRelativeStart =
+    startRecording.startsWith("+") || startRecording.startsWith("-");
+  if (hasRelativeStart) {
+    return timesPercent.value?.cameraStart || 0;
+  } else {
+    return timeToPercentage(startRecording);
+  }
+});
+
+const thermalStopTimePercent = computed<number>(() => {
+  const stopRecording = thermalStopTime.value;
+  const hasRelativeStop =
+    stopRecording.startsWith("+") || stopRecording.startsWith("-");
+  if (hasRelativeStop) {
+    return timesPercent.value?.cameraEnd || 0;
+  } else {
+    return timeToPercentage(stopRecording);
+  }
+});
+
+const thermalBarOffsets = computed<{ x0: number; x1: number }[]>(() => {
+  if (!thermalEnabled.value) {
     return [];
   }
-
-  const setting = settings.value ? settings.value : undefined;
-  const windows = setting?.windows;
-  const startRecording = windows?.startRecording || "-30m";
-  const stopRecording = windows?.stopRecording || "+30m";
-
-  // Handle relative times (cannot accurately represent without actual sunset/sunrise times)
-  if (
-    startRecording.startsWith("+") ||
-    startRecording.startsWith("-") ||
-    stopRecording.startsWith("+") ||
-    stopRecording.startsWith("-")
-  ) {
-    // Default to full night time (e.g., 18:00 to 06:00)
+  const startRecording = thermalStartTimePercent.value;
+  const stopRecording = thermalStopTimePercent.value;
+  if (startRecording < stopRecording) {
     return [
-      { left: "0%", width: "33%" },
       {
-        left: "66%", // Approximate 18:00
-        width: "34%", // From 18:00 to 06:00
+        x0: startRecording,
+        x1: stopRecording,
+      },
+    ];
+  } else {
+    return [
+      {
+        x0: 0,
+        x1: stopRecording,
+      },
+      {
+        x0: startRecording,
+        x1: 100,
       },
     ];
   }
-
-  const thermalRanges = calculateTimePercentagePoints(
-    startRecording,
-    stopRecording,
-  );
-
-  return thermalRanges.map((range) => ({
-    left: range.left,
-    width: range.width,
-  }));
 });
 
 // Computed property for Audio Bar Styles
-const audioBarStyles = computed(() => {
-  if (audioMode.value === "Disabled") {
-    return [];
-  }
-
-  if (
-    audioMode.value === "AudioOnly" ||
-    audioMode.value === "AudioAndThermal"
-  ) {
-    return [
-      {
-        left: "0%",
-        width: "100%",
-      },
-    ];
-  }
-
-  if (audioMode.value === "AudioOrThermal") {
-    const windows = (settings.value ? settings.value : {})?.windows;
-    const startRecording = windows?.startRecording || "-30m";
-    const stopRecording = windows?.stopRecording || "+30m";
-
-    // Handle relative times (cannot accurately represent without actual sunset/sunrise times)
-    if (
-      startRecording.startsWith("+") ||
-      startRecording.startsWith("-") ||
-      stopRecording.startsWith("+") ||
-      stopRecording.startsWith("-")
-    ) {
-      // Default to daytime (outside of night time)
+const audioBarOffsets = computed<{ x0: number; x1: number }[]>(() => {
+  switch (audioMode.value) {
+    case AudioRecordingMode.Disabled: {
+      return [];
+    }
+    case AudioRecordingMode.AudioAndThermal:
+    case AudioRecordingMode.AudioOnly: {
       return [
         {
-          left: "33%",
-          width: "33%", // From 00:00 to 18:00
+          x0: 0,
+          x1: 100,
         },
       ];
     }
-
-    const thermalRanges = calculateTimePercentagePoints(
-      startRecording,
-      stopRecording,
-    );
-
-    // Audio ranges are inverse of thermal ranges
-    const audioRanges: Array<{ left: string; width: string }> = [];
-
-    if (thermalRanges.length === 1) {
-      const thermalStart = parseFloat(thermalRanges[0].left);
-      const thermalWidth = parseFloat(thermalRanges[0].width);
-
-      // Before thermal recording window
-      if (thermalStart > 0) {
-        audioRanges.push({
-          left: "0%",
-          width: `${thermalStart}%`,
-        });
-      }
-
-      // After thermal recording window
-      const afterThermalStart = thermalStart + thermalWidth;
-      if (afterThermalStart < 100) {
-        audioRanges.push({
-          left: `${afterThermalStart}%`,
-          width: `${100 - afterThermalStart}%`,
-        });
-      }
-    } else if (thermalRanges.length === 2) {
-      // Thermal ranges cross midnight
-      const firstThermalRangeEnd =
-        parseFloat(thermalRanges[0].left) + parseFloat(thermalRanges[0].width);
-
-      const secondThermalRangeStart = parseFloat(thermalRanges[1].left);
-
-      // Audio range between thermal ranges
-      if (firstThermalRangeEnd < secondThermalRangeStart) {
-        audioRanges.push({
-          left: `${firstThermalRangeEnd}%`,
-          width: `${secondThermalRangeStart - firstThermalRangeEnd}%`,
-        });
+    case AudioRecordingMode.AudioOrThermal:
+    default: {
+      const startRecording = thermalStartTimePercent.value;
+      const stopRecording = thermalStopTimePercent.value;
+      if (startRecording < stopRecording) {
+        return [
+          {
+            x0: 0,
+            x1: startRecording,
+          },
+          {
+            x0: stopRecording,
+            x1: 100,
+          },
+        ];
+      } else {
+        return [
+          {
+            x0: stopRecording,
+            x1: startRecording,
+          },
+        ];
       }
     }
-
-    return audioRanges;
   }
-
-  return [];
 });
+
+const audioTimes = (offset: {
+  x0: number;
+  x1: number;
+}): { x0: number; x1: number }[] => {
+  const percentageCovered = offset.x1 - offset.x0;
+  const audioRecordingsPerDay = 32;
+  const recordingsInPeriod = Math.round(
+    (percentageCovered / 100) * audioRecordingsPerDay,
+  );
+  const times = [];
+  for (let i = 0; i < recordingsInPeriod; i++) {
+    const timeCenter = percentageCovered / recordingsInPeriod;
+    const timeWidth = 1;
+    times.push({
+      x0: offset.x0 + (timeCenter * i - timeWidth / 2),
+      x1: offset.x0 + (timeCenter * i + timeWidth / 2),
+    });
+  }
+  return times;
+};
 
 // Computed property for Audio Seed
 const audioSeed = computed<number>({
@@ -841,18 +932,24 @@ watch(customRecordingWindowStop, async () => {
                 Recording settings
               </dt>
               <dd class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 py-sm-2">
-                <span v-if="audioMode === 'Disabled'">Video only</span>
-                <span v-if="audioMode === 'AudioOnly'">Audio only</span>
-                <span v-else-if="audioMode === 'AudioAndThermal'"
+                <span v-if="audioMode === AudioRecordingMode.Disabled"
+                  >Video only</span
+                >
+                <span v-if="audioMode === AudioRecordingMode.AudioOnly"
+                  >Audio only</span
+                >
+                <span
+                  v-else-if="audioMode === AudioRecordingMode.AudioAndThermal"
                   >Audio and thermal</span
                 >
-                <span v-else-if="audioMode === 'AudioOrThermal'"
+                <span
+                  v-else-if="audioMode === AudioRecordingMode.AudioOrThermal"
                   >Audio or thermal</span
                 >
               </dd>
             </div>
 
-            <div v-if="audioMode !== 'Disabled'" class="row">
+            <div v-if="audioMode !== AudioRecordingMode.AudioOnly" class="row">
               <dt
                 class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-0 pb-0 py-sm-2 fw-medium"
               >
@@ -866,126 +963,291 @@ watch(customRecordingWindowStop, async () => {
             </div>
           </dl>
         </div>
-        <div v-if="audioMode !== 'Disabled' || recordingWindow" class="mt-4">
+        <div class="mt-4">
           <h5 class="h5">Recording window</h5>
           <p>
             Visualise how the recording settings and thermal video recording
             schedule are applied over a 24-hour period.
           </p>
-          <svg viewBox="0 0 100 20">
-            <rect x="0" y="0" width="100" height="20" fill="#ccc" />
-            <text x="1" y="3" font-size="2">
-              {{
-                DateTime.fromJSDate(curveDay).toLocaleString({
-                  month: "short",
-                  day: "numeric",
-                })
-              }}
-            </text>
-            <path
-              :d="daylightCurve"
-              stroke-width="0.25"
-              stroke="#333"
-              fill="transparent"
-            />
-            <g v-if="timesXPos">
-              <circle r="1" fill="#444" :cx="timesXPos.nightEnd" cy="10" />
-              <circle r="1" fill="#444" :cx="timesXPos.dawn" cy="10" />
-              <circle
-                r="1"
-                fill="yellow"
-                :cx="timesXPos.sunriseStart"
-                cy="10"
-              />
-              <circle
-                r="1"
-                fill="goldenrod"
-                :cx="timesXPos.sunriseEnd"
-                cy="10"
-              />
-              <circle r="1" fill="#444" :cx="timesXPos.midday" cy="10" />
-              <circle r="1" fill="#444" :cx="timesXPos.dusk" cy="10" />
-              <circle r="1" fill="yellow" :cx="timesXPos.sunsetStart" cy="10" />
-              <circle
-                r="1"
-                fill="goldenrod"
-                :cx="timesXPos.sunsetEnd"
-                cy="10"
-              />
-              <circle r="1" fill="#444" :cx="timesXPos.night" cy="10" />
-              <circle r="1" fill="lime" :cx="timesXPos.cameraStart" cy="10" />
-              <circle r="1" fill="lime" :cx="timesXPos.cameraEnd" cy="10" />
-            </g>
-          </svg>
-          <b-input type="range" min="1" max="365" v-model="dayOfYear" />
-          <div
-            class="mb-0 ps-3 pe-4 py-3 border-0 bg-light bg-opacity-75 rounded"
-          >
-            <div>
-              <div class="d-flex align-items-center flex-fill">
-                <div :style="{ width: '72px' }"></div>
-                <div
-                  class="d-flex flex-fill justify-content-between lh-1 font-monospace"
+          <div class="rounded-2 overflow-hidden">
+            <svg viewBox="0 0 100 30" v-if="timesXPos">
+              <defs>
+                <linearGradient
+                  id="daylight"
+                  x1="0%"
+                  y1="0%"
+                  x2="100%"
+                  y2="0%"
+                  gradientUnits="objectBoundingBox"
+                  v-if="timesPercent"
                 >
-                  <small
-                    class="text-center"
-                    :style="{ marginLeft: '-18px', width: '40px' }"
-                    >00:00</small
-                  >
-                  <small class="text-center" :style="{ width: '40px' }"
-                    >12:00</small
-                  >
-                  <small
-                    class="text-center"
-                    :style="{ marginRight: '-18px', width: '40px' }"
-                    >24:00</small
-                  >
-                </div>
-              </div>
-              <div
-                class="d-flex align-items-center flex-fill lh-1 mt-1 text-body-tertiary"
+                  <stop offset="0%" stop-color="indigo" />
+                  <stop
+                    :offset="`${timesPercent.nightEnd}%`"
+                    stop-color="indigo"
+                  />
+                  <stop
+                    :offset="`${timesPercent.dawn}%`"
+                    stop-color="darkslateblue"
+                  />
+                  <stop
+                    :offset="`${timesPercent.sunriseStart}%`"
+                    stop-color="goldenrod"
+                  />
+                  <stop
+                    :offset="`${timesPercent.sunriseEnd}%`"
+                    stop-color="goldenrod"
+                  />
+                  <stop
+                    :offset="`${timesPercent.midday}%`"
+                    stop-color="white"
+                  />
+                  <stop
+                    :offset="`${timesPercent.sunsetStart}%`"
+                    stop-color="goldenrod"
+                  />
+                  <stop
+                    :offset="`${timesPercent.sunsetEnd}%`"
+                    stop-color="goldenrod"
+                  />
+                  <stop
+                    :offset="`${timesPercent.dusk}%`"
+                    stop-color="darkslateblue"
+                  />
+                  <stop
+                    :offset="`${timesPercent.nightStart}%`"
+                    stop-color="indigo"
+                  />
+                  <stop offset="100%" stop-color="indigo" />
+                </linearGradient>
+              </defs>
+              <rect x="0" y="0" width="100" height="20" fill="url(#daylight)" />
+              <text x="1" y="3" font-size="2" fill="white">
+                {{
+                  DateTime.fromJSDate(curveDay)
+                    .setZone(deviceTimezone as string)
+                    .toLocaleString({
+                      month: "short",
+                      day: "numeric",
+                    })
+                }}
+              </text>
+              <path
+                :d="daylightCurve"
+                stroke-width="0.25"
+                stroke="cornflowerblue"
+                fill="transparent"
+              />
+              <!--              <g v-if="false && timesXPos">-->
+              <!--                <circle r="1" fill="#444" :cx="timesXPos.nightEnd" cy="10" />-->
+              <!--                <circle r="1" fill="#444" :cx="timesXPos.dawn" cy="10" />-->
+              <!--                <circle-->
+              <!--                  r="1"-->
+              <!--                  fill="yellow"-->
+              <!--                  :cx="timesXPos.sunriseStart"-->
+              <!--                  cy="10"-->
+              <!--                />-->
+              <!--                <circle-->
+              <!--                  r="1"-->
+              <!--                  fill="goldenrod"-->
+              <!--                  :cx="timesXPos.sunriseEnd"-->
+              <!--                  cy="10"-->
+              <!--                />-->
+              <!--                <circle r="1" fill="#444" :cx="timesXPos.midday" cy="10" />-->
+              <!--                <circle r="1" fill="#444" :cx="timesXPos.dusk" cy="10" />-->
+              <!--                <circle r="1" fill="yellow" :cx="timesXPos.sunsetStart" cy="10" />-->
+              <!--                <circle-->
+              <!--                  r="1"-->
+              <!--                  fill="goldenrod"-->
+              <!--                  :cx="timesXPos.sunsetEnd"-->
+              <!--                  cy="10"-->
+              <!--                />-->
+              <!--                <circle r="1" fill="#444" :cx="timesXPos.nightStart" cy="10" />-->
+              <!--                <circle r="1" fill="lime" :cx="timesXPos.cameraStart" cy="10" />-->
+              <!--                <circle r="1" fill="lime" :cx="timesXPos.cameraEnd" cy="10" />-->
+              <!--              </g>-->
+              <rect x="0" y="20" width="100" height="10" fill="#ccc" />
+              <text
+                fill="#333"
+                x="0.5"
+                y="22"
+                text-anchor="start"
+                font-size="1.5"
               >
-                <div :style="{ width: '72px' }"></div>
-                <div class="d-flex flex-fill justify-content-between">
-                  <small>❘</small>
-                  <small>❘</small>
-                  <small>❘</small>
-                </div>
-              </div>
-            </div>
-            <div class="d-flex flex-column mt-1">
-              <div class="d-flex align-items-center mb-2">
-                <span class="mb-0" :style="{ width: '72px' }"> Thermal: </span>
-                <div
-                  class="position-relative flex-fill bg-secondary-subtle p-0"
-                  :style="{ height: '0.7rem' }"
+                00:00
+              </text>
+              <text
+                fill="#333"
+                x="50"
+                y="22"
+                text-anchor="middle"
+                font-size="1.5"
+              >
+                12:00
+              </text>
+              <text
+                fill="#333"
+                x="99.5"
+                y="22"
+                text-anchor="end"
+                font-size="1.5"
+              >
+                24:00
+              </text>
+              <g v-if="thermalEnabled">
+                <rect
+                  v-for="(offset, index) in thermalBarOffsets"
+                  :key="index"
+                  y="24"
+                  :x="offset.x0"
+                  :width="offset.x1 - offset.x0"
+                  height="2"
+                  fill="green"
+                />
+                <text
+                  fill="white"
+                  x="0.5"
+                  y="25.4"
+                  font-weight="bold"
+                  text-anchor="start"
+                  font-size="1.5"
                 >
-                  <!-- Thermal Recording Windows -->
-                  <div
-                    v-for="(style, index) in thermalBarStyles"
-                    :key="'thermal-' + index"
-                    class="position-absolute h-100 bg-success p-0"
-                    :style="style"
-                  ></div>
-                </div>
-              </div>
-              <div class="d-flex align-items-center">
-                <span class="mb-0" :style="{ width: '72px' }"> Audio: </span>
-                <div
-                  class="position-relative flex-fill bg-secondary-subtle"
-                  :style="{ height: '0.7rem' }"
+                  Thermal
+                </text>
+              </g>
+              <text
+                v-else
+                fill="#333"
+                x="0.5"
+                y="25.4"
+                font-weight="bold"
+                text-anchor="start"
+                font-size="1.5"
+              >
+                Thermal
+              </text>
+              <g v-if="audioEnabled">
+                <rect
+                  v-for="(offset, index) in audioBarOffsets"
+                  :key="index"
+                  y="27"
+                  :x="offset.x0"
+                  :width="offset.x1 - offset.x0"
+                  height="2"
+                  fill="green"
+                  opacity="0.3"
+                />
+                <g v-for="(offset, i) in audioBarOffsets" :key="i">
+                  <rect
+                    v-for="(time, index) in audioTimes(offset)"
+                    :key="index"
+                    y="27"
+                    :x="time.x0"
+                    :width="time.x1 - time.x0"
+                    height="2"
+                    fill="green"
+                    opacity="0.3"
+                  />
+                </g>
+                <text
+                  fill="white"
+                  x="0.5"
+                  y="28.4"
+                  font-weight="bold"
+                  text-anchor="start"
+                  font-size="1.5"
                 >
-                  <!-- Audio Recording Windows -->
-                  <div
-                    v-for="(style, index) in audioBarStyles"
-                    :key="'audio-' + index"
-                    class="position-absolute h-100 bg-primary"
-                    :style="style"
-                  ></div>
-                </div>
-              </div>
-            </div>
+                  Audio
+                </text>
+              </g>
+              <text
+                v-else
+                fill="#333"
+                x="0.5"
+                y="28"
+                font-weight="bold"
+                text-anchor="start"
+                font-size="1.5"
+              >
+                Audio
+              </text>
+            </svg>
           </div>
+          <b-input
+            type="range"
+            min="1"
+            max="365"
+            v-model="dayOfYear"
+            class="mt-3"
+          />
+          <!--          <div-->
+          <!--            class="mb-0 ps-3 pe-4 py-3 border-0 bg-light bg-opacity-75 rounded"-->
+          <!--          >-->
+          <!--            <div>-->
+          <!--              <div class="d-flex align-items-center flex-fill">-->
+          <!--                <div :style="{ width: '72px' }"></div>-->
+          <!--                <div-->
+          <!--                  class="d-flex flex-fill justify-content-between lh-1 font-monospace"-->
+          <!--                >-->
+          <!--                  <small-->
+          <!--                    class="text-center"-->
+          <!--                    :style="{ marginLeft: '-18px', width: '40px' }"-->
+          <!--                    >00:00</small-->
+          <!--                  >-->
+          <!--                  <small class="text-center" :style="{ width: '40px' }"-->
+          <!--                    >12:00</small-->
+          <!--                  >-->
+          <!--                  <small-->
+          <!--                    class="text-center"-->
+          <!--                    :style="{ marginRight: '-18px', width: '40px' }"-->
+          <!--                    >24:00</small-->
+          <!--                  >-->
+          <!--                </div>-->
+          <!--              </div>-->
+          <!--              <div-->
+          <!--                class="d-flex align-items-center flex-fill lh-1 mt-1 text-body-tertiary"-->
+          <!--              >-->
+          <!--                <div :style="{ width: '72px' }"></div>-->
+          <!--                <div class="d-flex flex-fill justify-content-between">-->
+          <!--                  <small>❘</small>-->
+          <!--                  <small>❘</small>-->
+          <!--                  <small>❘</small>-->
+          <!--                </div>-->
+          <!--              </div>-->
+          <!--            </div>-->
+          <!--            <div class="d-flex flex-column mt-1">-->
+          <!--              <div class="d-flex align-items-center mb-2">-->
+          <!--                <span class="mb-0" :style="{ width: '72px' }"> Thermal: </span>-->
+          <!--                <div-->
+          <!--                  class="position-relative flex-fill bg-secondary-subtle p-0"-->
+          <!--                  :style="{ height: '0.7rem' }"-->
+          <!--                >-->
+          <!--                  &lt;!&ndash; Thermal Recording Windows &ndash;&gt;-->
+          <!--                  <div-->
+          <!--                    v-for="(style, index) in thermalBarStyles"-->
+          <!--                    :key="'thermal-' + index"-->
+          <!--                    class="position-absolute h-100 bg-success p-0"-->
+          <!--                    :style="style"-->
+          <!--                  ></div>-->
+          <!--                </div>-->
+          <!--              </div>-->
+          <!--              <div class="d-flex align-items-center">-->
+          <!--                <span class="mb-0" :style="{ width: '72px' }"> Audio: </span>-->
+          <!--                <div-->
+          <!--                  class="position-relative flex-fill bg-secondary-subtle"-->
+          <!--                  :style="{ height: '0.7rem' }"-->
+          <!--                >-->
+          <!--                  &lt;!&ndash; Audio Recording Windows &ndash;&gt;-->
+          <!--                  <div-->
+          <!--                    v-for="(style, index) in audioBarStyles"-->
+          <!--                    :key="'audio-' + index"-->
+          <!--                    class="position-absolute h-100 bg-primary"-->
+          <!--                    :style="style"-->
+          <!--                  ></div>-->
+          <!--                </div>-->
+          <!--              </div>-->
+          <!--            </div>-->
+          <!--          </div>-->
         </div>
       </section-card>
 
@@ -1036,30 +1298,34 @@ watch(customRecordingWindowStop, async () => {
           v-model="audioMode"
           :disabled="savingAudioSettings"
         >
-          <b-form-radio value="Disabled" class="mb-1">
+          <b-form-radio :value="AudioRecordingMode.Disabled" class="mb-1">
             <p class="fw-medium mb-1">Thermal video only</p>
             <p class="text-secondary">
               Disables audio recording and records only thermal video.
             </p>
           </b-form-radio>
-          <b-form-radio value="AudioOnly" class="mb-1">
+          <b-form-radio :value="AudioRecordingMode.AudioOnly" class="mb-1">
             <p class="fw-medium mb-1">Audio only</p>
             <p class="text-secondary">
               Records audio in a 24-hour window and disables thermal recording.
             </p>
           </b-form-radio>
-          <b-form-radio value="AudioAndThermal" class="mb-1">
+          <b-form-radio
+            :value="AudioRecordingMode.AudioAndThermal"
+            class="mb-1"
+          >
             <p class="fw-medium mb-1">Audio And Thermal</p>
-            <p class="text-secondary">
-              Records audio outside of the thermal recording window.
-            </p>
-          </b-form-radio>
-          <b-form-radio value="AudioOrThermal" class="mb-1">
-            <p class="fw-medium mb-1">Audio Or Thermal</p>
             <p class="text-secondary">
               Records a one-minute clip of audio 32 times a day, at random
               intervals during the day. The camera won't be able to record
               thermal video while the audio is being recorded.
+            </p>
+          </b-form-radio>
+          <b-form-radio :value="AudioRecordingMode.AudioOrThermal" class="mb-1">
+            <p class="fw-medium mb-1">Audio Or Thermal</p>
+            <p class="text-secondary">
+              Records one-minute audio clips outside of the thermal recording
+              window.
             </p>
           </b-form-radio>
         </b-form-radio-group>
