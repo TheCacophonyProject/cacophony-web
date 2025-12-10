@@ -933,7 +933,7 @@ watch(customRecordingWindowStop, async () => {
               </dt>
               <dd class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 py-sm-2">
                 <span v-if="audioMode === AudioRecordingMode.Disabled"
-                  >Video only</span
+                  >Thermal video only</span
                 >
                 <span v-if="audioMode === AudioRecordingMode.AudioOnly"
                   >Audio only</span

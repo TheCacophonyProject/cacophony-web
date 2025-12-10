@@ -197,12 +197,22 @@
 </template>
 
 <script lang="ts">
-import {mapState} from "vuex";
-import {toStringTodayYesterdayOrDate} from "@/helpers/datetime";
-import {computed, defineComponent, onMounted, ref, watch,} from "@vue/composition-api";
+import { mapState } from "vuex";
+import { toStringTodayYesterdayOrDate } from "@/helpers/datetime";
+import {
+  computed,
+  defineComponent,
+  onMounted,
+  ref,
+  watch,
+} from "@vue/composition-api";
 import DeviceApi from "@/api/Device.api";
-import {ApiDeviceHistorySettings, AudioModes, WindowsSettings,} from "@typedefs/api/device";
-import {AudioRecordingMode} from "@typedefs/api/consts";
+import {
+  ApiDeviceHistorySettings,
+  AudioModes,
+  WindowsSettings,
+} from "@typedefs/api/device";
+import { AudioRecordingMode } from "@typedefs/api/consts";
 
 export default defineComponent({
   name: "DeviceDetail",

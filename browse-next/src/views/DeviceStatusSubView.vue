@@ -654,7 +654,7 @@ const audioRecordingModeDisplay = computed<string>(() => {
     case AudioRecordingMode.AudioOnly:
       return "Audio only";
     case AudioRecordingMode.Disabled:
-      return "Thermal only";
+      return "Thermal video only";
     case AudioRecordingMode.AudioAndThermal:
     default:
       return "Audio and thermal";
