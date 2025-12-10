@@ -8,8 +8,15 @@ import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
 import { computed, onMounted, ref } from "vue";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import type { LoadedResource } from "@apiClient/types.ts";
+import {
+  BForm,
+  BFormInput,
+  BFormInvalidFeedback,
+  BFormRadioGroup,
+  BModal,
+} from "bootstrap-vue-next";
 
 const projectAdminEmailAddress = formFieldInputText();
 const submittingJoinRequest = ref(false);
@@ -82,9 +89,10 @@ const joinExistingGroup = async () => {
 
 const getGroupsForAdmin = async () => {
   submittingJoinRequest.value = true;
-  const projectsResponse = await ClientApi.Users.getProjectsForProjectAdminByEmail(
-    projectAdminEmailAddress.value.trim(),
-  );
+  const projectsResponse =
+    await ClientApi.Users.getProjectsForProjectAdminByEmail(
+      projectAdminEmailAddress.value.trim(),
+    );
   if (projectsResponse.success) {
     // Filter out any groups we're already a member of.
     const groups = projectsResponse.result.groups.filter(

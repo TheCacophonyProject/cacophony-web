@@ -1,9 +1,11 @@
 import {
   DEFAULT_AUTH_ID,
-  type JwtToken, type JwtTokenPayload,
+  type JwtToken,
+  type JwtTokenPayload,
   type JwtUserAuthTokenPayload,
   type LoggedInDeviceCredentials,
-  type LoggedInUserAuth, type LoggedInUserAuthDeserialized,
+  type LoggedInUserAuth,
+  type LoggedInUserAuthDeserialized,
   type TestHandle,
 } from "@typedefs/client/types.ts";
 import { decodeJWT } from "@typedefs/client/utils.ts";
@@ -53,7 +55,12 @@ export const CurrentUser = computed<LoggedInUser | null>({
     const storageKey = localStorageCredentials(DEFAULT_AUTH_ID);
     let storedUser = UserCreds.get(storageKey);
     if (!storedUser) {
-      UserCreds.set(storageKey, useLocalStorage(storageKey, null, { serializer: authStorageSerializer }));
+      UserCreds.set(
+        storageKey,
+        useLocalStorage(storageKey, null, {
+          serializer: authStorageSerializer,
+        }),
+      );
     }
     storedUser = UserCreds.get(storageKey);
     if (storedUser && storedUser.value) {
@@ -76,8 +83,12 @@ export const CurrentUser = computed<LoggedInUser | null>({
   },
 });
 
-const UserCreds: Map<TestHandle, Ref<LoggedInUserAuthDeserialized | null>> = new Map();
-const localStorageCredentials = (authKey: TestHandle | null) => `saved-login-credentials${authKey ? "-" : ""}${authKey}`;
+const UserCreds: Map<
+  TestHandle,
+  Ref<LoggedInUserAuthDeserialized | null>
+> = new Map();
+const localStorageCredentials = (authKey: TestHandle | null) =>
+  `saved-login-credentials${authKey ? "-" : ""}${authKey}`;
 const authStorageSerializer = {
   read: (raw: string): LoggedInUserAuthDeserialized | null => {
     try {
@@ -87,7 +98,9 @@ const authStorageSerializer = {
         obj.decodedToken = decodedToken as JwtUserAuthTokenPayload;
         return obj as LoggedInUserAuthDeserialized;
       }
-    } catch (error) {/*...*/}
+    } catch (error) {
+      /*...*/
+    }
     return null;
   },
   write: (obj: LoggedInUserAuthDeserialized | null): string => {
@@ -103,7 +116,9 @@ const authStorageSerializer = {
 const tokenTimeoutSafetyMarginMilliseconds = 5000;
 const refreshingToken = ref<Promise<boolean> | null>(null);
 const credentialsResolvers = {
-  requestCredentialsResolver: async (authKey: TestHandle | null = DEFAULT_AUTH_ID): Promise<JwtToken<AuthId> | false> => {
+  requestCredentialsResolver: async (
+    authKey: TestHandle | null = DEFAULT_AUTH_ID,
+  ): Promise<JwtToken<AuthId> | false> => {
     if (!authKey) {
       // We assume this is an endpoint that doesn't require a JWT token.
       return false;
@@ -111,7 +126,12 @@ const credentialsResolvers = {
     // TODO: Cache the decoded token, and only decode it again on page reload.
     const storageKey = localStorageCredentials(authKey);
     if (!UserCreds.has(storageKey)) {
-      UserCreds.set(storageKey, useLocalStorage(storageKey, null, { serializer: authStorageSerializer }));
+      UserCreds.set(
+        storageKey,
+        useLocalStorage(storageKey, null, {
+          serializer: authStorageSerializer,
+        }),
+      );
     }
     const credentials = UserCreds.get(storageKey);
     if (!credentials || (credentials && !credentials.value)) {
@@ -124,37 +144,54 @@ const credentialsResolvers = {
         if (!refreshedToken) {
           return false;
         }
-        console.assert(credentials.value.decodedToken.expiresAt.getTime() > Date.now() + tokenTimeoutSafetyMarginMilliseconds);
+        console.assert(
+          credentials.value.decodedToken.expiresAt.getTime() >
+            Date.now() + tokenTimeoutSafetyMarginMilliseconds,
+        );
       }
-      if (credentials.value.decodedToken.expiresAt.getTime() < Date.now() + tokenTimeoutSafetyMarginMilliseconds) {
+      if (
+        credentials.value.decodedToken.expiresAt.getTime() <
+        Date.now() + tokenTimeoutSafetyMarginMilliseconds
+      ) {
         // Token is about to expire, so refresh.
         refreshingToken.value = new Promise((resolve) => {
           if (credentials.value) {
-            Users.refreshLogin(credentials.value.refreshToken).then(newCredentialsResponse => {
-              if (credentials.value) {
-                if (!newCredentialsResponse || !newCredentialsResponse.success) {
-                  if (newCredentialsResponse.status === HttpStatusCode.Forbidden) {
-                    // The refresh session token is invalid, so lets' clear out the credentials.
-                    credentials.value = null;
-                  }
-                  return resolve(false);
-                }
-                if (newCredentialsResponse.success) {
-                  let decodedToken: JwtUserAuthTokenPayload | null = null;
-                  try {
-                    decodedToken = decodeJWT(newCredentialsResponse.result.token) as JwtUserAuthTokenPayload;
-                  } catch (e) {
-                    credentials.value = null;
+            Users.refreshLogin(credentials.value.refreshToken).then(
+              (newCredentialsResponse) => {
+                if (credentials.value) {
+                  if (
+                    !newCredentialsResponse ||
+                    !newCredentialsResponse.success
+                  ) {
+                    if (
+                      newCredentialsResponse.status === HttpStatusCode.Forbidden
+                    ) {
+                      // The refresh session token is invalid, so lets' clear out the credentials.
+                      credentials.value = null;
+                    }
                     return resolve(false);
                   }
-                  credentials.value.apiToken = newCredentialsResponse.result.token;
-                  credentials.value.refreshToken = newCredentialsResponse.result.refreshToken;
-                  credentials.value.decodedToken = decodedToken;
-                  return resolve(true);
+                  if (newCredentialsResponse.success) {
+                    let decodedToken: JwtUserAuthTokenPayload | null = null;
+                    try {
+                      decodedToken = decodeJWT(
+                        newCredentialsResponse.result.token,
+                      ) as JwtUserAuthTokenPayload;
+                    } catch (e) {
+                      credentials.value = null;
+                      return resolve(false);
+                    }
+                    credentials.value.apiToken =
+                      newCredentialsResponse.result.token;
+                    credentials.value.refreshToken =
+                      newCredentialsResponse.result.refreshToken;
+                    credentials.value.decodedToken = decodedToken;
+                    return resolve(true);
+                  }
                 }
-              }
-              return resolve(false);
-            });
+                return resolve(false);
+              },
+            );
           } else {
             // No saved credentials, should trigger new login request
             return resolve(false);
@@ -163,6 +200,7 @@ const credentialsResolvers = {
         const refreshedToken = await refreshingToken.value;
         refreshingToken.value = null;
         if (!refreshedToken) {
+          // FIXME: If request token failed, we should maybe remove from localStorage?
           return false;
         }
       }
@@ -179,13 +217,23 @@ const credentialsResolvers = {
   forgetCredentials: (authKey: TestHandle | null = null) => {
     // TODO
   },
-  registerCredentials: (authKey: TestHandle, credentials: LoggedInUserAuth | LoggedInDeviceCredentials) => {
+  registerCredentials: (
+    authKey: TestHandle,
+    credentials: LoggedInUserAuth | LoggedInDeviceCredentials,
+  ) => {
     // This happens on login, then is persisted.
     const storageKey = localStorageCredentials(authKey);
     if (!UserCreds.has(storageKey)) {
-      UserCreds.set(storageKey, useLocalStorage(storageKey, null, { serializer: authStorageSerializer }));
+      UserCreds.set(
+        storageKey,
+        useLocalStorage(storageKey, null, {
+          serializer: authStorageSerializer,
+        }),
+      );
     } else {
-      (UserCreds.get(storageKey) as Ref<LoggedInUserAuthDeserialized | null>).value = {
+      (
+        UserCreds.get(storageKey) as Ref<LoggedInUserAuthDeserialized | null>
+      ).value = {
         ...(credentials as LoggedInUserAuthDeserialized),
       };
     }
@@ -220,7 +268,6 @@ const Recordings = recordingsInit(api);
 const Locations = locationsInit(api);
 const Monitoring = monitoringInit(api);
 
-
 export const ClientApi = {
   Alerts,
   Classifications,
@@ -230,7 +277,11 @@ export const ClientApi = {
   Projects,
   Users,
   Recordings,
-  registerCredentials: (authKey: TestHandle, creds: LoggedInDeviceCredentials | LoggedInUserAuth) => api.registerCredentials(authKey, creds),
-  getCredentials: (authKey: TestHandle | null = null) => api.getCredentials(authKey),
+  registerCredentials: (
+    authKey: TestHandle,
+    creds: LoggedInDeviceCredentials | LoggedInUserAuth,
+  ) => api.registerCredentials(authKey, creds),
+  getCredentials: (authKey: TestHandle | null = null) =>
+    api.getCredentials(authKey),
   getApiRoot: () => api.getApiRoot(),
 };

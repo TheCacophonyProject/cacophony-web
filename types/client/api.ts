@@ -149,14 +149,15 @@ const cacophonyFetchWrapper = async <T>(
     stateResolvers.networkConnectionError.retryCount = 0;
     stateResolvers.networkConnectionError.hasConnectionError = false;
      */
-
     // There should really be one of these per request, right?
 // TODO: Check where we have authorization errors.  Is it only when jwt creds fail?
     // If we have an authorization error,
 
     // !NON_AUTH_API_ENDPOINTS.some((route) => response.url.endsWith(route))
 
-    if (response.status === HttpStatusCode.AuthorizationError) {
+    if (response.status === HttpStatusCode.AuthorizationError &&
+        !response.url.endsWith("/api/v1/users/authenticate")
+    ) {
       stateResolvers.forgetCredentials(authKey);
       return {
         result: {
@@ -182,6 +183,7 @@ const cacophonyFetchWrapper = async <T>(
       result = await response.json();
       // TODO: Check where we return forbidden, and consider whether the front-end should actually log out for those cases.
       // FIXME:(auth): We should handle this elsewhere?
+
       if (
         response.status === HttpStatusCode.Forbidden &&
         result.errorType === "authorization" &&

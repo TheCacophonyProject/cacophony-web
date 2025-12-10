@@ -89,7 +89,9 @@ const isBusy = ref<boolean>(false);
       @hidden="closedModal"
       @shown="onShown"
       :cancel-disabled="isBusy"
-      :no-close-on-backdrop="recordingType === RecordingType.Audio || isBusy || noCloseOnBackdrop"
+      :no-close-on-backdrop="
+        recordingType === RecordingType.Audio || isBusy || noCloseOnBackdrop
+      "
       :no-close-on-esc="isBusy"
       body-class="p-0"
       :content-class="{

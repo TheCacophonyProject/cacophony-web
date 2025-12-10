@@ -7,6 +7,7 @@ export default {
 <script lang="ts" setup>
 import { onMounted, ref, watch, type WatchStopHandle } from "vue";
 import { useIntersectionObserver } from "@vueuse/core";
+import { BSpinner } from "bootstrap-vue-next";
 
 const props = withDefaults(
   defineProps<{

@@ -24,12 +24,13 @@ import {
 } from "@/components/cptv-player/cptv-decoder/frameRenderUtils";
 import { ClientApi } from "@/api";
 import { DEFAULT_AUTH_ID, type LoadedResource } from "@apiClient/types.ts";
+import { BSpinner } from "bootstrap-vue-next";
 
 const defaultPalette = computed(
   () =>
     ColourMaps.find(([name, _val]) => name === props.palette) as [
       string,
-      Uint32Array
+      Uint32Array,
     ],
 );
 const defaultOverlayPalette = ColourMaps.find(
@@ -156,11 +157,12 @@ const renderFrame = () => {
         ctx.putImageData(frameData.value, 0, 0);
       }
       if (props.overlay) {
-        const source = props.overlay;
+        const source = props.overlay as Uint8ClampedArray;
         const imageData = new ImageData(160, 120);
         const frameBufferView = new Uint32Array(imageData.data.buffer);
+        const palette = defaultOverlayPalette[1];
         for (let i = 0; i < frameBufferView.length; i++) {
-          frameBufferView[i] = defaultOverlayPalette[1][source[i]];
+          frameBufferView[i] = palette[source[i] as number] as number;
         }
         const tmp = document.createElement("canvas");
         tmp.width = 160;
@@ -193,21 +195,10 @@ watch(
 </script>
 
 <style scoped lang="less">
-@media screen and (min-width: 640px) {
-  .single-frame-cptv-container {
-    width: 100%;
-    height: auto;
-    min-width: 640px;
-    aspect-ratio: auto 4/3;
-  }
-}
-
-@media screen and (max-width: 639px) {
-  .single-frame-cptv-container {
-    width: 100svw;
-    height: auto;
-    aspect-ratio: auto 4/3;
-  }
+.single-frame-cptv-container {
+  width: 100%;
+  height: auto;
+  aspect-ratio: auto 4/3;
 }
 
 .single-frame-cptv-container {

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { type Ref } from "vue";
 import { computed, inject, nextTick, ref, watch } from "vue";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import { selectedProjectDevices } from "@models/provides";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { useRoute } from "vue-router";
@@ -12,8 +12,8 @@ import { useElementSize } from "@vueuse/core";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { LoadedResource } from "@apiClient/types.ts";
 import SectionCard from "@/components/SectionCard.vue";
-import {MaterialSymbol} from "@dbetka/vue-material-symbols";
-import {BAlert, BFormGroup, BFormInput, BSpinner} from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import { BAlert, BFormGroup, BFormInput, BSpinner } from "bootstrap-vue-next";
 
 /**
  * Converts an ImageData object to a WebP Blob.
@@ -53,6 +53,7 @@ const emit = defineEmits<{
   (e: "updated-reference-image"): void;
 }>();
 
+// TODO: The whole skew thing might be much simpler with a webgl quad
 const skewContainer = ref<HTMLDivElement>();
 const overlayOpacity = ref<string>("1.0");
 const cptvFrameScale = ref<string>("1.0");
@@ -101,13 +102,13 @@ const editExistingReferenceImage = async () => {
     typeof latestReferenceImageURL.value === "string"
   ) {
     try {
-      await nextTick();
       editingReferenceImage.value = true;
+      await nextTick();
       const resp = await fetch(latestReferenceImageURL.value);
       const blob = await resp.blob();
       referenceImage.value = await createImageBitmap(blob);
-      positionHandles();
       renderSkewedImage();
+      positionHandles();
     } catch (e) {
       console.error("Failed to load existing reference image to edit:", e);
     }
@@ -118,12 +119,13 @@ const onSelectReferenceImage = async (event: Event) => {
   if (event && event.target && (event.target as HTMLInputElement).files) {
     await nextTick();
     editingReferenceImage.value = true;
+    await nextTick();
     const files = (event.target as HTMLInputElement).files as FileList;
     const file = files[0];
     referenceImage.value = await createImageBitmap(file);
-    positionHandles();
-    renderSkewedImage();
     await nextTick();
+    renderSkewedImage();
+    positionHandles();
   }
 };
 
@@ -374,11 +376,24 @@ watch(singleFrameCanvasWidth, () => {
         .parentElement as HTMLDivElement
     ).getBoundingClientRect();
 
-    const sfLeft = singleFrameBounds.left - singleFrameParentBounds.left;
-    const sfTop = singleFrameBounds.top - singleFrameParentBounds.top;
-    const sfRight = sfLeft + singleFrameBounds.width;
-    const sfBottom = sfTop + singleFrameBounds.height;
+    const sfLeft =
+      (singleFrameBounds.left - singleFrameParentBounds.left) /
+      singleFrameParentBounds.width;
+    const sfTop =
+      (singleFrameBounds.top - singleFrameParentBounds.top) /
+      singleFrameParentBounds.height;
+    const sfRight =
+      (singleFrameBounds.left -
+        singleFrameParentBounds.left +
+        singleFrameBounds.width) /
+      singleFrameParentBounds.width;
+    const sfBottom =
+      (singleFrameBounds.top -
+        singleFrameParentBounds.top +
+        singleFrameBounds.height) /
+      singleFrameParentBounds.height;
 
+    // Skew canvas container div
     const parentBounds = (
       handle0.value.parentElement as HTMLDivElement
     ).getBoundingClientRect();
@@ -391,9 +406,9 @@ watch(singleFrameCanvasWidth, () => {
     ]) {
       const h = handle as HTMLDivElement;
       const { left: handleX, top: handleY, width } = h.getBoundingClientRect();
-      const dim = width / 2;
-      let x = handleX - parentBounds.left;
-      let y = handleY - parentBounds.top;
+      const dim = width / 2 / parentBounds.width;
+      let x = (handleX - parentBounds.left) / parentBounds.width;
+      let y = (handleY - parentBounds.top) / parentBounds.height;
 
       if (h === handle0.value) {
         x = Math.min(x, sfLeft - dim);
@@ -408,12 +423,15 @@ watch(singleFrameCanvasWidth, () => {
         x = Math.min(x, sfLeft - dim);
         y = Math.max(y, sfBottom - dim);
       }
-      h.style.left = `${x}px`;
-      h.style.top = `${y}px`;
+      // Maybe make this a percentage?
+      h.style.left = `${x * 100}%`;
+      h.style.top = `${y * 100}%`;
     }
   }
   renderSkewedImage();
 });
+
+// Re-render when the scale slider is moved.
 watch(cptvFrameScale, renderSkewedImage);
 
 const referenceImageIsLandscape = computed<boolean>(() => {
@@ -477,17 +495,19 @@ const moveRevealHandle = (event: PointerEvent) => {
     const target = revealHandle.value;
     const parentBounds = target.parentElement!.getBoundingClientRect();
     const handleBounds = target.getBoundingClientRect();
-    const x = Math.min(
-      Math.max(
-        -(handleBounds.width / 2),
+    const halfHandleWidth = handleBounds.width / 2;
+    const x = Math.max(
+      0,
+      Math.min(
         event.clientX - parentBounds.left - revealGrabOffsetX,
+        parentBounds.width,
       ),
-      parentBounds.width - handleBounds.width / 2,
     );
+    const left = (x / parentBounds.width) * 100;
     if (revealSlider.value) {
-      revealSlider.value.style.width = `${x + handleBounds.width / 2}px`;
+      revealSlider.value.style.width = `${left}%`;
     }
-    target.style.left = `${x}px`;
+    target.style.left = `calc(${left}% - ${halfHandleWidth}px)`;
   }
 };
 
@@ -538,10 +558,12 @@ const saveReferenceImage = async () => {
   renderSkewedImage();
 
   const webp = await convertImageDataToWebP(imageData);
-  const response = await ClientApi.Devices.updateReferenceImageForDeviceAtCurrentLocation(
-    device.value!.id,
-    webp,
-  );
+  const ab = await webp.arrayBuffer();
+  const response =
+    await ClientApi.Devices.updateReferenceImageForDeviceAtCurrentLocation(
+      device.value!.id,
+      ab,
+    );
   if (response.success) {
     // Create a local blob URL to show the updated image immediately
     const newUrl = URL.createObjectURL(webp);
@@ -567,18 +589,17 @@ const helpInfo = ref(true);
     </div>
 
     <section-card v-else>
-      <template #header-title>
-        Reference photo
-      </template>
+      <template #header-title> Reference photo </template>
       <p>
-        A reference photo allows you to make sense of a scene captured by a thermal
-        camera. Use the Cacophony Sidekick mobile app to take a photo, and
-        adjust it to match the thermal view.
+        A reference photo allows you to make sense of a scene captured by a
+        thermal camera. Use the Cacophony Sidekick mobile app to take a photo,
+        and adjust it to match the thermal view.
       </p>
       <p class="mb-4">
-        Reference photos can be toggled on and off while viewing the thermal videos. This
-        makes it easier to view where bushes or trees are, and helps understand why
-        animals suddenly appear of disappear from the video.
+        Reference photos can be toggled on and off while viewing the thermal
+        videos. This makes it easier to view where bushes or trees are, and
+        helps understand why animals suddenly appear of disappear from the
+        video.
       </p>
 
       <!-- NO REFERENCE IMAGE YET -->
@@ -590,9 +611,10 @@ const helpInfo = ref(true);
           class="mb-4"
         >
           <div class="d-flex">
-            <material-symbol name="info" class="me-2" size="1.25rem"/>
+            <material-symbol name="info" class="me-2" size="1.25rem" />
             <div>
-              Drag the circles at the corners of the reference image to skew it and adjust its position.
+              Drag the circles at the corners of the reference image to skew it
+              and adjust its position.
             </div>
           </div>
         </b-alert>
@@ -658,17 +680,11 @@ const helpInfo = ref(true);
                 />
               </div>
             </div>
-
           </div>
 
-
           <div class="col col-12 col-lg-3 mt-3 mt-lg-0">
-            <div
-              v-if="referenceImage">
-              <b-form-group
-                label="Reference image opacity"
-                label-for="opacity"
-              >
+            <div v-if="referenceImage">
+              <b-form-group label="Reference image opacity" label-for="opacity">
                 <b-form-input
                   id="opacity"
                   type="range"
@@ -693,7 +709,9 @@ const helpInfo = ref(true);
                   v-model="cptvFrameScale"
                 />
               </b-form-group>
-              <div class="d-flex flex-row gap-2 flex-lg-column flex-xl-row justify-content-between mt-3">
+              <div
+                class="d-flex flex-row gap-2 flex-lg-column flex-xl-row justify-content-between mt-3"
+              >
                 <button
                   type="button"
                   class="btn btn-secondary"
@@ -707,9 +725,7 @@ const helpInfo = ref(true);
                   @click="saveReferenceImage"
                 >
                   Save
-                  <span class="d-xl-none d-xxl-inline-block">
-                    image
-                  </span>
+                  <span class="d-xl-none d-xxl-inline-block"> image </span>
                 </button>
               </div>
             </div>
@@ -727,17 +743,15 @@ const helpInfo = ref(true);
           class="mb-4"
         >
           <div class="d-flex">
-            <material-symbol name="info" class="me-2" size="1.25rem"/>
+            <material-symbol name="info" class="me-2" size="1.25rem" />
             <div>
-              Drag the circles at the corners of the reference image to skew it and adjust its position.
+              Drag the circles at the corners of the reference image to skew it
+              and adjust its position.
             </div>
           </div>
         </b-alert>
 
-        <div
-          class="row"
-           v-if="editingReferenceImage"
-        >
+        <div class="row" v-if="editingReferenceImage">
           <div class="col col-12 col-lg-9">
             <div
               class="d-flex justify-content-center align-items-center align-items-lg-start justify-content-lg-start flex-column reference-image"
@@ -798,14 +812,10 @@ const helpInfo = ref(true);
                 </div>
               </div>
             </div>
-
           </div>
 
           <div class="col col-12 col-lg-3 mt-3 mt-lg-0">
-            <b-form-group
-              label="Reference image opacity"
-              label-for="opacity"
-            >
+            <b-form-group label="Reference image opacity" label-for="opacity">
               <b-form-input
                 id="opacity"
                 type="range"
@@ -815,7 +825,6 @@ const helpInfo = ref(true);
                 v-model="overlayOpacity"
               />
             </b-form-group>
-
 
             <b-form-group
               label="Location view scale"
@@ -831,7 +840,9 @@ const helpInfo = ref(true);
                 v-model="cptvFrameScale"
               />
             </b-form-group>
-            <div class="d-flex flex-row gap-2 flex-lg-column flex-xl-row justify-content-between mt-3">
+            <div
+              class="d-flex flex-row gap-2 flex-lg-column flex-xl-row justify-content-between mt-3"
+            >
               <button
                 type="button"
                 class="btn btn-secondary"
@@ -845,13 +856,10 @@ const helpInfo = ref(true);
                 @click="saveReferenceImage"
               >
                 Save
-                <span class="d-xl-none d-xxl-inline-block">
-                  image
-                </span>
+                <span class="d-xl-none d-xxl-inline-block"> image </span>
               </button>
             </div>
           </div>
-
         </div>
 
         <!-- REVEAL SLIDER MODE (default) -->
@@ -862,7 +870,11 @@ const helpInfo = ref(true);
               class="btn btn-primary d-flex justify-content-center"
               @click="replaceExistingReferenceImage"
             >
-              <material-symbol name="add" size="1.25rem" class="me-2"></material-symbol>
+              <material-symbol
+                name="add"
+                size="1.25rem"
+                class="me-2"
+              ></material-symbol>
               Add new reference image
             </button>
             <button
@@ -871,10 +883,13 @@ const helpInfo = ref(true);
               class="btn btn-outline-secondary d-flex justify-content-center"
               @click="editExistingReferenceImage"
             >
-              <material-symbol name="edit" size="1.25rem" class="me-2"></material-symbol>
+              <material-symbol
+                name="edit"
+                size="1.25rem"
+                class="me-2"
+              ></material-symbol>
               Edit reference image
             </button>
-
           </div>
           <div class="col col-12 col-lg-9">
             <div class="position-relative">
@@ -886,7 +901,10 @@ const helpInfo = ref(true);
                   class="position-absolute"
                   @loaded="handleSingleFrameLoaded"
                 />
-                <div class="reveal-slider position-absolute" ref="revealSlider">
+                <div
+                  class="reveal-slider position-absolute top-0 bottom-0 left-0 right-0"
+                  ref="revealSlider"
+                >
                   <img
                     alt="Current device point-of-view reference photo"
                     :src="latestReferenceImageURL"
@@ -899,7 +917,7 @@ const helpInfo = ref(true);
                 @pointerdown="grabRevealHandle"
                 @touchstart="(e) => e.preventDefault()"
               >
-                <material-symbol name="arrow_range" size="2rem"/>
+                <material-symbol name="arrow_range" size="2rem" />
               </div>
             </div>
             <input
@@ -911,12 +929,9 @@ const helpInfo = ref(true);
             />
           </div>
 
-          <div class="col col-12 col-lg-3 mt-3 mt-lg-0">
-
-          </div>
+          <div class="col col-12 col-lg-3 mt-3 mt-lg-0"></div>
         </div>
       </div>
-
     </section-card>
   </div>
 </template>
@@ -931,8 +946,7 @@ const helpInfo = ref(true);
     width: 100%;
     aspect-ratio: auto 4/3;
     img {
-      width: 640px;
-      height: 480px;
+      height: 100%;
       aspect-ratio: auto 4/3;
     }
   }
@@ -943,7 +957,7 @@ const helpInfo = ref(true);
     width: calc(100svw - 56px);
     aspect-ratio: auto 4/3;
     img {
-      width: 100svw;
+      height: 100%;
       aspect-ratio: auto 4/3;
     }
   }

@@ -1,10 +1,15 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { BAlert } from "bootstrap-vue-next";
+import {
+  BAlert,
+  BForm,
+  BFormInput,
+  BFormInvalidFeedback,
+} from "bootstrap-vue-next";
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState, FormInputValue } from "@/utils";
 
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 
 const userEmailAddress: FormInputValue = formFieldInputText();
 const resetErrorMessage = ref<string | false>(false);
@@ -37,7 +42,8 @@ const resetPassword = async () => {
   const emailAddress = userEmailAddress.value.trim();
   resetInProgress.value = true;
   resetSubmitted.value = false;
-  const resetPasswordResponse = await ClientApi.Users.sendPasswordResetRequest(emailAddress);
+  const resetPasswordResponse =
+    await ClientApi.Users.sendPasswordResetRequest(emailAddress);
   if (resetPasswordResponse.success) {
     resetSubmitted.value = true;
   } else {
@@ -59,9 +65,8 @@ const resetPassword = async () => {
     <div v-if="resetSubmitted">
       <p>
         An email with a link to reset your password has been sent to
-        <span class="fw-medium">{{
-          userEmailAddress.value
-        }}</span>.
+        <span class="fw-medium">{{ userEmailAddress.value }}</span
+        >.
       </p>
       <p class="mb-4">
         Check your spam folder if you don't receive an email within 5 minutes.

@@ -2,7 +2,11 @@ import type {
   ApiLoggedInUserResponse,
   ApiUserSettings,
 } from "@typedefs/api/user";
-import { DEFAULT_AUTH_ID, type ErrorResult, type JwtTokenPayload, type LoadedResource } from "@apiClient/types";
+import {
+  DEFAULT_AUTH_ID,
+  type ErrorResult,
+  type LoadedResource,
+} from "@apiClient/types";
 import { computed, reactive, ref, watch } from "vue";
 import { ClientApi, CurrentUser, CurrentViewAbortController } from "@/api";
 import type { GroupId as ProjectId } from "@typedefs/api/common";
@@ -96,7 +100,10 @@ export const persistUserProjectSettings = async (
     );
     if (localProjectToUpdate) {
       localProjectToUpdate.userSettings = userSettings;
-      await ClientApi.Projects.saveProjectUserSettings(localProjectToUpdate.id, userSettings);
+      await ClientApi.Projects.saveProjectUserSettings(
+        localProjectToUpdate.id,
+        userSettings,
+      );
     } else if (isViewingAsSuperUser.value) {
       const nonUserProjectToUpdate = (NonUserProjects.value || []).find(
         ({ id }) => id === (currentSelectedProject.value as SelectedProject).id,
@@ -115,7 +122,10 @@ export const persistProjectSettings = async (settings: ApiProjectSettings) => {
     );
     if (localProjectToUpdate) {
       localProjectToUpdate.settings = settings;
-      await ClientApi.Projects.saveProjectSettings(localProjectToUpdate.id, settings);
+      await ClientApi.Projects.saveProjectSettings(
+        localProjectToUpdate.id,
+        settings,
+      );
     }
   }
 };
@@ -162,9 +172,11 @@ export const setLoggedInUserData = (user: LoggedInUser) => {
         // TODO: If something not allowed in user settings schema makes it into settings, we need to remove
         //  it before it can validate properly.  Client-side json schema validation? Or just be careful?
         // Update settings on server?
-        ClientApi.Users.saveUserSettings(user.settings as ApiUserSettings).then((response) => {
-          console.warn("User settings updated", response);
-        });
+        ClientApi.Users.saveUserSettings(user.settings as ApiUserSettings).then(
+          (response) => {
+            console.warn("User settings updated", response);
+          },
+        );
       }
     } catch (e) {
       // Shouldn't get malformed json errors here.
@@ -182,7 +194,10 @@ export const login = async (
   const emailAddress = userEmailAddress.trim().toLowerCase();
   const password = userPassword.trim();
   signInInProgress.requestPending = true;
-  const loggedInUserResponse = await ClientApi.Users.login(emailAddress, password);
+  const loggedInUserResponse = await ClientApi.Users.login(
+    emailAddress,
+    password,
+  );
   if (loggedInUserResponse.success) {
     const signedInUser = loggedInUserResponse.result;
     ClientApi.registerCredentials(DEFAULT_AUTH_ID, {
@@ -341,7 +356,6 @@ export const login = async (
 //   // }
 //   isLoggingInState.finishedLoggingIn();
 // };
-
 
 export const forgetUserOnCurrentDevice = () => {
   console.warn("Signing out");
@@ -552,12 +566,14 @@ export const refreshUserProjects = async () => {
 
   console.warn("Fetching user projects");
   const NO_ABORT = false;
-  const projectsResponse = await ClientApi.Projects.getCurrentUserProjects(NO_ABORT);
+  const projectsResponse =
+    await ClientApi.Projects.getCurrentUserProjects(NO_ABORT);
   if (projectsResponse.success) {
     UserProjects.value = reactive(projectsResponse.result.groups);
   }
   if (currentUserIsSuperUser.value) {
-    const allProjectsResponse = await ClientApi.Projects.getAllProjects(NO_ABORT);
+    const allProjectsResponse =
+      await ClientApi.Projects.getAllProjects(NO_ABORT);
     if (allProjectsResponse.success) {
       NonUserProjects.value = reactive(
         (allProjectsResponse.result.groups || []).filter(

@@ -11,15 +11,13 @@ import {
   projectDevicesLoaded,
   userProjectsLoaded,
 } from "@models/LoggedInUser";
-import type {
-  DeviceId,
-} from "@typedefs/api/common";
+import type { DeviceId } from "@typedefs/api/common";
 import { selectedProjectDevices } from "@models/provides";
 import { DeviceType } from "@typedefs/api/consts.ts";
 import OverflowingTabList from "@/components/OverflowingTabList.vue";
 import type { LoadedResource } from "@apiClient/types.ts";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 
 const route = useRoute();
 const emit = defineEmits(["close", "start-blocking-work", "end-blocking-work"]);
@@ -48,7 +46,10 @@ const loadDevice = async (deviceId: DeviceId) => {
       device.value = targetDevice;
     } else {
       // Device could be inactive, so try loading it by id
-      const deviceResponse = await ClientApi.Devices.getDeviceById(deviceId, true);
+      const deviceResponse = await ClientApi.Devices.getDeviceById(
+        deviceId,
+        true,
+      );
       if (deviceResponse.success) {
         device.value = deviceResponse.result.device;
       }
@@ -155,8 +156,8 @@ const _deviceType = computed<string>(() => {
         :to="{
           name: 'device-events',
         }"
-        >
-          <span class="text">Events</span>
+      >
+        <span class="text">Events</span>
       </router-link>
       <router-link
         v-if="
@@ -173,8 +174,8 @@ const _deviceType = computed<string>(() => {
         :to="{
           name: 'device-status',
         }"
-        >
-          <span class="text">Status</span>
+      >
+        <span class="text">Status</span>
       </router-link>
       <router-link
         v-if="
@@ -192,10 +193,10 @@ const _deviceType = computed<string>(() => {
         :to="{
           name: 'device-configuration',
         }"
-        >
-          <span class="text">
-            Config<span class="d-none d-sm-inline">uration</span>
-          </span>
+      >
+        <span class="text">
+          Config<span class="d-none d-sm-inline">uration</span>
+        </span>
       </router-link>
       <router-link
         v-if="

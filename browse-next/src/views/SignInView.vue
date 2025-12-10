@@ -1,11 +1,22 @@
 <script setup lang="ts">
 import { computed, nextTick, reactive, ref } from "vue";
-import { login, refreshUserProjects, urlNormalisedCurrentProjectName } from "@models/LoggedInUser";
+import {
+  login,
+  refreshUserProjects,
+  urlNormalisedCurrentProjectName,
+} from "@models/LoggedInUser";
 import type { PendingRequest } from "@models/LoggedInUser";
 import { isEmpty, formFieldInputText } from "@/utils";
 import type { FormInputValue, FormInputValidationState } from "@/utils";
 import { useRoute, useRouter } from "vue-router";
 import type { RouteLocationRaw } from "vue-router";
+import {
+  BAlert,
+  BForm,
+  BFormInput,
+  BFormInvalidFeedback,
+  BSpinner,
+} from "bootstrap-vue-next";
 
 const showPassword = ref(false);
 const togglePasswordVisibility = () => {
@@ -48,12 +59,14 @@ const submitLogin = async () => {
       };
       await router.push(to);
     } else {
-      await router.push({
-        name: "dashboard",
-        params: {
-          projectName: urlNormalisedCurrentProjectName.value || "",
-        },
-      });
+      if (urlNormalisedCurrentProjectName.value) {
+        await router.push({
+          name: "dashboard",
+          params: {
+            projectName: urlNormalisedCurrentProjectName.value,
+          },
+        });
+      }
     }
   }
 };

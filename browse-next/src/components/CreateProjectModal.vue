@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import {
   UserProjects,
   switchCurrentProject,
@@ -8,7 +8,12 @@ import {
 } from "@models/LoggedInUser";
 import { computed, onMounted, ref } from "vue";
 import type { ErrorResult } from "@apiClient/types";
-import { BModal } from "bootstrap-vue-next";
+import {
+  BForm,
+  BFormInput,
+  BFormInvalidFeedback,
+  BModal,
+} from "bootstrap-vue-next";
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
 import { useRouter } from "vue-router";
@@ -37,7 +42,8 @@ const createNewProjectError = ref<ErrorResult | null>(null);
 const createNewProject = async () => {
   submittingCreateRequest.value = true;
   const projectName = newProjectName.value.trim();
-  const createProjectResponse = await ClientApi.Projects.addNewProject(projectName);
+  const createProjectResponse =
+    await ClientApi.Projects.addNewProject(projectName);
   if (createProjectResponse.success) {
     if (Array.isArray(UserProjects.value)) {
       const newProjectId = createProjectResponse.result.groupId;

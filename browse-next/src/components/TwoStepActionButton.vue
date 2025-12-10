@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import {BButton, BPopover, BTooltip, type PopoverPlacement} from "bootstrap-vue-next";
-import {MaterialSymbol, type SymbolsProp} from "@dbetka/vue-material-symbols";
+import {
+  BButton,
+  BPopover,
+  BTooltip,
+  type PopoverPlacement,
+} from "bootstrap-vue-next";
+import { MaterialSymbol, type SymbolsProp } from "@dbetka/vue-material-symbols";
 
 const popover = ref<typeof BPopover>();
 const actionBtn = ref<typeof BButton | null>(null);
@@ -109,8 +114,8 @@ const computedConfirmationLabel = computed<string>(() => {
           <span v-if="computedLabel" class="ps-2" v-html="computedLabel" />
         </button>
         <b-tooltip
-          v-if="computedTooltipLabel !== '' && !popoverIsShowing"
-          :target="actionBtn"
+          v-if="actionBtn && computedTooltipLabel !== '' && !popoverIsShowing"
+          :target="actionBtn.$el"
           :placement="placement"
         >
           <span v-html="computedTooltipLabel"></span>

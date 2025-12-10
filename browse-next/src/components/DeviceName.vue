@@ -6,17 +6,13 @@
     variant="secondary"
   >
     <span class="me-2 align-self-center position-relative">
+      <material-symbol :name="deviceTypeIcon" size="1.125rem" class="me-2" />
       <material-symbol
-        :name="deviceTypeIcon"
+        v-if="type === 'hybrid-thermal-audio'"
+        name="music_video"
         size="1.125rem"
         class="me-2"
       />
-       <material-symbol
-         v-if="type === 'hybrid-thermal-audio'"
-         name="music_video"
-         size="1.125rem"
-         class="me-2"
-       />
     </span>
     <span class="me-2 me-md-0">{{ name }}</span>
   </b-link>
@@ -31,21 +27,18 @@
         'me-2': !props.noMargin,
         'me-1': props.noMargin,
       }"
-      >
-      <material-symbol
-        :name="deviceTypeIcon"
-        size="1.125rem"
-      />
+    >
+      <material-symbol :name="deviceTypeIcon" size="1.125rem" />
     </span>
     <span :class="{'text-truncate': truncate}">
       {{ name }}
     </span>
     </span
-  ><span><slot></slot></span>
+  ><span v-if="slots.default"><slot></slot></span>
 </template>
 
 <script lang="ts" setup>
-import { computed } from "vue";
+import { computed, useSlots } from "vue";
 import {
   type DeviceType,
   DeviceType as ConcreteDeviceType,
@@ -63,6 +56,7 @@ const props = defineProps<{
   noMargin?: boolean;
   truncate?: boolean;
 }>();
+const slots = useSlots();
 
 const deviceTypeIcon = computed<IconsProp | "">(() => {
   switch (props.type) {

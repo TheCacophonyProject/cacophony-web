@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { currentSelectedProject } from "@models/LoggedInUser";
 import type { SelectedProject } from "@models/LoggedInUser";
+import { BModal } from "bootstrap-vue-next";
 
 const leaveProject = () => {
   // If we're not an admin of the group, or we're an admin but not the *last* admin

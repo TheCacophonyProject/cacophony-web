@@ -3,9 +3,9 @@ import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import { computed, inject, type Ref, ref } from "vue";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { CardTableRows } from "@/components/CardTableTypes";
-import { BModal } from "bootstrap-vue-next";
-import {ClientApi} from "@/api";
-import {currentUser} from "@models/provides.ts";
+import { BFormTextarea, BModal, BSpinner } from "bootstrap-vue-next";
+import { ClientApi } from "@/api";
+import { currentUser } from "@models/provides.ts";
 import type { TagId } from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
 import { DateTime } from "luxon";
@@ -112,7 +112,7 @@ const doAddNote = async () => {
 <template>
   <div v-if="recording" class="recording-labels d-flex flex-column">
     <div class="d-flex align-items-center mt-2">
-    <h2 class="recording-labels-title fs-6">Notes</h2>
+      <h2 class="recording-labels-title fs-6">Notes</h2>
       <div class="d-md-none d-flex justify-content-end flex-grow-1">
         <button
           type="button"

@@ -24,6 +24,12 @@ import {
 import { DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS } from "@/consts.ts";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import SectionCard from "@/components/SectionCard.vue";
+import {
+  BFormCheckbox,
+  BFormGroup,
+  BModal,
+  BSpinner,
+} from "bootstrap-vue-next";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const currentProjectSettings = computed(() => {
@@ -171,25 +177,25 @@ const pendingTagIsValid = computed<boolean>(() => {
   <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
     <div class="col-lg-3">
       <h3 class="section-card-heading">Automatic filtering of human voices</h3>
-      <p class="text-secondary pb-1">Configure the AI to automatically delete recordings that contain human voices.
+      <p class="text-secondary pb-1">
+        Configure the AI to automatically delete recordings that contain human
+        voices.
       </p>
     </div>
     <div class="col-lg-9">
       <section-card>
-        <template #header-title>
-          Audio filtering
-        </template>
+        <template #header-title> Audio filtering </template>
         <b-form-group
           description="Turn this option on if the recording is in a public place to protect peoples' privacy."
         >
           <b-form-checkbox switch v-model="filterHumanVoices"
-          >Automatically delete audio recordings that contain human
+            >Automatically delete audio recordings that contain human
             voices<b-spinner
-                class="ms-1"
-                v-if="savingHumanVoiceFilterSettings"
-                variant="secondary"
-                small
-            /></b-form-checkbox>
+              class="ms-1"
+              v-if="savingHumanVoiceFilterSettings"
+              variant="secondary"
+              small
+          /></b-form-checkbox>
         </b-form-group>
       </section-card>
     </div>
@@ -198,38 +204,42 @@ const pendingTagIsValid = computed<boolean>(() => {
   <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
     <div class="col-lg-3">
       <h3 class="section-card-heading">Ignored Dashboard tags</h3>
-      <p class="text-secondary pb-1">Filter out tags from your project dashboard.
-        Tags follow a classification hierarchy; e.g. filtering out the tag leporidae will also filter rabbits and hares.
+      <p class="text-secondary pb-1">
+        Filter out tags from your project dashboard. Tags follow a
+        classification hierarchy; e.g. filtering out the tag leporidae will also
+        filter rabbits and hares.
       </p>
     </div>
     <div class="col-lg-9">
       <section-card>
-        <template #header-title>
-          Tags
-        </template>
+        <template #header-title> Tags </template>
         <template #header-action>
           <div>
             <button
-                type="button"
-                class="btn btn-outline-secondary ms-2"
-                @click.stop.prevent="showAddCameraIgnoredTagModal = true"
+              type="button"
+              class="btn btn-outline-secondary ms-2"
+              @click.stop.prevent="showAddCameraIgnoredTagModal = true"
             >
               Add
             </button>
             <button
-                type="button"
-                class="btn btn-outline-danger ms-2"
-                @click.stop.prevent="resetCameraIgnoredTags"
+              type="button"
+              class="btn btn-outline-danger ms-2"
+              @click.stop.prevent="resetCameraIgnoredTags"
             >
               Reset
             </button>
           </div>
         </template>
-        <card-table :items="cameraIgnoredTagTableItems" compact :max-card-width="0">
+        <card-table
+          :items="cameraIgnoredTagTableItems"
+          compact
+          :max-card-width="0"
+        >
           <template #_deleteAction="{ cell }">
             <button
-                class="btn"
-                @click.prevent="() => removeIgnoredTag(cell.value, 'camera')"
+              class="btn"
+              @click.prevent="() => removeIgnoredTag(cell.value, 'camera')"
             >
               <font-awesome-icon icon="trash-can" />
             </button>
@@ -245,7 +255,7 @@ const pendingTagIsValid = computed<boolean>(() => {
     @cancel="reset"
     @close="reset"
     @esc="reset"
-    @ok="addPendingIgnoredTag"
+    @ok="() => addPendingIgnoredTag('camera')"
     :ok-disabled="!pendingTagIsValid"
     ok-title="Add ignored tag"
     ok-variant="secondary"

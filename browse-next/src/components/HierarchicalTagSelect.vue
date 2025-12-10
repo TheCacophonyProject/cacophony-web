@@ -11,7 +11,7 @@
     :selected-items="modelValue"
     :open-on-mount="openOnMount"
     @change="updateModel"
-    @deselected="(deselected) => emit('deselected')"
+    @deselected="() => emit('deselected')"
     ref="layeredDropdown"
   />
 </template>

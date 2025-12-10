@@ -14,7 +14,7 @@ import {
 import type { DateTime } from "luxon";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import * as sunCalc from "suncalc";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import {
   displayLabelForClassificationLabel,
   getClassificationForLabel,
@@ -91,7 +91,7 @@ const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
         timeStart: visit.timeStart,
         data: visit,
         date: new Date(visit.timeStart),
-      } as VisitEventItem),
+      }) as VisitEventItem,
   );
   const now = new Date();
   if (props.isNocturnal) {

@@ -34,8 +34,10 @@ import {
   classifications,
   displayLabelForClassificationLabel,
   flatClassifications,
-  getClassificationForLabel, getClassifications,
+  getClassificationForLabel,
+  getClassifications,
 } from "@api/classificationsUtils.ts";
+import { BSpinner } from "bootstrap-vue-next";
 
 const props = defineProps<{
   track: ApiTrackResponse;
@@ -47,17 +49,17 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+  (e: "removed-track", payload: { trackId: TrackId }): void;
   (e: "expanded-changed", trackId: TrackId, expanded: boolean): void;
   (e: "selected-track", trackId: TrackId, forceReplay?: boolean): void;
-  (
-    e: "add-or-remove-user-tag",
-    payload: { trackId: TrackId; tag: string },
-  ): void;
   (
     e: "remove-tag",
     payload: { trackId: TrackId; trackTagId: TrackTagId },
   ): void;
-  (e: "removed-track", payload: { trackId: TrackId }): void;
+  (
+    e: "add-or-remove-user-tag",
+    payload: { trackId: TrackId; tag: string },
+  ): void;
 }>();
 
 const expandedInternal = ref<boolean>(false);
@@ -91,7 +93,11 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
         GenericCardTableValue<string | ApiTrackTagResponse> | string
       > = {
         tag: capitalize(
-          displayLabelForClassificationLabel(tag.what, tag.automatic, props.isAudioRecording),
+          displayLabelForClassificationLabel(
+            tag.what,
+            tag.automatic,
+            props.isAudioRecording,
+          ),
         ),
         tagger: (tag.automatic ? "Cacophony AI" : tag.userName || "").replace(
           " ",
@@ -130,7 +136,8 @@ const handleExpansion = (isExpanding: boolean) => {
   if (isExpanding) {
     if (trackDetails.value) {
       (trackDetails.value as HTMLDivElement).style.height = `${
-        (trackDetails.value as HTMLDivElement).scrollHeight + (expandedOnce.value ? 0 : 10)
+        (trackDetails.value as HTMLDivElement).scrollHeight +
+        (expandedOnce.value ? 0 : 10)
       }px`;
     }
     expandedOnce.value = true;
@@ -198,7 +205,11 @@ const consensusUserTag = computed<string | null>(() => {
     return null;
   }
   return (
-    displayLabelForClassificationLabel(uniqueUserTags.value[0] || "", false, props.isAudioRecording) || null
+    displayLabelForClassificationLabel(
+      uniqueUserTags.value[0] || "",
+      false,
+      props.isAudioRecording,
+    ) || null
   );
 });
 
@@ -208,7 +219,7 @@ const getAuthoritativeTagsForTrack = (
   const userTags = trackTags.filter((tag) => !tag.automatic);
   const authTags = [];
   if (userTags.length) {
-    authTags.push(userTags[0].what);
+    authTags.push((userTags[0] as ApiTrackTagResponse).what);
   } else {
     // NOTE: For audio, there can be multiple authoritative tags for a single track, until a user confirms one.
     const masterTags = trackTags.filter(
@@ -304,15 +315,16 @@ const selectedUserTagLabel = computed<string[]>({
   },
   set: (val: string[]) => {
     if (val.length) {
+      // Why is this giving an error?  Because we're doing side-effects in a setter?
       emit("add-or-remove-user-tag", {
         trackId: props.track.id,
-        tag: val[0],
+        tag: val[0] as string,
       });
     }
   },
 });
 
-const permanentlyDeleteTrack = async (trackId: TrackId) => {
+const permanentlyDeleteTrack = (trackId: TrackId) => {
   emit("removed-track", { trackId });
 };
 
@@ -387,13 +399,18 @@ const userDefinedTagLabels = computed<string[]>(() =>
   Object.keys(userDefinedTags.value),
 );
 
-const availableTags = computed<{ label: string; display: string; displayAudio: string }[]>(() => {
+const availableTags = computed<
+  { label: string; display: string; displayAudio: string }[]
+>(() => {
   // TODO: These should be different for audio and camera
 
   // TODO: These can be changed at a group preferences level by group admins,
   //  or at a user-group preferences level by users.
   // Map these tags to the display names in classifications json.
-  const tags: Record<string, { label: string; display: string; displayAudio: string }> = {};
+  const tags: Record<
+    string,
+    { label: string; display: string; displayAudio: string }
+  > = {};
   const allTags = [
     ...defaultTags.value,
     ...userDefinedTagLabels.value,
@@ -508,7 +525,9 @@ const addCustomTag = () => {
 };
 
 const processingIsAnalysing = computed<boolean>(
-  () => props.processingState === RecordingProcessingState.Analyse || props.processingState === RecordingProcessingState.TrackAndAnalyse,
+  () =>
+    props.processingState === RecordingProcessingState.Analyse ||
+    props.processingState === RecordingProcessingState.TrackAndAnalyse,
 );
 
 const row = ref<HTMLDivElement>();
@@ -551,7 +570,13 @@ onMounted(async () => {
         <span
           class="classification text-capitalize d-inline-block fw-bold"
           v-if="masterTag"
-          >{{ displayLabelForClassificationLabel(masterTag.what, true, isAudioRecording) }}</span
+          >{{
+            displayLabelForClassificationLabel(
+              masterTag.what,
+              true,
+              isAudioRecording,
+            )
+          }}</span
         >
       </div>
       <span v-else-if="hasUserTag" class="d-flex flex-column">
@@ -561,8 +586,11 @@ onMounted(async () => {
           v-if="
             consensusUserTag &&
             masterTag &&
-            displayLabelForClassificationLabel(masterTag.what, false, isAudioRecording) ===
-              consensusUserTag
+            displayLabelForClassificationLabel(
+              masterTag.what,
+              false,
+              isAudioRecording,
+            ) === consensusUserTag
           "
           >{{ consensusUserTag }}
           <font-awesome-icon icon="check-circle" class="icon"
@@ -572,12 +600,19 @@ onMounted(async () => {
           v-else-if="
             consensusUserTag &&
             masterTag &&
-            displayLabelForClassificationLabel(masterTag.what, false, isAudioRecording) !==
-              consensusUserTag
+            displayLabelForClassificationLabel(
+              masterTag.what,
+              false,
+              isAudioRecording,
+            ) !== consensusUserTag
           "
           >{{ consensusUserTag }}
           <span class="strikethrough">{{
-            displayLabelForClassificationLabel(masterTag.what, false, isAudioRecording)
+            displayLabelForClassificationLabel(
+              masterTag.what,
+              false,
+              isAudioRecording,
+            )
           }}</span></span
         >
         <!-- Controversial tag, should be automatically flagged for review. -->
@@ -590,11 +625,21 @@ onMounted(async () => {
           "
           >{{
             uniqueUserTags
-              .map((tag) => displayLabelForClassificationLabel(tag, false, isAudioRecording))
+              .map((tag) =>
+                displayLabelForClassificationLabel(
+                  tag,
+                  false,
+                  isAudioRecording,
+                ),
+              )
               .join(", ")
           }}
           <span class="strikethrough conflicting-tags">{{
-            displayLabelForClassificationLabel(masterTag.what, false, isAudioRecording)
+            displayLabelForClassificationLabel(
+              masterTag.what,
+              false,
+              isAudioRecording,
+            )
           }}</span></span
         >
         <span
@@ -602,7 +647,13 @@ onMounted(async () => {
           v-else-if="!consensusUserTag && masterTag"
           >{{
             uniqueUserTags
-              .map((tag) => displayLabelForClassificationLabel(tag, false, isAudioRecording))
+              .map((tag) =>
+                displayLabelForClassificationLabel(
+                  tag,
+                  false,
+                  isAudioRecording,
+                ),
+              )
               .join(", ")
           }}</span
         >
@@ -611,7 +662,13 @@ onMounted(async () => {
           v-else-if="consensusUserTag && !hasAiTag"
           >{{
             uniqueUserTags
-              .map((tag) => displayLabelForClassificationLabel(tag, false, isAudioRecording))
+              .map((tag) =>
+                displayLabelForClassificationLabel(
+                  tag,
+                  false,
+                  isAudioRecording,
+                ),
+              )
               .join(", ")
           }}</span
         >

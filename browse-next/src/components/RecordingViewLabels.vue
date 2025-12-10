@@ -3,8 +3,8 @@ import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import { computed, inject, type Ref, ref } from "vue";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { CardTableRows } from "@/components/CardTableTypes";
-import { BModal } from "bootstrap-vue-next";
-import {ClientApi} from "@/api";
+import { BFormRadio, BModal, BSpinner } from "bootstrap-vue-next";
+import { ClientApi } from "@/api";
 import {
   type LoggedInUser,
   userIsAdminForCurrentSelectedProject,
@@ -72,7 +72,7 @@ const audioLabels = computed<RecordingLabel[]>(() => {
           text: text,
           description,
           value: (value || text).toLowerCase(),
-        } as RecordingLabel),
+        }) as RecordingLabel,
     )
     .filter((tag) => tag.value !== "note");
 });
@@ -157,7 +157,7 @@ const doAddLabel = async () => {
 <template>
   <div v-if="recording" class="recording-labels d-flex flex-column">
     <div class="d-flex align-items-center">
-    <h2 class="recording-labels-title fs-6">Recording labels</h2>
+      <h2 class="recording-labels-title fs-6">Recording labels</h2>
       <div class="d-flex justify-content-end flex-grow-1 d-md-none">
         <button
           type="button"

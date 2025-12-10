@@ -1,15 +1,19 @@
 import { computed, ref } from "vue";
 import type { Classification } from "@typedefs/api/trackTag";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 
 const loadedClassificationsThisSession = ref(false);
 export const classifications = ref<Classification | null>(null);
 
+interface ClassificationInfo {
+  label: string;
+  display: string;
+  path: string;
+  node: Classification;
+  displayAudio: string;
+}
 const flattenNodes = (
-  acc: Record<
-    string,
-    { label: string; display: string; path: string; node: Classification; displayAudio: string }
-  >,
+  acc: Record<string, ClassificationInfo>,
   node: Classification,
 ) => {
   for (const child of node.children || []) {
@@ -17,16 +21,17 @@ const flattenNodes = (
     const path = `${(parent && parent.path) || node.path || node.label}.${
       child.label
     }`;
-    acc[child.label] = {
+    const childInfo = {
       label: child.label,
       display: child.display || child.label,
       displayAudio: child.displayAudio || child.display || child.label,
       node: child,
       path,
     };
+    acc[child.label] = childInfo;
     if (child.aliases) {
       for (const alias of child.aliases) {
-        acc[alias] = acc[child.label];
+        acc[alias] = childInfo;
       }
     }
     flattenNodes(acc, child);
@@ -35,21 +40,18 @@ const flattenNodes = (
 };
 
 // TODO: Move to provide/inject at App level
-export const flatClassifications = computed<
-  Record<
-    string,
-    { label: string; display: string; displayAudio: string; path: string; node: Classification }
-  >
->(() => {
-  if (classifications.value) {
-    const nodes = flattenNodes({}, classifications.value);
-    if (nodes.unknown) {
-      nodes["unidentified"] = nodes["unknown"];
+export const flatClassifications = computed<Record<string, ClassificationInfo>>(
+  () => {
+    if (classifications.value) {
+      const nodes = flattenNodes({}, classifications.value);
+      if (nodes.unknown) {
+        nodes["unidentified"] = nodes["unknown"];
+      }
+      return nodes;
     }
-    return nodes;
-  }
-  return {};
-});
+    return {};
+  },
+);
 
 const getFreshClassifications = async (): Promise<Classification> => {
   const res = await ClientApi.Classifications.apiGetClassifications();
@@ -103,12 +105,14 @@ export const getClassifications = async (
     const cached = localStorage.getItem("classifications");
     if (cached && !loadedClassificationsThisSession.value) {
       const parsed = JSON.parse(cached);
-      ClientApi.Classifications.apiGetClassifications(parsed.version).then(async (res) => {
-        if (res && res.success && res.result.version !== parsed.version) {
-          const classifications = await getFreshClassifications();
-          cb && cb(classifications);
-        }
-      });
+      ClientApi.Classifications.apiGetClassifications(parsed.version).then(
+        async (res) => {
+          if (res && res.success && res.result.version !== parsed.version) {
+            const classifications = await getFreshClassifications();
+            cb && cb(classifications);
+          }
+        },
+      );
       loadedClassificationsThisSession.value = true;
       classifications.value = {
         label: parsed.label,
@@ -137,21 +141,33 @@ export const displayLabelForClassificationLabel = (
   if (label === "unidentified" && aiTag) {
     return "Unidentified";
   }
-  const classifications = flatClassifications.value || {};
-  return (classifications[label] && (isAudioContext ? classifications[label].displayAudio || classifications[label].display : classifications[label].display)) || label;
+  const classifications = flatClassifications.value;
+  if (!classifications[label]) {
+    return label;
+  }
+  const info = classifications[label] as ClassificationInfo;
+  return isAudioContext ? info.displayAudio || info.display : info.display;
 };
 
-export const getPathForLabel = (label: string): string => {
+export const getPathForLabel = (label: string): string | undefined => {
   label = label.toLowerCase();
-  const classifications = flatClassifications.value || {};
-  return classifications[label] && classifications[label].path;
+  const classifications = flatClassifications.value;
+  if (!classifications[label]) {
+    return;
+  }
+  return (classifications[label] as Classification).path;
 };
 
-export const getClassificationForLabel = (label: string): Classification => {
+export const getClassificationForLabel = (
+  label: string,
+): Classification | undefined => {
   if (!label) {
     console.warn("No label supplied");
   }
   label = label.toLowerCase();
-  const classifications = flatClassifications.value || {};
+  const classifications = flatClassifications.value;
+  if (!classifications[label]) {
+    return;
+  }
   return classifications[label];
 };

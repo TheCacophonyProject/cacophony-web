@@ -96,7 +96,7 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
         :highlighted-point="highlightedPoint"
         :points="locationsForMap"
         :active-points="activeLocationsForMap"
-        :center-on-highlighted="false"
+        :center-on-highlighted="true"
         :is-interactive="false"
         :zoom="false"
         :can-change-base-map="false"

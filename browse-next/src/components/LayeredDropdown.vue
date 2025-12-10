@@ -48,8 +48,8 @@ const searchTerm = ref("");
 const showOptions = ref<boolean>(false);
 
 const emit = defineEmits<{
-  (e: "change", value: Classification[]): void;
   (e: "pin", value: Classification | Classification[] | null): void;
+  (e: "change", value: Classification[]): void;
   (e: "options-change"): void; // When the option changes, the height changes, and we may want to let the parent element know about this.
   (e: "deselected"): void;
 }>();
@@ -188,18 +188,21 @@ const hasSelection = computed<boolean>(() => {
   return selections.value.length !== 0;
 });
 
-const addSelectedOption = (option: Classification) => {
+const addSelectedOption = (option: { label: string }) => {
   if (option.label === "No results") {
     return;
   }
   const canonicalOption = getClassificationForLabel(option.label.toLowerCase());
-
-  if (!props.multiselect && selections.value[0] !== canonicalOption) {
-    emit("change", [canonicalOption]);
-    closeSelect();
-  } else if (!selections.value.includes(canonicalOption)) {
-    (inputRef.value as HTMLInputElement).focus();
-    emit("change", [...selections.value, canonicalOption]);
+  if (canonicalOption) {
+    if (!props.multiselect && selections.value[0] !== canonicalOption) {
+      emit("change", [canonicalOption]);
+      closeSelect();
+    } else if (!selections.value.includes(canonicalOption)) {
+      (inputRef.value as HTMLInputElement).focus();
+      emit("change", [...selections.value, canonicalOption]);
+    } else {
+      closeSelect();
+    }
   } else {
     closeSelect();
   }
@@ -387,13 +390,20 @@ defineExpose({
             :disabled="disabledTags.includes(option.label)"
           >
             <span style="vertical-align: middle">{{
-              displayLabelForClassificationLabel(option.label, false, withAudioContext)
+              displayLabelForClassificationLabel(
+                option.label,
+                false,
+                withAudioContext,
+              )
             }}</span
             ><span
               v-if="
                 option.display &&
-                displayLabelForClassificationLabel(option.label, false, withAudioContext) !==
-                  option.label
+                displayLabelForClassificationLabel(
+                  option.label,
+                  false,
+                  withAudioContext,
+                ) !== option.label
               "
               class="fs-7 text-black-50"
               style="vertical-align: middle"

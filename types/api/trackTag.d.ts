@@ -57,7 +57,7 @@ export type Classification = {
   display?: string;
   displayAudio?: string;
   children?: Classification[];
-  path?: string | string[];
+  path?: string;
 };
 export interface ApiClassificationResponse {
   label: "root";

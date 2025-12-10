@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import "leaflet/dist/leaflet.css";
 
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import type { RouteLocationRaw } from "vue-router";
 import type { CircleMarkerOptions, LatLngTuple } from "leaflet";
@@ -185,25 +185,28 @@ watch(
   () => props.highlightedPoint,
   (newP: NamedPoint | null) => {
     const key = (newP && pointKey(newP)) || "";
-    for (const [markerKey, pointMarker] of Object.entries(markers)) {
-      if (key === markerKey) {
-        // If the highlighted point is outside the current map bounds, pan to it and center it, or fit the bounds.
-        pointMarker.foregroundMarker.bringToFront();
-        highlightMarker(pointMarker, markerKey);
-        if (props.centerOnHighlighted) {
-          pointMarker.foregroundMarker.openTooltip();
-          (
+    if (mapEl.value) {
+      const bounds = mapEl.value.getBoundingClientRect();
+      for (const [markerKey, pointMarker] of Object.entries(markers)) {
+        if (key === markerKey) {
+          // If the highlighted point is outside the current map bounds, pan to it and center it, or fit the bounds.
+          pointMarker.foregroundMarker.bringToFront();
+          highlightMarker(pointMarker, markerKey);
+          if (props.centerOnHighlighted) {
+            pointMarker.foregroundMarker.openTooltip();
             (
-              pointMarker.foregroundMarker as unknown as LeafletInternalRawMarker
-            )._map as LeafletMap
-          ).panInside(pointMarker.foregroundMarker.getLatLng(), {
-            padding: [100, 30],
-          });
+              (
+                pointMarker.foregroundMarker as unknown as LeafletInternalRawMarker
+              )._map as LeafletMap
+            ).panInside(pointMarker.foregroundMarker.getLatLng(), {
+              padding: [bounds.width / 2, bounds.height / 2],
+            });
+          }
+        } else {
+          cancelAnimationFrame(markerAnimationFrames[markerKey]);
+          unhighlightImmediately(pointMarker);
+          pointMarker.foregroundMarker.closeTooltip();
         }
-      } else {
-        cancelAnimationFrame(markerAnimationFrames[markerKey]);
-        unhighlightImmediately(pointMarker);
-        pointMarker.foregroundMarker.closeTooltip();
       }
     }
   },
@@ -213,16 +216,14 @@ const mapLayers = [
   {
     name: "OpenTopoMap Basemap",
     url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
-    attribution:
-      "Map data: &copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors, <a href=\"http://viewfinderpanoramas.org\">SRTM</a> | Map style: &copy; <a href=\"https://opentopomap.org\">OpenTopoMap</a> (<a href=\"https://creativecommons.org/licenses/by-sa/3.0/\">CC-BY-SA</a>)",
+    attribution: `Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)`,
     visible: true,
   },
   {
     name: "OpenStreetMap Basemap",
     visible: false,
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution:
-      "&copy; <a href=\"http://osm.org/copyright\">OpenStreetMap</a> contributors",
+    attribution: `&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors`,
   },
 ];
 const mapBounds = computed<LatLngBounds | null>(() => {
@@ -406,7 +407,8 @@ const addPoints = () => {
         marker.foregroundMarker.on("mouseover", (e) => {
           const namedPoint = props.points.find(
             (p: NamedPoint) =>
-              p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng,
+              p.location.lat === e.latlng.lat &&
+              p.location.lng === e.latlng.lng,
           );
           namedPoint && hoverPoint(namedPoint);
         });
@@ -414,7 +416,8 @@ const addPoints = () => {
         marker.foregroundMarker.on("click", (e) => {
           const namedPoint = props.points.find(
             (p: NamedPoint) =>
-              p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng,
+              p.location.lat === e.latlng.lat &&
+              p.location.lng === e.latlng.lng,
           );
           namedPoint && selectPoint(namedPoint);
         });
@@ -504,7 +507,7 @@ onMounted(() => {
     dragging: props.isInteractive,
     scrollWheelZoom: props.isInteractive,
     keyboard: props.isInteractive,
-    tap: props.isInteractive,
+    tapHold: props.isInteractive, // TODO: Check this is the correct property for interactivity
     maxZoom: 15,
     minZoom: props.minZoom,
     attributionControl: false,
@@ -559,8 +562,10 @@ onMounted(() => {
     map.addControl(attributionToggle);
   }
   if (!props.center) {
-    map.invalidateSize();
-    fitMapBounds();
+    nextTick(() => {
+      (map as LeafletMap).invalidateSize();
+      fitMapBounds();
+    });
   }
   addPoints();
 });

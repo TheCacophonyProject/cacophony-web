@@ -4,9 +4,16 @@ import { formFieldInputText } from "@/utils";
 import type { FormInputValue, FormInputValidationState } from "@/utils";
 import { computed, onBeforeMount, ref } from "vue";
 import type { ErrorResult } from "@apiClient/types";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import { useRoute, useRouter } from "vue-router";
+import {
+  BAlert,
+  BButton,
+  BForm,
+  BFormInput,
+  BFormInvalidFeedback,
+} from "bootstrap-vue-next";
 
 const userPassword: FormInputValue = formFieldInputText();
 const userPasswordConfirmation: FormInputValue = formFieldInputText();
@@ -79,9 +86,8 @@ onBeforeMount(async () => {
     } else if (typeof params.token === "string") {
       resetToken.value = params.token.replace(/:/g, ".");
     }
-    const validateTokenResponse = await ClientApi.Users.validatePasswordResetToken(
-      resetToken.value,
-    );
+    const validateTokenResponse =
+      await ClientApi.Users.validatePasswordResetToken(resetToken.value);
     checkingResetToken.value = false;
     if (!validateTokenResponse.success) {
       invalidReason.value = validateTokenResponse.result.messages[0];

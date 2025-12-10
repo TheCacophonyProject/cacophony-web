@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import CardTable from "@/components/CardTable.vue";
-import { lastActiveLocationTime, locationHasAudioRecordings, locationHasThermalRecordings } from "@/utils";
+import {
+  lastActiveLocationTime,
+  locationHasAudioRecordings,
+  locationHasThermalRecordings,
+} from "@/utils";
 import { DateTime, type ToRelativeOptions } from "luxon";
 import { ref } from "vue";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import RenameableLocationName from "@/components/RenameableLocationName.vue";
-import {MaterialSymbol} from "@dbetka/vue-material-symbols";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import type { GenericCardTableValue } from "@/components/CardTableTypes.ts";
+import { BButton } from "bootstrap-vue-next";
 
 const oneMinute = 1000 * 60;
 const oneHour = oneMinute * 60;
@@ -85,8 +91,8 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
   <card-table
     compact
     :items="locations"
-    @entered-item="enteredTableItem"
-    @left-item="leftTableItem"
+    @entered-item="enteredTableItem as GenericCardTableValue<unknown>"
+    @left-item="leftTableItem as GenericCardTableValue<unknown>"
     :max-card-width="2000"
   >
     <template #card="{ card: location }: { card: ApiLocationResponse }">
@@ -99,7 +105,9 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
         />
         <p v-html="activeBetween(location)" />
       </div>
-      <div class="location-buttons d-flex mt-2 px-2 py-2 border-top border-2 border-light">
+      <div
+        class="location-buttons d-flex mt-2 px-2 py-2 border-top border-2 border-light"
+      >
         <b-button
           v-if="locationHasThermalRecordings(location)"
           class="align-items-center justify-content-between d-flex btn-icon"
@@ -115,7 +123,7 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
               ).toISOString(),
             },
           }"
-          >
+        >
           <material-symbol name="video_library" size="1.25rem" />
           <span class="ms-2">Visits</span>
         </b-button>
@@ -136,9 +144,12 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
               ).toISOString(),
             },
           }"
-          >
+        >
           <material-symbol name="videocam" size="1.25rem" />
-          <span class="ms-2">Thermal <span class="d-none d-sm-inline-block">recordings</span></span>
+          <span class="ms-2"
+            >Thermal
+            <span class="d-none d-sm-inline-block">recordings</span></span
+          >
         </b-button>
         <div v-if="locationHasAudioRecordings(location)" class="vr"></div>
         <b-button
@@ -159,7 +170,10 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
           }"
         >
           <material-symbol name="music_note" size="1.25rem" />
-          <span class="ms-2">Audio <span class="d-none d-sm-inline-block">recordings</span></span>
+          <span class="ms-2"
+            >Audio
+            <span class="d-none d-sm-inline-block">recordings</span></span
+          >
         </b-button>
       </div>
     </template>

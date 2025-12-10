@@ -43,9 +43,8 @@ import {
   watch,
 } from "vue";
 import type { ComputedRef, Ref } from "vue";
-import { BSpinner } from "bootstrap-vue-next";
+import { BModal, BSpinner } from "bootstrap-vue-next";
 import SwitchProjectsModal from "@/components/SwitchProjectsModal.vue";
-import type { LoadedResource } from "@apiClient/types.ts";
 import AppMainNav from "@/components/AppMainNav.vue";
 
 const userIsLoggedIn = inject(hasLoggedInUser) as ComputedRef<boolean>;
@@ -63,7 +62,6 @@ const JoinExistingProjectModal = defineAsyncComponent(
 );
 const hasGitReleaseInfoBar = ref(false);
 
-
 const route = useRoute();
 
 onMounted(() => {
@@ -73,13 +71,14 @@ onMounted(() => {
 
 const frameTimes: number[] = [];
 const pollFrameTimes = () => {
+  // Initial condition
   frameTimes.push(performance.now());
   if (frameTimes.length < 10) {
     requestAnimationFrame(pollFrameTimes);
   } else {
     const diffs = [];
     for (let i = 1; i < frameTimes.length; i++) {
-      diffs.push(frameTimes[i] - frameTimes[i - 1]);
+      diffs.push((frameTimes[i] as number) - (frameTimes[i - 1] as number));
     }
     let total = 0;
     for (const val of diffs) {
@@ -99,13 +98,12 @@ const pollFrameTimes = () => {
     }
   }
 };
-
 </script>
 <template>
   <div class="debug">Logged in? {{ userIsLoggedIn }}</div>
   <blocking-user-action-required-modal v-if="euaIsOutOfDate" />
   <network-connection-alert-modal id="network-issue-modal" />
-  <BModal
+  <b-modal
     id="unimplemented-modal"
     v-model="showUnimplementedModal"
     centered
@@ -114,7 +112,7 @@ const pollFrameTimes = () => {
     hide-backdrop
   >
     <div>Sorry, this feature is not yet implemented.</div>
-  </BModal>
+  </b-modal>
   <switch-projects-modal
     v-if="showSwitchProject.enabled"
     id="switch-groups-modal"
@@ -161,7 +159,9 @@ const pollFrameTimes = () => {
       :class="{ 'offset-content': isWideScreen }"
       class="d-flex"
     >
-      <div class="container-xxl px-sm-3 px-md-4 py-0 d-flex flex-fill flex-column">
+      <div
+        class="container-xxl px-sm-3 px-md-4 py-0 d-flex flex-fill flex-column"
+      >
         <div class="section-top-padding pt-5 pb-4 d-sm-none"></div>
         <!--  The group-scoped views.  -->
         <div class="d-flex flex-column router-view flex-fill">
@@ -282,7 +282,8 @@ const pollFrameTimes = () => {
   transition: margin-left 0.2s;
   &.offset-content {
     margin-left: calc(
-      var(--global-side-nav-expanded-width) - var(--global-side-nav-collapsed-width)
+      var(--global-side-nav-expanded-width) -
+        var(--global-side-nav-collapsed-width)
     );
   }
 }

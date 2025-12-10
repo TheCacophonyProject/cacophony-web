@@ -32,7 +32,7 @@ import type {
   ApiTrackTagResponse,
   TrackTagData,
 } from "@typedefs/api/trackTag";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import {
   displayLabelForClassificationLabel,
   getPathForLabel,
@@ -47,6 +47,7 @@ import {
 } from "@typedefs/api/consts.ts";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
+import { BFormCheckbox, BSpinner } from "bootstrap-vue-next";
 
 const route = useRoute();
 const router = useRouter();
@@ -237,7 +238,10 @@ const selectedTrack = (trackId: TrackId, forceReplay = false) => {
 
 const removedTrack = async ({ trackId }: { trackId: TrackId }) => {
   if (props.recording) {
-    const response = await ClientApi.Recordings.deleteTrack(props.recording, trackId);
+    const response = await ClientApi.Recordings.deleteTrack(
+      props.recording,
+      trackId,
+    );
     if (response.success) {
       emit("track-removed", { trackId });
     }
@@ -286,18 +290,19 @@ const addOrRemoveUserTag = async ({
           const recording = props.recording as ApiThermalRecordingResponse;
           if (!recording.tags.some((tag) => tag.detail === "missed track")) {
             // If we're adding a dummy track to a thermal recording, also add the "missed track" tag.
-            ClientApi.Recordings.addRecordingLabel(recording.id, "missed track").then(
-              (labelResponse) => {
-                if (labelResponse.success) {
-                  emit("added-recording-label", {
-                    id: labelResponse.result.tagId,
-                    detail: "Missed track",
-                    createdAt: new Date().toISOString(),
-                    confidence: 0.9,
-                  });
-                }
-              },
-            );
+            ClientApi.Recordings.addRecordingLabel(
+              recording.id,
+              "missed track",
+            ).then((labelResponse) => {
+              if (labelResponse.success) {
+                emit("added-recording-label", {
+                  id: labelResponse.result.tagId,
+                  detail: "Missed track",
+                  createdAt: new Date().toISOString(),
+                  confidence: 0.9,
+                });
+              }
+            });
           }
           const numFrames = Math.floor(
             recording.additionalMetadata?.totalFrames || recording.duration * 9,
@@ -366,7 +371,7 @@ const addOrRemoveUserTag = async ({
           trackId,
           id: -1,
           what: tag,
-          path: getPathForLabel(tag),
+          path: getPathForLabel(tag) || "",
           userId: currentUser.value?.id,
           userName: currentUser.value?.userName,
           automatic: false,
@@ -376,27 +381,32 @@ const addOrRemoveUserTag = async ({
         };
         track.tags.push(interimTag);
 
-
-        if (tag === "human" && recordingType.value === RecordingType.Audio && groupSettingsRedactHumanSpeech.value) {
+        if (
+          tag === "human" &&
+          recordingType.value === RecordingType.Audio &&
+          groupSettingsRedactHumanSpeech.value
+        ) {
           // Offer to delete the recording, using built in confirmation because it's blocking and easy for this edge case.
-          willDeleteRecording = confirm("Your project has been configured to delete recordings containing human speech. Do you want to delete this recording?");
+          willDeleteRecording = confirm(
+            "Your project has been configured to delete recordings containing human speech. Do you want to delete this recording?",
+          );
         }
         if (willDeleteRecording) {
           // Do delete
           emit("delete-recording");
         } else {
           const newTagResponse = await ClientApi.Recordings.replaceTrackTag(
-              {
-                what: tag,
-                confidence: 0.85,
-              },
-              props.recording.id,
-              trackId,
+            {
+              what: tag,
+              confidence: 0.85,
+            },
+            props.recording.id,
+            trackId,
           );
           if (newTagResponse.success && newTagResponse.result.trackTagId) {
             interimTag.id = newTagResponse.result.trackTagId;
             if (!tagAlreadyExists) {
-              emit("track-tag-changed", {track, tag, action: "add"});
+              emit("track-tag-changed", { track, tag, action: "add" });
             }
           } else {
             // Remove the interim tag

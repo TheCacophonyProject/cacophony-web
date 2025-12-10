@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { inject, onBeforeMount, type Ref, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import {
   type LoggedInUser,
   setLoggedInUserData,
@@ -10,12 +10,10 @@ import {
   userIsLoggedIn,
 } from "@models/LoggedInUser";
 import { DEFAULT_AUTH_ID, type ErrorResult } from "@apiClient/types";
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import { HttpStatusCode } from "@typedefs/api/consts.ts";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import { currentUser } from "@models/provides.ts";
+import { BSpinner } from "bootstrap-vue-next";
 const CurrentUser = inject(currentUser) as Ref<LoggedInUser | null>;
 const checkingValidateEmailToken = ref(false);
 const validateToken = ref("");
@@ -46,9 +44,8 @@ onBeforeMount(async () => {
       validateToken.value = params.token.replace(/:/g, ".");
     }
 
-    const validateTokenResponse = await ClientApi.Users.validateEmailConfirmationToken(
-      validateToken.value,
-    );
+    const validateTokenResponse =
+      await ClientApi.Users.validateEmailConfirmationToken(validateToken.value);
     if (!validateTokenResponse.success) {
       if (validateTokenResponse.status === HttpStatusCode.AuthorizationError) {
         // await router.push({

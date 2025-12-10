@@ -16,8 +16,9 @@ import {
 } from "@vueuse/core";
 import type { LoadedResource } from "@apiClient/types.ts";
 import { DateTime } from "luxon";
-import {ClientApi} from "@/api";
+import { ClientApi } from "@/api";
 import type { EventApiParams } from "@apiClient/Device.ts";
+import { BSpinner } from "bootstrap-vue-next";
 
 const route = useRoute();
 const deviceId = computed<DeviceId>(
@@ -95,7 +96,10 @@ const loadSomeEvents = async (filterByEvents?: string[]) => {
     } else if (selectedEventTypes.value.length && !filterByEvents) {
       params.type = selectedEventTypes.value;
     }
-    const response = await ClientApi.Devices.getLatestEventsByDeviceId(deviceId.value, params);
+    const response = await ClientApi.Devices.getLatestEventsByDeviceId(
+      deviceId.value,
+      params,
+    );
     if (response.success) {
       if (response.result.rows.length !== 0) {
         const earliestEvent =
@@ -129,7 +133,9 @@ onBeforeMount(async () => {
 
   // Load up to one month worth of events – historical events older than that generally aren't that useful.
   // Lazy load up to two pages worth of event items with the current filters.
-  const types = await ClientApi.Devices.getKnownEventTypesForDeviceInLastMonth(deviceId.value);
+  const types = await ClientApi.Devices.getKnownEventTypesForDeviceInLastMonth(
+    deviceId.value,
+  );
   if (types.success) {
     knownEventTypes.value = types.result.eventTypes;
   }
@@ -287,7 +293,31 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
                   </div>
                 </div>
               </div>
-              <span v-else>{{ val }}</span>
+              <span v-else>
+                <span v-if="key === 'alarm-time'"
+                  >{{
+                    DateTime.fromJSDate(
+                      new Date(val / 1000 / 1000),
+                    ).toLocaleString({
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "numeric",
+                    })
+                  }}
+                  (in
+                  {{
+                    Math.round(
+                      DateTime.fromJSDate(new Date(val / 1000 / 1000)).diff(
+                        DateTime.fromISO(event.dateTime),
+                        "minutes",
+                      ).minutes,
+                    )
+                  }}mins)</span
+                >
+                <span v-else>{{ val }}</span>
+              </span>
             </div>
             <div class="col" v-else>
               <div class="row" v-for="(item, idx) in val" :key="idx">

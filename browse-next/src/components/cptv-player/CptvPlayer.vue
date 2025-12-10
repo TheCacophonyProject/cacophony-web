@@ -47,12 +47,11 @@ import { type CancelableDelay, delayMs } from "@/utils";
 import { displayLabelForClassificationLabel } from "@api/classificationsUtils.ts";
 import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils";
-import {ClientApi} from "@/api";
-import {
-  currentSelectedProject as currentActiveProject,
-} from "@models/provides.ts";
+import { ClientApi } from "@/api";
+import { currentSelectedProject as currentActiveProject } from "@models/provides.ts";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
-import { DEFAULT_AUTH_ID, type LoggedInUserAuth } from "@apiClient/types.ts";
+import { DEFAULT_AUTH_ID } from "@apiClient/types.ts";
+import { BFormCheckbox, BFormGroup, BProgress } from "bootstrap-vue-next";
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
@@ -96,7 +95,7 @@ const PlaybackSpeeds = Object.freeze([0.5, 1, 2, 4, 6]);
 
 let frames: CptvFrame[] = [];
 const backgroundFrame = ref<CptvFrame | null>(null);
-let frameBuffer: Uint8ClampedArray;
+let frameBuffer: Uint8ClampedArray<ArrayBuffer>;
 let cptvDecoder: CptvDecoder;
 
 // TODO: Check http://localhost:5173/onawe-field-trip-2022/visit/unknown/1350085/tracks
@@ -700,7 +699,11 @@ const renderFrame = (
     animationFrame.value = requestAnimationFrame(() => {
       drawFrame(
         canvasContext.value,
-        new ImageData(frameBuffer, frameWidth.value, frameHeight.value),
+        new ImageData(
+          frameBuffer as Uint8ClampedArray<ArrayBuffer>,
+          frameWidth.value,
+          frameHeight.value,
+        ),
         frameNumToRender,
         force,
       );
@@ -840,17 +843,19 @@ const getPositions = (
   };
   // Add a bit of breathing room around our boxes
   const padding = 0; // 5
-  return ((positions || []) as ApiTrackPosition[]).map((position: ApiTrackPosition) => [
-    position.order ||
-      (position.frameTime && frameAtTime(position.frameTime - timeOffset)) ||
-      0,
-    [
-      Math.max(0, position.x - padding),
-      Math.max(0, position.y - padding),
-      position.x + position.width + padding,
-      position.y + position.height + padding,
+  return ((positions || []) as ApiTrackPosition[]).map(
+    (position: ApiTrackPosition) => [
+      position.order ||
+        (position.frameTime && frameAtTime(position.frameTime - timeOffset)) ||
+        0,
+      [
+        Math.max(0, position.x - padding),
+        Math.max(0, position.y - padding),
+        position.x + position.width + padding,
+        position.y + position.height + padding,
+      ],
     ],
-  ]);
+  );
 };
 
 const tracksIntermediate = computed<IntermediateTrack[]>(() => {
@@ -1156,7 +1161,11 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
     }
 
     download(
-      URL.createObjectURL(new Blob([uint8Array], { type: "video/mp4" })),
+      URL.createObjectURL(
+        new Blob([uint8Array as ArrayBufferView<ArrayBuffer>], {
+          type: "video/mp4",
+        }),
+      ),
       `${recordingIdSuffix}${date.toFormat("dd-MM-yyyy--HH-mm-ss")}`,
     );
     isExporting.value = false;
@@ -1219,11 +1228,7 @@ const updateOverlayCanvas = (frameNumToRender: number) => {
       const time = `${elapsedTime.value} / ${formatTime(
         Math.max(currentTime.value, actualDuration.value),
       )}`;
-      drawBottomRightOverlayLabel(
-        time,
-        overlayContext.value,
-        pixelRatio.value,
-      );
+      drawBottomRightOverlayLabel(time, overlayContext.value, pixelRatio.value);
       // Draw time and temperature in
       // overlayContext.
       drawBottomLeftOverlayLabel(
@@ -1317,11 +1322,12 @@ const referenceOpacity = ref<number>(0.3);
 const loadReferenceImageUrl = async () => {
   const rec = props.recording as ApiRecordingResponse;
   // Load the reference photo.
-  const referenceImageResponse = await ClientApi.Devices.getReferenceImageForDeviceAtTime(
-    rec.deviceId,
-    new Date(rec.recordingDateTime),
-    true,
-  );
+  const referenceImageResponse =
+    await ClientApi.Devices.getReferenceImageForDeviceAtTime(
+      rec.deviceId,
+      new Date(rec.recordingDateTime),
+      true,
+    );
   if (referenceImageResponse.success) {
     referenceImageURL.value = URL.createObjectURL(
       referenceImageResponse.result,
@@ -1331,7 +1337,10 @@ const loadReferenceImageUrl = async () => {
 
 const toggleReferencePhotoComparison = async () => {
   showingReferencePhoto.value = !showingReferencePhoto.value;
-  window.localStorage.setItem("cptv-player-show-reference-image", showingReferencePhoto.value ? "true" : "false");
+  window.localStorage.setItem(
+    "cptv-player-show-reference-image",
+    showingReferencePhoto.value ? "true" : "false",
+  );
   if (showingReferencePhoto.value) {
     await loadReferenceImageUrl();
   }
@@ -1626,11 +1635,15 @@ const handleKeyboardControls = (event: KeyboardEvent) => {
 };
 
 onBeforeMount(() => {
-  const savedReferenceImageOpacity = window.localStorage.getItem("cptv-player-reference-image-opacity");
+  const savedReferenceImageOpacity = window.localStorage.getItem(
+    "cptv-player-reference-image-opacity",
+  );
   if (savedReferenceImageOpacity !== null) {
     referenceOpacity.value = Number(savedReferenceImageOpacity);
   }
-  const showReferenceImage = window.localStorage.getItem("cptv-player-show-reference-image");
+  const showReferenceImage = window.localStorage.getItem(
+    "cptv-player-show-reference-image",
+  );
   if (showReferenceImage !== null) {
     if (showReferenceImage === "true" && props.hasReferencePhoto) {
       showingReferencePhoto.value = true;
@@ -1736,7 +1749,10 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
   );
   if (loadedStream.value === true) {
     loadTimeout && loadTimeout.cancel();
-    header.value = Object.freeze(await cptvDecoder.getHeader());
+    const h = await cptvDecoder.getHeader();
+    if (typeof h !== "string") {
+      header.value = h;
+    }
     loadTimeout && loadTimeout.cancel();
     const thisHeader = (header.value as CptvHeader) || {
       width: 160,
@@ -1772,7 +1788,7 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
       emit("ready-to-play", thisHeader);
       playing.value = true;
     }
-  } else if ((typeof loadedStream.value) === "string") {
+  } else if (typeof loadedStream.value === "string") {
     // FIXME: Show stream load error.
     // Maybe the CPTV file was deleted.
     console.warn("Stream load error", loadedStream.value);
@@ -1967,7 +1983,9 @@ watch(
     if (!hasRef && showingReferencePhoto.value) {
       showingReferencePhoto.value = false;
     } else if (hasRef) {
-      const showReferenceImage = window.localStorage.getItem("cptv-player-show-reference-image");
+      const showReferenceImage = window.localStorage.getItem(
+        "cptv-player-show-reference-image",
+      );
       if (showReferenceImage !== null) {
         if (showReferenceImage === "true") {
           showingReferencePhoto.value = true;
@@ -1982,7 +2000,10 @@ watch(
 );
 
 const updateSavedOpacity = (val: InputEvent) => {
-  window.localStorage.setItem("cptv-player-reference-image-opacity", (val.target as HTMLInputElement).value);
+  window.localStorage.setItem(
+    "cptv-player-reference-image-opacity",
+    (val.target as HTMLInputElement).value,
+  );
 };
 </script>
 <template>
@@ -2071,10 +2092,7 @@ const updateSavedOpacity = (val: InputEvent) => {
         </button>
       </div>
     </div>
-    <div
-      key="playback-nav"
-      class="playback-nav"
-    >
+    <div key="playback-nav" class="playback-nav">
       <button
         @click.prevent="togglePlayback"
         ref="playPauseButton"
@@ -2084,17 +2102,31 @@ const updateSavedOpacity = (val: InputEvent) => {
         <font-awesome-icon v-else icon="pause" />
       </button>
       <div class="right-nav">
-        <div :class="['advanced-controls', { open: showAdvancedControls && (!showingReferencePhoto || canvasWidth > 570) }]">
+        <div
+          :class="[
+            'advanced-controls',
+            {
+              open:
+                showAdvancedControls &&
+                (!showingReferencePhoto || canvasWidth > 570),
+            },
+          ]"
+        >
           <button
             @click.prevent="showAdvancedControls = !showAdvancedControls"
             class="advanced-controls-btn"
             :data-tooltip="showAdvancedControls ? 'Show less' : 'Show more'"
-            :disabled="(showingReferencePhoto && canvasWidth <= 570)"
+            :disabled="showingReferencePhoto && canvasWidth <= 570"
             ref="advancedControlsButton"
           >
             <font-awesome-icon
               icon="angle-right"
-              :rotation="(showAdvancedControls && (!showingReferencePhoto || canvasWidth > 570)) ? null : 180"
+              :rotation="
+                showAdvancedControls &&
+                (!showingReferencePhoto || canvasWidth > 570)
+                  ? null
+                  : 180
+              "
             />
           </button>
           <button
@@ -2186,7 +2218,10 @@ const updateSavedOpacity = (val: InputEvent) => {
         >
           <div
             class="reference-opacity-slider"
-            :class="{ open: showingReferencePhoto, 'has-no-reference': !hasReferencePhoto }"
+            :class="{
+              open: showingReferencePhoto,
+              'has-no-reference': !hasReferencePhoto,
+            }"
           >
             <input
               type="range"
@@ -2222,10 +2257,7 @@ const updateSavedOpacity = (val: InputEvent) => {
         </button>
       </div>
     </div>
-    <div
-      key="debug-nav"
-      :class="['debug-tools', { open: showDebugTools }]"
-    >
+    <div key="debug-nav" :class="['debug-tools', { open: showDebugTools }]">
       <div class="debug-info">
         <div ref="frameNumField"></div>
         <div ref="ffcSecsAgo"></div>
@@ -2873,7 +2905,6 @@ input[type="range"].reference-opacity-slider-el {
       background: red;
       background: lighten(yellowgreen, 30%);
     }
-
   }
   &::-moz-range-thumb {
     background: lighten(yellowgreen, 10%);

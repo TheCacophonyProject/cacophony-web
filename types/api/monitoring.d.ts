@@ -35,6 +35,13 @@ interface VisitRecordingTag {
   id: TrackId;
 }
 
+export interface ApiVisitResponseRecording {
+    recId: number;
+    start: string;
+    tracks: VisitRecordingTag[];
+    processingState: RecordingProcessingState;
+}
+
 export interface ApiVisitResponse {
   classFromUserTag?: boolean; // is the best guess derived from a user tag?
   classification?: string; // what was the best guess overall?
@@ -49,10 +56,5 @@ export interface ApiVisitResponse {
   timeStart: string; // date for start of visit
   timeEnd: string; // date for start of visit
   incomplete: boolean; // is it possible that this visit still has more recordings that should be attached?
-  recordings: {
-    recId: number;
-    start: string;
-    tracks: VisitRecordingTag[];
-    processingState: RecordingProcessingState;
-  }[];
+  recordings: ApiVisitResponseRecording[];
 }

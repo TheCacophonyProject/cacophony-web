@@ -5,7 +5,7 @@ import { useRoute } from "vue-router";
 import { computed, inject } from "vue";
 import type { Ref } from "vue";
 import { currentSelectedProject } from "@models/provides";
-import {MaterialSymbol} from "@dbetka/vue-material-symbols";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 const route = useRoute();
 const currentProject = inject(
   currentSelectedProject,
@@ -19,17 +19,20 @@ const currentProjectName = computed<string>(() => {
   <div
     class="section-header d-flex flex-row-reverse d-sm-block align-items-center justify-content-between text-nowrap pt-sm-4"
   >
-    <h4 class="section-header__group-name h5 text-uppercase text-body-tertiary my-0 m-sm-0 mb-sm-2 mx-3 overflow-hidden text-nowrap text-truncate" v-if="showProjectName">
+    <h4
+      class="section-header__group-name h5 text-uppercase text-body-tertiary my-0 m-sm-0 mb-sm-2 mx-3 overflow-hidden text-nowrap text-truncate"
+      v-if="showProjectName"
+    >
       <span>{{ currentProjectName }}</span>
     </h4>
     <span v-else></span>
     <div class="d-flex align-items-center m-sm-0">
       <button
         type="button"
-        class="btn toggle-nav d-sm-none d-flex align-items-center "
+        class="btn toggle-nav d-sm-none d-flex align-items-center"
         @click.stop.prevent="pinSideNav = !pinSideNav"
       >
-        <material-symbol name="menu"/>
+        <material-symbol name="menu" />
       </button>
       <h1
         class="h1 m-0 ms-1 mb-sm-4 ms-sm-0 d-flex flex-row flex-fill justify-content-between"
