@@ -41,8 +41,7 @@ export class GroupInvites extends ModelStaticCommon<GroupInvites> {
     Group: BelongsTo<Group>;
   };
   static addAssociations() {
-    const models = this.sequelize.models;
-    this.belongsTo(models.Group);
+    this.belongsTo(Group);
   }
 }
 

@@ -311,18 +311,6 @@ const changePassword = async () => {
         </button>
       </div>
     </div>
-    <!-- New password change section -->
-    <div>
-      <span>Change password</span>
-      <button
-          type="button"
-          class="btn ms-2"
-          data-cy="change password button"
-          @click="() => (changePasswordModal = true)"
-      >
-        <font-awesome-icon icon="pencil-alt" size="xs" />
-      </button>
-    </div>
   </section-card>
 
   <b-modal

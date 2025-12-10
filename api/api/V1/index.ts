@@ -31,9 +31,13 @@ export default async function (app: Application) {
     "responseUtil.js",
     "recordingUtil.js",
     "eventUtil.js",
+    "monitoringUtil.js",
     "monitoringPage.js",
     "monitoringVisit.js",
     "apidoc.js",
+    "tagUtil.js",
+    "trackMasking.js",
+    "recordingsBulkQueryUtil.js",
   ];
   // Filter out files that are not added to app directly, and filter out typescript versions of files.
 

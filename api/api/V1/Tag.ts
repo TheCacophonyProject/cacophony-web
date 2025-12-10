@@ -18,7 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import { expectedTypeOf, validateFields } from "../middleware.js";
 import { body } from "express-validator";
-import modelsInit from "@models/index.js";
 import { successResponse } from "./responseUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
 import {
@@ -33,7 +32,6 @@ import { ClientError } from "@api/customErrors.js";
 import { addTag } from "@api/V1/recordingUtil.js";
 import { Tag } from "@models/Tag.js";
 
-await modelsInit();
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/tags`;
 

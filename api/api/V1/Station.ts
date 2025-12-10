@@ -22,7 +22,7 @@ import {
 import { jsonSchemaOf } from "@api/schema-validation.js";
 import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json" with { type: "json" };
 import { stationLocationHasChanged } from "@models/Group.js";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import util from "@api/V1/util.js";
 import { openS3 } from "@models/util/util.js";
 import { streamS3Object } from "@api/V1/signedUrl.js";
@@ -39,7 +39,7 @@ import { DeviceHistory } from "@models/DeviceHistory.js";
 import { RecordingType } from "@typedefs/api/consts.js";
 import { Recording } from "@models/Recording.js";
 
-const { sequelize } = await modelsInit();
+const sequelize = await initSequelize();
 
 export interface ApiStationsResponseSuccess {
   stations: ApiStationResponse[];
@@ -120,7 +120,7 @@ export default function (app: Application, baseUrl: string) {
       query("only-active").default(true).isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredStations,
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, "Got stations", {
         stations: mapStations(response.locals.stations),
       });
@@ -148,7 +148,7 @@ export default function (app: Application, baseUrl: string) {
       query("only-active").default(false).isBoolean().toBoolean(), // NOTE: Don't document this, it shouldn't be changed.
     ]),
     fetchAuthorizedRequiredStationById(param("id")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, "Got station", {
         station: mapStation(response.locals.station),
       });
@@ -347,12 +347,12 @@ export default function (app: Application, baseUrl: string) {
     util.multipartUpload(
       "f",
       async (
-        uploader,
-        uploadingDevice,
-        uploadingUser,
-        data,
+        _uploader,
+        _uploadingDevice,
+        _uploadingUser,
+        _data,
         keys,
-        uploadedFileDatas,
+        _uploadedFileDatas,
         locals,
       ): Promise<string> => {
         console.assert(

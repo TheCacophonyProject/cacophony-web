@@ -1,6 +1,6 @@
 import config from "@config";
 import log from "@log";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import pg from "pg";
 import process from "process";
 import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil.js";
@@ -9,8 +9,9 @@ import { RecordingType } from "@typedefs/api/consts.js";
 import { Device } from "@models/Device.js";
 import { DeviceHistory } from "@models/DeviceHistory.js";
 import { Recording } from "@models/Recording.js";
+import { Station } from "@models/Station.js";
 
-const models = await modelsInit();
+await initSequelize();
 const dbOptions = (config) => ({
   host: config.host,
   user: config.username,
@@ -28,7 +29,7 @@ async function main() {
   );
 
   // Set all already created stations creation date back to "Cacophony Epoch"
-  await models.Station.update(
+  await Station.update(
     {
       activeAt: new Date("2010-01-01"),
     },
@@ -168,7 +169,7 @@ async function main() {
             ],
           }
         : { [Op.gte]: history.fromDateTime };
-      await models.Recording.update(
+      await Recording.update(
         { StationId: history.stationId },
         {
           where: {

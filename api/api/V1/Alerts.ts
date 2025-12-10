@@ -17,7 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { expectedTypeOf, validateFields } from "../middleware.js";
-import modelsInit from "@models/index.js";
 import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction } from "express";
@@ -47,12 +46,9 @@ import type { Request, Response } from "express";
 import { AuthorizationError } from "@api/customErrors.js";
 import logger from "@log";
 
-await modelsInit();
-
 const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiPostAlertRequestBody {
+export interface ApiPostAlertRequestBody {
   name: string;
   deviceId?: DeviceId;
   stationId?: StationId;
@@ -61,8 +57,7 @@ interface ApiPostAlertRequestBody {
   frequencySeconds?: Seconds; // Defaults to 30 minutes
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiGetAlertsResponse {
+export interface ApiGetAlertsResponse {
   Alerts: ApiAlertResponse[];
 }
 

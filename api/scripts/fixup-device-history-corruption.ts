@@ -1,11 +1,11 @@
 import log from "@log";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import { Op } from "sequelize";
 import type { ApiDeviceHistorySettings } from "@typedefs/api/device.js";
 import { DeviceHistory } from "@models/DeviceHistory.js";
-const models = await modelsInit();
+const sequelize = await initSequelize();
 (async () => {
-  const results = await models.sequelize.query(`
+  const results = await sequelize.query(`
     select distinct on
       (dh."uuid") dh."DeviceId",
       dh."GroupId",

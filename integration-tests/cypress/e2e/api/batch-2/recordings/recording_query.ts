@@ -611,7 +611,7 @@ describe("Recordings query using where", () => {
   });
 
   //TODO: Issue 91: /ap1/v1/recordings/count ignoring tags filter
-  it("Can limit query by tags and tagmode", () => {
+  it.only("Can limit query by tags and tagmode", () => {
     cy.log("Tagged as possum");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",

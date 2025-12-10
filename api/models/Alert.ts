@@ -41,8 +41,7 @@ import { User } from "@models/User.js";
 import { ModelStaticCommon } from "@models/index.js";
 import { Event } from "./Event.js";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
-import { GroupUsers } from "@models/GroupUsers.js";
-//
+
 export type AlertId = number;
 const Op = Sequelize.Op;
 
@@ -73,12 +72,10 @@ export class Alert extends ModelStaticCommon<Alert> {
   declare DeviceId?: ForeignKey<DeviceId>;
 
   static addAssociations() {
-    const models = this.sequelize.models;
-    // NOTE: Calling this just needs to be deferred until all the models are inited.
-    Alert.belongsTo(models.User);
-    Alert.belongsTo(models.Device);
-    Alert.belongsTo(models.Station);
-    Alert.belongsTo(models.Group);
+    this.belongsTo(User);
+    this.belongsTo(Device);
+    this.belongsTo(Station);
+    this.belongsTo(Group);
   }
 
   async sendAlert(
@@ -105,7 +102,7 @@ export class Alert extends ModelStaticCommon<Alert> {
       text,
       this.User.email,
       subject,
-      thumbnail && [thumbnail],
+      (thumbnail && [thumbnail]) || [],
     );
     const detail = await DetailSnapshot.getOrCreateMatching("alert", {
       alertId: this.id,
@@ -189,12 +186,14 @@ export class Alert extends ModelStaticCommon<Alert> {
         },
       ];
     }
+    console.log("Alerts", whereClause);
     const alerts: Alert[] = (await Alert.findAll<Alert>(whereClause)).filter(
       (alert) => {
-        if (alert.User && groupId && !groupUserIds.includes(alert.User.id)) {
-          return false;
-        }
-        return true;
+        return !(
+          alert.User &&
+          groupId &&
+          !groupUserIds.includes(alert.User.id)
+        );
       },
     );
     if (tagPath) {

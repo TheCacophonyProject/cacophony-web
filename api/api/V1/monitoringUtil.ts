@@ -10,7 +10,6 @@ import {
   NON_ANIMAL_TAGS,
   UNIDENTIFIED_TAGS,
 } from "@api/V1/tagUtil.js";
-import modelsInit from "@models/index.js";
 import { Op } from "sequelize";
 import { TrackTag } from "@models/TrackTag.js";
 import { Group } from "@models/Group.js";
@@ -18,8 +17,6 @@ import { Track } from "@models/Track.js";
 import { User } from "@models/User.js";
 import { Station } from "@models/Station.js";
 import { TrackTagUserData } from "@models/TrackTagUserData.js";
-
-await modelsInit();
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;

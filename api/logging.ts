@@ -9,7 +9,7 @@ export const consoleTransport = new winston.transports.Console({
     format((info) => {
       const asyncStore = asyncLocalStorage && asyncLocalStorage.getStore();
       if (asyncStore) {
-        const requestId = asyncStore.get("requestId");
+        const requestId = asyncStore.get("requestId") as string;
         if (requestId) {
           info.message = `${requestId.split("-")[0]}: ${info.message}`;
         }

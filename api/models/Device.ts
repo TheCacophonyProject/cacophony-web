@@ -42,6 +42,8 @@ import { ClientError } from "@api/customErrors.js";
 import { Recording } from "@models/Recording.js";
 import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory.js";
 import { Event } from "@models/Event.js";
+import { Schedule } from "@models/Schedule.js";
+import { Alert } from "@models/Alert.js";
 
 const Op = Sequelize.Op;
 export class Device extends ModelStaticCommon<Device> {
@@ -77,13 +79,12 @@ export class Device extends ModelStaticCommon<Device> {
   };
 
   static addAssociations() {
-    const models = this.sequelize.models;
-    this.hasMany(models.Recording);
-    this.hasMany(models.Event);
-    this.belongsTo(models.Group);
-    this.belongsTo(models.Schedule);
-    this.hasMany(models.Alert);
-    this.hasMany(models.DeviceHistory);
+    this.hasMany(Recording);
+    this.hasMany(Event);
+    this.belongsTo(Group);
+    this.belongsTo(Schedule);
+    this.hasMany(Alert);
+    this.hasMany(DeviceHistory);
   }
 
   // Fields that are directly settable by the API.
@@ -133,7 +134,7 @@ export class Device extends ModelStaticCommon<Device> {
       },
       include: [
         {
-          model: this.sequelize.models.Group,
+          model: Group,
         },
       ],
     });
@@ -146,7 +147,7 @@ export class Device extends ModelStaticCommon<Device> {
       },
       include: [
         {
-          model: this.sequelize.models.Group,
+          model: Group,
         },
       ],
     });
@@ -186,7 +187,7 @@ where
     interval: TimeInterval,
   ): Promise<{ deviceId: DeviceId; from: string; cacophonyIndex: number }[]> {
     const counts = [];
-    let stepSizeInMs;
+    let stepSizeInMs: number;
     switch (interval) {
       case "hours":
         stepSizeInMs = 60 * 60 * 1000;
@@ -304,8 +305,13 @@ order by hour;
   ): Promise<
     { deviceId: DeviceId; from: string; what: string; count: number }[]
   > {
-    const counts = [];
-    let stepSizeInMs;
+    const counts: {
+      deviceId: DeviceId;
+      from: string;
+      what: string;
+      count: number;
+    }[] = [];
+    let stepSizeInMs: number;
     switch (interval) {
       case "hours":
         stepSizeInMs = 60 * 60 * 1000;
@@ -456,7 +462,7 @@ order by hour;
   ): Promise<Device | false> {
     let newDevice: Device;
     const now = new Date();
-    let stationToAssign;
+    let stationToAssign: Station;
     // NOTE: As far as we're aware this API is only called directly
     //  from the device, and assumes the device is connected, so we will set the
     //  lastConnectionTime on the device we create/update.

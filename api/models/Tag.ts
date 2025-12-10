@@ -77,9 +77,8 @@ export class Tag extends ModelStaticCommon<Tag> {
   ];
 
   static addAssociations() {
-    const models = this.sequelize.models;
-    this.belongsTo(models.User, { as: "tagger" });
-    this.belongsTo(models.Recording);
+    this.belongsTo(User, { as: "tagger" });
+    this.belongsTo(Recording);
   }
 
   static buildSafely(fields: ApiRecordingTagRequest) {

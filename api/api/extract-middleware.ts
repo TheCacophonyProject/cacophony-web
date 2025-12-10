@@ -9,7 +9,6 @@ import {
   lookupEntity,
 } from "./auth.js";
 import type { ModelStaticCommon } from "@models";
-import modelsInit from "@models/index.js";
 import log from "../logging.js";
 import { createHash } from "crypto";
 import { modelTypeName, modelTypeNamePlural } from "./middleware.js";
@@ -40,8 +39,6 @@ import { Tag } from "@models/Tag.js";
 import { File } from "@models/File.js";
 import { GroupInvites } from "@models/GroupInvites.js";
 import { TrackTagUserData } from "@models/TrackTagUserData.js";
-
-await modelsInit();
 
 export interface RequestContext {
   requestUser?: User | { id: number; userName: string };

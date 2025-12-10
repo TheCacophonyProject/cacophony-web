@@ -26,7 +26,7 @@ import Sequelize, {
 } from "sequelize";
 import { ModelStaticCommon } from "./index.js";
 import LabelPaths from "../classifications/label_paths.json" with { type: "json" };
-import type { TrackTagUserData } from "@models/TrackTagUserData.js";
+import { TrackTagUserData } from "@models/TrackTagUserData.js";
 export const AI_MASTER = "Master";
 export type TrackTagId = number;
 import { Track } from "@models/Track.js";
@@ -97,9 +97,9 @@ export class TrackTag extends ModelStaticCommon<TrackTag> {
   static filteredTags = Object.freeze(["false-positive", "noise"]);
 
   static addAssociations() {
-    const models = this.sequelize.models;
-    this.belongsTo(models.Track);
-    this.belongsTo(models.User);
+    this.belongsTo(Track);
+    this.belongsTo(User);
+    this.hasOne(TrackTagUserData);
   }
 }
 export const init = (sequelizeInstance: Sequelize.Sequelize) => {

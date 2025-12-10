@@ -2,7 +2,6 @@ import { successResponse } from "../V1/responseUtil.js";
 import middleware, { validateFields } from "../middleware.js";
 import log from "@log";
 import { body, param, query, oneOf } from "express-validator";
-import modelsInit from "@models/index.js";
 import _ from "lodash";
 import {
   saveThumbnailInfo,
@@ -51,7 +50,7 @@ import type {
 } from "@/../types/api/fileProcessing.js";
 
 const NULL_TRACK_ID = 1;
-await modelsInit();
+
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/processing`;
 

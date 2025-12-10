@@ -17,7 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { validateFields } from "../middleware.js";
-import modelsInit, { ModelStaticCommon } from "@models/index.js";
 import util from "./util.js";
 import { successResponse } from "./responseUtil.js";
 import config from "@config";
@@ -39,8 +38,6 @@ import type {
 import classification from "@/classifications/classification.json" with { type: "json" };
 import type { User } from "@models/User.js";
 import { File } from "@models/File.js";
-
-await modelsInit();
 
 const mapAudiobaitFile = (file: File): ApiAudiobaitFileResponse => {
   return {
@@ -112,8 +109,8 @@ export default (app: Application, baseUrl: string) => {
     util.multipartUpload(
       "f",
       async (
-        uploader,
-        uploadingDevice,
+        _uploader,
+        _uploadingDevice,
         uploadingUser,
         data,
         keys,
@@ -228,7 +225,7 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
     fetchUnauthorizedRequiredFileById(param("id")),
-    async (request, response, next: NextFunction) => {
+    async (_request, response, next: NextFunction) => {
       const user = response.locals.requestUser;
       const file = response.locals.file;
       if (user.hasGlobalWrite() || user.id === file.UserId) {

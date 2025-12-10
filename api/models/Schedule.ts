@@ -21,6 +21,8 @@ import { ModelStaticCommon } from "./index.js";
 import Sequelize, { CreationOptional, DataTypes, ForeignKey } from "sequelize";
 import type { ScheduleId, UserId } from "@typedefs/api/common.js";
 import type { ScheduleConfig } from "@typedefs/api/schedule.js";
+import { User } from "@models/User.js";
+import { Device } from "@models/Device.js";
 
 export class Schedule extends ModelStaticCommon<Schedule> {
   declare id: CreationOptional<ScheduleId>;
@@ -30,9 +32,8 @@ export class Schedule extends ModelStaticCommon<Schedule> {
   declare UserId: ForeignKey<UserId>;
 
   static addAssociations() {
-    const models = this.sequelize.models;
-    this.belongsTo(models.User);
-    this.hasMany(models.Device);
+    this.belongsTo(User);
+    this.hasMany(Device);
   }
   static buildSafely(fields) {
     return Schedule.build(_.pick(fields, ["schedule"]));

@@ -28,8 +28,9 @@ import Sequelize, {
 } from "sequelize";
 import { Op } from "sequelize";
 import { ModelStaticCommon } from "./index.js";
-import { User } from "./User.js";
-import type { CreateStationData, Station } from "./Station.js";
+import { User } from "@models/User.js";
+import type { CreateStationData } from "./Station.js";
+import { Station } from "@models/Station.js";
 import type {
   DeviceId,
   GroupId,
@@ -42,6 +43,7 @@ import { GroupUsers } from "@models/GroupUsers.js";
 import { Recording } from "@models/Recording.js";
 import { Device } from "@models/Device.js";
 import { Alert } from "@models/Alert.js";
+import { GroupInvites } from "@models/GroupInvites.js";
 
 export const stationLocationHasChanged = (
   oldStation: Station,
@@ -84,12 +86,11 @@ export class Group extends ModelStaticCommon<Group> {
   }
 
   static addAssociations() {
-    const models = this.sequelize.models;
-    this.hasMany(models.Device);
-    this.belongsToMany(models.User, { through: models.GroupUsers });
-    this.hasMany(models.Recording);
-    this.hasMany(models.Station);
-    this.hasMany(models.GroupInvites);
+    this.hasMany(Device);
+    this.belongsToMany(User, { through: GroupUsers });
+    this.hasMany(Recording);
+    this.hasMany(Station);
+    this.hasMany(GroupInvites);
   }
 
   /**
@@ -113,8 +114,7 @@ export class Group extends ModelStaticCommon<Group> {
     };
   }> {
     // Get association if already there and update it.
-    const models = this.sequelize.models;
-    const groupUser = (await models.GroupUsers.findOne({
+    const groupUser = (await GroupUsers.findOne({
       where: {
         GroupId: group.id,
         UserId: userToAdd.id,
@@ -197,7 +197,7 @@ export class Group extends ModelStaticCommon<Group> {
    */
   static async removeUserFromGroup(group: Group, userToRemove: User) {
     // Get association if already there and update it.
-    const groupUser = (await this.sequelize.models.GroupUsers.findOne({
+    const groupUser = (await GroupUsers.findOne({
       where: {
         GroupId: group.id,
         UserId: userToRemove.id,

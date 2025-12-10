@@ -3,7 +3,6 @@ import eslint from "@eslint/js";
 import { defineConfig, globalIgnores } from "eslint/config";
 import tsEslint from "typescript-eslint";
 import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
-import fs from "fs";
 import { ConfigWithExtends } from "@eslint/config-helpers";
 const config = [
   eslint.configs.recommended,

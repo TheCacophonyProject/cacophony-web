@@ -18,7 +18,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import { validateFields } from "../middleware.js";
 import { body, param, query } from "express-validator";
-import modelsInit from "@models/index.js";
 import { successResponse } from "./responseUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
 import {
@@ -40,7 +39,6 @@ import { Device } from "@models/Device.js";
 import { ClientError } from "@api/customErrors.js";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 
-await modelsInit();
 export const mapSchedule = (schedule: Schedule): ApiScheduleResponse => ({
   id: schedule.id,
   schedule: schedule.schedule as ScheduleConfig,
@@ -50,8 +48,7 @@ interface ApiScheduleConfig {
   schedule: ScheduleConfig;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiScheduleConfigs {
+export interface ApiScheduleConfigs {
   schedules: ScheduleConfig[];
 }
 

@@ -1,6 +1,5 @@
 import { AsyncLocalStorage } from "async_hooks";
 import { UserGlobalPermission } from "@typedefs/api/consts.js";
-import { v4 as uuidv4 } from "uuid";
 
 export interface SessionTimingInfo {
   time: bigint;
@@ -8,12 +7,7 @@ export interface SessionTimingInfo {
   system: number;
 }
 
-type AsyncStoreValue =
-  | number
-  | string
-  | SessionTimingInfo[]
-  | NodeJS.CpuUsage
-  | uuidv4;
+type AsyncStoreValue = number | string | SessionTimingInfo[] | NodeJS.CpuUsage;
 
 interface ApiAsyncLocalStorage
   extends AsyncLocalStorage<Map<string, AsyncStoreValue>> {

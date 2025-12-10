@@ -21,7 +21,6 @@ import config from "@config";
 import { ClientError } from "../customErrors.js";
 import type { Application, Request, Response } from "express";
 import type { GroupId, UserId } from "@typedefs/api/common.js";
-import modelsInit from "@models/index.js";
 import { SuperUsers } from "@/Globals.js";
 import { Op } from "sequelize";
 import { openS3 } from "@models/util/util.js";
@@ -31,8 +30,7 @@ import { serverErrorResponse } from "@api/V1/responseUtil.js";
 import fs from "fs/promises";
 import { GroupUsers } from "@models/GroupUsers.js";
 import { User } from "@models/User.js";
-
-await modelsInit();
+import { JwtPayload } from "jsonwebtoken";
 
 export const streamS3Object = async (
   request: Request,
@@ -74,7 +72,7 @@ export const streamS3Object = async (
       "Content-disposition",
       `attachment; filename=${fileName}`,
     );
-    response.setHeader("Content-type", mimeType);
+    response.setHeader("Content-Type", mimeType);
     response.setHeader("Content-Length", file.length);
     response.write(file, "binary");
     return response.end(null, "binary");
@@ -99,10 +97,6 @@ export const streamS3Object = async (
     }
   }
   response.setHeader("Content-type", mimeType);
-  if (fileSize) {
-    response.setHeader("Content-Length", fileSize);
-  }
-
   const s3 = openS3();
 
   try {
@@ -225,15 +219,16 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${baseUrl}/signedUrl`,
     [signedUrl],
-    middleware.requestWrapper(async (request, response) => {
+    middleware.requestWrapper(async (request: Request, response: Response) => {
       // TODO: If this signed url has a user, then we can attribute downloads + bandwidth
       //  to that user for billing purposes.
-      const mimeType = request.jwtDecoded.mimeType || "";
-      const fileName = request.jwtDecoded.filename || "file";
-      const userId = request.jwtDecoded.userId;
-      const groupId = request.jwtDecoded.groupId;
+      const jwtDecoded: JwtPayload = response.locals.jwtDecoded;
+      const mimeType = jwtDecoded.mimeType || "";
+      const fileName = jwtDecoded.filename || "file";
+      const userId = jwtDecoded.userId;
+      const groupId = jwtDecoded.groupId;
 
-      const key = request.jwtDecoded.key;
+      const key = jwtDecoded.key;
       if (!key) {
         throw new ClientError("No key provided.");
       }

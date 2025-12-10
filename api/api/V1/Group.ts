@@ -17,7 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { validateFields } from "../middleware.js";
-import modelsInit from "@models/index.js";
 import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction, Request, Response } from "express";
@@ -105,9 +104,6 @@ import { GroupInvites } from "@models/GroupInvites.js";
 import { GroupUsers } from "@models/GroupUsers.js";
 import { User } from "@models/User.js";
 import { Station } from "@models/Station.js";
-
-await modelsInit();
-
 const mapGroup = (
   group: Group,
   viewAsSuperAdmin: boolean,
@@ -157,53 +153,43 @@ const mapGroups = (
 ): ApiGroupResponse[] =>
   groups.map((group) => mapGroup(group, viewAsSuperAdmin));
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiGroupsResponseSuccess {
+export interface ApiGroupsResponseSuccess {
   groups: ApiGroupResponse[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiGroupResponseSuccess {
+export interface ApiGroupResponseSuccess {
   group: ApiGroupResponse;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiGroupUsersResponseSuccess {
+export interface ApiGroupUsersResponseSuccess {
   users: ApiGroupUserResponse[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiGroupDevicesResponseSuccess {
+export interface ApiGroupDevicesResponseSuccess {
   devices: ApiDeviceResponse[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiCreateStationDataBody {
+export interface ApiCreateStationDataBody {
   stations: ApiCreateStationData[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiCreateSingleStationDataBody {
+export interface ApiCreateSingleStationDataBody {
   station: ApiCreateStationData;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiStationResponseSuccess {
+export interface ApiStationResponseSuccess {
   stations: ApiStationResponse[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiScheduleConfigs {
+export interface ApiScheduleConfigs {
   schedules: ScheduleConfig[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiGroupSettingsBody {
+export interface ApiGroupSettingsBody {
   settings: ApiGroupSettings;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiGroupUserSettingsBody {
+export interface ApiGroupUserSettingsBody {
   settings: ApiGroupUserSettings;
 }
 
@@ -275,7 +261,7 @@ export default function (app: Application, baseUrl: string) {
         next();
       }
     },
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (_request: Request, response: Response, next: NextFunction) => {
       if (response.locals.group) {
         return next(
           new ClientError("Group name in use", HttpStatusCode.Unprocessable),
@@ -1096,7 +1082,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     parseJSONField(body("settings")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       const existingSettings = response.locals.group.settings || {};
       await response.locals.group.update({
         settings: { ...existingSettings, ...response.locals.settings },
@@ -1131,7 +1117,7 @@ export default function (app: Application, baseUrl: string) {
       }
     },
     fetchUnauthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
-    async (request, response, next) => {
+    async (_request, response, next) => {
       if (response.locals.tokenInfo) {
         if (
           (response.locals.tokenInfo._type &&
@@ -1193,7 +1179,7 @@ export default function (app: Application, baseUrl: string) {
       };
 
       // Check if we're calling this as a user without token
-      let invitation;
+      let invitation: GroupInvites;
       if (!tokenInfo) {
         invitation = await GroupInvites.findOne({
           where: {
@@ -1288,7 +1274,7 @@ export default function (app: Application, baseUrl: string) {
       fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
       fetchUnauthorizedOptionalUserByEmailOrId(body("email")),
       async (request: Request, response: Response, next: NextFunction) => {
-        let token;
+        let token: string;
         const group = response.locals.group;
         const user = response.locals.user;
         const _makeAdmin = request.body.admin;
@@ -1399,7 +1385,7 @@ export default function (app: Application, baseUrl: string) {
           );
           const token = getInviteToGroupTokenExistingUser(user.id, group.id);
           const actualRequestUser = await User.findByPk(requestUser.id);
-          let sendSuccess;
+          let sendSuccess: boolean;
           if (actualRequestUser.emailConfirmed) {
             sendSuccess = await sendGroupInviteExistingMemberEmail(
               request.headers.host,

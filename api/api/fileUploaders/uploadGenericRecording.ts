@@ -39,7 +39,6 @@ import type { Station } from "@models/Station.js";
 import { Group } from "@models/Group.js";
 import { isLatLon } from "@models/util/validation.js";
 import { tryReadingM4aMetadata } from "@api/m4a-metadata-reader/m4a-metadata-reader.js";
-import { ApiTrackDataRequest } from "@typedefs/api/track.js";
 import { RawTrack } from "@typedefs/api/fileProcessing.js";
 
 const cameraTypes = [
@@ -232,7 +231,7 @@ const mapPartName = (partKey: string, partName: string): string => {
 const processFilePart = async (
   partKey: string,
   part: MultipartFormPart,
-  request: Request,
+  _request: Request,
   canceledRequest: { canceled: boolean },
 ): Promise<RecordingFileUploadResult> => {
   let length = 0;
@@ -508,7 +507,7 @@ export const uploadGenericRecording =
       part.on("error", (error) => {
         if (error instanceof CustomError) {
           // Emit our custom errors to the form error handler,
-          // which can then handle canceling the request.
+          // which can then handle cancelling the request.
           form.emit("error", error);
         }
       });
@@ -764,8 +763,6 @@ export const uploadGenericRecording =
       const metadataSupplied =
         !!(data.metadata && data.metadata.metadata_source) ||
         wouldHaveSuppliedTracks;
-      const _wouldHaveSuppliedTracksWithPredictions =
-        dataHasSuppliedTracksWithPredictions(data);
       setInitialProcessingState(recordingTemplate, data, metadataSupplied);
 
       const [recording, _station] = await Promise.all([
@@ -861,18 +858,6 @@ const dataHasSuppliedTracks = (data: { metadata?: { tracks?: unknown[] } }) => {
   );
 };
 
-const dataHasSuppliedTracksWithPredictions = (data: {
-  metadata?: RecordingDataSuppliedMetadata;
-}) => {
-  return (
-    data.metadata &&
-    data.metadata.tracks &&
-    data.metadata.tracks.some(
-      (track) => track.predictions && track.predictions.length !== 0,
-    )
-  );
-};
-
 const setInitialProcessingState = (
   recordingTemplate: Recording,
   data: { processingState?: RecordingProcessingState; type: RecordingType },
@@ -908,9 +893,9 @@ const assignGroupAndStationToRecording = async (
   recordingDateTime: Date,
   recordingLocation?: LatLng,
 ): Promise<{ groupId: GroupId; deviceId: DeviceId; station: Station }> => {
-  let groupId;
-  let deviceId;
-  let station;
+  let groupId: GroupId;
+  let deviceId: DeviceId;
+  let station: Station;
   if (recordingLocation) {
     const { stationToAssignToRecording, deviceHistoryEntry } =
       await maybeUpdateDeviceHistory(
@@ -998,7 +983,7 @@ const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
   uploadingGroup: Group,
 ): Promise<void> => {
   if (uploadingDevice.kind === DeviceType.Unknown) {
-    // If this is the first recording we've gotten from a device, we can set its type.
+    // If this is the first recording we've got from a device, we can set its type.
     const typeMappings = {
       [RecordingType.Audio]: DeviceType.Audio,
       [RecordingType.ThermalRaw]: DeviceType.Thermal,

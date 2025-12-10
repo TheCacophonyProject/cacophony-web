@@ -21,7 +21,7 @@ import {
   validateFields,
   requestWrapper,
 } from "../middleware.js";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction, Request, Response } from "express";
@@ -52,13 +52,12 @@ import { HttpStatusCode } from "@typedefs/api/consts.js";
 import { isLatLon } from "@models/util/validation.js";
 import util from "@api/V1/util.js";
 import { streamS3Object } from "@api/V1/signedUrl.js";
-import config from "@config";
 import Sequelize, { QueryTypes } from "sequelize";
 import { Device } from "@models/Device.js";
 import { Event } from "@models/Event.js";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
 
-const models = await modelsInit();
+const sequelize = await initSequelize();
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
 
 const uploadEvent = async (
@@ -156,7 +155,7 @@ const uploadEvent = async (
       dateTime: new Date(dateTime),
       env,
     }))
-    .filter((event) => {
+    .filter((event: { dateTime: Date }) => {
       if (event.dateTime > now) {
         logger.warning(
           "Discarding event with invalid future dateTime %s.",
@@ -185,8 +184,7 @@ const uploadEvent = async (
   });
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiEventsRequestBody {
+export interface ApiEventsRequestBody {
   Timestamp?: IsoFormattedDateString; // Deprecated, use 'dateTimes' instead
   eventDetailId?: number; // ID of existing event details entry if known. Either eventDetailId or description are required.
   description?: EventDescription; // Description of the event. Either eventDetailId or description are required.
@@ -285,9 +283,9 @@ export default function (app: Application, baseUrl: string) {
     util.multipartUpload(
       "event-thumb",
       async (
-        uploader,
+        _uploader,
         uploadingDevice,
-        uploadingUser,
+        _uploadingUser,
         data,
         keys,
         _uploadedFileDatas,
@@ -522,7 +520,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/event-types`,
     extractJwtAuthorizedUser,
     async (_request: Request, response: Response) => {
-      const eventTypes = await models.sequelize.query(
+      const eventTypes = await sequelize.query(
         `select distinct type from "DetailSnapshots"`,
         { type: QueryTypes.SELECT },
       );
@@ -548,7 +546,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (_request: Request, response: Response) => {
-      const eventTypes = await models.sequelize.query(
+      const eventTypes = await sequelize.query(
         `
       select distinct 
         type 
@@ -582,7 +580,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
     fetchAuthorizedRequiredEventById(param("id")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       const event = response.locals.event;
       const details = {
         ...event.EventDetail.details,

@@ -2,13 +2,8 @@ import config from "../config.js";
 import log from "../logging.js";
 import { Device } from "@models/Device.js";
 import { Event } from "@models/Event.js";
-import modelsInit from "@models/index.js";
-import {
-  BelongsTo,
-  BelongsToManyGetAssociationsMixin,
-  BelongsToManyGetAssociationsMixinOptions,
-  Op,
-} from "sequelize";
+import { initSequelize } from "@models/index.js";
+import { BelongsToManyGetAssociationsMixinOptions, Op } from "sequelize";
 import { sendStoppedDevicesReportEmail } from "@/emails/transactionalEmails.js";
 import type { GroupId, UserId } from "@typedefs/api/common.js";
 import type { User } from "@models/User.js";
@@ -16,7 +11,7 @@ import type { Group } from "@models/Group.js";
 import os from "os";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
 
-await modelsInit();
+await initSequelize();
 
 type _UserGroupDevices = Record<
   UserId,

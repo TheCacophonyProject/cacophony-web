@@ -21,7 +21,7 @@ import util from "@api/V1/util.js";
 import config from "@config";
 import log from "@log";
 import { format as sqlFormat } from "sql-formatter";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import { Recording } from "@models/Recording.js";
 import { mapPosition } from "@models/Recording.js";
 import { Tag } from "@models/Tag.js";
@@ -57,7 +57,6 @@ import type {
 } from "@typedefs/api/trackTag.js";
 import type { Application, NextFunction, Request, Response } from "express";
 import { body, param, query } from "express-validator";
-import * as csv from "fast-csv";
 import type { JwtPayload } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
 import { Op } from "sequelize";
@@ -127,7 +126,7 @@ import { TrackTagUserData } from "@models/TrackTagUserData.js";
 import { Device } from "@models/Device.js";
 import { Station } from "@models/Station.js";
 
-const { sequelize } = await modelsInit();
+const sequelize = await initSequelize();
 
 const mapTrackTag = (
   trackTag: TrackTag,
@@ -343,27 +342,23 @@ export const mapRecordingResponse = async (
   }
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiTracksResponseSuccess {
+export interface ApiTracksResponseSuccess {
   tracks: ApiTrackResponse[];
 }
 
-interface ApiTracksResponseSuccess {
+export interface ApiTracksResponseSuccess {
   track: ApiTrackResponse;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiUpdateRecordingRequestBody {
+export interface ApiUpdateRecordingRequestBody {
   updates: ApiRecordingUpdateRequest;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiRecordingResponseSuccess {
+export interface ApiRecordingResponseSuccess {
   recording: ApiGenericRecordingResponse;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiRecordingTagRequestBody {
+export interface ApiRecordingTagRequestBody {
   tag: ApiRecordingTagRequest;
 }
 
@@ -1005,7 +1000,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Object[]} rows List of track tags.
    * @apiSuccess {String} rows.label Name of the track tag.
-   * @apiSuccess {String} rows.labeller Name of the user who created the track tag or AI.
+   * @apiSuccess {String} rows.labeler Name of the user who created the track tag or AI.
    * @apiSuccess {Object} rows.group Group of the track tag.
    * @apiSuccess {String} rows.group.id Id of the group.
    * @apiSuccess {String} rows.group.name Name of the group.
@@ -1050,102 +1045,6 @@ export default (app: Application, baseUrl: string) => {
     },
   );
 
-  // // FIXME: deprecate this once browse is deprecated.
-  // /**
-  //  * @api {get} /api/v1/recordings/report
-  //  * Generate report for a set of recordings
-  //  * @apiName Report
-  //  * @apiGroup Recordings
-  //  * @apiDescription Parameters are as per GET /api/V1/recordings. On
-  //  * success (status 200), the response body will contain CSV
-  //  * formatted details of the selected recordings.
-  //  *
-  //  * @apiUse V1UserAuthorizationHeader
-  //  * @apiParam {String} [jwt] Signed JWT as produced by the
-  //  * [Token](#api-Authentication-Token) endpoint
-  //  * @apiParam {string} [type] Optional type of report either recordings or
-  //  * visits. Recordings is default.
-  //  * @apiUse BaseQueryParams
-  //  * @apiUse RecordingOrder
-  //  * @apiUse MoreQueryParams
-  //  * @apiQuery {Boolean} [exclusive=false] Include only top level tagged recording (not children)
-  //  * @apiParam {boolean} [audiobait] To add audiobait to a recording query set
-  //  * this to true.
-  //  * @apiUse V1ResponseError
-  //  */
-  // app.get(
-  //   `${apiUrl}/report`,
-  //   extractJwtAuthorizedUser,
-  //   validateFields([
-  //     query("type").isString().optional().isIn(["recordings", "visits"]),
-  //     query("where").isJSON().optional(),
-  //     query("jwt").optional(),
-  //     integerOf(query("offset")).optional(),
-  //     integerOf(query("limit")).optional(),
-  //     query("audiobait").isBoolean().optional(),
-  //     query("order").isJSON().optional(),
-  //     query("tags").isJSON().optional(),
-  //     query("exclusive").default(false).isBoolean().toBoolean(),
-  //     query("tagMode")
-  //       .optional()
-  //       .custom((value) => {
-  //         return Recording.isValidTagMode(value);
-  //       }),
-  //     query("view-mode").optional().equals("user"),
-  //     query("deleted").default(false).isBoolean().toBoolean(),
-  //     // middleware.parseJSON("filterOptions", query).optional(),
-  //   ]),
-  //   parseJSONField(query("order")),
-  //   parseJSONField(query("where")),
-  //   parseJSONField(query("tags")),
-  //   async (request: Request, response: Response) => {
-  //     // FIXME - deprecate and generate report client-side from other
-  //     // available API data.
-  //     if ("deleted" in request.query) {
-  //       if (request.query.deleted) {
-  //         response.locals.where.deletedAt = { [Op.ne]: null };
-  //       } else {
-  //         response.locals.where.deletedAt = { [Op.eq]: null };
-  //       }
-  //     }
-  //
-  //     // FIXME: !!! Does this ever get called?
-  //
-  //     // 10 minute timeout because the query can take a while to run
-  //     // when the result set is large.
-  //     const { viewAsSuperUser, where, order, tags = [] } = response.locals;
-  //     const { tagMode, offset, limit, audioBait, exclusive } = request.query;
-  //     const options = {
-  //       viewAsSuperUser,
-  //       where,
-  //       tags,
-  //       tagMode: tagMode as TagMode,
-  //       offset: offset && parseInt(offset as string),
-  //       limit: limit && parseInt(limit as string),
-  //     };
-  //
-  //     let rows;
-  //     if (request.query.type == "visits") {
-  //       rows = await reportVisits(response.locals.requestUser.id, options);
-  //     } else {
-  //       rows = await reportRecordings(
-  //         response.locals.requestUser.id,
-  //         Boolean(audioBait),
-  //         {
-  //           ...options,
-  //           order,
-  //           exclusive: Boolean(exclusive),
-  //         },
-  //       );
-  //     }
-  //     response.status(HttpStatusCode.Ok).set({
-  //       "Content-Type": "text/csv",
-  //       "Content-Disposition": "attachment; filename=recordings.csv",
-  //     });
-  //     csv.writeToStream(response, rows);
-  //   },
-  // );
-
   /**
    * @api {get} /api/v1/recordings/:id Get a recording
    * @apiName GetRecording
@@ -1184,10 +1083,10 @@ export default (app: Application, baseUrl: string) => {
       const recordingItem = response.locals.recording as Recording;
       const recording = await mapRecordingResponse(response.locals.recording);
       if (request.query["requires-signed-url"]) {
-        let rawJWT;
-        let cookedJWT;
-        let rawSize;
-        let cookedSize;
+        let rawJWT: string;
+        let cookedJWT: string;
+        let rawSize: number;
+        let cookedSize: number;
         if (recordingItem.fileKey) {
           cookedJWT = signedToken(
             recordingItem.fileKey,
@@ -1314,7 +1213,7 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     `${apiUrl}/raw/:id{/:useArchival}`,
-    async (request, response, next) => {
+    async (request, _response, next) => {
       console.log("%%%%", Object.entries(request.query));
       return next();
     },
@@ -1445,8 +1344,8 @@ export default (app: Application, baseUrl: string) => {
       if (!fileKey) {
         return next(new ClientError("Rec has no raw file key."));
       }
-      let trackId;
-      let filename;
+      let trackId: TrackId;
+      let filename: string;
       if (request.query.trackId) {
         trackId = request.query.trackId as unknown as number;
         filename = `${rec.id}-${trackId}-thumb.${ext}`;
@@ -2167,7 +2066,7 @@ export default (app: Application, baseUrl: string) => {
       }
     },
     async (request: Request, response: Response, next: NextFunction) => {
-      let track;
+      let track: Track;
 
       if (Number(request.params.trackId) === 1 && request.body.automatic) {
         // NOTE: Dummy track that was masked out by mask regions.
@@ -2203,15 +2102,15 @@ export default (app: Application, baseUrl: string) => {
         }
       } else {
         // Otherwise, just check that the user can update this track.
-        track = await response.locals.recording.getTrack(
-          request.params.trackId,
+        track = await (response.locals.recording as Recording).getTrack(
+          Number(request.params.trackId),
         );
       }
       if (!track) {
         return next(new ClientError("Track does not exist"));
       }
       // Ensure track belongs to this recording.
-      if (track.RecordingId !== request.params.id) {
+      if (track.RecordingId !== Number(request.params.id)) {
         return next(new ClientError("Track does not belong to recording"));
       }
       if (request.body.what === "unknown") {
@@ -2252,7 +2151,7 @@ export default (app: Application, baseUrl: string) => {
     ]),
     fetchAuthorizedRequiredFlatRecordingById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
-      let track;
+      let track: Track;
       if (request.query.tagJWT) {
         // If there's a tagJWT, then we don't need to check the users'
         // recording update permissions.
@@ -2292,7 +2191,7 @@ export default (app: Application, baseUrl: string) => {
         );
       }
 
-      const tag = await track.getTrackTag(request.params.trackTagId);
+      const tag = await track.getTrackTag(Number(request.params.trackTagId));
       if (!tag) {
         return next(new AuthorizationError("No such track tag."));
       }

@@ -510,7 +510,7 @@ const addCustomTag = () => {
 };
 
 const processingIsAnalysing = computed<boolean>(
-  () => props.processingState === RecordingProcessingState.Analyse,
+  () => props.processingState === RecordingProcessingState.Analyse || props.processingState === RecordingProcessingState.TrackAndAnalyse,
 );
 
 const row = ref<HTMLDivElement>();

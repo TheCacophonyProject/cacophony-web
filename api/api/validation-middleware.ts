@@ -1,5 +1,4 @@
 import { ClientError } from "./customErrors.js";
-import modelsInit from "@models/index.js";
 import type { Request, Response, NextFunction } from "express";
 import type { Result, ValidationChain } from "express-validator";
 import { oneOf } from "express-validator";
@@ -8,8 +7,6 @@ import { extractValFromRequest } from "./extract-middleware.js";
 import { urlNormaliseName } from "@/emails/htmlEmailUtils.js";
 import { Device } from "@models/Device.js";
 import type { Middleware } from "express-validator/lib/base.d.ts";
-
-await modelsInit();
 
 export const checkDeviceNameIsUniqueInGroup =
   (device: ValidationChain) =>

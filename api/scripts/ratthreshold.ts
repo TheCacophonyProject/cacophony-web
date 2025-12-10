@@ -1,12 +1,12 @@
 import process from "process";
 import type { DeviceId, GroupId } from "@typedefs/api/common.js";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import { QueryTypes } from "sequelize";
 import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory.js";
 import { Track } from "@models/Track.js";
 import os from "os";
 import config from "@config";
-const models = await modelsInit();
+const sequelize = await initSequelize();
 const HEIGHT = 120;
 const WIDTH = 160;
 const BOX_DIM = 10;
@@ -215,7 +215,7 @@ interface DeviceHistoryItem {
   location: { type: "Point"; coordinates: [number, number] };
 }
 async function getDeviceLocation(): Promise<DeviceHistoryItem[]> {
-  return models.sequelize.query(
+  return sequelize.query(
     `
     select distinct on
       (dh."uuid") dh."DeviceId",
@@ -240,7 +240,7 @@ async function getRodentData(
   fromDateTime: Date,
 ) {
   const locQuery = `ST_Y(r."location") = ${location.coordinates[1]} and ST_X(r."location") = ${location.coordinates[0]}`;
-  return await models.sequelize.query(
+  return await sequelize.query(
     `
     select
       r."recordingDateTime",

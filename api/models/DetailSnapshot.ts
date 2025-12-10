@@ -17,6 +17,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 import Sequelize, { CreationOptional, DataTypes } from "sequelize";
 import { ModelStaticCommon } from "./index.js";
+import { Track } from "@models/Track.js";
+import { Event } from "@models/Event.js";
 
 const Op = Sequelize.Op;
 export type DetailSnapshotId = number;
@@ -61,11 +63,10 @@ export class DetailSnapshot extends ModelStaticCommon<DetailSnapshot> {
   };
   static apiSettableFields = [];
   static addAssociations() {
-    const models = this.sequelize.models;
-    this.hasMany(models.Event, {
+    this.hasMany(Event, {
       foreignKey: "EventDetailId",
     });
-    this.hasMany(models.Track, { foreignKey: "AlgorithmId" });
+    this.hasMany(Track, { foreignKey: "AlgorithmId" });
   }
 }
 

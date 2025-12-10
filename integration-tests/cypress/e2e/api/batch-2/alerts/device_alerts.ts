@@ -83,7 +83,7 @@ describe("Devices alerts", () => {
     });
   });
 
-  it("Can receive an alert", () => {
+  it.only("Can receive an alert", () => {
     const usera = getNewIdentity("andrew");
     cy.testCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 
@@ -97,7 +97,7 @@ describe("Devices alerts", () => {
       HttpStatusCode.Ok,
     );
 
-    //upload a recording tagged as possum and  build an expected event using the returned recording details
+    // upload a recording tagged as possum and build an expected event using the returned recording details
     cy.testUploadRecording(
       usera.camera,
       {

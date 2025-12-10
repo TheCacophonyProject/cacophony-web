@@ -4,7 +4,7 @@ import passport from "passport";
 import process from "process";
 import http from "http";
 import config from "./config.js";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import log, { consoleTransport } from "@log";
 import customErrors from "./api/customErrors.js";
 import { openS3 } from "./models/util/util.js";
@@ -28,6 +28,7 @@ import { fileURLToPath } from "url";
 import type { UserId } from "@typedefs/api/common.js";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 import { User } from "@models/User.js";
+import os from "os";
 
 const asyncExec = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
@@ -138,7 +139,7 @@ const grafanaLabelRestart = async () => {
         body: JSON.stringify({
           time: Date.now(),
           tags: ["cacophony-web-restart"],
-          text: CACOPHONY_WEB_VERSION.version,
+          text: `${os.hostname()}} ${CACOPHONY_WEB_VERSION.version}`,
         }),
       });
       if (response && response.status !== HttpStatusCode.Ok) {
@@ -187,7 +188,7 @@ const grafanaLabelRestart = async () => {
         const dbQueryCount = store?.get("queryCount");
         const dbQueryTime = store?.get("queryTime");
         const cpuUsage = store?.get("cpuUsage");
-        const requestCpuUsage = process.cpuUsage(cpuUsage);
+        const requestCpuUsage = process.cpuUsage(cpuUsage as NodeJS.CpuUsage);
         const userTimeMs = requestCpuUsage.user / 1000;
         const systemTimeMs = requestCpuUsage.system / 1000;
         const requesterType =
@@ -419,7 +420,7 @@ const grafanaLabelRestart = async () => {
   // });
 
   log.notice("Initialising Sequelize models");
-  const { sequelize } = await modelsInit();
+  const sequelize = await initSequelize();
 
   log.notice("Connecting to database.....");
   try {
@@ -447,7 +448,7 @@ const grafanaLabelRestart = async () => {
         });
       }
     }
-
+    //
     await checkS3Connection();
     await openHttpServer(app);
     await grafanaLabelRestart();

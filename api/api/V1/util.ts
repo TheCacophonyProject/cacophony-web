@@ -27,20 +27,18 @@ import responseUtil, {
 import crypto from "crypto";
 import type { NextFunction, Request, Response } from "express";
 import { Device } from "@models/Device.js";
-import modelsInit, { ModelStaticCommon } from "@models/index.js";
+import { ModelStaticCommon } from "@models/index.js";
 import { User } from "@models/User.js";
 import { Event } from "@models/Event.js";
-import { File } from "@models/File.js";
 import { Recording } from "@models/Recording.js";
 import type { Stream } from "stream";
 import stream from "stream";
 import { HttpStatusCode, RecordingType } from "@typedefs/api/consts.js";
 import config from "@config";
-import { Op } from "sequelize";
+import { Model, Op } from "sequelize";
 import { openS3 } from "@models/util/util.js";
 import { RequestContext } from "@api/extract-middleware.js";
-
-await modelsInit();
+import { IsoFormattedDateString } from "@typedefs/api/common.js";
 
 interface MultiPartFormPart extends stream.Readable {
   headers: Record<string, unknown>;
@@ -141,7 +139,12 @@ function multipartUpload<T extends ModelStaticCommon<T>>(
 ) {
   return async (request: Request, response: Response, _next: NextFunction) => {
     const key = `${keyPrefix}/${moment().format("YYYY/MM/DD")}/${uuidv4()}`;
-    let data;
+    let data: {
+      recordingDateTime?: IsoFormattedDateString;
+      fileHash?: string;
+      rawFileHash?: string;
+      type?: RecordingType;
+    };
     const uploadPromises = {};
     const fileDataPromises: Record<
       string,
@@ -245,7 +248,7 @@ function multipartUpload<T extends ModelStaticCommon<T>>(
         part.resume();
         return;
       }
-      const uploadStream = (key) => {
+      const uploadStream = (key: string) => {
         const pass = new stream.PassThrough();
         // FIXME: Make sure this case is actually safe, otherwise use the streamWeb transform method used elsewhere
         return {
@@ -303,7 +306,7 @@ function multipartUpload<T extends ModelStaticCommon<T>>(
         return;
       }
 
-      let dbRecordOrFileKey;
+      let dbRecordOrFileKey: ModelStaticCommon<Model<unknown>> | string;
       try {
         const uploadKeys = Object.keys(fileDataPromises);
         const numUploads = Object.values(uploadPromises).length;
@@ -423,7 +426,12 @@ function multipartUpload<T extends ModelStaticCommon<T>>(
         );
         if (typeof dbRecordOrFileKey !== "string") {
           await dbRecordOrFileKey.save();
-          if (dbRecordOrFileKey.type === "audioBait" && !canceledRequest) {
+          if (
+            "id" in dbRecordOrFileKey &&
+            "type" in dbRecordOrFileKey &&
+            dbRecordOrFileKey.type === "audioBait" &&
+            !canceledRequest
+          ) {
             // FIXME - this is pretty nasty.
             responseUtil.validAudiobaitUpload(response, dbRecordOrFileKey.id);
           } else if (dbRecordOrFileKey instanceof Event && !canceledRequest) {
@@ -431,7 +439,7 @@ function multipartUpload<T extends ModelStaticCommon<T>>(
               response,
               dbRecordOrFileKey.id,
             );
-          } else if (!canceledRequest) {
+          } else if (!canceledRequest && "id" in dbRecordOrFileKey) {
             responseUtil.validRecordingUpload(response, dbRecordOrFileKey.id);
           }
         } else if (!canceledRequest) {
@@ -451,12 +459,12 @@ function multipartUpload<T extends ModelStaticCommon<T>>(
   };
 }
 
-function getS3Object(fileKey) {
+function getS3Object(fileKey: string) {
   const s3 = openS3();
   return s3.headObject(fileKey);
 }
 
-async function getS3ObjectFileSize(fileKey) {
+async function getS3ObjectFileSize(fileKey: string) {
   try {
     const s3Ojb = await getS3Object(fileKey);
     return s3Ojb.ContentLength;
@@ -467,7 +475,7 @@ async function getS3ObjectFileSize(fileKey) {
   }
 }
 
-async function deleteS3Object(fileKey) {
+async function deleteS3Object(fileKey: string) {
   const s3 = openS3();
   return s3.deleteObject(fileKey);
 }
