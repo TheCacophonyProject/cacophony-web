@@ -100,9 +100,7 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
           "&nbsp;",
         ),
         confidence: tag.automatic
-          ? Math.round(
-              (props.isAudioRecording ? 1 : 100) * tag.confidence,
-            ).toString() + "%"
+          ?  tag.confidence.toString() + "%"
           : "",
       };
       if (userIsGroupAdmin.value) {

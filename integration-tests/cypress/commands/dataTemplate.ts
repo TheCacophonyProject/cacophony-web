@@ -243,8 +243,8 @@ export const TEMPLATE_TRACK: ApiTrackSet = {
     {
       label: "cat",
       confident_tag: "cat",
-      confidence: 0.97,
-      clarity: 0.949,
+      confidence: 97,
+      clarity: 95,
       all_class_confidences: {
         bird: 0.0,
         cat: 0.97,
