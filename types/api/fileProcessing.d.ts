@@ -126,8 +126,8 @@ export type MinimalTrackClassifications  =  MinimalTrackClassification[];
 
 export interface MinimalTrackClassification {
   classify_time?: Seconds;
-  confidence: FloatZeroToOne;
-  clarity?: FloatZeroToOne;
+  confidence: integer;
+  clarity?: integer;
   all_class_confidences?: null | Record<string, number>;
   name: string;
 
