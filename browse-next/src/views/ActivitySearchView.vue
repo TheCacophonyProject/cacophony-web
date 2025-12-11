@@ -2104,7 +2104,7 @@ onBeforeUnmount(() => {
         </div>
         <div v-else-if="completedCurrentQuery && canExpandSearchBackFurther">
           <div class="no-results text-body-tertiary text-center py-3">
-<!--            <material-symbol
+            <!--            <material-symbol
               name="search_off"
               size="2.4rem"
               grade="thin"

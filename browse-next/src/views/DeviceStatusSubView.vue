@@ -676,7 +676,6 @@ const audioRecordingModeDescription = computed<string>(() => {
         "Record thermal video and a one-minute clip of audio 32 times a day, at random intervals during the day. " +
         "The device won't be able to record thermal video while the audio is being recorded."
       );
-
   }
 });
 

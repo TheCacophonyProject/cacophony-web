@@ -609,6 +609,5 @@ const removeMarginBottom = (
       background: #d56a6e;
     }
   }
-
 }
 </style>

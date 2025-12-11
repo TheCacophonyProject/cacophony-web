@@ -22,7 +22,7 @@ import {
 import ImageLoader from "@/components/ImageLoader.vue";
 import { RecordingProcessingState } from "@typedefs/api/consts.ts";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import {BSpinner, BTooltip} from "bootstrap-vue-next";
+import { BSpinner } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import LocationName from "@/components/LocationName.vue";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
@@ -349,7 +349,12 @@ const isStillProcessing = computed<boolean>(() => {
       </div>
     </div>
     <div v-if="!showVisitsDetail" class="visits-summary">
-      <div class="no-activity p-3 fs-6 text-body-tertiary text-center" v-if="!hasVisits">No activity</div>
+      <div
+        class="no-activity p-3 fs-6 text-body-tertiary text-center"
+        v-if="!hasVisits"
+      >
+        No activity
+      </div>
       <div
         v-else
         class="visits-species-count-wrapper d-flex flex-wrap p-3 user-select-none"
@@ -395,11 +400,11 @@ const isStillProcessing = computed<boolean>(() => {
       >
         <div
           class="visit-time-duration d-flex flex-column py-2 flex-shrink-0 fs-6"
-          :class="visit.type === 'visit' ? 'text-secondary' : 'text-body-tertiary'"
+          :class="
+            visit.type === 'visit' ? 'text-secondary' : 'text-body-tertiary'
+          "
         >
-          <span
-            :class="visit.type === 'visit' ? 'lh-sm pb-1' : ''"
-          >{{
+          <span :class="visit.type === 'visit' ? 'lh-sm pb-1' : ''">{{
             visitTime(visit.timeStart)
           }}</span>
           <span
@@ -453,10 +458,7 @@ const isStillProcessing = computed<boolean>(() => {
         <div v-if="visit.type === 'sun'" class="py-2 fs-6">
           {{ visit.name }}
         </div>
-        <div
-          v-else
-          class="d-flex py-2 flex-fill overflow-hidden"
-        >
+        <div v-else class="d-flex py-2 flex-fill overflow-hidden">
           <div class="visit-thumb rounded-1">
             <image-loader
               :src="thumbnailSrcForVisit(visit.data)"
@@ -501,11 +503,7 @@ const isStillProcessing = computed<boolean>(() => {
                 v-if="visit.data.userTagsConflict"
                 class="visit-species-tag mb-1 text-capitalize d-inline-flex align-items-center ms-1 bg-warning text-black"
               >
-                <material-symbol
-                  name="warning"
-                  size="1.125rem"
-                  class="me-1"
-                />
+                <material-symbol name="warning" size="1.125rem" class="me-1" />
                 Controversial
               </span>
             </div>
