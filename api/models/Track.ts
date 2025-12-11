@@ -260,6 +260,10 @@ export class Track extends ModelStaticCommon<Track> {
         ? data.name
         : null;
     const used = userId !== null || modelName === AI_MASTER;
+    // confidence will always be over 50 if it was already put in the 0-100 range
+    if (confidence < 1) {
+      confidence = Math.round(100 * confidence);
+    }
     const tag = (await this.createTrackTag({
       what,
       confidence,
