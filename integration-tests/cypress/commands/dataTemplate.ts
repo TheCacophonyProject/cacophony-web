@@ -285,7 +285,7 @@ export const TEMPLATE_EXPECTED_TRACK: ApiTrackResponse = {
     {
       what: "cat",
       automatic: true,
-      confidence: 0.97,
+      confidence: 97,
       model: "Master",
       trackId: NOT_NULL,
       id: NOT_NULL,

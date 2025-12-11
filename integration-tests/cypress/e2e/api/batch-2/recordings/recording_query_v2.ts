@@ -314,7 +314,7 @@ describe("Recordings query using improved query API", () => {
 
               cy.testUserAddTagRecording(id, 0, groupAdmin, "possum").then(
                 () => {
-                  expectedRecording4.tracks[0].tags[0].confidence = 0.97;
+                  expectedRecording4.tracks[0].tags[0].confidence = 97;
                   expectedRecording4.tracks[0].tags.push({
                     what: "possum",
                     automatic: false,
