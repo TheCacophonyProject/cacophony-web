@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Datepicker from "@vuepic/vue-datepicker";
+import { VueDatePicker } from "@vuepic/vue-datepicker";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import Multiselect from "@vueform/multiselect";
 import {
@@ -126,7 +126,7 @@ const oneMonthAgo = new Date(new Date().setMonth(now.getMonth() - 1));
 const threeMonthsAgo = new Date(new Date().setMonth(now.getMonth() - 3));
 const oneYearAgo = new Date(new Date().setFullYear(now.getFullYear() - 1));
 const lastTwentyFourHours: [Date, Date] = [oneDayAgo, now];
-const dateRangePicker = ref<typeof Datepicker>();
+const dateRangePicker = ref<typeof VueDatePicker>();
 
 // Initialise this to a zero range
 interface DateRangeOption {
@@ -1038,11 +1038,12 @@ const scrolledToStickyPosition = computed<boolean>(() => {
       @change="maybeSelectDatePicker"
     />
     <!--  TODO: Should this be using min/maxDateForSelectedLocations?    -->
-    <datepicker
+    <vue-date-picker
       v-if="selectedDateRange.value === 'custom'"
       ref="dateRangePicker"
       class="mt-2"
       range
+      :teleport="true"
       :timezone="timezoneForProject"
       v-model="customDateRange"
       :min-date="minDateForProject"

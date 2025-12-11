@@ -665,17 +665,18 @@ const audioRecordingModeDescription = computed<string>(() => {
   // FIXME: J+S How should this be displayed with non DOC AI cam devices?
   switch (audioRecordingMode.value) {
     case AudioRecordingMode.AudioOrThermal:
-      return (
-        "Record thermal video and a one-minute clip of audio 32 times a day, at random intervals during the day. " +
-        "The device won't be able to record thermal video while the audio is being recorded."
-      );
+      return "Device records thermal video and audio. Audio is only recorded outside of the thermal recording schedule.";
     case AudioRecordingMode.AudioOnly:
       return "Device records only audio, thermal video recording is disabled.";
     case AudioRecordingMode.Disabled:
       return "Device records only thermal video, audio recording is disabled.";
     case AudioRecordingMode.AudioAndThermal:
     default:
-      return "Device records thermal video and audio. Audio is only recorded outside of the thermal recording schedule.";
+      return (
+        "Record thermal video and a one-minute clip of audio 32 times a day, at random intervals during the day. " +
+        "The device won't be able to record thermal video while the audio is being recorded."
+      );
+
   }
 });
 
