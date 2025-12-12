@@ -85,18 +85,18 @@ describe("Track Tags: add, check, delete", () => {
 
   const tag1: ApiTrackTagRequest = {
     what: "possum",
-    confidence: 0.95,
+    confidence: 95,
     automatic: false,
   };
 
   const tag2: ApiTrackTagRequest = {
     what: "cat",
-    confidence: 0.54,
+    confidence: 54,
     automatic: false,
   };
 
   const expectedTag1: ApiHumanTrackTagResponse = {
-    confidence: 0.95,
+    confidence: 95,
     createdAt: NOT_NULL_STRING,
     //Note: data not set in a manual tag
     data: "",

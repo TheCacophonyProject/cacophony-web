@@ -343,7 +343,7 @@ Cypress.Commands.add(
           const trackTag = JSON.parse(JSON.stringify(prediction));
           trackTag.label = tag;
           trackTag.confident_tag = tag;
-          trackTag.confidence = 0.9;
+          trackTag.confidence = 90;
           trackT.predictions.push(trackTag);
         }
         data.metadata.tracks.push(trackT);

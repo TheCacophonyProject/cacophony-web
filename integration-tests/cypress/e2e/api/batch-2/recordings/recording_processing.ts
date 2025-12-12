@@ -608,7 +608,7 @@ describe("Recordings - processing tests", () => {
             "rpTrack18",
             "rpRecording18",
             "possum",
-            0.9,
+            90,
             { name: "Master" },
           ).then(() => {
             cy.log("Check tracks added to recording");
@@ -620,7 +620,7 @@ describe("Recordings - processing tests", () => {
                     path: "all",
                     automatic: true,
                     trackId: getCreds("rpTrack18").id,
-                    confidence: 0.9,
+                    confidence: 90,
                     model: "Master",
                     id: -1,
                   },
@@ -707,7 +707,7 @@ describe("Recordings - processing tests", () => {
             "rpTrack19",
             "rpRecording19",
             "possum",
-            0.9,
+            90,
             { name: "Master" },
           ).then(() => {
             cy.log("Check tracks added to recording");
@@ -723,7 +723,7 @@ describe("Recordings - processing tests", () => {
                     path: "all",
                     automatic: true,
                     trackId: getCreds("rpTrack19").id,
-                    confidence: 0.9,
+                    confidence: 90,
                     model: "Master",
                     id: -1,
                   },
@@ -838,7 +838,7 @@ describe("Recordings - processing tests", () => {
             "rpTrack20",
             "rpRecording20",
             "possum",
-            0.9,
+            90,
             {
               name: "Master",
               clarity: 1,

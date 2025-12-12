@@ -49,12 +49,12 @@ describe("Recording filtering", () => {
 
   const tagSetTemplate: ApiTrackTagRequest = {
     what: "cat",
-    confidence: 0.95,
+    confidence: 95,
     automatic: false,
   };
 
   const tagResponseTemplate: ApiHumanTrackTagResponse = {
-    confidence: 0.95,
+    confidence: 95,
     id: NOT_NULL,
     automatic: false,
     trackId: NOT_NULL,
@@ -66,7 +66,7 @@ describe("Recording filtering", () => {
   };
 
   const automaticTagResponseTemplate: ApiAutomaticTrackTagResponse = {
-    confidence: 0.95,
+    confidence: 95,
     model: "Master",
     id: NOT_NULL,
     automatic: true,
@@ -444,7 +444,7 @@ describe("Recording filtering", () => {
           "rfTrack8.1",
           "rfRecording8",
           "false-positive",
-          0.95,
+          95,
           { name: "Master" },
         );
         cy.log("Check recording filtered");
@@ -507,7 +507,7 @@ describe("Recording filtering", () => {
           "rfTrack9.1",
           "rfRecording9",
           "possum",
-          0.95,
+          95,
           { name: "Master" },
         );
 
@@ -565,7 +565,7 @@ describe("Recording filtering", () => {
         "rfTrack10.1",
         "rfRecording10",
         "possum",
-        0.95,
+        95,
         { name: "Master" },
       ).then(() => {
         expectedRecording10 = TestCreateExpectedRecordingData(
@@ -601,7 +601,7 @@ describe("Recording filtering", () => {
           "rfTrack10.1",
           "rfRecording10",
           "false-positive",
-          0.95,
+          95,
           { name: "Master" },
         ).then(() => {
           cy.log("Check recording filtered");
@@ -654,7 +654,7 @@ describe("Recording filtering", () => {
         "rfTrack11.1",
         "rfRecording11",
         "false-positive",
-        0.95,
+        95,
         { name: "Master" },
       ).then(() => {
         expectedRecording11 = TestCreateExpectedRecordingData(
@@ -687,7 +687,7 @@ describe("Recording filtering", () => {
           "rfTrack11.1",
           "rfRecording11",
           "possum",
-          0.95,
+          95,
           { name: "Master" },
         ).then(() => {
           cy.processingApiPut(superuser, "rfRecording11", true, {}, undefined);
@@ -913,7 +913,7 @@ describe("Recording filtering", () => {
         "rfTrack20.1",
         "rfRecording20",
         "false-positive",
-        0.95,
+        95,
         { name: "Master" },
       ).then(() => {
         const expectedRecording20 = TestCreateExpectedRecordingData(
@@ -1001,7 +1001,7 @@ describe("Recording filtering", () => {
         "rfTrack21.1",
         "rfRecording21",
         "possum",
-        0.95,
+        95,
         { name: "Master" },
       ).then(() => {
         const expectedRecording21 = TestCreateExpectedRecordingData(

@@ -79,7 +79,7 @@ describe("Recordings query using improved query API", () => {
         what: "cat",
         model: "Master",
         automatic: true,
-        confidence: 0.9,
+        confidence: 90,
         id: NOT_NULL,
         path: "all",
       },
@@ -110,13 +110,13 @@ describe("Recordings query using improved query API", () => {
   track1.end_s = 5;
   track1.predictions[0].label = "cat";
   track1.predictions[0].confident_tag = "cat";
-  track1.predictions[0].confidence = 0.9;
+  track1.predictions[0].confidence = 90;
   const track2 = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
   track2.start_s = 1;
   track2.end_s = 3;
   track2.predictions[0].label = "possum";
   track2.predictions[0].confident_tag = "possum";
-  track2.predictions[0].confidence = 0.8;
+  track2.predictions[0].confidence = 80;
   const track4 = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
   track4.start_s = 2;
   track4.end_s = 5;

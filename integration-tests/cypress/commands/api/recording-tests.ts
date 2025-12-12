@@ -320,7 +320,7 @@ function addTracksToRecording(
       predictions: [
         {
           confident_tag: confident_tag,
-          confidence: 0.9,
+          confidence: 90,
           model_id: 1,
         },
       ],
@@ -342,7 +342,7 @@ function addTracksToRecording(
           {
             model_id: 1,
             confident_tag: tag,
-            confidence: 0.9,
+            confidence: 90,
           },
         ],
       };
@@ -356,7 +356,7 @@ function addTracksToRecording(
         {
           model_id: 1,
           confident_tag: "possum",
-          confidence: 0.5,
+          confidence: 50,
         },
       ],
     });

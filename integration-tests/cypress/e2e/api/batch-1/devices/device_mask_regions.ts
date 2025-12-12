@@ -397,7 +397,7 @@ describe("Device mask regions", () => {
     // Now adding tag to non-existent track should not fail.
     cy.apiTrackTagAdd(user, recording, maskedTrack, "1", {
       what: "possum",
-      confidence: 0.9,
+      confidence: 90,
       automatic: true,
     });
     cy.apiTracksCheck(user, recording, []);
