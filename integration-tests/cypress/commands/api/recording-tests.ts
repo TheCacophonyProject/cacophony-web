@@ -183,7 +183,7 @@ Cypress.Commands.add(
           url: v1ApiPath(
             `recordings/${recordingId}/tracks/${response.body.tracks[trackIndex].id}/replace-tag`,
           ),
-          body: { what: tag, confidence: 0.7, automatic: false },
+          body: { what: tag, confidence: 70, automatic: false },
         },
         tagger,
       );
@@ -214,7 +214,7 @@ Cypress.Commands.add(
           url: v1ApiPath(
             `recordings/${recordingId}/tracks/${response.body.tracks[trackIndex].id}/tags`,
           ),
-          body: { what: tag, confidence: 0.7, automatic: false },
+          body: { what: tag, confidence: 70, automatic: false },
         },
         tagger,
       );
