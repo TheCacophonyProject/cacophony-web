@@ -318,7 +318,7 @@ describe("Recordings query using improved query API", () => {
                   expectedRecording4.tracks[0].tags.push({
                     what: "possum",
                     automatic: false,
-                    confidence: 0.7,
+                    confidence: 70,
                     path: "all",
                     model: null,
                     id: -1,
