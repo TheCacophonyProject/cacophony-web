@@ -626,7 +626,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.post(
-    `${apiUrl}/:id/tracks/:trackId/tags`,
+    `${apiUrl}/:id/tracks/:trackId/tagsBulk`,
     extractJwtAuthorisedSuperAdminUser,
     validateFields([
       idOf(param("id")),
