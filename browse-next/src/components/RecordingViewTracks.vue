@@ -574,7 +574,7 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
   >
     <div v-if="recordingHasFalseTriggers" class="p-2">
       <b-form-checkbox switch v-model="showFalseTriggers"
-        ><span class="fs-7"
+        ><span
           >Show<span v-if="showFalseTriggers">ing</span> {{ numFalseTriggers }}
           <span v-if="!showFalseTriggers">hidden </span>
           <span v-if="recordingType !== RecordingType.Audio"

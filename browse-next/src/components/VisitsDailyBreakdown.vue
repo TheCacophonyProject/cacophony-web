@@ -577,23 +577,35 @@ const isStillProcessing = computed<boolean>(() => {
       border-bottom-left-radius: var(--bs-border-radius-sm);
     }
     &.mustelid {
-      background: color-mix(in srgb, var(--cp-tag-priority-1), transparent 88%);
+      background: color-mix(
+        in srgb,
+        var(--cp-tag-priority-badge-1),
+        transparent 88%
+      );
       .count {
-        background: var(--cp-tag-priority-1);
+        background: var(--cp-tag-priority-badge-1);
       }
     }
     &.possum,
     &.cat {
-      background: color-mix(in srgb, var(--cp-tag-priority-1), transparent 88%);
+      background: color-mix(
+        in srgb,
+        var(--cp-tag-priority-badge-1),
+        transparent 88%
+      );
       .count {
-        background: var(--cp-tag-priority-1);
+        background: var(--cp-tag-priority-badge-1);
       }
     }
     &.rodent,
     &.hedgehog {
-      background: color-mix(in srgb, var(--cp-tag-priority-2), transparent 88%);
+      background: color-mix(
+        in srgb,
+        var(--cp-tag-priority-badge-2),
+        transparent 88%
+      );
       .count {
-        background: var(--cp-tag-priority-2);
+        background: var(--cp-tag-priority-badge-2);
       }
     }
   }
@@ -702,15 +714,15 @@ const isStillProcessing = computed<boolean>(() => {
       font-size: var(--cp-font-size-md);
     }
     &.mustelid {
-      background: var(--cp-tag-priority-1);
+      background: var(--cp-tag-priority-badge-1);
     }
     &.possum,
     &.cat {
-      background: var(--cp-tag-priority-1);
+      background: var(--cp-tag-priority-badge-1);
     }
     &.rodent,
     &.hedgehog {
-      background: var(--cp-tag-priority-2);
+      background: var(--cp-tag-priority-badge-2);
     }
   }
 }

@@ -466,7 +466,7 @@ const removeMarginBottom = (
 .list-item {
   transition: background-color linear 0.2s;
   > * {
-    pointer-events: none;
+    //pointer-events: none;
   }
   .visit-time-duration {
     width: calc(var(--cp-grid-base) * 13); // 64px
@@ -592,15 +592,15 @@ const removeMarginBottom = (
       font-size: var(--cp-font-size-md);
     }
     &.mustelid {
-      background: var(--cp-tag-priority-1);
+      background: var(--cp-tag-priority-badge-1);
     }
     &.possum,
     &.cat {
-      background: var(--cp-tag-priority-1);
+      background: var(--cp-tag-priority-badge-1);
     }
     &.rodent,
     &.hedgehog {
-      background: var(--cp-tag-priority-2);
+      background: var(--cp-tag-priority-badge-2);
     }
     &.test-recording {
       background: #6a8bd5;

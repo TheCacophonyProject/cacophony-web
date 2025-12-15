@@ -105,76 +105,80 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
         />
         <p v-html="activeBetween(location)" />
       </div>
-      <div
-        class="location-buttons d-flex mt-2 px-2 py-2 border-top border-2 border-light"
-      >
-        <b-button
-          v-if="locationHasThermalRecordings(location)"
-          class="align-items-center justify-content-between d-flex btn-icon"
-          variant="light"
-          :to="{
-            name: 'activity',
-            query: {
-              locations: [location.id],
-              'display-mode': 'visits',
-              from: new Date(location.activeAt).toISOString(),
-              until: (
-                lastActiveLocationTime(location) || new Date()
-              ).toISOString(),
-            },
-          }"
-        >
-          <material-symbol name="video_library" size="1.25rem" />
-          <span class="ms-2">Visits</span>
-        </b-button>
+      <div class="location-buttons d-flex align-items-center">
+        <span class="py-1 py-sm-2">
+          <b-button
+            v-if="locationHasThermalRecordings(location)"
+            class="align-items-center justify-content-between d-flex btn-icon"
+            variant="light"
+            :to="{
+              name: 'activity',
+              query: {
+                locations: [location.id],
+                'display-mode': 'visits',
+                from: new Date(location.activeAt).toISOString(),
+                until: (
+                  lastActiveLocationTime(location) || new Date()
+                ).toISOString(),
+              },
+            }"
+          >
+            <material-symbol name="video_library" size="1.25rem" />
+            <span class="ms-2">Visits</span>
+          </b-button>
+        </span>
         <div v-if="locationHasThermalRecordings(location)" class="vr"></div>
-        <b-button
-          class="align-items-center justify-content-between d-flex btn-icon"
-          v-if="locationHasThermalRecordings(location)"
-          variant="light"
-          :to="{
-            name: 'activity',
-            query: {
-              locations: [location.id],
-              'display-mode': 'recordings',
-              'recording-mode': 'cameras',
-              from: new Date(location.activeAt).toISOString(),
-              until: (
-                lastActiveLocationTime(location) || new Date()
-              ).toISOString(),
-            },
-          }"
-        >
-          <material-symbol name="videocam" size="1.25rem" />
-          <span class="ms-2"
-            >Thermal
-            <span class="d-none d-sm-inline-block">recordings</span></span
+        <span class="py-1 py-sm-2">
+          <b-button
+            class="align-items-center justify-content-between d-flex btn-icon"
+            v-if="locationHasThermalRecordings(location)"
+            variant="light"
+            :to="{
+              name: 'activity',
+              query: {
+                locations: [location.id],
+                'display-mode': 'recordings',
+                'recording-mode': 'cameras',
+                from: new Date(location.activeAt).toISOString(),
+                until: (
+                  lastActiveLocationTime(location) || new Date()
+                ).toISOString(),
+              },
+            }"
           >
-        </b-button>
+            <material-symbol name="videocam" size="1.25rem" />
+            <span class="ms-2"
+              >Thermal
+              <span class="d-none d-sm-inline-block">recordings</span></span
+            >
+          </b-button>
+        </span>
         <div v-if="locationHasAudioRecordings(location)" class="vr"></div>
-        <b-button
-          class="align-items-center justify-content-between d-flex btn-icon"
-          v-if="locationHasAudioRecordings(location)"
-          variant="light"
-          :to="{
-            name: 'activity',
-            query: {
-              locations: [location.id],
-              'display-mode': 'recordings',
-              'recording-mode': 'audio',
-              from: new Date(location.activeAt).toISOString(),
-              until: (
-                lastActiveLocationTime(location) || new Date()
-              ).toISOString(),
-            },
-          }"
-        >
-          <material-symbol name="music_note" size="1.25rem" />
-          <span class="ms-2"
-            >Audio
-            <span class="d-none d-sm-inline-block">recordings</span></span
+        <span class="py-1 py-sm-2">
+          <b-button
+            class="align-items-center justify-content-between d-flex btn-icon"
+            v-if="locationHasAudioRecordings(location)"
+            variant="light"
+            :to="{
+              name: 'activity',
+              query: {
+                locations: [location.id],
+                'display-mode': 'recordings',
+                'recording-mode': 'audio',
+                from: new Date(location.activeAt).toISOString(),
+                until: (
+                  lastActiveLocationTime(location) || new Date()
+                ).toISOString(),
+              },
+            }"
           >
-        </b-button>
+            <material-symbol name="music_note" size="1.25rem" />
+            <span class="ms-2"
+              >Audio
+              <span class="d-none d-sm-inline-block">recordings</span></span
+            >
+          </b-button>
+        </span>
       </div>
     </template>
   </card-table>
@@ -183,21 +187,23 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
 <style scoped lang="less">
 @import "../assets/less/breakpoints";
 .location-buttons {
+  border-top: 1px solid var(--border-color-light);
+  gap: var(--cp-spacing-xs);
   @media screen and (min-width: @breakpoint-xs) and (max-width: @breakpoint-sm-max) {
+    padding: 0 var(--cp-spacing-xs);
     margin-left: calc(var(--cp-spacing-md) * -1);
     margin-right: calc(var(--cp-spacing-md) * -1);
     margin-bottom: calc(var(--cp-spacing-md) * -1);
   }
   @media screen and (min-width: @breakpoint-md) {
-    margin-left: calc(var(--cp-spacing-lg) * -1);
-    margin-right: calc(var(--cp-spacing-lg) * -1);
-    margin-bottom: calc(var(--cp-spacing-lg) * -1);
+    margin-left: calc(var(--cp-spacing-xl) * -1);
+    margin-right: calc(var(--cp-spacing-xl) * -1);
+    margin-bottom: calc(var(--cp-spacing-xl) * -1);
+    padding: 0 var(--cp-spacing-md);
   }
-
-  padding-top: var(--cp-spacing-xs);
-  gap: var(--cp-spacing-xxs);
   .vr {
     background-color: var(--border-color-light);
+    opacity: 1;
   }
 }
 </style>

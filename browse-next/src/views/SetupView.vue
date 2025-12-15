@@ -400,7 +400,7 @@ const debugConfirmEmail = async () => {
                       <button
                         type="button"
                         data-cy="accept project invitation button"
-                        class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
+                        class="btn btn-outline-secondary d-flex align-items-center text-nowrap"
                         @click.prevent="
                           () => acceptInvitationToProject(card.status.value)
                         "
@@ -417,14 +417,14 @@ const debugConfirmEmail = async () => {
                     v-if="card.status.value.admin || card.status.value.owner"
                   >
                     <div
-                      class="fs-7 text-secondary d-flex align-items-center"
+                      class="text-secondary d-flex align-items-center"
                       v-if="card.status.value.admin"
                     >
                       <font-awesome-icon icon="check-circle" class="fs-6" />
                       <span class="ps-2">admin</span>
                     </div>
                     <div
-                      class="fs-7 text-secondary d-flex align-items-center ms-3"
+                      class="text-secondary d-flex align-items-center ms-3"
                       v-if="card.status.value.owner"
                     >
                       <font-awesome-icon icon="check-circle" class="fs-6" />
@@ -440,7 +440,7 @@ const debugConfirmEmail = async () => {
                 <div v-else-if="cell.value.pending === 'invited'">
                   <button
                     type="button"
-                    class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
+                    class="btn btn-outline-secondary d-flex align-items-center text-nowrap"
                     @click.prevent="() => acceptInvitationToProject(cell.value)"
                     :disabled="acceptingInvite"
                   >
@@ -451,14 +451,14 @@ const debugConfirmEmail = async () => {
               </template>
               <template #permissions="{ cell }">
                 <div
-                  class="fs-7 text-secondary d-flex align-items-center"
+                  class="text-secondary d-flex align-items-center"
                   v-if="cell.value.admin"
                 >
                   <font-awesome-icon icon="check-circle" class="fs-6" />
                   <span class="ps-2">admin</span>
                 </div>
                 <div
-                  class="fs-7 text-secondary d-flex align-items-center ms-3"
+                  class="text-secondary d-flex align-items-center ms-3"
                   v-if="cell.value.owner"
                 >
                   <font-awesome-icon icon="check-circle" class="fs-6" />

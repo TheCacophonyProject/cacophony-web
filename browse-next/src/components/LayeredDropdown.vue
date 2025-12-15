@@ -409,7 +409,7 @@ defineExpose({
                   withAudioContext,
                 ) !== option.label
               "
-              class="fs-7 text-black-50"
+              class="text-black-50"
               style="vertical-align: middle"
               >&nbsp;({{ option.label }})</span
             >

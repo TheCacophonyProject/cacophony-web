@@ -169,8 +169,8 @@ const mouseLeftVisit = (_visit: ApiVisitResponse) => {
       :key="index"
       class="d-flex visits-timeline-row"
     >
-      <div style="min-width: 100px">
-        <span class="p-1 visits-timeline-species text-capitalize">{{
+      <div class="d-flex align-items-center" style="min-width: 100px">
+        <span class="visits-timeline-species-name text-capitalize">{{
           displayLabelForClassificationLabel(species.toLowerCase())
         }}</span>
       </div>
@@ -245,46 +245,53 @@ const mouseLeftVisit = (_visit: ApiVisitResponse) => {
 </template>
 <style scoped lang="less">
 .event-item {
-  border-left: 1px solid #eee;
+  border-left: 1px solid var(--border-color-light);
   position: absolute;
   bottom: 0;
   top: 0;
 }
 .event-item-visit {
-  background: rgba(100, 100, 100, 0.7);
+  background: var(--cp-tag-no-priority);
   position: absolute;
   bottom: 2px;
   top: 2px;
   min-width: 2.5px;
+  border-radius: var(--bs-border-radius-sm);
 
   &.mustelid {
-    background: rgba(255, 0, 0, 0.7);
+    background: var(--cp-tag-priority-1);
   }
   &.possum,
   &.cat {
-    background: rgba(181, 51, 38, 0.7);
+    background: var(--cp-tag-priority-2);
   }
   &.rodent,
   &.hedgehog {
-    background: rgba(255, 127, 80, 0.7);
+    background: var(--cp-tag-priority-3);
   }
 }
 .visits-timeline {
-  background: white;
   > .visits-timeline-row {
-    border-bottom: 1px solid #f2f2f2;
+    background: var(--bs-white);
+    height: calc(var(--cp-grid-base) * 7);
+    &:not(:last-child) {
+      border-bottom: 1px solid var(--border-color-light);
+    }
+    &:last-child {
+      border-radius: var(--bs-border-radius);
+    }
   }
 }
 .visits-timeline-date-label {
   position: absolute;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: var(--cp-font-size-sm);
   user-select: none;
 }
-.visits-timeline-species {
-  font-size: 12px;
-  font-weight: 500;
-  color: #333;
+.visits-timeline-species-name {
+  font-size: var(--cp-font-size-sm);
+  padding: 0 var(--cp-spacing-xs);
+  font-weight: var(--cp-font-weight-medium);
 }
 .clip-left-label {
   min-height: 1px;

@@ -2,8 +2,8 @@
   <div ref="cardTableContainer">
     <table
       v-if="shouldRenderAsRows && hasItems"
-      class="card-table card-table-table bg-white my-2"
-      :class="{ compact }"
+      class="card-table card-table-table my-2"
+      :class="{ compact, 'rounded-3 shadow-sm bg-white': standalone }"
     >
       <thead>
         <tr>
@@ -147,12 +147,14 @@ const props = withDefaults(
     defaultSort?: string;
     highlightedItem?: CardTableRow<any> | null;
     compact?: boolean;
+    standalone?: boolean;
   }>(),
   {
     maxCardWidth: 575,
     highlightedItem: null,
     sortDimensions: () => ({}),
     compact: false,
+    standalone: false,
     items: () => [],
   },
 );
@@ -376,15 +378,12 @@ const displayedItems = computed<{
   .card-table-card {
     background: var(--bs-white);
     transition: background-color 0.3s linear;
+    border-radius: var(--bs-border-radius);
+    .standard-shadow();
     &.highlighted {
       background: var(--bs-gray-200);
     }
     cursor: default;
-  }
-
-  .card-table-table,
-  .card-table-card {
-    .standard-shadow();
   }
   .sort-icon {
     margin-left: 10px;

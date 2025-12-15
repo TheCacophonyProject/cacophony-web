@@ -171,7 +171,7 @@ const updateCenter = (latLng: LatLng) => {
 <template>
   <div class="d-flex flex-column flex-md-row justify-content-between">
     <div class="me-md-3 flex-grow-1">
-      <label class="fs-7">Location</label>
+      <label>Location</label>
       <b-form-input
         v-model="newLocationName"
         placeholder="Give your new location a descriptive name"
@@ -189,7 +189,7 @@ const updateCenter = (latLng: LatLng) => {
 
       <div v-if="format === 'latlng'" class="d-flex justify-content-between">
         <div class="me-2 w-50">
-          <label class="fs-7" for="latitude">Latitude (degrees)</label>
+          <label for="latitude">Latitude (degrees)</label>
           <b-form-input
             type="number"
             v-model="lat"
@@ -201,7 +201,7 @@ const updateCenter = (latLng: LatLng) => {
           />
         </div>
         <div class="w-50">
-          <label class="fs-7" for="longitude">Longitude (degrees)</label>
+          <label for="longitude">Longitude (degrees)</label>
           <b-form-input
             type="number"
             v-model="lng"
@@ -215,7 +215,7 @@ const updateCenter = (latLng: LatLng) => {
       </div>
       <div v-else class="d-flex justify-content-between">
         <div class="me-2 w-50">
-          <label class="fs-7" for="easting">Easting (m)</label>
+          <label for="easting">Easting (m)</label>
           <b-form-input
             type="number"
             v-model="easting"
@@ -224,7 +224,7 @@ const updateCenter = (latLng: LatLng) => {
           />
         </div>
         <div class="w-50">
-          <label class="fs-7" for="northing">Northing (m)</label>
+          <label for="northing">Northing (m)</label>
           <b-form-input
             type="number"
             v-model="northing"
