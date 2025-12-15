@@ -9,7 +9,7 @@ import { useRoute } from "vue-router";
 import type { DeviceId } from "@typedefs/api/common";
 import type { LoadedResource } from "@apiClient/types.ts";
 import { ClientApi } from "@/api";
-import Datepicker from "@vuepic/vue-datepicker";
+import { VueDatePicker } from "@vuepic/vue-datepicker";
 import { projectDevicesLoaded } from "@models/LoggedInUser.ts";
 import { resourceIsLoading } from "@/helpers/utils.ts";
 import { AudioRecordingMode, type DeviceTypeUnion } from "@typedefs/api/consts";
@@ -1544,7 +1544,7 @@ watch(customRecordingWindowStop, async () => {
                     class="text-nowrap me-2 fw-medium mb-1 mb-sm-0"
                     >Start time:</label
                   >
-                  <datepicker
+                  <vue-date-picker
                     class="me-2 mb-2 mb-sm-0"
                     v-model="customRecordingWindowStart"
                     time-picker
@@ -1557,7 +1557,7 @@ watch(customRecordingWindowStop, async () => {
                     class="text-nowrap fw-medium me-2 ms-0 ms-sm-1 mb-1 mb-sm-0 mt-1 mt-sm-0"
                     >End time:</label
                   >
-                  <datepicker
+                  <vue-date-picker
                     v-model="customRecordingWindowStop"
                     time-picker
                     required
@@ -1656,22 +1656,6 @@ watch(customRecordingWindowStop, async () => {
         border-bottom: 1px solid var(--border-color-light);
       }
     }
-  }
-}
-</style>
-<style lang="css">
-@import url("@vuepic/vue-datepicker/dist/main.css");
-
-/* TODO: move somewhere else? Or leave here, given the component is not used in any other places? */
-.dp__input {
-  font-family: var(--cp-font-family);
-  font-size: var(--cp-font-size-md);
-}
-
-.dp__action_select {
-  background: var(--cp-color-green-600);
-  &:hover {
-    background: var(--cp-color-green-700);
   }
 }
 </style>

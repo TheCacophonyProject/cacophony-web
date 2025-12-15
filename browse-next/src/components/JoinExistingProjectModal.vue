@@ -118,7 +118,7 @@ const getGroupsForAdmin = async () => {
 <template>
   <b-modal
     v-model="joiningNewProject.visible"
-    title="Join a group"
+    title="Join a project"
     ok-title="Send join request"
     @ok="joinExistingGroup"
     :ok-disabled="

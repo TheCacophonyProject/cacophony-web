@@ -118,20 +118,23 @@ import type {
 import { ClientApi, CurrentViewAbortController } from "@/api";
 import type { VisitsQueryResult } from "@apiClient/Monitoring.ts";
 import type { NonEmptyArray } from "@/helpers/utils.ts";
-import { BButton, BModal, BOffcanvas, BSpinner } from "bootstrap-vue-next";
+import {
+  BButton,
+  BModal,
+  BOffcanvas,
+  BProgress,
+  BSpinner,
+} from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const mapBuffer = ref<HTMLDivElement>();
+const mapContainer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
 const searchControls = ref<HTMLDivElement>();
 const searchResults = ref<HTMLDivElement>();
 const { left: searchContainerLeft, right: searchContainerRight } =
   useElementBounding(searchContainer);
 const { height: windowHeight, width: windowWidth } = useWindowSize();
-
-const mapBufferWidth = computed<number>(() => {
-  const right = windowWidth.value - searchContainerRight.value;
-  return Math.max(0, mapWidthPx.value - right);
-});
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
@@ -163,6 +166,10 @@ const locations = inject(allHistoricLocations) as ComputedRef<
   ApiLocationResponse[]
 >;
 const devices = ref<LoadedResource<ApiDeviceResponse[]>>(null);
+
+const projectHasDevices = computed<boolean>(() => {
+  return !!devices.value && devices.value.length !== 0;
+});
 
 watch(currentProject, async (next, prev) => {
   if (next && prev && next.groupName !== prev.groupName) {
@@ -1897,16 +1904,17 @@ const projectHasLocationsWithRecordings = computed<boolean>(() => {
 });
 
 const mapWidthPx = computed<number>(() => {
-  if (windowWidth.value >= 1200) {
-    return Math.min(
-      500,
-      windowWidth.value - (searchContainerLeft.value + 810 + 24),
-    );
-  } else if (windowWidth.value >= 992) {
-    return 250;
-  } else {
+  if (!mapBuffer.value) {
     return 0;
   }
+  const mapBufferWidth = mapBuffer.value.offsetWidth;
+  if (windowWidth.value >= 1920) {
+    return mapBufferWidth + 128;
+  }
+  if (windowWidth.value >= 992) {
+    return mapBufferWidth;
+  }
+  return 0;
 });
 
 const showOffcanvasSearch = ref<boolean>(false);
@@ -1972,20 +1980,46 @@ onBeforeUnmount(() => {
   <!--  </ul>-->
   <div
     v-if="loading"
-    class="d-flex justify-content-center align-items-center centered-overlay"
+    class="d-flex justify-content-center align-items-center flex-fill"
   >
     <b-spinner variant="secondary" />
   </div>
-  <div v-else-if="!projectHasLocationsWithRecordings">
-    This project has no activity yet.
+  <div
+    v-else-if="!projectHasLocationsWithRecordings"
+    class="flex-grow-1 d-flex align-items-center justify-content-center"
+  >
+    <div
+      class="no-results text-body-tertiary d-flex flex-column text-center col col-12 col-md-8 col-lg-6"
+    >
+      <material-symbol
+        name="troubleshoot"
+        size="2.4rem"
+        grade="thin"
+        class="mb-3"
+      />
+      <!-- TODO: review copy -->
+      <h4 class="h5 mb-2">This project has no activity yet</h4>
+      <p v-if="!projectHasDevices">
+        This project is likely new or doesn't have any devices associated with
+        it. <br class="d-none d-sm-inline" />
+        Use the Sidekick mobile app to add devices to your project.
+      </p>
+      <p v-else>
+        The devices of this project may not be connected to the internet.
+        <br class="d-none d-sm-inline" />
+        Use the Sidekick mobile app to offload recordings from devices without
+        connectivity, and sync them later when you have an internet connection
+        on your phone.
+      </p>
+    </div>
   </div>
   <div
     v-else
-    class="d-flex flex-md-row flex-column-reverse flex-fill search-container"
+    class="d-flex flex-md-row flex-column-reverse flex-fill row search-container"
     ref="searchContainer"
   >
     <nav
-      class="navbar navbar-expand-md search-controls-outer me-md-3 d-flex py-md-0 align-items-md-start"
+      class="search-controls-wrapper col col-12 col-md-4 col-lg-3 col-xl-3 col-xxl-3 d-flex py-md-0 align-items-md-start"
       ref="searchControls"
     >
       <div class="search-results-toggle position-fixed d-md-none d-block">
@@ -2014,23 +2048,25 @@ onBeforeUnmount(() => {
           <b-button @click="showOffcanvasSearch = false">Search</b-button>
         </div>
       </b-offcanvas>
-      <div class="search-controls" v-if="shouldShowSearchControlsInline">
-        <activity-search-parameters
-          :params="searchParams"
-          :locations="ref(locations)"
-          :searching="searching"
-          :custom-set="customAutomaticallySet"
-          @accepted-custom-set="customAutomaticallySet = false"
-          @search-requested="doSearch"
-          @export-requested="doExport"
-        />
+      <div class="search-controls-scroll w-100 h-100 pb-3 me-xxl-3">
+        <div class="search-controls" v-if="shouldShowSearchControlsInline">
+          <activity-search-parameters
+            :params="searchParams"
+            :locations="ref(locations)"
+            :searching="searching"
+            :custom-set="customAutomaticallySet"
+            @accepted-custom-set="customAutomaticallySet = false"
+            @search-requested="doSearch"
+            @export-requested="doExport"
+          />
+        </div>
       </div>
     </nav>
     <div
-      class="search-results flex-grow-1 d-flex justify-content-center pb-3 me-lg-3"
+      class="search-results col col-12 col-md-8 col-lg-6 col-xl-6 col-xxl-6 flex-grow-1 d-flex justify-content-center pb-3"
       ref="searchResults"
     >
-      <div class="search-results-inner d-flex flex-grow-1 flex-column">
+      <div class="search-results-inner d-flex flex-grow-1 flex-column w-100">
         <activity-search-description
           :locations-in-selected-timespan="locationsInSelectedTimespan"
           :selected-locations="selectedLocations"
@@ -2057,6 +2093,7 @@ onBeforeUnmount(() => {
             :highlighted-location="currentlyHighlightedLocation"
             @selected-visit="selectedVisit"
             @change-highlighted-location="changedHighlightedLocation"
+            class="mt-2"
           />
         </div>
         <div
@@ -2065,29 +2102,43 @@ onBeforeUnmount(() => {
         >
           <b-spinner variant="secondary" />
         </div>
-        <div
-          v-else-if="completedCurrentQuery && canExpandSearchBackFurther"
-          class="d-flex justify-content-center flex-column"
-        >
-          <span class="text-center mb-2"
-            >No more results for the selected time range.</span
-          >
-          <button
-            @click="adjustTimespanBackwards"
-            type="button"
-            class="btn btn-outline-secondary"
-          >
-            Expand the search start back to
-            {{ relativeTimeIncrementInPast }}
-          </button>
+        <div v-else-if="completedCurrentQuery && canExpandSearchBackFurther">
+          <div class="no-results text-body-tertiary text-center py-3">
+            <!--            <material-symbol
+              name="search_off"
+              size="2.4rem"
+              grade="thin"
+              class="mb-2"
+            />-->
+            <p>
+              No additional results found for the selected time range. <br />
+              Try expanding the search start back to
+              {{ relativeTimeIncrementInPast }}.
+            </p>
+            <button
+              @click="adjustTimespanBackwards"
+              type="button"
+              class="btn btn-outline-secondary"
+            >
+              Expand search
+            </button>
+          </div>
         </div>
         <div
           v-else-if="atMinimumTimeForSelectedLocations"
-          class="d-flex justify-content-center"
+          class="flex-grow-1 d-flex align-items-center justify-content-center"
         >
-          <span class="text-center mb-2"
-            >No results for the selected locations before this time.</span
+          <div
+            class="no-results text-body-tertiary text-center d-flex flex-column"
           >
+            <material-symbol
+              name="search_off"
+              size="2.4rem"
+              grade="thin"
+              class="mb-2"
+            />
+            No results for the selected locations before this time.
+          </div>
         </div>
         <div
           v-else-if="
@@ -2095,26 +2146,45 @@ onBeforeUnmount(() => {
               filteredLoadedRecordings.length) ||
             (searchParams.displayMode === 'visits' && chunkedVisits.length)
           "
-          class="d-flex justify-content-center"
+          class="flex-grow-1 d-flex align-items-center justify-content-center"
         >
-          <span class="text-center mb-2"
-            >No results before this time for the current search.</span
+          <div
+            class="no-results text-body-tertiary text-center d-flex flex-column"
           >
+            <material-symbol
+              name="search_off"
+              size="2.4rem"
+              grade="thin"
+              class="mb-2"
+            />
+            No results before this time for the current search.
+          </div>
         </div>
-        <div v-else class="d-flex justify-content-center">
-          <span class="text-center mb-2"
-            >No results for the current search.</span
+        <div
+          v-else
+          class="flex-grow-1 d-flex align-items-center justify-content-center"
+        >
+          <div
+            class="no-results text-body-tertiary text-center d-flex flex-column"
           >
+            <material-symbol
+              name="search_off"
+              size="2.4rem"
+              grade="thin"
+              class="mb-2"
+            />
+            No results for the current search.
+          </div>
         </div>
       </div>
     </div>
     <div
-      class="map-buffer"
+      class="map-buffer d-none d-lg-flex col col-lg-3 col-xl-3 col-xxl-3"
       ref="mapBuffer"
-      :style="{ width: `${mapBufferWidth}px` }"
     ></div>
   </div>
   <map-with-points
+    ref="mapContainer"
     v-if="projectHasLocationsWithRecordings && mapWidthPx !== 0"
     :points="locationsForMap"
     :active-points="locationsInSelectedTimespanForMap"
@@ -2164,8 +2234,9 @@ onBeforeUnmount(() => {
   </b-modal>
 </template>
 <style lang="less" scoped>
+@import "../assets/less/breakpoints";
 .search-results-toggle {
-  top: 143px;
+  top: calc(var(--cp-grid-base) * 36); //144px
   right: 0;
   z-index: 1021;
   > .btn {
@@ -2173,27 +2244,7 @@ onBeforeUnmount(() => {
     border-bottom-right-radius: 0;
   }
 }
-.centered-overlay {
-  height: calc(100svh - 90px);
-}
-.search-results-inner {
-  max-width: calc(100svw - 48px);
-  @media screen and (min-width: 992px) {
-    max-width: 430px;
-    width: 430px;
-  }
-  @media screen and (min-width: 1200px) {
-    max-width: 540px;
-    width: 540px;
-  }
-}
-.box {
-  background: #ccc;
-  min-height: 100px;
-}
 .map {
-  height: 400px !important;
-  position: unset;
   @media screen and (min-width: 768px) {
     position: absolute !important;
     right: 0;
@@ -2201,14 +2252,29 @@ onBeforeUnmount(() => {
     height: 100svh !important;
   }
 }
+.no-results {
+  @media (max-width: @breakpoint-xs-max) {
+    font-size: var(--cp-font-size-sm);
+  }
+}
 </style>
 <style lang="less">
-.search-controls {
-  width: 250px !important;
-  position: sticky;
-  top: 15px;
-}
-.search-controls-outer {
+.search-controls-wrapper {
+  .search-controls-scroll {
+    max-height: 100cqh;
+    overflow-y: auto;
+    position: sticky;
+    top: var(--cp-spacing-md);
+    overflow-x: hidden;
+    // add inner padding and then compensate for it so the focus style of the switch doesn't get truncated
+    padding-left: 4px;
+    padding-right: 4px;
+    margin-left: -4px;
+    margin-right: -4px;
+  }
+  .search-controls {
+    max-width: calc(var(--cp-grid-base) * 64); //256px
+  }
   .b-overlay-wrap .b-overlay {
     z-index: 1040 !important;
   }

@@ -622,6 +622,7 @@ const isDevicesRoot = computed(() => {
           :sort-dimensions="sortDimensions"
           :default-sort="'lastSeen'"
           compact
+          standalone
           :break-point="0"
         >
           <template #deviceName="{ cell, row }">
@@ -783,21 +784,24 @@ const isDevicesRoot = computed(() => {
   <router-view v-else></router-view>
 </template>
 <style lang="less" scoped>
+@import "../assets/less/breakpoints";
 .device-map {
-  @media screen and (max-width: 1040px) {
-    width: 100%;
-    height: 400px;
+  width: 100%;
+  height: 40vh;
+  max-height: calc(var(--cp-grid-base) * 100); // 400px
+  @media screen and (max-width: @breakpoint-md-max) {
+    border-radius: var(--bs-border-radius);
   }
-
-  height: 400px;
-  min-width: 120px;
+  @media screen and (min-width: @breakpoint-lg) {
+    border-radius: var(--bs-border-radius-lg);
+  }
 }
 .power-status-icon {
   border-radius: 50%;
   min-width: 22px;
   width: 22px;
   height: 22px;
-  color: white;
+  color: var(--bs-white);
   &.stopped {
     background-color: darkred;
   }

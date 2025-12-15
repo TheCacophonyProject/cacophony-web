@@ -5,8 +5,10 @@
   --cp-font-size-h3: 1.125rem; // 18px
   --cp-font-size-h4: 1rem; // 16px
   --cp-font-size-h5: 0.875rem; // 14px
+  --cp-font-size-lg: 1rem; // 16px
   --cp-font-size-md: 0.875rem; // 14px
-  --cp-font-size-sm: 0.75rem; //12px;
+  --cp-font-size-sm: 0.75rem; // 12px
+  --cp-font-size-xs: 0.625rem; // 10px - use very, VERY sparsely.
 
   --cp-font-weight-regular: 350;
   --cp-font-weight-medium: 450;
@@ -68,24 +70,20 @@
   font-size: var(--cp-font-size-h4);
 }
 .fs-5 {
-  font-size: var(--cp-font-size-h5);
+  font-size: var(--cp-font-size-h5) !important;
 }
 .fs-6 {
-  font-size: var(--cp-font-size-md);
+  font-size: var(--cp-font-size-sm) !important;
+}
+.fs-7 {
+  font-size: var(--cp-font-size-xs) !important; // avoid using
+}
+.fs-8 {
+  font-size: var(--cp-font-size-sm) !important;
 }
 /*.fw-bold {
   font-weight: 500 !important;
 }*/
-.fs-7 {
-  font-size: var(--cp-font-size-md);
-}
-.fs-8 {
-  font-size: var(--cp-font-size-sm);
-}
-.fs-9 {
-  font-size: var(--cp-font-size-sm);
-}
-
 
 /*
 10px = 0.625rem

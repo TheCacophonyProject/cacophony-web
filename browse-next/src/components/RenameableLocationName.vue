@@ -8,7 +8,14 @@ import {
   useTemplateRef,
   watch,
 } from "vue";
-import { BAlert, BBadge, BButton, BInput, BSpinner } from "bootstrap-vue-next";
+import {
+  BAlert,
+  BBadge,
+  BButton,
+  BInput,
+  BSpinner,
+  BTooltip,
+} from "bootstrap-vue-next";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import { userIsProjectAdmin } from "@models/provides.ts";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
@@ -89,6 +96,7 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
         autofocus
         size="sm"
         placeholder="Enter the new name for this location"
+        class="me-1 me-sm-2 mb-2"
         @blur="exitEditMode"
         @keyup.enter="saveLocationName"
         @keyup.esc="exitEditMode"
@@ -120,19 +128,42 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
           Rename
         </b-badge>
       </span>
-      <b-button
-        variant="light"
-        class="btn-icon"
-        size="sm"
-        @click="clickedRename"
-        v-if="isProjectAdmin"
-      >
-        <material-symbol name="edit" size="1.125rem" />
-      </b-button>
+      <b-tooltip>
+        <template #target>
+          <b-button
+            variant="light"
+            class="btn-icon"
+            size="sm"
+            id="rename"
+            aria-label="Rename location"
+            @click="clickedRename"
+            v-if="isProjectAdmin"
+          >
+            <material-symbol name="edit" size="1.125rem" />
+          </b-button>
+        </template>
+        Rename location
+      </b-tooltip>
     </div>
-    <div v-else>
-      <b-button @click="exitEditMode">Cancel</b-button>
-      <b-button @click="saveLocationName">Okay</b-button>
+    <div v-else class="d-flex gap-1 gap-sm-2">
+      <b-button
+        variant="outline-secondary"
+        size="sm"
+        @click="exitEditMode"
+        class="d-flex"
+      >
+        <material-symbol name="close" size="1.25rem" class="d-sm-none" />
+        <span class="d-none d-sm-inline">Cancel</span>
+      </b-button>
+      <b-button
+        variant="outline-secondary"
+        @click="saveLocationName"
+        size="sm"
+        class="d-flex"
+      >
+        <material-symbol name="check" size="1.25rem" class="d-sm-none" />
+        <span class="d-none d-sm-inline">Save</span></b-button
+      >
     </div>
   </div>
   <b-alert

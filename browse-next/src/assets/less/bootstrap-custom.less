@@ -30,7 +30,9 @@
 }
 
 .btn-outline-secondary {
-  --bs-btn-border-color: #ddd;
+  --bs-btn-border-color: var(--bs-gray-400);
+  --bs-btn-bg: var(--bs-white);
+
 }
 
 .btn-icon {
@@ -41,10 +43,37 @@
   //--bs-btn-hover-color: var(--bs-white);
   --bs-btn-hover-bg: var(--bs-gray-100);
   --bs-btn-hover-border-color: transparent;
-  --bs-btn-focus-shadow-rgb: transparent;
+  --bs-btn-focus-shadow-rgb: 49, 132, 253;
   --bs-btn-active-color: var(--bs-btn-hover-color);
   --bs-btn-active-bg: var(--bs-gray-200);
   --bs-btn-active-border-color: transparent;
+}
+
+// grouped buttons
+.btn-group {
+  padding: var(--cp-spacing-xxxs);
+  background: var(--bs-secondary-bg-subtle);
+}
+
+.btn-radio-group {
+  --bs-btn-font-weight: 400;
+  --bs-btn-color: var(--bs-gray-700);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: var(--bd-violet-bg);
+  //--bs-btn-hover-color: var(--bs-gray-800); see below, setting it this way doesn't work
+  //--bs-btn-hover-bg: red !important;
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-focus-shadow-rgb: 49, 132, 253;
+  --bs-btn-active-color: var(--bs-btn-hover-color);
+  --bs-btn-active-bg: var(--bs-white);
+  --bs-btn-active-border-color: transparent;
+  border-radius: var(--bs-border-radius) !important;
+}
+
+// hover color for individual button in grouped buttons
+.btn-check + .btn:hover {
+  //background-color: var(--bs-gray-100);
+  color: var(--bs-gray-900);
 }
 
 
@@ -99,6 +128,16 @@
     }
     &::-moz-range-thumb {
       box-shadow: 0 0 0 0.25rem  color-mix(in oklch, var(--cp-color-green-600), transparent 80%);
+    }
+  }
+}
+
+// reset the size of the label of the large switch
+.form-switch {
+  &.form-control-lg {
+    line-height: var(--cp-line-height-sm);
+    .form-check-label {
+      font-size: var(--bs-body-font-size);
     }
   }
 }

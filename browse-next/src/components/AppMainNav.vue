@@ -8,6 +8,7 @@ import {
   type LoggedInUser,
   pinSideNav,
   type SelectedProject,
+  showSideNavBg,
   showSwitchProject,
   sideNavIsPinned,
   urlNormalisedCurrentProjectName,
@@ -392,10 +393,15 @@ onMounted(() => {
       </b-tooltip>
     </div>
   </nav>
+  <div
+    class="nav-bg"
+    :class="{ visible: showSideNavBg, hidden: hideNavBg }"
+  ></div>
 </template>
 
 <style scoped lang="less">
 @import "../assets/less/breakpoints.less";
+@import "../assets/less/elevation.less";
 .global-side-nav {
   position: fixed;
   bottom: 0;
@@ -405,8 +411,8 @@ onMounted(() => {
   overflow-y: auto;
   overflow-x: hidden;
   user-select: none;
-  background: #fff;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+  background: var(--bs-white);
+  .main-nav-shadow();
   padding: var(--cp-spacing-md)
     calc(var(--cp-spacing-xs) + var(--cp-spacing-xxxs)) var(--cp-spacing-xs);
   width: var(--global-side-nav-collapsed-width);
@@ -512,7 +518,24 @@ onMounted(() => {
     }
   }
 }
-
+.nav-bg {
+  opacity: 0;
+  transition: opacity 0.2s linear;
+  &.hidden {
+    display: none;
+  }
+  &.visible {
+    background: rgba(0, 0, 0, 0.5);
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1020;
+    opacity: 1;
+    display: block;
+  }
+}
 @keyframes show-nav-text {
   1% {
     width: 0;

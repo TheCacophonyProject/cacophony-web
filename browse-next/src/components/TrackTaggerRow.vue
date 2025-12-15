@@ -689,7 +689,7 @@ onMounted(async () => {
     <div v-if="!hasUserTag && hasAiTag && !expanded" class="d-flex">
       <button
         type="button"
-        class="btn fs-7 confirm-button"
+        class="btn confirm-button"
         @click.stop.prevent="confirmAiSuggestedTag"
       >
         <span class="label">Confirm</span>
@@ -705,7 +705,7 @@ onMounted(async () => {
       </button>
       <button
         type="button"
-        class="btn fs-7 reject-button"
+        class="btn reject-button"
         aria-label="Reject AI classification"
         @click.stop.prevent="rejectAiSuggestedTag"
       >
@@ -737,7 +737,7 @@ onMounted(async () => {
       <button
         v-if="!hasUserTag && hasAiTag"
         type="button"
-        class="btn fs-7 confirm-button"
+        class="btn confirm-button"
         @click.stop.prevent="confirmAiSuggestedTag"
       >
         <span class="label">Confirm</span>
@@ -876,7 +876,7 @@ onMounted(async () => {
       </card-table>
       <div
         v-else-if="showTaggerDetails && taggerDetails.length === 0"
-        class="fs-7 mb-2"
+        class="mb-2"
       >
         No tags have been added yet.
       </div>

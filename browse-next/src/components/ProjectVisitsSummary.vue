@@ -103,11 +103,15 @@ const hasVisits = computed<boolean>(() => {
 </template>
 
 <style scoped lang="less">
+@import "../assets/less/elevation";
 .map {
-  height: 300px;
+  height: 40vh;
+  border-radius: var(--bs-border-radius) var(--bs-border-radius) 0 0;
 }
 .map-and-timeline {
   position: sticky;
-  top: 15px;
+  top: var(--cp-spacing-md);
+  border-radius: var(--bs-border-radius);
+  .standard-shadow();
 }
 </style>
