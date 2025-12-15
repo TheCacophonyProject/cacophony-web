@@ -393,8 +393,6 @@ export default function (app: Application, baseUrl: string) {
       body("data").custom(jsonSchemaOf(ApiMinimalTracksRequestSchema)),
       idOf(body("algorithmId")),
     ]),
-    // FIXME - JSON schema for allowed data? At least a limit to how many
-    // chars etc?
     parseJSONField(body("data")),
     async (request: Request, response: Response, next: NextFunction) => {
       const recording = await Recording.findByPk(request.params.id);
@@ -426,13 +424,12 @@ export default function (app: Application, baseUrl: string) {
       }
       const modelTracks = await Track.bulkCreate(tracks);
 
-      const trackTags: TrackTag[] = [];
+      const trackTags = [];
       const trackTagData = [];
       for (let i = 0; i < modelTracks.length; i++) {
         const track = tracks[i];
-        track.id = modelTracks[i].id;
         const trackData = data[i];
-        trackIds.push(track.id);
+        trackIds.push(modelTracks[i].id);
 
         for (const pred of trackData.predictions) {
           const modelName = pred.name;
@@ -449,7 +446,7 @@ export default function (app: Application, baseUrl: string) {
           }
 
           const tag = {
-            TrackId: track.id,
+            TrackId: modelTracks[i].id,
             what: pred.tag,
             confidence: pred.confidence,
             automatic: true,
@@ -487,14 +484,13 @@ export default function (app: Application, baseUrl: string) {
     const deviceId = recording.DeviceId;
     const groupId = recording.GroupId;
     const atTime = recording.recordingDateTime;
-    const discardMaskedTrack = false;
     if (recording.type === RecordingType.ThermalRaw) {
       const positions = trackData && trackData.positions;
       if (positions) {
         return trackIsMasked(deviceId, groupId, atTime, positions);
       }
     }
-    return discardMaskedTrack;
+    return false;
   };
 
   const prepareTrackToSave = (
@@ -558,6 +554,7 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/processing/:id/tracks Add track to recording
    * @apiName PostTrack
    * @apiGroup Processing
+   * @apiDeprecated Use /api/v1/processing/:id/tracksAndTags
    *
    * Requires super-admin user credentials
    *
