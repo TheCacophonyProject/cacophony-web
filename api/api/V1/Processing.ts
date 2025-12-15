@@ -479,7 +479,6 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
-
   const isTrackMasked = async (
     recording: Recording,
     trackData: MinimalTrackRequestData,
@@ -774,13 +773,12 @@ export default function (app: Application, baseUrl: string) {
         return successResponse(response, "Track tags added.", {
           trackTagIds: trackTagIds,
         });
-      }else{
-           // Returns without creating track if this is a masked out track.
-      return successResponse(response, "Track tags added.", {
-        trackTagIds: 1,
-      });
+      } else {
+        // Returns without creating track if this is a masked out track.
+        return successResponse(response, "Track tags added.", {
+          trackTagIds: 1,
+        });
       }
-    
     },
   );
 
