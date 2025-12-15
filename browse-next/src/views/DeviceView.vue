@@ -237,16 +237,10 @@ const _deviceType = computed<string>(() => {
 
 .device-view-header {
   border-bottom: 2px solid #e1e1e1;
-  .device-header-type {
-    .fs-8();
-  }
   .device-header-details {
     line-height: 1;
   }
   @media screen and (min-width: 576px) {
-    .device-header-type {
-      .fs-8();
-    }
     .device-header-details {
       line-height: unset;
     }

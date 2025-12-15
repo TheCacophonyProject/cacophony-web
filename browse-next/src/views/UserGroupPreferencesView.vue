@@ -481,7 +481,7 @@ const alertItems = computed<AlertItem[]>(() => {
     @cancel="resetFormFields"
   >
     <div>
-      <label class="fs-7">Alert scope:</label>
+      <label>Alert scope:</label>
       <b-form-radio-group v-model="alertScope">
         <b-form-radio value="project">This project</b-form-radio>
         <b-form-radio value="location">A specific location</b-form-radio>
@@ -511,11 +511,11 @@ const alertItems = computed<AlertItem[]>(() => {
       />
     </div>
     <div class="mt-1">
-      <label class="fs-7">Alert on:</label>
+      <label>Alert on:</label>
       <hierarchical-tag-select v-model="alertOnTags" multiselect />
     </div>
     <div class="mt-1">
-      <label class="fs-7"
+      <label
         >Alert no more than once every
         <strong>{{ maxAlertFrequencyMins }}</strong> minutes</label
       >

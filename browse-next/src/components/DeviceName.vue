@@ -1,10 +1,5 @@
 <template>
-  <b-link
-    class="d-inline-flex align-items-center align-items-center"
-    v-if="to"
-    :to="to"
-    variant="secondary"
-  >
+  <b-link class="d-inline-flex" v-if="to" :to="to" variant="secondary">
     <span class="me-2 align-self-center position-relative">
       <material-symbol :name="deviceTypeIcon" size="1.125rem" class="me-2" />
       <material-symbol
@@ -16,9 +11,13 @@
     </span>
     <span class="me-2 me-md-0">{{ name }}</span>
   </b-link>
-  <span class="d-inline-flex align-items-center" v-else>
+  <span
+    v-else
+    :class="{ 'overflow-hidden': truncate }"
+    class="d-inline-flex justify-content-center align-items-center"
+  >
     <span
-      class="align-self-center position-relative"
+      class="d-flex align-self-center position-relative"
       :class="{
         'ms-1': !props.noMargin,
         'me-2': !props.noMargin,
@@ -27,7 +26,9 @@
     >
       <material-symbol :name="deviceTypeIcon" size="1.125rem" />
     </span>
-    {{ name }}</span
+    <span :class="{ 'text-truncate': truncate }">
+      {{ name }}
+    </span> </span
   ><span v-if="slots.default"><slot></slot></span>
 </template>
 
@@ -48,6 +49,7 @@ const props = defineProps<{
   to?: RouteLocationRaw | null;
   color?: string;
   noMargin?: boolean;
+  truncate?: boolean;
 }>();
 const slots = useSlots();
 

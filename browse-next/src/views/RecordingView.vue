@@ -1027,7 +1027,7 @@ const mapPointForRecording = computed<NamedPoint[]>(() => {
   return [];
 });
 
-const navLinkClasses = ["nav-item", "nav-link", "border-0", "fs-7", "fw-bold"];
+const navLinkClasses = ["nav-item", "nav-link", "border-0", "fw-bold"];
 const activeTabName = computed(() => {
   return route.name;
 });

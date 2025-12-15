@@ -5,7 +5,7 @@
     :key="day.dateTime.day"
   >
     <div
-      class="day-header fw-bold px-2 pb-2 fs-7"
+      class="day-header fw-medium pb-2 pb-sm-3"
       v-if="
         day.items.filter((r) => !r.data.hasOwnProperty('tombstoned')).length !==
         0
@@ -24,7 +24,7 @@
     >
       <div
         v-if="!item.data.hasOwnProperty('tombstoned')"
-        class="d-flex user-select-none fs-8"
+        class="d-flex user-select-none"
         :class="[
           item.type,
           {
@@ -35,16 +35,21 @@
         ]"
       >
         <div
-          class="visit-time-duration d-flex flex-column py-2 pe-3 flex-shrink-0"
+          class="visit-time-duration d-flex flex-column flex-shrink-0"
+          :class="item.type !== 'recording' ? 'py-2 py-sm-3' : 'py-2'"
         >
-          <span class="pb-1" v-if="item.type === 'recording'">{{
-            timeAtLocation(item.data.recordingDateTime, canonicalLocation)
-          }}</span>
-          <span class="pb-1" v-else>{{
+          <span
+            v-if="item.type === 'recording'"
+            class="pb-1 fs-6 text-secondary lh-sm"
+            >{{
+              timeAtLocation(item.data.recordingDateTime, canonicalLocation)
+            }}</span
+          >
+          <span v-else class="fs-6 text-body-tertiary">{{
             timeAtLocation(item.data, canonicalLocation)
           }}</span>
           <span
-            class="duration fs-8"
+            class="duration fs-6 text-secondary"
             v-if="
               item.type === 'recording' &&
               item.data.type === RecordingType.ThermalRaw
@@ -94,13 +99,19 @@
           </svg>
           <div v-else class="circle"></div>
         </div>
-        <div v-if="item.type !== 'recording'" class="py-2 ps-3 text-capitalize">
+        <div
+          v-if="item.type !== 'recording'"
+          class="py-2 py-sm-3 ps-2 text-capitalize fs-6"
+        >
           {{ item.type }}
         </div>
         <div
           v-else
-          class="d-flex py-2 ps-2 align-items-start flex-fill overflow-hidden recording-detail my-1 me-1"
-          :class="{ redacted: (item.data as ApiRecordingResponse).redacted }"
+          class="recording-detail d-flex align-items-start flex-fill overflow-hidden"
+          :class="{
+            redacted: (item.data as ApiRecordingResponse).redacted,
+            'mb-0': removeMarginBottom(day.items, index),
+          }"
         >
           <div
             class="visit-thumb rounded-1"
@@ -109,18 +120,15 @@
             <image-loader
               :src="thumbnailSrcForRecording(item.data)"
               alt="Thumbnail for first recording of this visit"
-              width="45"
-              height="45"
+              width="64"
+              height="64"
             />
           </div>
-          <div
-            :class="{ 'ps-3': item.data.type !== RecordingType.Audio }"
-            class="d-flex flex-column text-truncate flex-wrap flex-grow-1"
-          >
+          <div class="overflow-hidden">
             <div
               class="tags-container d-flex justify-content-between flex-grow-1"
             >
-              <div class="d-flex flex-wrap">
+              <div class="d-flex flex-wrap align-items-start gap-1">
                 <span
                   class="d-flex align-items-center mb-1 bg-light rounded-1 p-1"
                   v-if="
@@ -132,9 +140,12 @@
                     >AI Queued</span
                   ></span
                 >
-                <span v-else-if="item && item.data" class="d-flex flex-wrap">
+                <span
+                  v-else-if="item && item.data"
+                  class="d-flex flex-wrap align-items-start gap-1"
+                >
                   <span
-                    class="visit-species-tag px-1 mb-1 text-capitalize me-1"
+                    class="visit-species-tag text-capitalize"
                     :class="(tag.path && tag.path.split('.')) || ''"
                     :key="tag.what"
                     v-for="tag in canonicalTagsForRecording(item.data)"
@@ -166,7 +177,7 @@
                   </span>
                 </span>
                 <span
-                  class="visit-species-tag px-1 mb-1 text-capitalize me-1"
+                  class="visit-species-tag text-capitalize"
                   :class="[label.what.toLowerCase().split(' ').join('-')]"
                   :key="label.what"
                   v-for="label in regularLabelsForRecording(
@@ -204,28 +215,30 @@
               </div>
             </div>
 
-            <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
-              ><font-awesome-icon
-                icon="map-marker-alt"
-                size="xs"
-                class="station-icon pe-1 text"
-              />{{ (item as RecordingItem).data.stationName }}</span
-            >
-            <div class="d-flex">
-              <span class="visit-station-name text-truncate flex-shrink-1 pe-2">
+            <span class="track-metadata d-flex align-items-center">
+              <location-name
+                :name="(item as RecordingItem).data.stationName || ''"
+                truncate
+                class="fs-6"
+              />
+            </span>
+            <div class="d-flex flex-wrap align-items-start">
+              <span class="track-metadata d-flex fs-6 me-2">
                 <device-name
                   no-margin
+                  truncate
                   :color="'rgba(0, 0, 0, 0.5)'"
                   :name="(item as RecordingItem).data.deviceName"
                   :type="deviceTypeFor((item as RecordingItem).data.deviceId)"
                 ></device-name>
               </span>
-              <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
-                ><font-awesome-icon
-                  icon="stream"
-                  size="xs"
-                  class="station-icon pe-1 text"
-                /><span v-if="(item as RecordingItem).data.tracks.length === 0"
+              <span class="track-metadata d-flex align-items-center fs-6">
+                <material-symbol
+                  name="clear_all"
+                  size="1.125rem"
+                  class="me-1"
+                />
+                <span v-if="(item as RecordingItem).data.tracks.length === 0"
                   >No tracks</span
                 ><span
                   v-else-if="(item as RecordingItem).data.tracks.length === 1"
@@ -269,6 +282,8 @@ import type { ApiTrackTag } from "@typedefs/api/trackTag";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import DeviceName from "@/components/DeviceName.vue";
 import { ClientApi } from "@/api";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import LocationName from "@/components/LocationName.vue";
 import { BSpinner } from "bootstrap-vue-next";
 
 type RecordingItem = { type: "recording"; data: ApiRecordingResponse };
@@ -399,142 +414,95 @@ const deviceTypeFor = (deviceId: DeviceId): DeviceType => {
   }
   return DeviceType.Thermal;
 };
+
+const removeMarginBottom = (
+  items: (RecordingItem | SunItem)[],
+  index: number,
+): boolean => {
+  if (index === items.length - 1) {
+    return true;
+  }
+  if (index + 1 < items.length && items[index + 1].type !== "recording") {
+    return true;
+  }
+  return false;
+};
 </script>
 
 <style scoped lang="less">
+@import "../assets/less/breakpoints";
+@import "../assets/less/elevation";
 .spinner-border-sm {
   --bs-spinner-width: 0.65rem;
   --bs-spinner-height: 0.65rem;
   --bs-spinner-border-width: 0.2em;
 }
-.visit-station-name {
-  max-width: calc(100cqw - 65px);
+.day-header {
+  position: sticky;
+  background: color-mix(in srgb, var(--app-bg-color), transparent 15%);
+  backdrop-filter: blur(8px);
+  padding-top: var(--cp-spacing-sm);
+  z-index: 1;
+  margin-left: -4px;
+  margin-right: -4px;
+  padding-left: 4px;
+  padding-right: 4px;
+  @media (max-width: @breakpoint-xs-max) {
+    top: calc(var(--cp-grid-base) * 12); // size of the header on mobile
+  }
+  @media (min-width: @breakpoint-sm) {
+    top: 0;
+  }
 }
+
 .redacted {
   opacity: 0.5;
   pointer-events: none;
 }
-.visits-daily-breakdown {
-  background: white;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
-
-  .header {
-    border-bottom: 1px solid #eee;
-    font-weight: 500;
-  }
-  .visit-species-count {
-    border-radius: 2px;
-    color: #444444;
-    display: inline-block;
-    height: 24px;
-    line-height: 24px;
-    margin-bottom: 10px;
-    &:not(:last-child) {
-      margin-right: 21px;
-    }
-    .species {
-      padding: 0 5px;
-    }
-    .count {
-      background: #7d7d7d;
-      border-top-left-radius: 2px;
-      border-bottom-left-radius: 2px;
-      color: white;
-      text-align: center;
-      padding: 0 2px;
-      min-width: 21px;
-      font-weight: 500;
-      display: inline-block;
-    }
-    background: rgba(125, 125, 125, 0.1);
-    &.mustelid {
-      background: rgba(173, 0, 0, 0.1);
-      .count {
-        background: #ad0000;
-      }
-    }
-    &.possum,
-    &.cat {
-      background: rgba(163, 0, 20, 0.1);
-      .count {
-        background: #a30014;
-      }
-    }
-    &.rodent,
-    &.hedgehog {
-      background: rgba(163, 96, 0, 0.1);
-      .count {
-        background: #a36000;
-      }
-    }
-  }
-}
 .sunrise,
 .sunset {
-  color: #aaa;
-}
-.night-icon {
-  color: rgba(0, 0, 0, 0.2);
+  color: var(--bs-tertiary-color);
 }
 .list-item {
-  line-height: 14px;
   transition: background-color linear 0.2s;
-  border-radius: 3px;
   > * {
-    pointer-events: none;
-  }
-  &:hover:not(&[class*="sun"]) {
-    background: #eee;
-  }
-  &.selected {
-    background: #aaa;
+    //pointer-events: none;
   }
   .visit-time-duration {
-    width: 70px;
-    color: #666;
+    width: calc(var(--cp-grid-base) * 13); // 64px
     text-align: right;
   }
-  &.sunrise,
-  &.sunset {
-    .visit-time-duration {
-      color: #aaa;
-    }
-  }
-  .visit-thumb {
-    min-width: 45px;
-    max-width: 45px;
-    width: 45px;
-    height: 45px;
-    overflow: hidden;
-    position: relative;
-    background: #aaa;
-    border-radius: 2.5px;
-    .num-recordings {
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      position: absolute;
-      bottom: 0;
-      left: 0;
-    }
-  }
   .visit-timeline {
-    border-left: 1px solid #ddd;
+    border-left: 2px solid var(--bs-gray-300);
+    width: 2px;
+    @media (max-width: @breakpoint-xs-max) {
+      margin-left: var(--cp-spacing-sm);
+      margin-right: var(--cp-spacing-sm);
+    }
+    @media (min-width: @breakpoint-sm) {
+      margin-left: var(--cp-spacing-md);
+      margin-right: var(--cp-spacing-md);
+    }
     .circle {
-      margin-top: 12px;
-      width: 6px;
-      height: 6px;
-      border-radius: 3px;
-      background: white;
-      transform: translateX(-3.5px);
-      border: 1px solid #ddd;
+      margin-top: var(--cp-spacing-sm);
+      width: calc(var(--cp-grid-base) * 2); // 8px
+      height: calc(var(--cp-grid-base) * 2);
+      border-radius: var(--cp-grid-base);
+      background: var(--bs-white);
+      transform: translateX(-5px);
+      border: 2px solid var(--bs-gray-400);
     }
     .sun-icon {
-      margin-top: 12px;
-      width: 6px;
-      height: 6px;
-      color: #ccc;
-      background: white;
-      transform: translateX(-3.5px) scale(3.5);
+      width: calc(var(--cp-grid-base) * 2); // 8px
+      height: calc(var(--cp-grid-base) * 2);
+      color: var(--bs-gray-400);
+      transform: translateX(-4.5px) scale(3.5);
+      @media (max-width: @breakpoint-xs-max) {
+        margin-top: var(--cp-spacing-xs);
+      }
+      @media (min-width: @breakpoint-sm) {
+        margin-top: var(--cp-spacing-lg);
+      }
       .sun-arrow {
         transform-box: fill-box;
         transform-origin: center;
@@ -551,38 +519,88 @@ const deviceTypeFor = (deviceId: DeviceId): DeviceType => {
         display: block;
         content: " ";
         height: 50%;
-        width: 1px;
-        left: -1px;
-        border-left: 1px dashed white;
+        width: 2px;
+        left: -2px;
+        border-left: 2px dashed var(--app-bg-color);
       }
     }
   }
   &:last-child {
     .visit-timeline {
       &::before {
-        top: 15px;
+        top: var(--cp-spacing-md);
         height: unset;
         bottom: 0;
       }
     }
   }
+  .recording-detail {
+    container-type: inline-size;
+    background: var(--bs-white);
+    border-radius: var(--bs-border-radius);
+    cursor: pointer;
+    transform: translate3d(0, 0, 0);
+    transition:
+      transform 0.1s,
+      box-shadow 0.15s;
+    .standard-shadow();
+    @media (max-width: @breakpoint-xs-max) {
+      padding: var(--cp-spacing-xs);
+      margin-bottom: var(--cp-spacing-xs);
+    }
+    @media (min-width: @breakpoint-sm) {
+      padding: var(--cp-spacing-sm);
+      margin-bottom: var(--cp-spacing-sm);
+    }
+    &:hover {
+      box-shadow: 0 6px 12px 0 rgba(44, 79, 1, 0.1);
+      transform: translate3d(0, -2px, 0);
+    }
+  }
+  .visit-thumb {
+    min-width: calc(var(--cp-grid-base) * 16); // 64px
+    max-width: calc(var(--cp-grid-base) * 16);
+    width: calc(var(--cp-grid-base) * 16);
+    height: calc(var(--cp-grid-base) * 16);
+    overflow: hidden;
+    position: relative;
+    background: var(--bs-gray-200);
+    border-radius: var(--bs-border-radius-sm);
+    @media (max-width: @breakpoint-xs-max) {
+      margin-right: var(--cp-spacing-sm);
+    }
+    @media (min-width: @breakpoint-sm) {
+      margin-right: var(--cp-spacing-md);
+    }
+  }
+  .tags-container {
+    margin-bottom: var(--cp-spacing-xxs);
+  }
   .visit-species-tag {
-    background: #999;
-    color: white;
+    background: var(--cp-tag-no-priority);
+    color: var(--bs-white);
     display: inline-block;
-    border-radius: 3px;
-    line-height: 20px;
-    font-weight: 500;
+    //line-height: var(--cp-line-height-md);
+    border-radius: var(--bs-border-radius-sm);
+    font-weight: var(--cp-font-weight-medium);
+    padding-left: calc(var(--cp-spacing-xxs) + var(--cp-spacing-xxxs));
+    padding-right: calc(var(--cp-spacing-xxs) + var(--cp-spacing-xxxs));
+    @media (max-width: @breakpoint-xs-max) {
+      font-size: var(--cp-font-size-sm);
+    }
+    @media (min-width: @breakpoint-sm) {
+      font-size: var(--cp-font-size-md);
+    }
     &.mustelid {
-      background: #ad0000;
+      background: var(--cp-tag-priority-badge-1);
     }
     &.possum,
     &.cat {
-      background: #a30014;
+      background: var(--cp-tag-priority-badge-1);
     }
     &.rodent,
     &.hedgehog {
-      background: #a36000;
+      background: var(--cp-tag-priority-badge-2);
     }
     &.test-recording {
       background: #6a8bd5;
@@ -591,26 +609,5 @@ const deviceTypeFor = (deviceId: DeviceId): DeviceType => {
       background: #d56a6e;
     }
   }
-  .station-icon {
-    color: rgba(0, 0, 0, 0.5);
-  }
-
-  .recording-detail {
-    container-type: inline-size;
-    max-width: 469px;
-    background: white;
-    border-radius: 3px;
-  }
-}
-img.image-loading {
-  background: red;
-}
-.day-header {
-  position: sticky;
-  top: 0;
-  background: rgba(246, 246, 246, 0.85);
-  padding-top: 12px;
-  z-index: 1;
-  border-bottom: 1px solid #ddd;
 }
 </style>

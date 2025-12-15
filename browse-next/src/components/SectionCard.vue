@@ -28,7 +28,7 @@ const hasHeader = computed<boolean>(() => {
 @import "../assets/less/elevation.less";
 .section-card {
   background-color: #fff;
-  border-radius: 0.25rem;
+  border-radius: var(--bs-border-radius-lg);
   .standard-shadow();
   &__header {
     border-bottom: 1px solid #eee;

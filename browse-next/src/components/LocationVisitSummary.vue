@@ -106,19 +106,17 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
       >
       </map-with-points>
       <div class="overlay me-1">
-        <div class="station-name mb-1 p-1 px-sm-1 py-sm-0">
+        <div class="station-name h5 lh-base mb-1">
           {{ location.name }}
         </div>
-        <div class="visit-count p-1 px-sm-1 py-sm-0">
-          {{ visitCount }} visits
-        </div>
+        <div class="visit-count lh-base">{{ visitCount }} visits</div>
       </div>
     </div>
-    <div class="visit-species-breakdown d-flex justify-content-between">
-      <div class="names my-2">
+    <div class="visit-species-breakdown d-flex justify-content-between gap-3">
+      <div class="names">
         <div
           v-for="([species, _path, count], index) in speciesSummary"
-          :class="['species-count', 'ps-1']"
+          :class="['species-count']"
           :key="index"
         >
           <strong class="me-1 text-capitalize">{{ count }}</strong
@@ -127,7 +125,7 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
           }}</span>
         </div>
       </div>
-      <div class="values flex-fill px-2 my-2">
+      <div class="values flex-fill">
         <div
           v-for="([species, path, count], index) in speciesSummary"
           :class="[species, 'species-value', ...path.split('.')]"
@@ -145,44 +143,39 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
 
 <style scoped lang="less">
 @import "../assets/less/typography.less";
+@import "../assets/less/elevation.less";
 
-.map {
-  height: 150px;
-}
 .location-visit-summary {
-  background: white;
-  border-radius: 2px;
-  width: 300px;
+  background: var(--bs-white);
+  border-radius: var(--bs-border-radius);
+  width: calc(var(--cp-grid-base) * 75); // 300px
+  min-width: calc(var(--cp-grid-base) * 75); // 300px
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
   margin-bottom: 2px;
-  min-width: 295px;
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+  color: inherit;
+  transform: translate3d(0, 0, 0);
+  transition:
+    transform 0.1s,
+    box-shadow 0.15s;
+  .standard-shadow();
   @media screen and (min-width: 576px) {
     &:not(:first-child) {
       margin-left: 19px;
     }
   }
-
-  cursor: pointer;
-  user-select: none;
-  text-decoration: none;
-  color: inherit;
-  transition: background-color 0.2s ease-in-out;
   &:hover {
-    background-color: #ececec;
-    border-bottom: 4px solid #999;
+    box-shadow: 0 6px 12px 0 rgba(44, 79, 1, 0.1);
+    transform: translate3d(0, -2px, 0);
   }
 }
 .visit-species-breakdown {
+  padding: var(--cp-spacing-sm);
   .species-count {
-    margin-left: 8px;
     height: 24px;
     line-height: 24px;
-  }
-  .names {
-    .fs-7();
-    @media screen and (min-width: 576px) {
-      font-size: unset;
-    }
   }
   .species-value {
     position: relative;
@@ -193,25 +186,26 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
       content: " ";
       display: block;
       height: 6px;
-      background: #9d9d9d;
+      background: var(--cp-tag-no-priority);
       top: 9px;
       width: 100%;
+      border-radius: var(--bs-border-radius-sm);
     }
     &.mustelid {
       &::before {
-        background: red;
+        background: var(--cp-tag-priority-1);
       }
     }
     &.possum,
     &.cat {
       &::before {
-        background: #b53326;
+        background: var(--cp-tag-priority-2);
       }
     }
     &.rodent,
     &.hedgehog {
       &::before {
-        background: lighten(coral, 20%);
+        background: var(--cp-tag-priority-3);
       }
     }
   }
@@ -219,33 +213,29 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
 .map-container {
   position: relative;
   // TODO - For proper z-indexing, we need to add these html labels as leaflet controls...
+  .map {
+    height: calc(var(--cp-grid-base) * 40); // 160px
+    border-radius: var(--bs-border-radius) var(--bs-border-radius) 0 0;
+  }
   .overlay {
     position: absolute;
-    top: 8px;
-    left: 7px;
+    top: var(--cp-spacing-xs);
+    left: var(--cp-spacing-xs);
     z-index: 400;
   }
   .station-name,
   .visit-count {
-    background: white;
+    background: color-mix(in srgb, var(--bs-white), transparent 15%);
+    backdrop-filter: blur(8px);
+    border-radius: var(--bs-border-radius-sm);
+    padding: var(--cp-spacing-xxxs) var(--cp-spacing-xs);
   }
   .station-name {
-    display: block;
-    color: #016e9d;
-    font-weight: 500;
-    .fs-7();
+    font-weight: var(--cp-font-weight-medium);
+    color: var(--cp-color-green-700);
   }
   .visit-count {
     display: inline-block;
-    .fs-7();
-  }
-
-  @media screen and (min-width: 576px) {
-    .visit-count,
-    .station-name {
-      .fs-6();
-      font-weight: unset;
-    }
   }
 }
 </style>

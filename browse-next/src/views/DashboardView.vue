@@ -486,18 +486,20 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
     class="species-summary-container mb-sm-5 mb-4"
     v-if="hasVisitsForSelectedTimePeriod"
   >
-    <div class="card-group species-summary flex-sm-nowrap flex-wrap d-flex">
+    <div class="species-summary flex-sm-nowrap flex-wrap d-flex">
       <div
         v-for="[key, val] in speciesSummarySorted"
         :key="key"
-        class="species-summary__item d-flex flex-row align-items-center p-2"
+        class="species-summary__item d-flex flex-row align-items-center gap-2"
         @click="showVisitsForTag(key)"
       >
-        <tag-image :tag="key" width="24" height="24" class="ms-sm-3 ms-1" />
+        <div class="species-summary__item__icon p-2">
+          <tag-image :tag="key" width="24" height="24" class="" />
+        </div>
         <div
-          class="d-flex justify-content-evenly flex-sm-column ms-sm-3 ms-2 pe-sm-3 pe-1 align-items-center align-items-sm-start"
+          class="d-flex justify-content-evenly flex-sm-column align-items-center align-items-sm-start"
         >
-          <div class="species-summary__item__count pe-sm-0 pe-1 lh-sm">
+          <div class="species-summary__item__count lh-sm">
             {{ val }}
           </div>
           <div class="species-summary__item__name lh-sm text-capitalize">
@@ -510,10 +512,10 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   <h2 class="dashboard-subhead h4" v-if="hasVisitsForSelectedTimePeriod">
     Visits summary
   </h2>
-  <div class="d-md-flex flex-md-row">
+  <div class="d-md-flex flex-md-row mb-5 gap-3">
     <project-visits-summary
       v-if="!isMobileView && hasVisitsForSelectedTimePeriod"
-      class="mb-5 flex-md-fill me-md-3"
+      class="mb-3 flex-md-fill"
       :locations="allLocations"
       :active-locations="locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
       :visits="dashboardVisits"
@@ -535,11 +537,11 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   </h2>
   <horizontal-overflow-carousel
     v-if="hasVisitsForSelectedTimePeriod"
-    class="mb-5"
+    class="locations-summary-wrapper mb-3 mb-lg-4"
   >
     <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
     <div
-      class="card-group species-summary flex-sm-nowrap"
+      class="species-summary flex-sm-nowrap"
       v-if="!isLoading && hasVisitsForSelectedTimePeriod"
     >
       <location-visit-summary
@@ -632,6 +634,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
 }
 
 .species-summary-container {
+  border-radius: var(--bs-border-radius);
   @media screen and (min-width: 576px) {
     background: white;
     .standard-shadow();
@@ -640,12 +643,10 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
 
 .species-summary {
   user-select: none;
-  gap: var(--cp-spacing-xxs);
-
   &__item {
-    background: #fff;
-    //height: 47px;
+    background: var(--bs-white);
     cursor: pointer;
+    padding: var(--cp-spacing-md) var(--cp-spacing-sm);
     @media screen and (max-width: 575px) {
       //flex-basis: calc(50% - (var(--spacing--xxs)));
       flex: 0 0 calc(50% - calc(var(--cp-spacing-xxs) / 2));
@@ -661,22 +662,26 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       //min-width: 130px; // TODO @media breakpoints
     }
     &:hover {
-      background-color: #ececec;
+      background-color: var(--bs-gray-200);
     }
     &__count {
       font-weight: var(--cp-font-weight-medium);
       @media screen and (min-width: 576px) {
-        font-size: var(--cp-font-size-h3);
+        font-size: var(--cp-font-size-h2);
       }
+    }
+    &__name {
+      font-size: var(--cp-font-size-lg);
     }
   }
 }
 </style>
 <style lang="less">
-.species-summary__item {
-  > img {
-    min-width: 24px;
-    min-height: 24px;
+// make sure that the shadow and hover effect of the location card displays - it won't otherwise because of the overflow hidden property
+.locations-summary-wrapper {
+  margin: -4px -6px -12px;
+  .inner {
+    padding: 4px 6px 12px;
   }
 }
 </style>

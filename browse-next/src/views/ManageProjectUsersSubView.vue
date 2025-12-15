@@ -278,7 +278,7 @@ const permissionsOptions = computed(() => [
             >
               <button
                 type="button"
-                class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
+                class="btn btn-outline-secondary d-flex align-items-center text-nowrap"
                 @click.prevent="() => editUserAdmin(card.permissions.value)"
                 :disabled="
                   isLastOwnerUser(card.permissions.value) &&
@@ -290,14 +290,14 @@ const permissionsOptions = computed(() => [
               </button>
               <div class="d-flex">
                 <div
-                  class="fs-7 text-secondary d-flex align-items-center me-2"
+                  class="text-secondary d-flex align-items-center me-2"
                   v-if="card.permissions.value.admin"
                 >
                   <font-awesome-icon icon="check-circle" class="fs-6" />
                   <span class="ps-2">admin</span>
                 </div>
                 <div
-                  class="fs-7 text-secondary d-flex align-items-center"
+                  class="text-secondary d-flex align-items-center"
                   v-if="card.permissions.value.owner"
                 >
                   <font-awesome-icon icon="check-circle" class="fs-6" />
@@ -360,7 +360,7 @@ const permissionsOptions = computed(() => [
           </template>
           <template #permissions="{ cell }">
             <div
-              class="fs-7 text-secondary d-flex align-items-center"
+              class="text-secondary d-flex align-items-center"
               v-if="cell.value.admin"
             >
               <font-awesome-icon icon="check-circle" class="fs-6" />
@@ -368,7 +368,7 @@ const permissionsOptions = computed(() => [
             </div>
 
             <div
-              class="fs-7 text-secondary d-flex align-items-center ms-3"
+              class="text-secondary d-flex align-items-center ms-3"
               v-if="cell.value.owner"
             >
               <font-awesome-icon icon="check-circle" class="fs-6" />
@@ -376,7 +376,7 @@ const permissionsOptions = computed(() => [
             </div>
             <button
               type="button"
-              class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap ms-3"
+              class="btn btn-outline-secondary d-flex align-items-center text-nowrap ms-3"
               @click.prevent="() => editUserAdmin(cell.value)"
               :disabled="
                 isLastOwnerUser(cell.value) && isLastAdminUser(cell.value)

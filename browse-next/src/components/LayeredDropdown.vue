@@ -6,6 +6,7 @@ import {
   displayLabelForClassificationLabel,
   getClassificationForLabel,
 } from "@api/classificationsUtils.ts";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const props = withDefaults(
   defineProps<{
@@ -366,10 +367,15 @@ defineExpose({
         <div
           class="options-path"
           :key="path"
-          v-for="path in currPath"
+          v-for="(path, index) in currPath"
           @click="() => setToPath(path)"
         >
-          {{ path }}
+          <span class="path-name">{{ path }}</span>
+          <material-symbol
+            v-if="index !== currPath.length - 1"
+            name="keyboard_arrow_right"
+            size="1rem"
+          />
         </div>
       </div>
       <div
@@ -403,7 +409,7 @@ defineExpose({
                   withAudioContext,
                 ) !== option.label
               "
-              class="fs-7 text-black-50"
+              class="text-black-50"
               style="vertical-align: middle"
               >&nbsp;({{ option.label }})</span
             >
@@ -436,22 +442,43 @@ defineExpose({
 
 .options-path-container {
   display: flex;
+  /*flex-flow: row nowrap;*/
+  flex-wrap: wrap;
+  align-items: center;
   width: 100%;
-  height: 1.5em;
-  padding-left: 0.4em;
-  color: rgb(128, 128, 128);
-  background: rgb(248, 248, 248);
-  border-bottom: 1px solid #ccc;
-
-  :last-child {
-    color: rgb(91, 199, 97);
+  min-height: 2.4em;
+  padding: var(--cp-spacing-xxs);
+  row-gap: var(--cp-spacing-xxs);
+  /* color: rgb(128, 128, 128);*/
+  /* background: rgb(248, 248, 248);*/
+  border-bottom: 1px solid var(--bs-border-color);
+  font-size: var(--cp-font-size-sm);
+  .options-path {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    /*text-decoration: underline;*/
+    /*text-wrap: nowrap;
+    overflow: hidden;*/
+    .path-name {
+      padding: 0 var(--cp-spacing-xs);
+      font-weight: 500;
+      cursor: pointer;
+      /*background: var(--cp-color-green-50);*/
+      background: var(--bs-gray-100);
+      border-radius: var(--bs-border-radius);
+      /*text-wrap: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;*/
+      &:last-child {
+        color: var(--cp-color-green-700);
+        background: var(--cp-color-green-50);
+      }
+      &:hover {
+        background: var(--cp-color-green-50);
+      }
+    }
   }
-}
-
-.options-path {
-  margin-right: 5px;
-  font-weight: 600;
-  cursor: pointer;
 }
 
 .options-container:focus-within {
@@ -463,11 +490,11 @@ defineExpose({
 
 .input-container {
   width: 100%;
-  min-height: 2.5rem;
+  min-height: 2.2rem;
   // TODO: Get consistent focus rings + keyboard navigation happening on this component.
   background: white;
-  border: 1px solid #ccc;
-  border-radius: 5px;
+  border: var(--bs-border-width) solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
   &.open {
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
@@ -480,8 +507,8 @@ defineExpose({
     border: none;
     outline: none;
     background: transparent;
-    font-size: 1em;
-    line-height: 2.5rem;
+    font-size: var(--bs-body-font-size);
+    line-height: 2.2rem;
     text-indent: 0.5rem;
     color: rgb(128, 128, 128);
   }
@@ -498,7 +525,7 @@ defineExpose({
     display: flex;
     font-size: 14px;
     color: white;
-    font-weight: 600;
+    font-weight: var(--cp-font-weight-medium);
     line-height: 1.25rem;
     white-space: nowrap;
 
