@@ -34,6 +34,7 @@ import {
   fetchUnauthorizedRequiredFlatRecordingById,
 } from "@api/extract-middleware.js";
 import { Track } from "@/models/Track.js";
+
 import { DeviceHistory } from "@models/DeviceHistory.js";
 import Sequelize, { Op } from "sequelize";
 import type { TrackId } from "@typedefs/api/common.js";
@@ -41,12 +42,13 @@ import { openS3 } from "@models/util/util.js";
 
 import type { TrackTagData } from "@/../types/api/trackTag.js";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
-import { TrackTag } from "@models/TrackTag.js";
+import { TrackTag, AI_MASTER } from "@models/TrackTag.js";
 import { Recording } from "@models/Recording.js";
 
 import type {
   MinimalTrackRequestData,
   MinimalTrackClassification,
+  MinimalTrack,
 } from "@/../types/api/fileProcessing.js";
 
 const NULL_TRACK_ID = 1;
@@ -326,8 +328,10 @@ export default function (app: Application, baseUrl: string) {
         }
         return successResponse(response, "Processing finished.");
       } else {
-        recording.processingState =
-          `${recording.processingState}.failed` as RecordingProcessingState;
+        if (!recording.isFailed()) {
+          recording.processingState =
+            `${recording.processingState}.failed` as RecordingProcessingState;
+        }
         recording.processingFailedCount += 1;
         await recording.save();
 
@@ -402,73 +406,154 @@ export default function (app: Application, baseUrl: string) {
         );
       }
       const data = response.locals.data;
-      const trackIds = [];
-      for (const track of data) {
-        trackIds.push(
-          await addTrack(recording, track, request.body.algorithmId),
+      const trackIds: number[] = [];
+      const tracks = [];
+      for (const trackData of data) {
+        const isMasked = await isTrackMasked(
+          recording,
+          trackData,
+          request.body.algorithmId,
         );
+        if (isMasked) {
+          continue;
+        }
+        const track = prepareTrackToSave(
+          recording,
+          trackData,
+          request.body.algorithmId,
+        );
+        tracks.push(track);
       }
-      return successResponse(response, "Tracks added.", {
-        trackIds,
-      });
+      const modelTracks = await Track.bulkCreate(tracks);
+
+      const trackTags: TrackTag[] = [];
+      const trackTagData = [];
+      for (let i = 0; i < modelTracks.length; i++) {
+        const track = tracks[i];
+        track.id = modelTracks[i].id;
+        const trackData = data[i];
+        trackIds.push(track.id);
+
+        for (const pred of trackData.predictions) {
+          const modelName = pred.name;
+          const used = modelName === AI_MASTER;
+          let confidence = pred.confidence;
+          // confidence will always be over 50 if it was already put in the 0-100 range
+          if (confidence < 1) {
+            confidence = Math.round(100 * confidence);
+          }
+          const predData = pred as TrackTagData;
+          if (!pred.confident) {
+            predData.raw_tag = pred.tag;
+            pred.tag = "unidentified";
+          }
+
+          const tag = {
+            TrackId: track.id,
+            what: pred.tag,
+            confidence: pred.confidence,
+            automatic: true,
+            model: modelName,
+            UserId: null,
+            used,
+          } as TrackTag;
+          trackTags.push(tag);
+
+          trackTagData.push(predData);
+        }
+
+        delete trackData.predictions;
+        await Track.saveTrackData(track.id, trackData);
+      }
+
+      const modelTrackTags = await TrackTag.bulkCreate(trackTags);
+      for (let i = 0; i < modelTrackTags.length; i++) {
+        const modelTrackTag = modelTrackTags[i];
+        if (modelTrackTag.model) {
+          // Save the additional Track metadata to object storage
+          await Track.saveTrackTagData(modelTrackTag.id, trackTagData[i]);
+        }
+      }
+
+      return successResponse(response, "Tracks added.", { trackIds });
     },
   );
-  const addTrackTag = async (
-    track: Track,
-    pred: MinimalTrackClassification,
-  ): Promise<TrackTag> => {
-    const predData = pred as TrackTagData;
-    if (!pred.confident) {
-      predData.raw_tag = pred.tag;
-      pred.tag = "unidentified";
+
+
+  const isTrackMasked = async (
+    recording: Recording,
+    trackData: MinimalTrackRequestData,
+    algorithmId: number,
+  ): Promise<boolean> => {
+    const deviceId = recording.DeviceId;
+    const groupId = recording.GroupId;
+    const atTime = recording.recordingDateTime;
+    const discardMaskedTrack = false;
+    if (recording.type === RecordingType.ThermalRaw) {
+      const positions = trackData && trackData.positions;
+      if (positions) {
+        return trackIsMasked(deviceId, groupId, atTime, positions);
+      }
     }
-    return track.addTag(pred.tag, pred.confidence, true, predData, null, false);
+    return discardMaskedTrack;
   };
+
+  const prepareTrackToSave = (
+    recording: Recording,
+    trackData: MinimalTrackRequestData,
+    algorithmId: number,
+  ): MinimalTrack => {
+    const newTrack = {
+      AlgorithmId: algorithmId,
+      startSeconds: trackData.start_s || 0,
+      endSeconds: trackData.end_s || 0,
+      minFreqHz: null,
+      maxFreqHz: null,
+      RecordingId: recording.id,
+    };
+    if (recording.type === RecordingType.Audio) {
+      newTrack.minFreqHz = trackData.minFreq || 0;
+      newTrack.maxFreqHz = trackData.maxFreq || 0;
+    }
+    if (trackData.start_s) {
+      delete trackData.start_s;
+    }
+    if (trackData.end_s) {
+      delete trackData.end_s;
+    }
+    return newTrack;
+  };
+
   const addTrack = async (
     recording: Recording,
     trackData: MinimalTrackRequestData,
     algorithmId: number,
   ): Promise<number> => {
-    const deviceId = recording.DeviceId;
-    const groupId = recording.GroupId;
-    const atTime = recording.recordingDateTime;
-    let discardMaskedTrack = false;
-    let trackId: TrackId = 1;
-    if (recording.type === RecordingType.ThermalRaw) {
-      const positions = trackData && trackData.positions;
-      if (positions) {
-        discardMaskedTrack = await trackIsMasked(
-          deviceId,
-          groupId,
-          atTime,
-          positions,
-        );
-      }
+    const discardMaskedTrack = await isTrackMasked(
+      recording,
+      trackData,
+      algorithmId,
+    );
+    if (discardMaskedTrack) {
+      return 1;
     }
-    if (!discardMaskedTrack) {
-      const predictions = trackData.predictions;
-      const newTrack = {
-        data: trackData,
-        AlgorithmId: algorithmId,
-        startSeconds: trackData.start_s || 0,
-        endSeconds: trackData.end_s || 0,
-        minFreqHz: null,
-        maxFreqHz: null,
-      };
-      delete newTrack.data.predictions;
-      if (recording.type === RecordingType.Audio) {
-        newTrack.minFreqHz = trackData.minFreq || 0;
-        newTrack.maxFreqHz = trackData.maxFreq || 0;
-      }
-      const track = await recording.addTrack(newTrack);
-      trackId = track.id;
-      if (predictions) {
-        for (const pred of predictions) {
-          await addTrackTag(track, pred);
-        }
-      }
+    const predictions = trackData.predictions;
+    const newTrack = {
+      data: trackData,
+      AlgorithmId: algorithmId,
+      startSeconds: trackData.start_s || 0,
+      endSeconds: trackData.end_s || 0,
+      minFreqHz: null,
+      maxFreqHz: null,
+      RecordingId: recording.id,
+    };
+    delete newTrack.data.predictions;
+    if (recording.type === RecordingType.Audio) {
+      newTrack.minFreqHz = trackData.minFreq || 0;
+      newTrack.maxFreqHz = trackData.maxFreq || 0;
     }
-    return trackId;
+    const track = await recording.addTrack(newTrack);
+    return track.id;
   };
   /**
    * @api {post} /api/v1/processing/:id/tracks Add track to recording
@@ -646,20 +731,56 @@ export default function (app: Application, baseUrl: string) {
     },
     async (request: Request, response: Response) => {
       if (!response.locals.skip) {
-        const trackTagIds = [];
+        const trackTags: TrackTag[] = [];
+        const trackTagData = [];
         for (const pred of response.locals.data) {
-          const tag = await addTrackTag(response.locals.track, pred);
-          trackTagIds.push(tag.id);
+          const modelName = pred.name;
+          const used = modelName === AI_MASTER;
+          let confidence = pred.confidence;
+          // confidence will always be over 50 if it was already put in the 0-100 range
+          if (confidence < 1) {
+            confidence = Math.round(100 * confidence);
+          }
+          const predData = pred as TrackTagData;
+          if (!pred.confident) {
+            predData.raw_tag = pred.tag;
+            pred.tag = "unidentified";
+          }
+
+          const tag = {
+            TrackId: response.locals.track.id,
+            what: pred.tag,
+            confidence: pred.confidence,
+            automatic: true,
+            model: modelName,
+            UserId: null,
+            used,
+          } as TrackTag;
+          trackTags.push(tag);
+          trackTagData.push(predData);
         }
 
-        return successResponse(response, "Track tag added.", {
+        const trackTagIds = [];
+        const modelTrackTags = await TrackTag.bulkCreate(trackTags);
+        for (let i = 0; i < modelTrackTags.length; i++) {
+          const modelTrackTag = modelTrackTags[i];
+          trackTagIds.push(modelTrackTag.id);
+          if (modelTrackTag.model) {
+            // Save the additional Track metadata to object storage
+            await Track.saveTrackTagData(modelTrackTag.id, trackTagData[i]);
+          }
+        }
+
+        return successResponse(response, "Track tags added.", {
           trackTagIds: trackTagIds,
         });
-      }
-      // Returns without creating track if this is a masked out track.
-      return successResponse(response, "Track tag added.", {
+      }else{
+           // Returns without creating track if this is a masked out track.
+      return successResponse(response, "Track tags added.", {
         trackTagIds: 1,
       });
+      }
+    
     },
   );
 

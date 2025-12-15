@@ -142,6 +142,43 @@ Cypress.Commands.add(
   },
 );
 
+
+Cypress.Commands.add(
+  "processingApiTracksTagsBulkPost",
+  (
+    userName: string,
+    trackName: string,
+    recordingName: string,
+    data: any,
+    statusCode: number = 200,
+  ) => {
+    const id = getCreds(recordingName).id;
+    const trackId = getCreds(trackName).id;
+    logTestDescription(
+      `Adding tracktags for recording ${recordingName}`,
+      { id: id, trackId: trackId, data },
+    );
+
+    const url = v1ApiPath(
+      "processing/" + id.toString() + "/tracks/" + trackId.toString() + "/tagsBulk",
+    );
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: url,
+        body: {data:JSON.stringify(data)},
+      },
+      userName,
+      statusCode,
+    ).then((response) => {
+      expect(response.status, "Check return statusCode is").to.equal(
+        statusCode,
+      );
+    });
+  },
+);
+
+
 Cypress.Commands.add(
   "processingApiTracksTagsPost",
   (
@@ -313,6 +350,55 @@ Cypress.Commands.add(
       }
       if (additionalChecks["message"] !== undefined) {
         expect(x.messages.join("|")).to.include(additionalChecks["message"]);
+      }
+    });
+  },
+);
+
+
+    Cypress.Commands.add(
+"processingApiTracksAndTagsPost",
+(
+      userName: string,
+      trackName: string,
+      recordingName: string,
+      data: any[],
+      algorithmId: number,
+    statusCode: number = 200,
+    )=> {
+
+      const id = getCreds(recordingName).id;
+    logTestDescription(`Adding tracks for recording ${recordingName}`, {
+      id,
+      data,
+      algorithmId: algorithmId,
+    });
+    const params = {
+      data,
+      algorithmId: algorithmId,
+    };
+
+    const url = v1ApiPath(`processing/${id.toString()}/tracksAndTags`);
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url,
+        body: params,
+      },
+      userName,
+      statusCode,
+    ).then((response) => {
+      expect(response.status, "Check return statusCode is").to.equal(
+        statusCode,
+      );
+      let i = 0;
+      for(const trackId of response.body.trackIds){
+        i++;
+        let name = trackName;
+        if (response.body.trackIds.length>1){
+          name = `${name}-${i}`;
+        }
+        saveIdOnly(name, trackId);
       }
     });
   },

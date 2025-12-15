@@ -122,6 +122,173 @@ describe("Recordings - processing tests", () => {
       );
     });
 
+    it.only("Tracking stage can bulk upload", () => {
+      const recording18 = TestCreateRecordingData(templateRecording);
+      cy.apiRecordingAdd(
+        "rpCamera1",
+        recording18,
+        "oneframe.cptv",
+        "rpRecording18",
+      ).then(() => {
+        const expectedProcessing18 = TestCreateExpectedProcessingData(
+          templateExpectedProcessing,
+          "rpRecording18",
+          recording18,
+        );
+        expectedProcessing18.processingState =
+          RecordingProcessingState.TrackAndAnalyse;
+        const expectedRecording18 = TestCreateExpectedRecordingData(
+          templateExpectedThermalRecording,
+          "rpRecording18",
+          "rpCamera1",
+          "rpGroup",
+          null,
+          recording18,
+        );
+        expectedRecording18.processingState =
+          RecordingProcessingState.TrackAndAnalyse;
+        expectedRecording18.processing = true;
+
+        cy.log("Send for processing");
+        cy.processingApiCheck(
+          superuser,
+          RecordingType.ThermalRaw,
+          RecordingProcessingState.TrackAndAnalyse,
+          "rpRecording18",
+          expectedProcessing18,
+          EXCLUDE_KEYS,
+        );
+        cy.log("Look up algorithm and then post tracks");
+        cy.processingApiAlgorithmPost(superuser, {
+          "tracking-format": 42,
+          model_name: "Master",
+        }).then((algorithmId) => {
+
+          const tracksData = [];
+          tracksData.push({ start_s: 1, end_s: 4, predictions:[{
+                    tag: "possum",
+                    confidence: 90,
+                    name: "Master",
+                    confident:true,
+                  },
+                {
+                    tag: "possum",
+                    confidence: 90,
+                    name: "Resnet",
+                    confident:true,
+                  },
+                ] });
+          tracksData.push({ start_s: 2, end_s: 5, predictions:[] });
+
+          cy.processingApiTracksAndTagsPost(
+            superuser,
+            "rpTrack18",
+            "rpRecording18",
+            tracksData,
+            algorithmId,
+          );
+
+                   const trackTagData = [{
+                    tag: "hedgehog",
+                    confidence: 75,
+                    name: "Master",
+                    confident:false,
+                  },
+                {
+                    tag: "hedgehog",
+                    confidence: 75,
+                    name: "Resnet",
+                    confident:false,
+                  },
+                ];
+                           cy.log("Bulk add just tags for track 2");
+ 
+         cy.processingApiTracksTagsBulkPost(
+            superuser,
+            "rpTrack18-2",
+            "rpRecording18",
+            trackTagData,
+          
+          ).then(() => {
+            cy.log("Check tracks added to recording");
+
+            expectedRecording18.tracks = [
+              {
+                tags: [
+                  {
+                    what: "possum",
+                    path: "all",
+                    automatic: true,
+                    trackId: getCreds("rpTrack18-1").id,
+                    confidence: 90,
+                    model: "Master",
+                    id: -1,
+                  },     {
+                    what: "possum",
+                    path: "all",
+                    automatic: true,
+                    trackId: getCreds("rpTrack18-1").id,
+                    confidence: 90,
+                    model: "Resnet",
+                    id: -1,
+                  },
+                ],
+                start: 1,
+                end: 4,
+                id: 1,
+                filtered: false,
+              },
+                            {
+                tags: [
+                  {
+                    what: "unidentified",
+                    path: "all",
+                    automatic: true,
+                    trackId: getCreds("rpTrack18-2").id,
+                    confidence: 75,
+                    model: "Master",
+                    id: -1,
+                  }, {
+                    what: "unidentified",
+                    path: "all",
+                    automatic: true,
+                    trackId: getCreds("rpTrack18-2").id,
+                    confidence: 75,
+                    model: "Resnet",
+                    id: -1,
+                  },
+                ],
+                start: 2,
+                end: 5,
+                id: 1,
+                filtered: false,
+              },
+            ];
+
+            expectedRecording18.processingState =
+              RecordingProcessingState.Finished;
+            expectedRecording18.processing = false;
+            cy.log("Complete tracking");
+            cy.processingApiPut(
+              superuser,
+              "rpRecording18",
+              true,
+              {},
+              undefined,
+            );
+            cy.log("Check tags added to recording/track");
+            cy.apiRecordingCheck(
+              "rpGroupAdmin",
+              "rpRecording18",
+              expectedRecording18,
+              EXCLUDE_ALL_IDS,
+            );
+          });
+        });
+      });
+    });
+
+    
     it("Check default state for uploaded thermal recording is tracking", () => {
       const recording1 = TestCreateRecordingData(templateRecording);
       delete recording1.processingState;

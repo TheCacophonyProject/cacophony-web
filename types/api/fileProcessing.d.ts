@@ -141,7 +141,14 @@ export interface MinimalTrackClassification {
 }
 
 
-
+ export interface MinimalTrack{
+      AlgorithmId: number,
+      startSeconds?:number,
+      endSeconds?: number,
+      minFreqHz?: number,
+      maxFreqHz?: number,
+      RecordingId: number
+  }
 
 export type MinimalTracksRequestData  =  MinimalTrackRequestData[];
 
