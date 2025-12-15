@@ -7,7 +7,7 @@ import type {
   ScheduleId,
   StationId,
 } from "./common.ts";
-import { type DeviceType } from "./consts.ts";
+import {AudioRecordingMode, type DeviceType} from "./consts.ts";
 import { type ApiGroupUserResponse } from "./group.ts";
 
 export type DeviceBatteryChargeState =
@@ -59,14 +59,8 @@ export type ThermalRecordingSettings = {
   useLowPowerMode: boolean;
 } & SettingsBase;
 
-export type AudioModes =
-  | "Disabled"
-  | "AudioOnly"
-  | "AudioAndThermal"
-  | "AudioOrThermal";
-
 export type AudioRecordingSettings = {
-  audioMode?: AudioModes;
+  audioMode?: AudioRecordingMode;
   audioSeed?: number;
 } & SettingsBase;
 
