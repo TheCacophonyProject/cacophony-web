@@ -122,7 +122,7 @@ describe("Recordings - processing tests", () => {
       );
     });
 
-    it.only("Tracking stage can bulk upload", () => {
+    it("Tracking stage can bulk upload", () => {
       const recording18 = TestCreateRecordingData(templateRecording);
       cy.apiRecordingAdd(
         "rpCamera1",
