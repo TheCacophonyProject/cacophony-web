@@ -65,15 +65,16 @@ const saveLocationName = async () => {
       locationName.value,
       location.id,
     );
+    savingLocation.value = false;
     if (!response.success) {
       // Else show error
       errorMessage.value = response.result.messages[0];
+    } else {
+      emit("changed-location-name", {
+        newName: locationName.value,
+        id: location.id,
+      });
     }
-    savingLocation.value = false;
-    emit("changed-location-name", {
-      newName: locationName.value,
-      id: location.id,
-    });
   }
   locationName.value = "";
   editingLocationName.value = false;

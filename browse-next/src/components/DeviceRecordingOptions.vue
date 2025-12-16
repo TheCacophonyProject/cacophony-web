@@ -357,7 +357,6 @@ const timesXPos = computed<OffsetTimesX | null>(() => {
   return null;
 });
 
-
 /** ---------------------------------------------------------------
  *  1. Solar elevation (degrees)
  *
@@ -369,7 +368,7 @@ const timesXPos = computed<OffsetTimesX | null>(() => {
 function solarElevation(date: Date, lat: number, lon: number) {
   const sunPos = sunCalc.getPosition(date, lat, lon);
   // suncalc gives the angle above the horizon in radians
-  return sunPos.altitude * 180 / Math.PI;
+  return (sunPos.altitude * 180) / Math.PI;
 }
 
 // /** ---------------------------------------------------------------
@@ -389,15 +388,14 @@ function solarElevation(date: Date, lat: number, lon: number) {
 //   // Sun below horizon → use twilight model instead
 //   return Infinity;
 // }
-const deg2rad = (d: number) => d * Math.PI / 180;
+const deg2rad = (d: number) => (d * Math.PI) / 180;
 function airMass(alpha: number) {
-  if (alpha > -0.833) {                     // > ~sunrise/sunset angle
+  if (alpha > -0.833) {
+    // > ~sunrise/sunset angle
     const rad = deg2rad(alpha);
-    return 1 /
-        (Math.sin(rad) + 0.50572 *
-            Math.pow(96.07995 - alpha, -1.6364));
+    return 1 / (Math.sin(rad) + 0.50572 * Math.pow(96.07995 - alpha, -1.6364));
   }
-  return Infinity;   // below horizon – handled by twilight branch
+  return Infinity; // below horizon – handled by twilight branch
 }
 
 /** ---------------------------------------------------------------
@@ -409,35 +407,37 @@ function airMass(alpha: number) {
  *  @returns {{alpha:number, lux:number}}  solar elevation and perceived light
  */
 function irradiance(date: Date, lat: number, lon: number) {
-  const alpha = solarElevation(date, lat, lon);   // degrees
-  const E0     = 1361;                            // W/m² (solar constant)
+  const alpha = solarElevation(date, lat, lon); // degrees
+  const E0 = 1361; // W/m² (solar constant)
   let Edir;
   let Ediff;
 
-  if (alpha >= 0) {                // daytime – sun above horizon
-    const m     = airMass(alpha);
-    const tau   = 0.13;      // clear‑air optical depth
+  if (alpha >= 0) {
+    // daytime – sun above horizon
+    const m = airMass(alpha);
+    const tau = 0.13; // clear‑air optical depth
 
     /* ---------- Direct beam ----------
        cosα is the projection onto a horizontal surface */
-    const Tdir  = Math.exp(-tau * m);
-    Edir        = E0 * Tdir * Math.sin(deg2rad(alpha));
+    const Tdir = Math.exp(-tau * m);
+    Edir = E0 * Tdir * Math.sin(deg2rad(alpha));
 
     /* ---------- Diffuse sky ----------
-       A very simple symmetric model – it peaks at the horizon
-       and falls to ~50 % at zenith.  The exact numbers are not critical
-       for the shape; you can replace this with a full Perez model if you wish. */
-    const Tdiff = Math.exp(-tau * m / 2);
+     A very simple symmetric model – it peaks at the horizon
+     and falls to ~50% at zenith.  The exact numbers are not critical
+     for the shape; you can replace this with a full Perez model if you wish. */
+    const Tdiff = Math.exp((-tau * m) / 2);
     // Use cos²(alpha) – this is symmetric about noon
-    Ediff      = (E0 * Tdiff) * (1 + 0.5 * Math.pow(Math.cos(deg2rad(alpha)), 2));
-  } else {                         // twilight or night – sun below horizon
-    const k     = 0.2;            // empirical decay constant (deg⁻¹)
-    Ediff       = E0 * Math.exp(k * alpha);   // crude exponential fall‑off
-    Edir        = 0;
+    Ediff = E0 * Tdiff * (1 + 0.5 * Math.pow(Math.cos(deg2rad(alpha)), 2));
+  } else {
+    // twilight or night – sun below horizon
+    const k = 0.2; // empirical decay constant (deg⁻¹)
+    Ediff = E0 * Math.exp(k * alpha); // crude exponential fall‑off
+    Edir = 0;
     // Ediff *= 1e-3;
   }
 
-  const Etot = Edir + Ediff;          // W/m² horizontal irradiance
+  const Etot = Edir + Ediff; // W/m² horizontal irradiance
 
   /* ------------------------------------------------------------------
    *  Convert to lux – approximate luminous efficacy of sunlight:
@@ -453,32 +453,37 @@ const minutes = computed(() => {
   if (location) {
     const timeZone = deviceTimezone.value as string;
     const now = new Date(curveDay.value);
-    let nowInTz = DateTime.fromJSDate(now).setZone(timeZone);
-    const dayStart = nowInTz.set({
-      hour: 0,
-      minute: 0,
-      second: 0,
-      millisecond: 0
-    }).toJSDate();
+    const nowInTz = DateTime.fromJSDate(now).setZone(timeZone);
+    const dayStart = nowInTz
+      .set({
+        hour: 0,
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+      })
+      .toJSDate();
     const offsets = [];
     console.log(location.lat, location.lng);
     for (let i = 0; i < 60 * 24; i += 10) {
-      const time = new Date(dayStart.getTime() + (i * 1000 * 60));
+      const time = new Date(dayStart.getTime() + i * 1000 * 60);
 
-      const { altitude: altitudeRadians } = sunCalc.getPosition(time, location.lat, location.lng);
+      const { altitude: altitudeRadians } = sunCalc.getPosition(
+        time,
+        location.lat,
+        location.lng,
+      );
       const ir = irradiance(time, location.lat, location.lng);
-      const altitude = (altitudeRadians * 180 / Math.PI) / 90;
+      const altitude = (altitudeRadians * 180) / Math.PI / 90;
       //console.log(time, ir, altitude);
       offsets.push({
         irradiance: ir,
-        altitude
+        altitude,
       });
     }
     return offsets;
   }
   return [];
 });
-
 
 const timesZeroOne = computed<OffsetTimesX | null>(() => {
   const location = device.value?.location;
@@ -497,8 +502,16 @@ const timesZeroOne = computed<OffsetTimesX | null>(() => {
     );
     //const timesInfo: Record<string, { time: Date, intensity: number, angle: number }> = {};
     for (const [key, time] of Object.entries(times)) {
-      const { altitude: altitudeRadians } = sunCalc.getPosition(time, location.lat, location.lng);
-      console.log("Irradiance", key,  irradiance(time, location.lat, location.lng));
+      const { altitude: altitudeRadians } = sunCalc.getPosition(
+        time,
+        location.lat,
+        location.lng,
+      );
+      console.log(
+        "Irradiance",
+        key,
+        irradiance(time, location.lat, location.lng),
+      );
       // // Account for "below the horizon correction"
       // const altRad = altitudeRadians + ((Math.PI / 180) * 0.833);
       // const altitudeAngleDegrees = ((180 / Math.PI) * altitudeRadians) + 0.833;
@@ -1155,8 +1168,16 @@ watch(customRecordingWindowStop, async () => {
                   <stop offset="100%" stop-color="indigo" />
                 </linearGradient>
               </defs>
-<!--              <rect x="0" y="0" width="100" height="20" fill="url(#daylight)" />-->
-              <rect v-for="(minute, index) in minutes" :x="100 / minutes.length * index" y="0" :width="100 / minutes.length" height="20" :fill="`rgba(${minute.irradiance.lux / 2000}, 0, 0, 1)`" />
+              <!--              <rect x="0" y="0" width="100" height="20" fill="url(#daylight)" />-->
+              <rect
+                v-for="(minute, index) in minutes"
+                :x="(100 / minutes.length) * index"
+                y="0"
+                :key="index"
+                :width="100 / minutes.length"
+                height="20"
+                :fill="`rgba(${minute.irradiance.lux / 2000}, 0, 0, 1)`"
+              />
               <text x="1" y="3" font-size="2" fill="white">
                 {{
                   DateTime.fromJSDate(curveDay)

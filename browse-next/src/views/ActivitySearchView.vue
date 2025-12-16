@@ -38,12 +38,6 @@ import type {
   ApiAudioRecordingResponse,
   ApiRecordingResponse,
 } from "@typedefs/api/recording";
-// import {
-//   type BulkRecordingsResponse,
-//   getAllRecordingsForProjectBetweenTimes,
-//   queryRecordingsInProjectNew,
-//   type QueryRecordingsOptions,
-// } from "@api/Recording";
 import {
   type RecordingType,
   RecordingType as ConcreteRecordingType,
@@ -78,15 +72,7 @@ import {
 } from "vue-router";
 import RecordingsList from "@/components/RecordingsList.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
-import type {
-  ApiVisitResponse,
-  ApiVisitResponseRecording,
-} from "@typedefs/api/monitoring";
-// import {
-//   getAllVisitsForProjectBetweenTimes,
-//   getVisitsForProject,
-//   type VisitsQueryResult,
-// } from "@api/Monitoring";
+import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import ActivitySearchParameters from "@/components/ActivitySearchParameters.vue";
 import {
   ActivitySearchDisplayMode,
@@ -109,8 +95,6 @@ import {
   humanTagsForRecording,
 } from "@models/recordingUtils.ts";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
-// import { CurrentViewAbortController } from "@/router";
-// import { getDevicesForProject } from "@api/Project.ts";
 import type {
   BulkRecordingsResponse,
   QueryRecordingsOptions,
@@ -132,8 +116,6 @@ const mapContainer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
 const searchControls = ref<HTMLDivElement>();
 const searchResults = ref<HTMLDivElement>();
-const { left: searchContainerLeft, right: searchContainerRight } =
-  useElementBounding(searchContainer);
 const { height: windowHeight, width: windowWidth } = useWindowSize();
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
@@ -169,6 +151,15 @@ const devices = ref<LoadedResource<ApiDeviceResponse[]>>(null);
 
 const projectHasDevices = computed<boolean>(() => {
   return !!devices.value && devices.value.length !== 0;
+});
+
+const projectHasInternetConnectedDevices = computed<boolean>(() => {
+  return (
+    projectHasDevices.value &&
+    (devices.value as ApiDeviceResponse[]).some(
+      (device) => device.lastConnectionTime !== undefined,
+    )
+  );
 });
 
 watch(currentProject, async (next, prev) => {
@@ -1997,19 +1988,22 @@ onBeforeUnmount(() => {
         grade="thin"
         class="mb-3"
       />
-      <!-- TODO: review copy -->
       <h4 class="h5 mb-2">This project has no activity yet</h4>
       <p v-if="!projectHasDevices">
         This project is likely new or doesn't have any devices associated with
-        it. <br class="d-none d-sm-inline" />
+        it yet. <br class="d-none d-sm-inline" />
         Use the Sidekick mobile app to add devices to your project.
       </p>
-      <p v-else>
+
+      <p v-else-if="!projectHasInternetConnectedDevices">
         The devices of this project may not be connected to the internet.
         <br class="d-none d-sm-inline" />
         Use the Sidekick mobile app to offload recordings from devices without
         connectivity, and sync them later when you have an internet connection
         on your phone.
+      </p>
+      <p v-else>
+        It looks like none of your devices have uploaded any recordings yet.
       </p>
     </div>
   </div>

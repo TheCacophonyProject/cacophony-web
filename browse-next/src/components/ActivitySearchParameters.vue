@@ -413,6 +413,8 @@ const format = (dates: Date[]) => {
     .join(" - ");
 };
 
+const formatStr = "dd/MM/yyyy";
+
 const includeSubSpeciesTags = ref<boolean>(true);
 const selectedTags = ref<string[]>([]);
 const selectedLabels = ref<string[]>([]);
@@ -1042,7 +1044,9 @@ const scrolledToStickyPosition = computed<boolean>(() => {
       v-if="selectedDateRange.value === 'custom'"
       ref="dateRangePicker"
       class="mt-2"
-      range
+      :range="{
+        partialRange: false,
+      }"
       :teleport="true"
       :timezone="timezoneForProject"
       v-model="customDateRange"
@@ -1053,10 +1057,13 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         minDateForProject.getFullYear(),
         maxDateForProject.getFullYear(),
       ]"
-      :text-input-options="{ format }"
-      :preview-format="format"
-      :enable-time-picker="false"
-      :format="format"
+      :formats="{
+        preview: format,
+        input: format,
+      }"
+      :time-config="{
+        enableTimePicker: false,
+      }"
       prevent-min-max-navigation
       auto-apply
     />

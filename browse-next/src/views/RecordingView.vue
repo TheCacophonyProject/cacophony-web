@@ -747,6 +747,7 @@ const checkReferencePhotoAtTime = async (deviceId: DeviceId, atTime: Date) => {
     }
   }
 
+  // FIXME: We'd like a way of cancelling this request if we navigate to another device.
   const hasReferenceResponse =
     await ClientApi.Devices.hasReferenceImageForDeviceAtTime(
       deviceId,

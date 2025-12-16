@@ -141,7 +141,8 @@ export class CptvDecoder {
     const type = "freeResources";
     if (decoder && this.inited) {
       decoder.postMessage({ type });
-      return (await this.waitForMessage(type)) as void;
+      const reply = this.waitForMessage(type);
+      return (await reply) as void;
     }
   }
 
