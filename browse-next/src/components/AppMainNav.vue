@@ -158,7 +158,7 @@ onMounted(() => {
           </b-dropdown>
           <b-tooltip
             target="create-project-btn"
-            triggers="hover"
+            hover
             placement="top"
             offset="20"
           >
@@ -184,8 +184,9 @@ onMounted(() => {
             >{{ selectedProject.groupName }}</span
           >
           <b-tooltip
+            v-if="userHasMultipleProjects"
             target="switch-project-btn"
-            triggers="hover"
+            hover
             placement="bottom"
           >
             Switch project
@@ -388,7 +389,7 @@ onMounted(() => {
           >
         </span>
       </router-link>
-      <b-tooltip target="sign-out-link" triggers="hover" placement="bottom">
+      <b-tooltip target="sign-out-link" hover placement="bottom">
         Sign out
       </b-tooltip>
     </div>

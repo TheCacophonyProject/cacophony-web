@@ -21,6 +21,7 @@ import {
   getPathForLabel,
 } from "@api/classificationsUtils.ts";
 import type { StationId as LocationId } from "@typedefs/api/common";
+import TooltipOnTruncation from "@/components/TooltipOnTruncation.vue";
 
 const currentlyHighlightedLocation = inject(
   "currentlyHighlightedLocation",
@@ -169,10 +170,13 @@ const mouseLeftVisit = (_visit: ApiVisitResponse) => {
       :key="index"
       class="d-flex visits-timeline-row"
     >
-      <div class="d-flex align-items-center" style="min-width: 100px">
-        <span class="visits-timeline-species-name text-capitalize">{{
-          displayLabelForClassificationLabel(species.toLowerCase())
-        }}</span>
+      <div class="d-flex align-items-center" style="width: 110px">
+        <tooltip-on-truncation
+          class="visits-timeline-species-name text-capitalize"
+          >{{
+            displayLabelForClassificationLabel(species.toLowerCase())
+          }}</tooltip-on-truncation
+        >
       </div>
       <div class="flex-fill position-relative">
         <div

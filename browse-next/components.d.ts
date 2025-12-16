@@ -83,6 +83,7 @@ declare module 'vue' {
     SpectrogramViewer: typeof import('./src/components/SpectrogramViewer.vue')['default']
     SwitchProjectsModal: typeof import('./src/components/SwitchProjectsModal.vue')['default']
     TagImage: typeof import('./src/components/TagImage.vue')['default']
+    TooltipOnTruncation: typeof import('./src/components/TooltipOnTruncation.vue')['default']
     TracksScrubber: typeof import('./src/components/TracksScrubber.vue')['default']
     TrackTaggerRow: typeof import('./src/components/TrackTaggerRow.vue')['default']
     TwoStepActionButton: typeof import('./src/components/TwoStepActionButton.vue')['default']

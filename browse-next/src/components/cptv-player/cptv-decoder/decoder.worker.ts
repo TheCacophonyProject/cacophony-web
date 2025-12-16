@@ -93,11 +93,10 @@ class CptvDecoderInterface {
     this.consumed = false;
     this.inited = false;
     this.prevFrameHeader = null;
-    this.playerContext && this.playerContext.free();
     this.reader && (await this.reader.cancel());
     this.streamError = null;
     this.reader = null;
-    this.playerContext = null;
+    //this.playerContext = null;
   }
 
   hasValidContext() {
@@ -141,6 +140,16 @@ class CptvDecoderInterface {
             this.reader =
               this.response.body.getReader() as ReadableStreamDefaultReader<Uint8Array>;
             await init(wasmUrl);
+
+            try {
+              this.playerContext &&
+                (this.playerContext as unknown as Record<string, number>)[
+                  "__wbg_ptr"
+                ] &&
+                this.playerContext.free();
+            } catch (e) {
+              console.warn(e, "leak some memory");
+            }
             this.playerContext = CptvDecoderContext.newWithReadableStream(
               this.reader,
             );
