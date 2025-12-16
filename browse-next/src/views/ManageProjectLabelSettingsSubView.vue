@@ -201,8 +201,8 @@ const reset = () => {
       <h3 class="section-card-heading">Project label settings</h3>
       <p class="text-secondary pb-1">
         Manage the set of default labels that users can apply to thermal video
-        recordings or audio recordings, and what those labels mean in the context
-        of your project.
+        recordings or audio recordings, and what those labels mean in the
+        context of your project.
       </p>
     </div>
     <div class="col-lg-9">

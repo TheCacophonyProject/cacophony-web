@@ -46,6 +46,7 @@ import { canonicalLatLngForLocations } from "@/helpers/Location";
 import { sortTagPrecedence } from "@models/visitsUtils";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import { DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS } from "@/consts.ts";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const selectedVisit = ref<ApiVisitResponse | null>(null);
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
@@ -562,39 +563,49 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   </horizontal-overflow-carousel>
   <div
     v-if="isLoading || !hasVisitsForSelectedTimePeriod"
-    class="d-flex justify-content-sm-center flex-fill flex-column align-items-center justify-content-end mb-5 mb-sm-0"
+    class="d-flex justify-content-sm-center flex-fill flex-column align-items-center justify-content-center mb-5 mb-sm-0"
   >
     <div v-if="isLoading">
       <b-spinner variant="secondary" />
     </div>
     <div v-else class="d-flex justify-content-center flex-column">
-      <div style="text-align: center">
-        <span
-          v-if="
-            locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.length === 0
-          "
+      <div class="text-body-tertiary text-center py-3">
+        <material-symbol
+          name="search_off"
+          size="2.4rem"
+          grade="thin"
+          class="mb-2"
+        />
+        <p>
+          <!-- TODO: cater for no locations, no devices, show different copy? -->
+          <span
+            v-if="
+              locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.length ===
+              0
+            "
+          >
+            There were no active locations in the last
+            <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
+            ><span v-else>day</span> for this project.
+          </span>
+          <span v-else>
+            There were no visits for any target species in any of the active
+            locations in the last
+            <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
+            ><span v-else>day</span> for this project.
+          </span>
+        </p>
+        <b-button
+          variant="outline-secondary"
+          :to="{
+            name: 'activity',
+            params: {
+              projectName: urlNormalisedCurrentProjectName,
+            },
+          }"
+          >View latest visits</b-button
         >
-          There were no active locations in the last
-          <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
-          ><span v-else>day</span> for this project.
-        </span>
-        <span v-else>
-          There were no visits for any target species in any of the active
-          locations in the last
-          <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
-          ><span v-else>day</span> for this project.
-        </span>
       </div>
-      <b-button
-        class="mt-3"
-        :to="{
-          name: 'activity',
-          params: {
-            projectName: urlNormalisedCurrentProjectName,
-          },
-        }"
-        >Take me to the latest visits for this project</b-button
-      >
     </div>
   </div>
   <inline-view-modal

@@ -25,7 +25,7 @@ import {
 import type { LoadedResource } from "@apiClient/types";
 import SectionCard from "@/components/SectionCard.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
-import { BBadge, BForm, BFormCheckboxGroup, BModal } from "bootstrap-vue-next";
+import {BBadge, BForm, BFormCheckboxGroup, BModal, BSpinner} from "bootstrap-vue-next";
 const projectUsers = ref<LoadedResource<ApiProjectUserResponse[]>>(null);
 const loadingUsers = ref(false);
 const fallibleCurrentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
@@ -248,18 +248,18 @@ const permissionsOptions = computed(() => [
                 <b-badge
                   v-if="userIsCurrentUser(card.user.value)"
                   variant="secondary"
-                  class="ms-2 fs-8"
+                  class="ms-2"
                   >You</b-badge
                 >
                 <b-badge
                   v-else-if="card.user.value.pending === 'requested'"
                   variant="primary"
-                  class="ms-2 fs-8"
+                  class="ms-2"
                   >Wants to join</b-badge
                 >
                 <b-badge
                   v-else-if="card.user.value.pending === 'invited'"
-                  class="ms-2 fs-8"
+                  class="ms-2"
                   variant="warning"
                   >Invited</b-badge
                 >
@@ -331,18 +331,18 @@ const permissionsOptions = computed(() => [
                 <b-badge
                   v-if="userIsCurrentUser(cell.value)"
                   variant="secondary"
-                  class="ms-2 fs-8"
+                  class="ms-2"
                   >You</b-badge
                 >
                 <b-badge
                   v-else-if="cell.value.pending === 'requested'"
                   variant="primary"
-                  class="ms-2 fs-8"
+                  class="ms-2"
                   >Wants to join</b-badge
                 >
                 <b-badge
                   v-else-if="cell.value.pending === 'invited'"
-                  class="ms-2 fs-8"
+                  class="ms-2"
                   variant="warning"
                   >Invited</b-badge
                 >

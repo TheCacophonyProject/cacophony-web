@@ -361,7 +361,7 @@ const isStillProcessing = computed<boolean>(() => {
       >
         <div
           v-for="([classification, path, count], index) in visitCountBySpecies"
-          class="fs-8 visit-species-count"
+          class="visit-species-count"
           :class="[classification, ...path.split('.')]"
           :key="index"
         >
@@ -676,6 +676,17 @@ const isStillProcessing = computed<boolean>(() => {
         width: 2px;
         left: -2px;
         border-left: 2px dashed var(--bs-white);
+        transition: border-color 0.2s;
+      }
+    }
+  }
+  &:hover:not(&.sun) {
+    &:first-child,
+    &:last-child {
+      .visit-timeline {
+        &::before {
+          border-left: 2px dashed var(--bs-gray-200);
+        }
       }
     }
   }

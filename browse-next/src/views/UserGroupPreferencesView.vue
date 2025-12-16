@@ -309,7 +309,7 @@ const alertItems = computed<AlertItem[]>(() => {
             <b-badge
               v-for="(tag, index) in cell"
               :key="index"
-              class="me-1 fs-8 my-1"
+              class="me-1 my-1"
               variant="secondary"
               >{{ tag }}</b-badge
             >
@@ -362,7 +362,7 @@ const alertItems = computed<AlertItem[]>(() => {
                   <b-badge
                     v-for="(tag, index) in card.alertOn"
                     :key="index"
-                    class="me-1 fs-8"
+                    class="me-1"
                     variant="secondary"
                     >{{ tag }}</b-badge
                   >

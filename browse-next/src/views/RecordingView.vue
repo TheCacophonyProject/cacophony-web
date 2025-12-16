@@ -1995,11 +1995,11 @@ const inlineModal = ref<boolean>(false);
             title="alt+shift &larr;"
           >
             <span class="d-none d-md-flex ps-2 flex-column align-items-start">
-              <span class="fs-8 fw-bold" v-if="hasPreviousVisit"
+              <span class="fw-bold" v-if="hasPreviousVisit"
                 >Prev<span class="d-sm-none d-cs-inline">ious</span> visit</span
               >
-              <span class="fs-8" v-else v-html="'&nbsp;'"></span>
-              <span class="fs-9" v-if="previousVisit">
+              <span v-else v-html="'&nbsp;'"></span>
+              <span v-if="previousVisit">
                 <span class="text-capitalize fw-bold">{{
                   displayLabelForClassificationLabel(
                     previousVisit.classification as string,
@@ -2014,7 +2014,7 @@ const inlineModal = ref<boolean>(false);
                   ></span
                 >
               </span>
-              <span class="fs-9" v-else v-html="'&nbsp;'"></span>
+              <span v-else v-html="'&nbsp;'"></span>
             </span>
             <span class="px-1">
               <svg width="17" height="16" xmlns="http://www.w3.org/2000/svg">
@@ -2039,7 +2039,7 @@ const inlineModal = ref<boolean>(false);
             title="alt &larr;"
           >
             <span class="d-none d-md-flex ps-2 flex-column align-items-start">
-              <span class="fs-8 fw-bold"
+              <span class="fw-bold"
                 >Prev<span
                   :class="{
                     'd-sm-none': hasPreviousVisit,
@@ -2055,7 +2055,7 @@ const inlineModal = ref<boolean>(false);
                   >ording</span
                 ></span
               >
-              <span class="fs-9"
+              <span
                 >{{ (previousRecordingIndex as number) + 1 }}/{{
                   currentRecordingCount || allRecordingIds.length
                 }}</span
@@ -2092,7 +2092,7 @@ const inlineModal = ref<boolean>(false);
             title="alt &rarr;"
           >
             <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
-              <span class="fs-8 fw-bold"
+              <span class="fw-bold"
                 >Next rec<span
                   :class="{
                     'd-sm-none': hasNextVisit,
@@ -2101,7 +2101,7 @@ const inlineModal = ref<boolean>(false);
                   >ording</span
                 ></span
               >
-              <span class="fs-9"
+              <span
                 >{{ (nextRecordingIndex as number) + 1 }}/{{
                   currentRecordingCount || allRecordingIds.length
                 }}</span
@@ -2126,9 +2126,9 @@ const inlineModal = ref<boolean>(false);
             title="alt+shift &rarr;"
           >
             <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
-              <span class="fs-8 fw-bold" v-if="hasNextVisit">Next visit</span>
-              <span class="fs-8" v-else v-html="'&nbsp;'"></span>
-              <span class="fs-9" v-if="nextVisit">
+              <span class="fw-bold" v-if="hasNextVisit">Next visit</span>
+              <span v-else v-html="'&nbsp;'"></span>
+              <span v-if="nextVisit">
                 <span class="text-capitalize fw-bold">{{
                   displayLabelForClassificationLabel(
                     nextVisit.classification as string,
@@ -2141,7 +2141,7 @@ const inlineModal = ref<boolean>(false);
                   ><span v-if="nextVisit.recordings.length > 1">s</span></span
                 >
               </span>
-              <span class="fs-9" v-else v-html="'&nbsp;'"></span>
+              <span v-else v-html="'&nbsp;'"></span>
             </span>
             <span class="px-1">
               <svg width="17" height="16" xmlns="http://www.w3.org/2000/svg">
@@ -2267,7 +2267,6 @@ const inlineModal = ref<boolean>(false);
 .recording-view-header {
   border-bottom: 2px solid #e1e1e1;
   .recording-header-type {
-    .fs-8();
   }
   .recording-header-details {
     line-height: 1;
@@ -2276,11 +2275,9 @@ const inlineModal = ref<boolean>(false);
     .fs-6();
   }
   .recording-header-time {
-    .fs-8();
   }
   @media screen and (min-width: 576px) {
     .recording-header-type {
-      .fs-8();
     }
     .recording-header-details {
       line-height: unset;
@@ -2289,12 +2286,10 @@ const inlineModal = ref<boolean>(false);
       .fs-5();
     }
     .recording-header-time {
-      .fs-7();
     }
   }
   @container (max-height: 940px) {
     .recording-header-type {
-      .fs-8();
     }
     .recording-header-details {
       line-height: 1;
@@ -2303,7 +2298,6 @@ const inlineModal = ref<boolean>(false);
       .fs-6();
     }
     .recording-header-time {
-      .fs-8();
     }
   }
 }

@@ -551,7 +551,7 @@ onMounted(async () => {
 </script>
 <template>
   <div
-    class="track p-2 fs-8 d-flex align-items-center justify-content-between"
+    class="track p-2 d-flex align-items-center justify-content-between"
     ref="row"
     :class="{ selected }"
     @click="selectAndMaybeToggleExpanded"
@@ -566,7 +566,7 @@ onMounted(async () => {
         >{{ index + 1 }}</span
       >
       <div v-if="!hasUserTag && masterTag" class="d-flex flex-column">
-        <span class="text-uppercase fs-9 fw-bold">AI Classification</span>
+        <span class="text-uppercase fw-bold">AI Classification</span>
         <span
           class="classification text-capitalize d-inline-block fw-bold"
           v-if="masterTag"
@@ -580,7 +580,7 @@ onMounted(async () => {
         >
       </div>
       <span v-else-if="hasUserTag" class="d-flex flex-column">
-        <span class="text-uppercase fs-9 fw-bold">Manual ID</span>
+        <span class="text-uppercase fw-bold">Manual ID</span>
         <span
           class="classification text-capitalize d-inline-block fw-bold"
           v-if="
@@ -675,7 +675,7 @@ onMounted(async () => {
       </span>
       <!-- No tag, maybe this is a dummy track?   -->
       <div v-else class="d-flex flex-column classification">
-        <span class="text-uppercase fs-9 fw-bold">
+        <span class="text-uppercase fw-bold">
           <span v-if="processingIsAnalysing" class="d-flex align-items-center"
             ><b-spinner variant="secondary" small class="me-2" /><span
               >AI classifying</span
@@ -789,7 +789,7 @@ onMounted(async () => {
     <div class="classification-btns">
       <button
         type="button"
-        class="btn classification-btn fs-8 text-capitalize d-flex flex-column align-items-center justify-content-evenly"
+        class="btn classification-btn text-capitalize d-flex flex-column align-items-center justify-content-evenly"
         :class="[
           tag.label,
           { selected: thisUserTag && tag.label === thisUserTag.what },
@@ -840,7 +840,7 @@ onMounted(async () => {
     </div>
     <div class="tagger-details mt-2 d-flex justify-content-center flex-column">
       <button
-        class="fs-8 btn details-toggle-btn"
+        class="btn details-toggle-btn"
         @click="showTaggerDetails = !showTaggerDetails"
       >
         <span v-if="!showTaggerDetails">View details</span>

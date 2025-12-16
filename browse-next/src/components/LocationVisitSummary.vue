@@ -109,7 +109,9 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
         <div class="station-name h5 lh-base mb-1">
           {{ location.name }}
         </div>
-        <div class="visit-count lh-base text-muted">{{ visitCount }} visits</div>
+        <div class="visit-count lh-base text-muted">
+          {{ visitCount }} visits
+        </div>
       </div>
     </div>
     <div class="visit-species-breakdown d-flex justify-content-between gap-3">
