@@ -1,4 +1,4 @@
-import { GroupId, IsoFormattedDateString, UserId } from "./common";
+import type { GroupId, IsoFormattedDateString, UserId } from "./common.ts";
 
 export interface ApiGroupUserResponse {
   userName: string; // Full name of user, or email address of invited user.

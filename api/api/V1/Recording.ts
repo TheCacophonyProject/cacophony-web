@@ -260,12 +260,7 @@ export const mapRecordingResponse = async (
   recording: Recording,
   minimal = false,
 ): Promise<ApiThermalRecordingResponse | ApiAudioRecordingResponse> => {
-  const cameraTypes = [
-    RecordingType.ThermalRaw,
-    RecordingType.TrailCamVideo,
-    RecordingType.TrailCamImage,
-    RecordingType.InfraredVideo,
-  ];
+  const cameraTypes = [RecordingType.ThermalRaw, RecordingType.InfraredVideo];
   let tracks = [];
   if (recording.Tracks) {
     tracks = await mapTracks(recording.Tracks, minimal);
@@ -1226,22 +1221,11 @@ export default (app: Application, baseUrl: string) => {
 
     fetchAuthorizedRequiredFlatRecordingById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
-      // NOTE: If the recording type is trailcam, then actually want to return "derived" rather than "raw" files, unless
-      //  the useArchival param is present
       const useArchival = request.params.useArchival === "archive";
       const recordingItem = response.locals.recording;
-      let fileKey = recordingItem.rawFileKey;
-      let fileMimeType = recordingItem.rawMimeType;
-      let fileSize = recordingItem.rawFileSize;
-      if (
-        !useArchival &&
-        (recordingItem.type === RecordingType.TrailCamImage ||
-          recordingItem.type === RecordingType.TrailCamVideo)
-      ) {
-        fileKey = recordingItem.fileKey;
-        fileMimeType = recordingItem.fileMimeType;
-        fileSize = recordingItem.fileSize;
-      }
+      const fileKey = recordingItem.rawFileKey;
+      const fileMimeType = recordingItem.rawMimeType;
+      const fileSize = recordingItem.rawFileSize;
       if (!fileKey) {
         return next(new ClientError("Recording has no raw file key."));
       }
@@ -1331,15 +1315,8 @@ export default (app: Application, baseUrl: string) => {
     async (request: Request, response: Response, next: NextFunction) => {
       const rec = response.locals.recording;
       const fileKey = rec.rawFileKey;
-      let mimeType = "image/png";
-      let ext = "png";
-      if (
-        rec.type === RecordingType.TrailCamVideo ||
-        rec.type === RecordingType.TrailCamImage
-      ) {
-        mimeType = "image/webp";
-        ext = "webp";
-      }
+      const mimeType = "image/png";
+      const ext = "png";
 
       if (!fileKey) {
         return next(new ClientError("Rec has no raw file key."));

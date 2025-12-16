@@ -1,10 +1,8 @@
-import { Seconds, TrackId } from "./common";
-import {
-  ApiAutomaticTrackTagResponse,
-  ApiHumanTrackTagResponse,
+import type { Seconds, TrackId } from "./common.ts";
+import type {
   ApiTrackTag,
-} from "./trackTag";
-import {TrackFramePosition} from "./fileProcessing";
+} from "./trackTag.ts";
+import type {TrackFramePosition} from "./fileProcessing.ts";
 
 export interface ApiTrackPosition {
   x: number;

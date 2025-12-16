@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import {
   creatingNewProject,
-  CurrentUser,
   joiningNewProject,
-  refreshLocallyStoredUserActivation,
   userDisplayName,
   userHasConfirmedEmailAddress,
   userHasProjects,
@@ -11,23 +9,32 @@ import {
   pendingUserProjects,
   refreshUserProjects,
   urlNormalisedCurrentProjectName,
-  setLoggedInUserData,
-  setLoggedInUserCreds,
 } from "@models/LoggedInUser";
 import type { LoggedInUser } from "@models/LoggedInUser";
 import {
-  acceptProjectInvitation,
-  changeAccountEmail,
-  debugGetEmailConfirmationToken,
-  resendAccountActivationEmail as resendEmail,
-  validateEmailConfirmationToken,
-} from "@api/User";
-import { computed, onBeforeMount, onUnmounted, ref } from "vue";
+  computed,
+  inject,
+  onBeforeMount,
+  onUnmounted,
+  type Ref,
+  ref,
+} from "vue";
 import type { FormInputValidationState, FormInputValue } from "@/utils";
 import { formFieldInputText } from "@/utils";
 import CardTable from "@/components/CardTable.vue";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import { useRoute, useRouter } from "vue-router";
+import { currentUser } from "@models/provides.ts";
+import { ClientApi } from "@/api";
+import { DEFAULT_AUTH_ID } from "@apiClient/types.ts";
+import {
+  BAlert,
+  BForm,
+  BFormInput,
+  BFormInvalidFeedback,
+} from "bootstrap-vue-next";
+
+const CurrentUser = inject(currentUser) as Ref<LoggedInUser | null>;
 
 // TODO: Stop admins adding users without confirmed email addresses.
 //  Maybe the list users api should only return "active/verified" users.
@@ -73,7 +80,8 @@ const checkForActivatedUser = () => {
     !CurrentUser.value ||
     (CurrentUser.value && !(CurrentUser.value as LoggedInUser).emailConfirmed)
   ) {
-    const userIsActivated = refreshLocallyStoredUserActivation();
+    // FIXME(auth):
+    const userIsActivated = false; //refreshLocallyStoredUserActivation();
     if (userIsActivated) {
       clearInterval(userChecker);
     }
@@ -90,7 +98,7 @@ onUnmounted(() => {
 
 const updateEmailAddress = async () => {
   emailUpdateInProgress.value = true;
-  const emailUpdateResponse = await changeAccountEmail(
+  const emailUpdateResponse = await ClientApi.Users.changeAccountEmail(
     newUserEmailAddress.value,
   );
   if (emailUpdateResponse.success) {
@@ -108,7 +116,9 @@ const updateEmailAddress = async () => {
 const acceptingInvite = ref<boolean>(false);
 const acceptInvitationToProject = async (project: ApiProjectResponse) => {
   acceptingInvite.value = true;
-  const acceptInviteResponse = await acceptProjectInvitation(project.id);
+  const acceptInviteResponse = await ClientApi.Users.acceptProjectInvitation(
+    project.id,
+  );
   if (acceptInviteResponse.success) {
     await refreshUserProjects();
     await router.push({
@@ -123,7 +133,7 @@ const acceptInvitationToProject = async (project: ApiProjectResponse) => {
 
 const resendAccountActivationEmail = async () => {
   submittingResendActivationRequest.value = true;
-  const resendResponse = await resendEmail();
+  const resendResponse = await ClientApi.Users.resendAccountActivationEmail();
   if (resendResponse.success) {
     resendRequestSent.value = true;
   } else {
@@ -161,15 +171,18 @@ const pendingProjectTableItems = computed(() => {
   });
 });
 
-const isDev = ref<boolean>(import.meta.env.DEV);
+const isDev = computed(() => {
+  return import.meta.env.DEV;
+});
 
 const debugConfirmEmail = async () => {
-  const tokenResponse = await debugGetEmailConfirmationToken(
+  const tokenResponse = await ClientApi.Users.debugGetEmailConfirmationToken(
     CurrentUser.value?.email as string,
   );
   if (tokenResponse.success) {
     const token = tokenResponse.result.token;
-    const validateTokenResponse = await validateEmailConfirmationToken(token);
+    const validateTokenResponse =
+      await ClientApi.Users.validateEmailConfirmationToken(token);
     if (validateTokenResponse.success) {
       const { userData, token, refreshToken, signOutUser } =
         validateTokenResponse.result;
@@ -177,13 +190,12 @@ const debugConfirmEmail = async () => {
         await router.push({ name: "sign-out" });
         return;
       }
-      setLoggedInUserData({
-        ...userData,
-      });
-      setLoggedInUserCreds({
+
+      // FIXME(auth): See if refreshingToken and decodedToken are automatically populated here?
+      ClientApi.registerCredentials(DEFAULT_AUTH_ID, {
+        userData,
         apiToken: token,
         refreshToken,
-        refreshingToken: false,
       });
 
       await router.push({
@@ -388,7 +400,7 @@ const debugConfirmEmail = async () => {
                       <button
                         type="button"
                         data-cy="accept project invitation button"
-                        class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
+                        class="btn btn-outline-secondary d-flex align-items-center text-nowrap"
                         @click.prevent="
                           () => acceptInvitationToProject(card.status.value)
                         "
@@ -405,14 +417,14 @@ const debugConfirmEmail = async () => {
                     v-if="card.status.value.admin || card.status.value.owner"
                   >
                     <div
-                      class="fs-7 text-secondary d-flex align-items-center"
+                      class="text-secondary d-flex align-items-center"
                       v-if="card.status.value.admin"
                     >
                       <font-awesome-icon icon="check-circle" class="fs-6" />
                       <span class="ps-2">admin</span>
                     </div>
                     <div
-                      class="fs-7 text-secondary d-flex align-items-center ms-3"
+                      class="text-secondary d-flex align-items-center ms-3"
                       v-if="card.status.value.owner"
                     >
                       <font-awesome-icon icon="check-circle" class="fs-6" />
@@ -428,7 +440,7 @@ const debugConfirmEmail = async () => {
                 <div v-else-if="cell.value.pending === 'invited'">
                   <button
                     type="button"
-                    class="btn btn-outline-secondary d-flex align-items-center fs-7 text-nowrap"
+                    class="btn btn-outline-secondary d-flex align-items-center text-nowrap"
                     @click.prevent="() => acceptInvitationToProject(cell.value)"
                     :disabled="acceptingInvite"
                   >
@@ -439,14 +451,14 @@ const debugConfirmEmail = async () => {
               </template>
               <template #permissions="{ cell }">
                 <div
-                  class="fs-7 text-secondary d-flex align-items-center"
+                  class="text-secondary d-flex align-items-center"
                   v-if="cell.value.admin"
                 >
                   <font-awesome-icon icon="check-circle" class="fs-6" />
                   <span class="ps-2">admin</span>
                 </div>
                 <div
-                  class="fs-7 text-secondary d-flex align-items-center ms-3"
+                  class="text-secondary d-flex align-items-center ms-3"
                   v-if="cell.value.owner"
                 >
                   <font-awesome-icon icon="check-circle" class="fs-6" />

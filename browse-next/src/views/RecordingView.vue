@@ -27,10 +27,6 @@ import {
 } from "@models/visitsUtils";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import router from "@/router";
-import {
-  deleteRecording as apiDeleteRecording,
-  getRecordingById,
-} from "@api/Recording";
 import type {
   ApiVisitResponse,
   VisitRecordingTag,
@@ -44,39 +40,37 @@ import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import { useElementSize, useMediaQuery } from "@vueuse/core";
 import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.vue";
-import { displayLabelForClassificationLabel } from "@api/Classifications";
-import type { LoggedInUser, LoggedInUserAuth } from "@models/LoggedInUser";
+import { displayLabelForClassificationLabel } from "@api/classificationsUtils.ts";
+import type { LoggedInUser } from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
-import { API_ROOT } from "@api/root";
+import { ClientApi } from "@/api";
 import {
   activeLocations,
   currentUser as currentUserInfo,
   currentUserCreds as currentUserCredentials,
   latLngForActiveLocations,
 } from "@models/provides";
-import type { LoadedResource } from "@api/types";
+import {
+  DEFAULT_AUTH_ID,
+  type LoadedResource,
+  type LoggedInUserAuth,
+} from "@apiClient/types";
 import {
   RecordingProcessingState,
   RecordingType,
 } from "@typedefs/api/consts.ts";
-import { hasReferenceImageForDeviceAtTime } from "@api/Device.ts";
 import sunCalc from "suncalc";
 import { urlNormaliseName } from "@/utils.ts";
 import SpectrogramViewer from "@/components/SpectrogramViewer.vue";
 import RecordingViewNotes from "@/components/RecordingViewNotes.vue";
 import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
 import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
-import { maybeRefreshStaleCredentials } from "@api/fetch.ts";
 
 const selectedVisit = inject(
   "currentlySelectedVisit",
 ) as Ref<ApiVisitResponse | null>;
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
 const visitsContext = inject("visitsContext") as Ref<ApiVisitResponse[] | null>;
-const currentUserCreds = inject(
-  currentUserCredentials,
-) as Ref<LoggedInUserAuth | null>;
-
 const route = useRoute();
 const emit = defineEmits<{
   (e: "close"): void;
@@ -363,7 +357,6 @@ const gotoPreviousRecordingOrVisit = async () => {
 };
 
 const gotoRecording = async (recordingId: RecordingId) => {
-  console.log("gotoRecording", recordingId);
   const params: RouteParams = {
     ...route.params,
     currentRecordingId: recordingId.toString(),
@@ -598,7 +591,9 @@ const mutateCurrentVisit = async (targetVisit: ApiVisitResponse) => {
 
 const trackRemoved = ({ trackId }: { trackId: TrackId }) => {
   if (recording.value) {
-    const index = recording.value.tracks.findIndex(({ id }) => id === trackId);
+    const index = recording.value.tracks.findIndex(
+      ({ id }: { id: TrackId }) => id === trackId,
+    );
     recording.value.tracks.splice(index, 1);
     if (currentTrack.value && currentTrack.value.id === trackId) {
       currentTrack.value = undefined;
@@ -638,7 +633,8 @@ const trackTagChanged = async ({
       trackToPatch.tags = [...track.tags];
       if (action === "add") {
         const changedTag = trackToPatch.tags.find(
-          ({ what, userId }) => what === tag && userId === currentUser.value?.id,
+          ({ what, userId }) =>
+            what === tag && userId === currentUser.value?.id,
         );
         if (changedTag) {
           await recalculateCurrentVisit(
@@ -751,11 +747,13 @@ const checkReferencePhotoAtTime = async (deviceId: DeviceId, atTime: Date) => {
     }
   }
 
-  const hasReferenceResponse = await hasReferenceImageForDeviceAtTime(
-    deviceId,
-    atTime,
-    true,
-  );
+  // FIXME: We'd like a way of cancelling this request if we navigate to another device.
+  const hasReferenceResponse =
+    await ClientApi.Devices.hasReferenceImageForDeviceAtTime(
+      deviceId,
+      atTime,
+      true,
+    );
   if (
     // We know the earliest time for the reference image, and the location.
     // We could infer that later recordings for this device at the exact same location
@@ -799,8 +797,11 @@ const loadRecording = async () => {
   if (currentRecordingId.value) {
     // Load the current recording, and then preload the next and previous recordings.
     // This behaviour will differ depending on whether we're viewing raw recordings or visits.
-    recording.value = await getRecordingById(currentRecordingId.value);
-    if (recording.value) {
+    const recordingResponse = await ClientApi.Recordings.getRecordingById(
+      currentRecordingId.value,
+    );
+    if (recordingResponse) {
+      recording.value = recordingResponse;
       if (
         (recording.value.type === RecordingType.ThermalRaw &&
           recording.value.duration < 2.5 &&
@@ -825,11 +826,7 @@ const loadRecording = async () => {
         setTimeout(loadRecording, 30000);
       }
 
-      if (
-        [RecordingType.ThermalRaw, RecordingType.TrailCamImage].includes(
-          rec.type,
-        )
-      ) {
+      if (rec.type === RecordingType.ThermalRaw) {
         // If not already known, check if there is a reference image for the recording device at the time
         // the recording was made.
         const _ = checkReferencePhotoAtTime(
@@ -858,11 +855,11 @@ const loadRecording = async () => {
       //   }
       // }
     } else {
-      console.log("Recording load failed");
-      // TODO Handle failure to get recording
+      console.warn("Recording load failed");
+      // TODO: Handle failure to get recording (it may have been deleted, or we may not have authorisation)
     }
   } else {
-    console.log("No recording id??");
+    console.warn("No recording id??");
   }
 };
 
@@ -888,7 +885,7 @@ const selectedTrack = async (trackId: TrackId, automatically: boolean) => {
   };
   if (
     recording.value &&
-    recording.value.tracks.find(({ id }) => id == trackId)
+    recording.value.tracks.find(({ id }: { id: TrackId }) => id == trackId)
   ) {
     if (!automatically) {
       // Make the player start playing at the beginning of the selected track,
@@ -1031,7 +1028,7 @@ const mapPointForRecording = computed<NamedPoint[]>(() => {
   return [];
 });
 
-const navLinkClasses = ["nav-item", "nav-link", "border-0", "fs-7", "fw-bold"];
+const navLinkClasses = ["nav-item", "nav-link", "border-0", "fw-bold"];
 const activeTabName = computed(() => {
   return route.name;
 });
@@ -1130,12 +1127,16 @@ const getExtensionForMimeType = (mimeType: string): string => {
 const requestedDownload = async () => {
   if (recording.value) {
     const rec = recording.value as ApiRecordingResponse;
-    await maybeRefreshStaleCredentials();
+    const apiToken = await ClientApi.getCredentials(DEFAULT_AUTH_ID);
+    if (!apiToken) {
+      console.warn("api token not found");
+      return;
+    }
     const request = {
       mode: "cors",
       cache: "no-cache",
       headers: {
-        Authorization: currentUserCreds.value?.apiToken,
+        Authorization: apiToken,
       },
       method: "get",
     };
@@ -1147,8 +1148,9 @@ const requestedDownload = async () => {
       anchor.click();
     };
     const recordingId = rec.id;
+    // FIXME: This looks wrong. (maybe want authKey for getApiRoot?)
     const downloadedFileResponse = await window.fetch(
-      `${API_ROOT}/api/v1/recordings/raw/${recordingId}/archive`,
+      `${ClientApi.getApiRoot()}/api/v1/recordings/raw/${recordingId}/archive`,
       // eslint-disable-next-line no-undef
       request as RequestInit,
     );
@@ -1204,7 +1206,9 @@ interface MaybeDeletedVisit extends ApiVisitResponse {
 const deleteRecording = async () => {
   if (recording.value) {
     const recordingIdToDelete = recording.value.id;
-    const deleteResponse = await apiDeleteRecording(recording.value.id);
+    const deleteResponse = await ClientApi.Recordings.deleteRecording(
+      recording.value.id,
+    );
     if (deleteResponse.success) {
       const hasNextRec = hasNextRecording.value;
       const hasNextVis = hasNextVisit.value;
@@ -1302,20 +1306,16 @@ const inlineModal = ref<boolean>(false);
             >Thermal Recording</span
           >
           <span
-            v-else-if="
-              recordingType && recordingType === RecordingType.TrailCamImage
-            "
-            >Trailcam image</span
-          >
-          <span
             v-else-if="recordingType && recordingType === RecordingType.Audio"
             >Audio recording</span
           >
         </span>
         <div class="recording-header-details mb-1 mb-sm-0">
-          <span class="recording-header-label fw-bold text-capitalize" v-if="isInVisitContext">{{
-            visitForRecording
-          }}</span>
+          <span
+            class="recording-header-label fw-bold text-capitalize"
+            v-if="isInVisitContext"
+            >{{ visitForRecording }}</span
+          >
           <span
             v-if="recordingHasRealDuration"
             v-html="recordingDurationString"
@@ -1408,7 +1408,7 @@ const inlineModal = ref<boolean>(false);
                     ref="deviceNameSpan"
                     v-if="recording && recording.deviceId"
                     :to="{
-                      name: 'device-diagnostics',
+                      name: 'device-status',
                       params: {
                         deviceId: recording.deviceId,
                         deviceName: urlNormaliseName(recording.deviceName),
@@ -1540,7 +1540,7 @@ const inlineModal = ref<boolean>(false);
           </div>
           <!-- Mobile view only -->
           <recording-view-tracks
-            v-if="isMobileView"
+            v-if="isMobileView && recording"
             :recording="recording"
             class="recording-tracks"
             @track-tag-changed="trackTagChanged"
@@ -1568,7 +1568,6 @@ const inlineModal = ref<boolean>(false);
             <div
               class="recording-station-info bg-white d-flex mb-3 flex-column-reverse mt-3"
             >
-
               <map-with-points
                 class="recording-location-map"
                 :points="mapPointForRecording"
@@ -1597,7 +1596,7 @@ const inlineModal = ref<boolean>(false);
                       ref="deviceNameSpan"
                       v-if="recording && recording.deviceId"
                       :to="{
-                        name: 'device-diagnostics',
+                        name: 'device-status',
                         params: {
                           deviceId: recording.deviceId,
                           deviceName: urlNormaliseName(recording.deviceName),
@@ -1642,7 +1641,6 @@ const inlineModal = ref<boolean>(false);
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </div>
@@ -1787,7 +1785,7 @@ const inlineModal = ref<boolean>(false);
                       ref="deviceNameSpan"
                       v-if="recording && recording.deviceId"
                       :to="{
-                        name: 'device-diagnostics',
+                        name: 'device-status',
                         params: {
                           deviceId: recording.deviceId,
                           deviceName: urlNormaliseName(recording.deviceName),
@@ -1886,7 +1884,7 @@ const inlineModal = ref<boolean>(false);
                 ref="deviceNameSpan"
                 v-if="recording && recording.deviceId"
                 :to="{
-                  name: 'device-diagnostics',
+                  name: 'device-status',
                   params: {
                     deviceId: recording.deviceId,
                     deviceName: urlNormaliseName(recording.deviceName),
@@ -2198,8 +2196,8 @@ const inlineModal = ref<boolean>(false);
 </template>
 
 <style scoped lang="less">
-@import "../assets/font-sizes.less";
-@import "../assets/mixins.less";
+@import "../assets/less/typography.less";
+@import "../assets/less/elevation.less";
 
 .overflow-x-hidden {
   overflow-x: hidden;

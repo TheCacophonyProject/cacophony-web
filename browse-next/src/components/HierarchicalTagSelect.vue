@@ -11,12 +11,12 @@
     :selected-items="modelValue"
     :open-on-mount="openOnMount"
     @change="updateModel"
-    @deselected="(deselected) => emit('deselected')"
+    @deselected="() => emit('deselected')"
     ref="layeredDropdown"
   />
 </template>
 <script setup lang="ts">
-import { getClassifications } from "@api/Classifications";
+import { getClassifications } from "@api/classificationsUtils.ts";
 import LayeredDropdown from "./LayeredDropdown.vue";
 import { onMounted, ref } from "vue";
 import type { Classification } from "@typedefs/api/trackTag";
@@ -37,7 +37,7 @@ const props = withDefaults(
   {
     disabled: false,
     exclude: () => [],
-    placeholder: "Search Tags...",
+    placeholder: "Search tags",
     multiselect: false,
     withAudioContext: false,
     canBePinned: false,

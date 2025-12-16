@@ -1,5 +1,5 @@
 import type { RecordingId } from "@typedefs/api/common";
-import { API_ROOT } from "@api/root";
+import { ClientApi } from "@/api";
 
 interface MessageData {
   type: string;
@@ -69,19 +69,15 @@ export class CptvDecoder {
   ): Promise<string | boolean | Blob> {
     await this.init();
     const type = "initWithRecordingIdAndSize";
-    if (import.meta.env.DEV) {
-      decoder &&
-        decoder.postMessage({
-          type,
-          id,
-          size,
-          apiToken,
-          apiRoot: "https://api.cacophony.org.nz",
-        });
-    } else {
-      decoder &&
-        decoder.postMessage({ type, id, size, apiToken, apiRoot: API_ROOT });
-    }
+
+    decoder &&
+      decoder.postMessage({
+        type,
+        id,
+        size,
+        apiToken,
+        apiRoot: ClientApi.getApiRoot(),
+      });
 
     return (await this.waitForMessage(type)) as string | boolean | Blob;
   }
@@ -145,7 +141,8 @@ export class CptvDecoder {
     const type = "freeResources";
     if (decoder && this.inited) {
       decoder.postMessage({ type });
-      return (await this.waitForMessage(type)) as void;
+      const reply = this.waitForMessage(type);
+      return (await reply) as void;
     }
   }
 

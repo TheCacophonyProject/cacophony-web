@@ -12,7 +12,7 @@ import type {
 } from "@/components/cptv-player/cptv-player-types";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import { add, mul, perp } from "@/components/cptv-player/motion-paths";
-import { displayLabelForClassificationLabel } from "@api/Classifications";
+import { displayLabelForClassificationLabel } from "@api/classificationsUtils.ts";
 
 export const setLabelFontStyle = (overlayContext: CanvasRenderingContext2D) => {
   overlayContext.font = "13px sans-serif";

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-
 import {
   creatingNewProject,
-  DevicesForCurrentProject, isSmallScreen,
+  DevicesForCurrentProject,
+  isSmallScreen,
   isViewingAsSuperUser,
   joiningNewProject,
   type LoggedInUser,
@@ -16,12 +16,23 @@ import {
   userIsAdminForCurrentSelectedProject,
 } from "@models/LoggedInUser.ts";
 import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue";
-import {RouterLink} from "vue-router";
-import {computed, type ComputedRef, inject, onMounted, ref, type Ref, watch} from "vue";
-import {currentSelectedProject, currentUser} from "@models/provides.ts";
-import type {LoadedResource} from "@api/types.ts";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import { RouterLink } from "vue-router";
+import {
+  computed,
+  type ComputedRef,
+  inject,
+  onMounted,
+  ref,
+  type Ref,
+  watch,
+} from "vue";
+import { currentSelectedProject, currentUser } from "@models/provides.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
+import { BDropdown, BDropdownItemButton, BTooltip } from "bootstrap-vue-next";
+
 const fallibleCurrentSelectedProject = inject(
-    currentSelectedProject,
+  currentSelectedProject,
 ) as ComputedRef<SelectedProject | false>;
 
 const selectedProject = computed<SelectedProject>(() => {
@@ -42,7 +53,7 @@ const someDeviceNeedsAttention = computed<boolean>(() => {
 });
 
 const fallibleCurrentUser = inject(currentUser) as Ref<
-    LoadedResource<LoggedInUser>
+  LoadedResource<LoggedInUser>
 >;
 
 const CurrentUser = computed<LoggedInUser>(() => {
@@ -73,59 +84,45 @@ onMounted(() => {
     }
   });
 });
-
 </script>
 
 <template>
   <nav
-      id="global-side-nav"
-      ref="globalSideNav"
-      :class="[
-        'd-flex',
-        'flex-column',
-        'flex-shrink-0',
-        { pinned: sideNavIsPinned },
-      ]"
+    id="global-side-nav"
+    ref="globalSideNav"
+    :class="[
+      'global-side-nav',
+      'd-flex',
+      'flex-column',
+      'flex-shrink-0',
+      { pinned: sideNavIsPinned },
+    ]"
   >
     <div class="nav-top">
       <router-link
-          :to="{
-            name: 'dashboard',
-            params: {
-              projectName: urlNormalisedCurrentProjectName,
-            },
-          }"
-          alt="home"
-          class="d-block cacophony-logo-link"
-          title=""
-          data-bs-toggle="tooltip"
-          data-bs-placement="right"
-          data-bs-original-title="Icon-only"
+        :to="{
+          name: 'dashboard',
+          params: {
+            projectName: urlNormalisedCurrentProjectName,
+          },
+        }"
+        alt="home"
+        class="d-block w-100"
+        title=""
+        data-bs-original-title="Icon-only"
       >
-        <icon-cacophony-logo-full />
-        <span class="visually-hidden">Icon-only</span>
+        <icon-cacophony-logo-full class="cacophony-logo" />
+        <span class="visually-hidden">Cacophony Monitoring Platform</span>
       </router-link>
-      <div
-          class="d-flex flex-row group-switcher justify-content-between mt-5 mb-2"
-      >
-        <button
-            class="btn btn-light current-group d-flex flex-fill me-1 align-items-center"
-            v-if="userHasMultipleProjects"
-            data-cy="switch project button"
-            @click="() => (showSwitchProject.enabled = true)"
+      <div class="group-switcher mt-5 mb-2">
+        <div
+          class="d-flex flex-row justify-content-between align-items-center me-1"
         >
-          {{ selectedProject.groupName }}
-          <span class="switch-label figure ms-1"
-          ><font-awesome-icon icon="retweet" class="switch-icon"
-          /></span>
-        </button>
-        <span
-            v-else
-            class="btn current-group d-flex flex-fill me-1 align-items-center"
-        >{{ selectedProject.groupName }}</span
-        >
-
-        <b-dropdown
+          <label
+            class="current-group-label text-body-secondary mx-3 text-nowrap"
+            >Your projects</label
+          >
+          <b-dropdown
             no-caret
             auto-close
             no-flip
@@ -134,121 +131,161 @@ onMounted(() => {
             data-cy="switch or join project button"
             id="switch-or-join-group-button"
             variant="light"
-        >
-          <template #button-content>
-            <font-awesome-icon icon="plus" color="rgb(153, 153, 153)" />
-          </template>
-          <b-dropdown-item-button
-              @click.stop.prevent="creatingNewProject.enabled = true"
+            size="lg"
+            class="group-dropdown"
           >
+            <template #button-content>
+              <span id="create-project-btn" class="d-flex py-1">
+                <material-symbol name="add" size="1.25rem" /><span
+                  class="visually-hidden"
+                  >Create or join project</span
+                >
+              </span>
+            </template>
+            <b-dropdown-item-button
+              @click.stop.prevent="creatingNewProject.enabled = true"
+            >
               <span data-cy="create new project button"
-              >Create a new project</span
+                >Create a new project</span
               >
-          </b-dropdown-item-button>
-          <b-dropdown-item-button
+            </b-dropdown-item-button>
+            <b-dropdown-item-button
               data-cy="join existing project button"
               @click.stop.prevent="joiningNewProject.enabled = true"
+            >
+              <span>Join an existing project</span>
+            </b-dropdown-item-button>
+          </b-dropdown>
+          <b-tooltip
+            target="create-project-btn"
+            hover
+            placement="top"
+            offset="20"
           >
-            <span>Join an existing project</span>
-          </b-dropdown-item-button>
-        </b-dropdown>
+            Create or join project
+          </b-tooltip>
+        </div>
+        <div class="d-flex flex-row justify-content-between">
+          <button
+            class="btn btn-lg btn-light d-flex flex-fill me-1 align-items-center text-uppercase w-100 fw-medium"
+            v-if="userHasMultipleProjects"
+            data-cy="switch project button"
+            @click="() => (showSwitchProject.enabled = true)"
+            id="switch-project-btn"
+          >
+            <span class="overflow-hidden text-truncate text-nowrap">{{
+              selectedProject.groupName
+            }}</span>
+            <material-symbol name="keyboard_arrow_down" class="ms-1" />
+          </button>
+          <span
+            v-else
+            class="px-3 py-2 text-uppercase w-100 fw-medium overflow-hidden text-truncate text-nowrap"
+            >{{ selectedProject.groupName }}</span
+          >
+          <b-tooltip
+            v-if="userHasMultipleProjects"
+            target="switch-project-btn"
+            hover
+            placement="bottom"
+          >
+            Switch project
+          </b-tooltip>
+        </div>
       </div>
     </div>
     <ul class="nav nav-pills nav-flush flex-column mb-auto pt-3">
-      <li class="nav-item">
+      <li class="nav-item w-100">
         <router-link
-            :to="{
-              name: 'dashboard',
-              params: {
-                projectName: urlNormalisedCurrentProjectName,
-              },
-            }"
-            alt="dashboard"
-            class="nav-link py-3 d-flex flex-row"
-            aria-current="page"
-            title=""
-            data-bs-toggle="tooltip"
-            data-bs-placement="right"
-            data-bs-original-title="Dashboard"
+          :to="{
+            name: 'dashboard',
+            params: {
+              projectName: urlNormalisedCurrentProjectName,
+            },
+          }"
+          alt="dashboard"
+          class="nav-link py-3 d-flex flex-row align-items-center"
+          aria-current="page"
+          title=""
+          data-bs-toggle="tooltip"
+          data-bs-placement="right"
+          data-bs-original-title="Dashboard"
         >
-            <span class="nav-icon-wrapper">
-              <font-awesome-icon icon="gauge-high" />
-            </span>
-          <span>Dashboard</span>
+          <span class="nav-icon-wrapper d-flex">
+            <material-symbol name="dashboard_2" />
+          </span>
+          <span class="nav-text ms-3">Dashboard</span>
         </router-link>
       </li>
-      <li class="nav-item mb-4">
+      <li class="nav-item w-100">
         <router-link
-            :to="{
-              name: 'locations',
-              params: {
-                projectName: urlNormalisedCurrentProjectName,
-              },
-            }"
-            class="nav-link py-3 d-flex flex-row"
-            title=""
-            data-bs-toggle="tooltip"
-            data-bs-placement="right"
-            data-bs-original-title="Locations"
+          :to="{
+            name: 'locations',
+            params: {
+              projectName: urlNormalisedCurrentProjectName,
+            },
+          }"
+          class="nav-link py-3 d-flex flex-row align-items-center"
+          title=""
+          data-bs-toggle="tooltip"
+          data-bs-placement="right"
+          data-bs-original-title="Locations"
         >
-            <span class="nav-icon-wrapper">
-              <font-awesome-icon icon="location-dot" />
-            </span>
-          <span>Locations</span>
+          <span class="nav-icon-wrapper d-flex">
+            <material-symbol name="pin_drop" />
+          </span>
+          <span class="nav-text ms-3">Locations</span>
         </router-link>
       </li>
-      <li class="nav-item">
+      <li class="nav-item w-100">
         <router-link
-            :to="{
-              name: 'activity',
-              params: {
-                projectName: urlNormalisedCurrentProjectName,
-              },
-            }"
-            class="nav-link py-3 d-flex flex-row"
-            title=""
-            data-bs-toggle="tooltip"
-            data-bs-placement="right"
-            data-bs-original-title="Search"
+          :to="{
+            name: 'activity',
+            params: {
+              projectName: urlNormalisedCurrentProjectName,
+            },
+          }"
+          class="nav-link py-3 d-flex flex-row align-items-center"
+          title=""
+          data-bs-toggle="tooltip"
+          data-bs-placement="right"
+          data-bs-original-title="Search"
         >
-            <span class="nav-icon-wrapper">
-              <font-awesome-icon icon="magnifying-glass" />
-            </span>
-          <span>Activity</span>
+          <span class="nav-icon-wrapper d-flex">
+            <material-symbol name="search" />
+          </span>
+          <span class="nav-text ms-3">Activity</span>
         </router-link>
       </li>
-      <li class="nav-item">
+      <li class="nav-item w-100">
         <router-link
-            :to="{
-              name: 'devices',
-              params: {
-                projectName: urlNormalisedCurrentProjectName,
-              },
-            }"
-            class="nav-link py-3 d-flex flex-row"
-            title=""
-            data-bs-toggle="tooltip"
-            data-bs-placement="right"
-            data-bs-original-title="Devices"
+          :to="{
+            name: 'devices',
+            params: {
+              projectName: urlNormalisedCurrentProjectName,
+            },
+          }"
+          class="nav-link py-3 d-flex flex-row align-items-center"
+          title=""
+          data-bs-toggle="tooltip"
+          data-bs-placement="right"
+          data-bs-original-title="Devices"
         >
-            <span class="nav-icon-wrapper">
-              <span class="icon-alert-wrapper">
-                <font-awesome-icon icon="microchip" />
-                <svg
-                    class="alert-icon"
-                    width="12"
-                    height="12"
-                    xmlns="http://www.w3.org/2000/svg"
-                    v-if="someDeviceNeedsAttention"
-                >
-                  <path
-                      d="M2.99.8C3.9.27 4.9 0 6 0a5.97 5.97 0 0 1 5.2 9.01 5.97 5.97 0 0 1-8.21 2.19A5.97 5.97 0 0 1 .8 2.99 5.97 5.97 0 0 1 3 .8Zm3.94 9.13A.26.26 0 0 0 7 9.74V8.26a.26.26 0 0 0-.07-.19.23.23 0 0 0-.17-.07h-1.5a.25.25 0 0 0-.18.08.25.25 0 0 0-.08.18v1.48c0 .07.03.13.08.18.05.05.11.08.18.08h1.5c.07 0 .12-.02.17-.07ZM6.9 7.19a.2.2 0 0 0 .08-.14l.14-4.85c0-.06-.02-.1-.07-.14a.3.3 0 0 0-.2-.06h-1.7a.3.3 0 0 0-.2.06.15.15 0 0 0-.08.14l.14 4.85c0 .06.02.1.08.14a.3.3 0 0 0 .18.06h1.45c.07 0 .13-.02.18-.06Z"
-                      fill="darkred"
-                  />
-                </svg>
-              </span>
-            </span>
-          <span>Devices</span>
+          <span class="nav-icon-wrapper d-flex">
+            <material-symbol name="memory" />
+            <svg
+              class="alert-icon"
+              width="12"
+              height="12"
+              xmlns="http://www.w3.org/2000/svg"
+              v-if="someDeviceNeedsAttention"
+            >
+              <path
+                d="M2.99.8C3.9.27 4.9 0 6 0a5.97 5.97 0 0 1 5.2 9.01 5.97 5.97 0 0 1-8.21 2.19A5.97 5.97 0 0 1 .8 2.99 5.97 5.97 0 0 1 3 .8Zm3.94 9.13A.26.26 0 0 0 7 9.74V8.26a.26.26 0 0 0-.07-.19.23.23 0 0 0-.17-.07h-1.5a.25.25 0 0 0-.18.08.25.25 0 0 0-.08.18v1.48c0 .07.03.13.08.18.05.05.11.08.18.08h1.5c.07 0 .12-.02.17-.07ZM6.9 7.19a.2.2 0 0 0 .08-.14l.14-4.85c0-.06-.02-.1-.07-.14a.3.3 0 0 0-.2-.06h-1.7a.3.3 0 0 0-.2.06.15.15 0 0 0-.08.14l.14 4.85c0 .06.02.1.08.14a.3.3 0 0 0 .18.06h1.45c.07 0 .13-.02.18-.06Z"
+              />
+            </svg>
+          </span>
+          <span class="nav-text ms-3">Devices</span>
         </router-link>
       </li>
       <!--        NOTE: remove Report until we know what to do with it. -->
@@ -272,228 +309,219 @@ onMounted(() => {
       <!--            <span>Report</span>-->
       <!--          </router-link>-->
       <!--        </li>-->
-      <li class="nav-item" v-if="!isViewingAsSuperUser">
+      <li class="nav-item w-100" v-if="!isViewingAsSuperUser">
         <router-link
-            :to="{
-              name: 'user-project-settings',
-              params: {
-                projectName: urlNormalisedCurrentProjectName,
-              },
-            }"
-            class="nav-link py-3 d-flex flex-row"
-            title=""
-            data-bs-toggle="tooltip"
-            data-bs-placement="right"
-            data-bs-original-title="My preferences"
+          :to="{
+            name: 'user-project-settings',
+            params: {
+              projectName: urlNormalisedCurrentProjectName,
+            },
+          }"
+          class="nav-link py-3 d-flex flex-row align-items-center"
+          title=""
+          data-bs-toggle="tooltip"
+          data-bs-placement="right"
+          data-bs-original-title="My preferences"
         >
-            <span class="nav-icon-wrapper">
-              <font-awesome-icon icon="gear" />
-            </span>
-          <span>My&nbsp;preferences</span>
+          <span class="nav-icon-wrapper d-flex">
+            <material-symbol name="settings" />
+          </span>
+          <span class="nav-text ms-3">My&nbsp;preferences</span>
         </router-link>
       </li>
-      <li class="nav-item" v-if="userIsAdminForCurrentSelectedProject">
+      <li class="nav-item w-100" v-if="userIsAdminForCurrentSelectedProject">
         <router-link
-            :to="{
-              name: 'project-settings',
-              params: {
-                projectName: urlNormalisedCurrentProjectName,
-              },
-            }"
-            class="nav-link py-3 d-flex flex-row"
-            title=""
-            data-bs-toggle="tooltip"
-            data-bs-placement="right"
-            data-bs-original-title="Manage project"
+          :to="{
+            name: 'project-settings',
+            params: {
+              projectName: urlNormalisedCurrentProjectName,
+            },
+          }"
+          class="nav-link py-3 d-flex flex-row align-items-center"
+          title=""
+          data-bs-toggle="tooltip"
+          data-bs-placement="right"
+          data-bs-original-title="Manage project"
         >
-            <span class="nav-icon-wrapper">
-              <font-awesome-icon icon="screwdriver-wrench" />
-            </span>
-          <span>Manage&nbsp;project</span>
+          <span class="nav-icon-wrapper d-flex">
+            <material-symbol name="handyman" />
+          </span>
+          <span class="nav-text ms-3">Manage&nbsp;project</span>
         </router-link>
       </li>
     </ul>
-    <div class="border-top d-flex">
+    <div class="d-flex align-items-center">
       <router-link
-          :to="{ name: 'user-settings' }"
-          class="d-flex py-3 text-decoration-none flex-fill align-items-center flex-row"
-          data-cy="user settings nav button"
+        :to="{ name: 'user-settings' }"
+        class="nav-link overflow-hidden d-flex p-3 text-decoration-none flex-fill align-items-center flex-row rounded-2"
+        data-cy="user settings nav button"
       >
-          <span class="nav-icon-wrapper">
-            <span class="icon-alert-wrapper">
-              <font-awesome-icon icon="user" />
-              <svg
-                  v-if="!CurrentUser.emailConfirmed"
-                  class="alert-icon"
-                  width="12"
-                  height="12"
-                  xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                    d="M2.99.8C3.9.27 4.9 0 6 0a5.97 5.97 0 0 1 5.2 9.01 5.97 5.97 0 0 1-8.21 2.19A5.97 5.97 0 0 1 .8 2.99 5.97 5.97 0 0 1 3 .8Zm3.94 9.13A.26.26 0 0 0 7 9.74V8.26a.26.26 0 0 0-.07-.19.23.23 0 0 0-.17-.07h-1.5a.25.25 0 0 0-.18.08.25.25 0 0 0-.08.18v1.48c0 .07.03.13.08.18.05.05.11.08.18.08h1.5c.07 0 .12-.02.17-.07ZM6.9 7.19a.2.2 0 0 0 .08-.14l.14-4.85c0-.06-.02-.1-.07-.14a.3.3 0 0 0-.2-.06h-1.7a.3.3 0 0 0-.2.06.15.15 0 0 0-.08.14l.14 4.85c0 .06.02.1.08.14a.3.3 0 0 0 .18.06h1.45c.07 0 .13-.02.18-.06Z"
-                    fill="#d9001b"
-                />
-              </svg>
-            </span>
-          </span>
-        <span v-html="currentUserName" class="text-nowrap"></span>
+        <span class="nav-icon-wrapper d-flex">
+          <material-symbol name="account_circle" />
+          <svg
+            v-if="!CurrentUser.emailConfirmed"
+            class="alert-icon"
+            width="12"
+            height="12"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            >
+            <path
+              d="M2.99.8C3.9.27 4.9 0 6 0a5.97 5.97 0 0 1 5.2 9.01 5.97 5.97 0 0 1-8.21 2.19A5.97 5.97 0 0 1 .8 2.99 5.97 5.97 0 0 1 3 .8Zm3.94 9.13A.26.26 0 0 0 7 9.74V8.26a.26.26 0 0 0-.07-.19.23.23 0 0 0-.17-.07h-1.5a.25.25 0 0 0-.18.08.25.25 0 0 0-.08.18v1.48c0 .07.03.13.08.18.05.05.11.08.18.08h1.5c.07 0 .12-.02.17-.07ZM6.9 7.19a.2.2 0 0 0 .08-.14l.14-4.85c0-.06-.02-.1-.07-.14a.3.3 0 0 0-.2-.06h-1.7a.3.3 0 0 0-.2.06.15.15 0 0 0-.08.14l.14 4.85c0 .06.02.1.08.14a.3.3 0 0 0 .18.06h1.45c.07 0 .13-.02.18-.06Z"
+            />
+          </svg>
+        </span>
+        <span
+          v-html="currentUserName"
+          class="nav-text text-nowrap ms-3 text-truncate"
+        ></span>
       </router-link>
       <router-link
-          :to="{ name: 'sign-out' }"
-          data-cy="sign out link"
-          class="d-block py-3 text-decoration-none border-start"
+        :to="{ name: 'sign-out' }"
+        data-cy="sign out link"
+        class="sign-out-link btn btn-light btn-md p-3 ms-1"
+        id="sign-out-link"
       >
-          <span class="nav-icon-wrapper">
-            <font-awesome-icon icon="right-from-bracket" />
-          </span>
+        <span class="nav-icon-wrapper">
+          <material-symbol name="logout" size="1.25rem" /><span
+            class="visually-hidden"
+            >Sign out</span
+          >
+        </span>
       </router-link>
+      <b-tooltip target="sign-out-link" hover placement="bottom">
+        Sign out
+      </b-tooltip>
     </div>
   </nav>
   <div
-      class="nav-bg"
-      :class="{ visible: showSideNavBg, hidden: hideNavBg }"
+    class="nav-bg"
+    :class="{ visible: showSideNavBg, hidden: hideNavBg }"
   ></div>
 </template>
 
 <style scoped lang="less">
-#global-side-nav {
-  transform: translateX(calc(var(--global-side-nav-expanded-width) * -1.0));
-  @media (min-width: 639px) {
-    transform: unset;
-  }
-
-  background: white;
+@import "../assets/less/breakpoints.less";
+@import "../assets/less/elevation.less";
+.global-side-nav {
   position: fixed;
   bottom: 0;
   top: 0;
   left: 0;
-  width: var(--global-side-nav-collapsed-width);
-  overflow: hidden;
-  user-select: none;
-  transition:
-      width 0.2s,
-      transform 0.2s;
-  box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
   z-index: 1021;
-
-  .nav-icon-wrapper {
-    // Keep the icons vertically aligned relative to one-another.
-    display: block;
-    width: var(--global-side-nav-collapsed-width);
-    text-align: center;
-  }
-
-  .nav-link {
-    padding-left: 0;
-    padding-right: 0;
-  }
-
-  a {
-    color: #444;
-    font-weight: 500;
-    font-size: 0.875rem;
-
-    svg {
-      color: #808080;
-    }
-    &:active,
-    &.router-link-active:not(.cacophony-logo-link) {
-      svg {
-        color: #4c4c4c;
-      }
-    }
-
-    &.router-link-active:not(.cacophony-logo-link) {
-      background: unset;
-      position: relative;
-      &::before {
-        content: " ";
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 4px;
-        background-color: #6dbd4b;
-      }
-    }
-
-    &:active,
-    &:active:hover {
-      background-color: #efefef;
-    }
-    &:hover {
-      // Some kind of animated gradient here?
-      background-color: #fcfcfc;
-    }
+  overflow-y: auto;
+  overflow-x: hidden;
+  user-select: none;
+  background: var(--bs-white);
+  .main-nav-shadow();
+  padding: var(--cp-spacing-md)
+    calc(var(--cp-spacing-xs) + var(--cp-spacing-xxxs)) var(--cp-spacing-xs);
+  width: var(--global-side-nav-collapsed-width);
+  transform: translateX(calc(var(--global-side-nav-expanded-width) * -1));
+  transition:
+    width 0.2s,
+    transform 0.2s;
+  @media (min-width: @breakpoint-sm) {
+    transform: unset;
   }
 
   // Top part of nav containing logo and group selector.
   .nav-top {
-    transition: background-color 0.2s;
     .group-switcher {
       opacity: 0;
       transition: opacity 0.2s;
-      width: var(--global-side-nav-expanded-width);
-      .current-group {
-        text-transform: uppercase;
-        font-weight: 500;
-      }
-      .switch-label {
-        font-variant: small-caps;
-        font-style: italic;
-        font-size: 70%;
-        .switch-icon {
-          transform: skewX(-20deg);
-        }
-      }
-      .add-group {
-        color: #999;
-      }
     }
   }
 
-  .cacophony-logo-link {
-    padding: 0.6rem;
+  // Main navigation links
+  a.nav-link {
+    color: var(--text-primary);
+    font-weight: var(--cp-font-weight-medium);
+
+    &:hover {
+      background-color: var(--cp-color-green-50);
+      color: var(--cp-color-green-800);
+    }
+
+    &:active,
+    &:active:hover {
+      background-color: var(--cp-color-green-100);
+    }
+
+    &.router-link-active {
+      background-color: color-mix(
+        in oklch,
+        var(--cp-color-primary),
+        transparent 90%
+      );
+      color: var(--cp-color-green-800);
+    }
+
+    .nav-icon-wrapper {
+      position: relative;
+
+      .alert-icon {
+        position: absolute;
+        right: calc(var(--cp-spacing-xs) * -1);
+        top: calc(var(--cp-spacing-xxs) * -1);
+        fill: var(--bs-danger);
+      }
+    }
+
+    .nav-text {
+      width: 0;
+      overflow: hidden;
+    }
+  }
+
+  .sign-out-link {
+    display: none;
+    opacity: 0;
   }
 
   // Expanded menu state
   &.pinned {
     transform: translateX(0);
     width: var(--global-side-nav-expanded-width);
+
     .nav-top {
-      background-color: #fafafa;
       .group-switcher {
         opacity: 1;
       }
     }
+    a.nav-link .nav-text {
+      animation: 0.2s show-nav-text both;
+    }
+    .sign-out-link {
+      display: block;
+      animation: 0.2s 0.1s show-sign-out-link both;
+    }
   }
 
-  @media screen and (min-width: 639px) {
+  @media screen and (min-width: @breakpoint-sm) {
     &:hover,
     &.pinned {
       transform: translateX(0);
       width: var(--global-side-nav-expanded-width);
+
       .nav-top {
-        background-color: #fafafa;
         .group-switcher {
           opacity: 1;
         }
       }
-    }
-  }
-
-  .icon-alert-wrapper {
-    position: relative;
-    .alert-icon {
-      position: absolute;
-      top: -25%;
-      right: -65%;
+      a.nav-link .nav-text {
+        animation: 0.2s show-nav-text both;
+      }
+      .sign-out-link {
+        display: block;
+        animation: 0.2s 0.1s show-sign-out-link both;
+      }
     }
   }
 }
 .nav-bg {
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s linear;
   &.hidden {
     display: none;
   }
@@ -504,16 +532,35 @@ onMounted(() => {
     bottom: 0;
     left: 0;
     right: 0;
-    z-index: 1001;
+    z-index: 1020;
     opacity: 1;
     display: block;
   }
 }
+@keyframes show-nav-text {
+  1% {
+    width: 0;
+    opacity: 0;
+  }
+  100% {
+    width: 100%;
+    opacity: 1;
+  }
+}
+
+@keyframes show-sign-out-link {
+  1% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
 </style>
 <style lang="less">
-#global-side-nav {
-  #cacophony-logo-full {
-    transform: scale(0.725);
+.global-side-nav {
+  .cacophony-logo {
+    /*transform: scale(0.725);*/
     transform-origin: 0 0;
 
     .text {
@@ -523,9 +570,22 @@ onMounted(() => {
     }
   }
 
+  // Customised nav buttons. Needs to be global to be able to style the dropdown btn
+  .btn-light {
+    background: transparent;
+    border: none;
+    &:hover {
+      background: var(--bs-gray-100);
+    }
+    &:active {
+      background: var(--bs-gray-200);
+    }
+  }
+
   &:hover,
   &.pinned {
-    #cacophony-logo-full .text {
+    .cacophony-logo .text {
+      display: block;
       opacity: 1;
     }
   }

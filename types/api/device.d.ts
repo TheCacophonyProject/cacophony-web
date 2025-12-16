@@ -1,4 +1,4 @@
-import {
+import type {
   DeviceId,
   GroupId,
   IsoFormattedDateString,
@@ -6,9 +6,9 @@ import {
   SaltId,
   ScheduleId,
   StationId,
-} from "./common";
-import { DeviceType } from "./consts.js";
-import { ApiGroupUserResponse } from "./group";
+} from "./common.ts";
+import {AudioRecordingMode, type DeviceType} from "./consts.ts";
+import { type ApiGroupUserResponse } from "./group.ts";
 
 export type DeviceBatteryChargeState =
   | "NOT_CHARGING"
@@ -59,14 +59,8 @@ export type ThermalRecordingSettings = {
   useLowPowerMode: boolean;
 } & SettingsBase;
 
-export type AudioModes =
-  | "Disabled"
-  | "AudioOnly"
-  | "AudioAndThermal"
-  | "AudioOrThermal";
-
 export type AudioRecordingSettings = {
-  audioMode?: AudioModes;
+  audioMode?: AudioRecordingMode;
   audioSeed?: number;
 } & SettingsBase;
 

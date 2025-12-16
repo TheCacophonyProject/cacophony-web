@@ -1,12 +1,63 @@
-import type { GroupId, UserId } from "@typedefs/api/common";
+import type { DeviceId, GroupId, SaltId, StationId as LocationId, UserId } from "@typedefs/api/common";
 import type { HttpStatusCode } from "@typedefs/api/consts";
+import type { ApiLoggedInUserResponse } from "../api/user";
+import { RecordingType, TagMode } from "../api/consts";
+import type { ApiRecordingResponse } from "../api/recording";
+import type { IsoFormattedString } from "../api/event";
 
 export type JwtToken<_T> = string;
+export type TestHandle = string;
+export const DEFAULT_AUTH_ID = "default";
+export type UserName = TestHandle;
+export type DeviceName = TestHandle;
+export type ProjectName = TestHandle;
+
+export interface LoggedInUserWithCredentials {
+  userData: ApiLoggedInUserResponse;
+  token: JwtToken<UserId>;
+  refreshToken: string;
+}
+
+export interface LoggedInUserAuth {
+  userData: ApiLoggedInUserResponse;
+  apiToken: JwtToken<UserId>;
+  refreshToken: string;
+  refreshingToken?: Promise<boolean>;
+  decodedToken?: JwtUserAuthTokenPayload,
+}
+
+export interface LoggedInUserAuthDeserialized extends LoggedInUserAuth {
+  decodedToken: JwtUserAuthTokenPayload,
+}
+
+export interface LoggedInDeviceCredentials {
+  id: DeviceId,
+  saltId: SaltId,
+  token: JwtToken<DeviceId>
+}
 
 export interface FieldValidationError {
   msg: string;
   location: "body" | "query" | "param";
   param: string;
+}
+export interface BatteryInfo {
+    voltage: number;
+    battery: number;
+
+    // Old format, but some cameras still haven't update to new as of 3/12/2025
+    batteryType?: "lime" | "lead-acid-12v" | "li-ion" | "unknown_battery_type" | "mains";
+    // New format
+    cellCount?: number;
+    chemistry?: "lead-acid" | "lifepo4" | "li-ion";
+    rtcVoltage?: number;
+    rail?: "lv" | "hv";
+
+    // NOTE: There is also a bunch of 'depletion_method' etc fields in newer events, but it's not clear
+    // yet how or if we'd use those in the front-end.
+}
+export interface BatteryInfoEvent extends BatteryInfo {
+  dateTime: IsoFormattedString;
 }
 
 export interface ErrorResult {

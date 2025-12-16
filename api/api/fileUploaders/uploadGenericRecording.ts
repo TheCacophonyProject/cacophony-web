@@ -41,12 +41,7 @@ import { isLatLon } from "@models/util/validation.js";
 import { tryReadingM4aMetadata } from "@api/m4a-metadata-reader/m4a-metadata-reader.js";
 import { RawTrack } from "@typedefs/api/fileProcessing.js";
 
-const cameraTypes = [
-  RecordingType.ThermalRaw,
-  RecordingType.InfraredVideo,
-  RecordingType.TrailCamImage,
-  RecordingType.TrailCamVideo,
-];
+const cameraTypes = [RecordingType.ThermalRaw, RecordingType.InfraredVideo];
 
 export interface RecordingDataSuppliedMetadata {
   tracks?: RawTrack[];
@@ -847,8 +842,6 @@ const recordingUploadedState = (type: RecordingType) => {
     return RecordingProcessingState.TrackAndAnalyse;
   } else if (type === RecordingType.InfraredVideo) {
     return RecordingProcessingState.Tracking;
-  } else if (type == RecordingType.TrailCamImage) {
-    return RecordingProcessingState.Analyse;
   }
   return RecordingProcessingState.Finished;
 };
@@ -987,8 +980,6 @@ const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
     const typeMappings = {
       [RecordingType.Audio]: DeviceType.Audio,
       [RecordingType.ThermalRaw]: DeviceType.Thermal,
-      [RecordingType.TrailCamVideo]: DeviceType.TrailCam,
-      [RecordingType.TrailCamImage]: DeviceType.TrailCam,
       [RecordingType.InfraredVideo]: DeviceType.TrapIrCam,
     };
     updateDevicePayload.kind = typeMappings[recording.type];

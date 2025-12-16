@@ -1571,13 +1571,9 @@ export const fixupLatestRecordingTimesForDeletedRecording = async (
 ) => {
   // Check if there are any more device/group/station recordings or if the latest recording of this type
   // is not different. If not, set lastRecordingTime to null so that the device will appear as deletable.
-  const cameras = [RecordingType.ThermalRaw, RecordingType.TrailCamImage];
+  const cameras = [RecordingType.ThermalRaw];
   let types = [RecordingType.Audio];
-  if (
-    [RecordingType.ThermalRaw, RecordingType.TrailCamImage].includes(
-      recording.type,
-    )
-  ) {
+  if ([RecordingType.ThermalRaw].includes(recording.type)) {
     types = cameras;
   }
   const [
@@ -1589,7 +1585,6 @@ export const fixupLatestRecordingTimesForDeletedRecording = async (
       where: {
         DeviceId: recording.DeviceId,
         deletedAt: null,
-        duration: { [Op.gte]: 3 },
       },
       order: [["recordingDateTime", "DESC"]],
     }),
@@ -1597,7 +1592,6 @@ export const fixupLatestRecordingTimesForDeletedRecording = async (
       where: {
         GroupId: recording.GroupId,
         deletedAt: null,
-        duration: { [Op.gte]: 3 },
         type: { [Op.in]: types },
       },
       order: [["recordingDateTime", "DESC"]],
@@ -1605,7 +1599,6 @@ export const fixupLatestRecordingTimesForDeletedRecording = async (
     Recording.findOne({
       where: {
         StationId: recording.StationId,
-        duration: { [Op.gte]: 3 },
         deletedAt: null,
         type: { [Op.in]: types },
       },
@@ -1708,7 +1701,7 @@ export const fixupLatestRecordingTimesForDeletedRecording = async (
 export const fixupLatestRecordingTimesForUndeletedRecording = async (
   recording: Recording,
 ) => {
-  const cameras = [RecordingType.TrailCamImage, RecordingType.ThermalRaw];
+  const cameras = [RecordingType.ThermalRaw];
   const [device, group] = await Promise.all([
     Device.findByPk(recording.DeviceId),
     Group.findByPk(recording.GroupId),

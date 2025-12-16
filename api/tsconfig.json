@@ -41,7 +41,8 @@
     "exclude": [
         "./node_modules/*",
         "./test/*",
-        "./test-cypress/*"
+        "./test-cypress/*",
+        "../types/client/*"
     ],
     "watchOptions": {
         "excludeDirectories": [
@@ -51,7 +52,8 @@
             "/app/types/jsonSchemas/",
             "/app/types/jsonSchemas/**",
             "/app/types/node_modules",
-            "/app/types/node_modules/**"
+            "/app/types/node_modules/**",
+            "/app/types/client/**"
         ],
         "excludeFiles": [
             "*.schema.json",
@@ -59,6 +61,7 @@
             "/app/types/build-schemas.js",
             "/app/types/build-schemas.ts",
             "/app/types/schema-cache.json",
+            "/app/types/client/**",
             "schema-cache.json"
         ]
     }

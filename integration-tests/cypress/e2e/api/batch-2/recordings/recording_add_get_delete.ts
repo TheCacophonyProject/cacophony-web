@@ -605,11 +605,6 @@ describe("Recordings (thermal): add, get, delete", () => {
         RecordingType.ThermalRaw,
         undefined,
       );
-      cy.testDeleteRecordingsInState(
-        superuser,
-        RecordingType.TrailCamImage,
-        undefined,
-      );
     }
 
     let stationId;
@@ -674,41 +669,6 @@ describe("Recordings (thermal): add, get, delete", () => {
     );
     cy.log("Check /monitoring ignores deleted recording");
     cy.checkMonitoringWithFilter("raGroupAdmin", stationId, filter, []);
-  });
-
-  it("Can upload multiple file attachments for trailcam devices", () => {
-    const recording1 = TestCreateRecordingData(templateRecording);
-    recording1.type = RecordingType.TrailCamImage;
-    let expectedRecording1: ApiThermalRecordingResponse;
-
-    cy.log("Add recording as device");
-    cy.apiRecordingAddOnBehalfUsingGroup(
-      "raGroupAdmin",
-      "raCamera1",
-      "raGroup",
-      recording1,
-      "tcRecording1",
-      [
-        { filename: "trailcam-image.jpeg", key: "file" },
-        { filename: "trailcam-image-resized.webp", key: "derived" },
-      ],
-    ).then(() => {
-      expectedRecording1 = TestCreateExpectedRecordingData(
-        templateExpectedRecording,
-        "tcRecording1",
-        "raCamera1",
-        "raGroup",
-        null,
-        recording1,
-      );
-      cy.log("Check recording can be viewed correctly");
-      cy.apiRecordingCheck(
-        "raGroupAdmin",
-        "tcRecording1",
-        expectedRecording1,
-        EXCLUDE_IDS,
-      );
-    });
   });
 
   it("Zero sized recordings are rejected", () => {

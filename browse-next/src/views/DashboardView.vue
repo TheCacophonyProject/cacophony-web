@@ -10,8 +10,9 @@ import {
   watch,
 } from "vue";
 import type { Ref, ComputedRef } from "vue";
-import { getAllVisitsForProject } from "@api/Monitoring";
+import { ClientApi } from "@/api";
 import {
+  shouldViewAsSuperUser,
   showUnimplementedModal,
   urlNormalisedCurrentProjectName,
 } from "@models/LoggedInUser";
@@ -20,20 +21,18 @@ import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import HorizontalOverflowCarousel from "@/components/HorizontalOverflowCarousel.vue";
 import InlineViewModal from "@/components/InlineViewModal.vue";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
-import { getLocationsForProject } from "@api/Project";
 import ProjectVisitsSummary from "@/components/ProjectVisitsSummary.vue";
 import LocationVisitSummary from "@/components/LocationVisitSummary.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
-import { BSpinner } from "bootstrap-vue-next";
+import { BButton, BSpinner } from "bootstrap-vue-next";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import { useMediaQuery } from "@vueuse/core";
 import {
-  classifications,
   getClassifications,
   displayLabelForClassificationLabel,
   getClassificationForLabel,
-} from "@api/Classifications";
+} from "@api/classificationsUtils.ts";
 import TagImage from "@/components/TagImage.vue";
 import {
   activeLocations,
@@ -41,7 +40,7 @@ import {
   latLngForActiveLocations,
   userProjects,
 } from "@models/provides";
-import type { LoadedResource } from "@api/types";
+import type { LoadedResource } from "@apiClient/types";
 import BimodalSwitch from "@/components/BimodalSwitch.vue";
 import { canonicalLatLngForLocations } from "@/helpers/Location";
 import { sortTagPrecedence } from "@models/visitsUtils";
@@ -271,10 +270,11 @@ const earliestDate = computed<Date>(() => {
 const loadVisits = async () => {
   if (currentProject.value) {
     visitsContext.value = null;
-    const allVisits = await getAllVisitsForProject(
+    const allVisits = await ClientApi.Monitoring.getAllVisitsForProject(
       (currentProject.value as SelectedProject).id,
       timePeriodDays.value,
-      (val) => {
+      shouldViewAsSuperUser.value,
+      (val: number) => {
         // TODO - Do we want to display loading progress via the UI?
         loadingVisitsProgress.value = val;
       },
@@ -295,13 +295,13 @@ watch(currentProject, reloadDashboard);
 const loadedRouteName = ref<string>("");
 onBeforeMount(async () => {
   loadedRouteName.value = route.name as string;
-  console.log("Loaded route name", loadedRouteName.value);
   await getClassifications();
 });
-// TODO - Use this to show which stations *could* have had recordings, but may have had no activity.
+
 const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
   ApiLocationResponse[]
 >(() => {
+  // NOTE: - Use this to show which stations *could* have had recordings, but may have had no activity.
   // const visitLocations = dashboardVisits.value.map(
   //   (visit: ApiVisitResponse) => visit.stationId
   // );
@@ -344,7 +344,7 @@ const allLocations = computed<ApiLocationResponse[]>(() => {
 const loadLocations = async () => {
   if (currentProject.value) {
     locations.value = null;
-    locations.value = await getLocationsForProject(
+    locations.value = await ClientApi.Projects.getLocationsForProject(
       (currentProject.value as SelectedProject).id.toString(),
       true,
     );
@@ -443,10 +443,10 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       <!--        v-if="currentSelectedProjectHasAudioAndThermal"-->
       <!--      />-->
       <div
-        class="scope-filters d-flex align-items-sm-center flex-column flex-sm-row mb-3 mb-sm-0"
+        class="scope-filters d-flex align-items-sm-center flex-row mb-3 mb-sm-0"
       >
-        <div class="d-flex flex-row align-items-center justify-content-between">
-          <span>Visits&nbsp;</span>
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-secondary">Visits in the last</span>
           <!--          <select-->
           <!--            class="form-select form-select-sm text-end"-->
           <!--            v-model="visitsOrRecordings"-->
@@ -455,9 +455,9 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
           <!--            <option>recordings</option>-->
           <!--          </select>-->
         </div>
-        <div class="d-flex flex-row align-items-center justify-content-between">
-          <span> in the last </span>
+        <div class="d-flex align-items-center justify-content-between">
           <select
+            id="select-dashboard-timespan"
             class="form-select form-select-sm text-end"
             v-model="timePeriodDays"
           >
@@ -479,39 +479,43 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       </div>
     </div>
   </div>
-  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+  <h2 class="dashboard-subhead h4" v-if="hasVisitsForSelectedTimePeriod">
     Species summary
   </h2>
   <horizontal-overflow-carousel
     class="species-summary-container mb-sm-5 mb-4"
     v-if="hasVisitsForSelectedTimePeriod"
   >
-    <div class="card-group species-summary flex-sm-nowrap flex-wrap d-flex">
+    <div class="species-summary flex-sm-nowrap flex-wrap d-flex">
       <div
         v-for="[key, val] in speciesSummarySorted"
         :key="key"
-        class="d-flex flex-row species-summary-item align-items-center"
+        class="species-summary__item d-flex flex-row align-items-center gap-2"
         @click="showVisitsForTag(key)"
       >
-        <tag-image :tag="key" width="24" height="24" class="ms-sm-3 ms-1" />
+        <div class="species-summary__item__icon p-2">
+          <tag-image :tag="key" width="24" height="24" class="" />
+        </div>
         <div
-          class="d-flex justify-content-evenly flex-sm-column ms-sm-3 ms-2 pe-sm-3 pe-1 align-items-center align-items-sm-start"
+          class="d-flex justify-content-evenly flex-sm-column align-items-center align-items-sm-start"
         >
-          <div class="species-count pe-sm-0 pe-1 lh-sm">{{ val }}</div>
-          <div class="species-name lh-sm small text-capitalize">
+          <div class="species-summary__item__count lh-sm">
+            {{ val }}
+          </div>
+          <div class="species-summary__item__name lh-sm text-capitalize">
             {{ displayLabelForClassificationLabel(key) }}
           </div>
         </div>
       </div>
     </div>
   </horizontal-overflow-carousel>
-  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+  <h2 class="dashboard-subhead h4" v-if="hasVisitsForSelectedTimePeriod">
     Visits summary
   </h2>
-  <div class="d-md-flex flex-md-row">
+  <div class="d-md-flex flex-md-row mb-5 gap-3">
     <project-visits-summary
       v-if="!isMobileView && hasVisitsForSelectedTimePeriod"
-      class="mb-5 flex-md-fill me-md-3"
+      class="mb-3 flex-md-fill"
       :locations="allLocations"
       :active-locations="locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
       :visits="dashboardVisits"
@@ -528,16 +532,16 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       "
     />
   </div>
-  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+  <h2 class="dashboard-subhead h4" v-if="hasVisitsForSelectedTimePeriod">
     Locations summary
   </h2>
   <horizontal-overflow-carousel
     v-if="hasVisitsForSelectedTimePeriod"
-    class="mb-5"
+    class="locations-summary-wrapper mb-3 mb-lg-4"
   >
     <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
     <div
-      class="card-group species-summary flex-sm-nowrap"
+      class="species-summary flex-sm-nowrap"
       v-if="!isLoading && hasVisitsForSelectedTimePeriod"
     >
       <location-visit-summary
@@ -600,29 +604,8 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   />
 </template>
 <style lang="less" scoped>
-@import "../assets/font-sizes.less";
-
-.group-name {
-  text-transform: uppercase;
-  color: #aaa;
-  font-family: "Roboto Medium", "Roboto Regular", Roboto, sans-serif;
-  font-weight: 500;
-  // font-size: var(--bs-body-font-size);
-  // FIXME - Use modified bs-body-font-size?
-  font-size: 14px;
-}
-h1 {
-  font-family: "Roboto Bold", "Roboto Regular", "Roboto", sans-serif;
-  font-size: 22px;
-  font-weight: 700;
-  color: #444;
-}
-h2 {
-  font-family: "Roboto Medium", "Roboto Regular", "Roboto", sans-serif;
-  font-weight: 500;
-  color: #444;
-  font-size: 17px;
-}
+@import "../assets/less/typography.less";
+@import "../assets/less/elevation.less";
 .header-container {
   @media screen and (min-width: 576px) {
     position: relative;
@@ -636,8 +619,6 @@ h2 {
   }
 }
 .scope-filters {
-  font-size: 14px;
-  color: #999;
   .form-select {
     background-color: unset;
     border: 0;
@@ -648,98 +629,59 @@ h2 {
   }
 }
 
+.dashboard-subhead {
+  margin-bottom: var(--cp-spacing-sm);
+}
+
 .species-summary-container {
+  border-radius: var(--bs-border-radius);
   @media screen and (min-width: 576px) {
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
     background: white;
+    .standard-shadow();
   }
 }
 
 .species-summary {
-  min-height: 68px;
   user-select: none;
-  .species-summary-item {
-    border: 1px solid #ccc;
-    // From card
-    border-radius: unset;
-    //border-width: 0;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
-    @media screen and (min-width: 576px) {
-      box-shadow: unset;
-      border-left-width: 0;
-      border-bottom-width: 0;
-      border-top-width: 0;
-      border-right-width: 1px;
-      margin: unset;
-      &:last-child {
-        border-right-width: 0;
-      }
-    }
-    //
-
-    &:nth-child(even) {
-      margin: 0 0 4px 2px;
-    }
-    &:nth-child(odd) {
-      margin: 0 2px 4px 0;
-    }
-    height: 47px;
-    @media screen and (min-width: 576px) {
-      height: unset;
-      &:nth-child(even) {
-        margin: unset;
-      }
-      &:nth-child(odd) {
-        margin: unset;
-      }
-    }
+  &__item {
+    background: var(--bs-white);
     cursor: pointer;
-    user-select: none;
-    text-decoration: none;
-    color: inherit;
-    padding: 2px;
-    width: calc(50% - 2px);
-    //min-width: 130px; // TODO @media breakpoints
-    transition: background-color 0.2s ease-in-out;
-
+    padding: var(--cp-spacing-md) var(--cp-spacing-sm);
+    @media screen and (max-width: 575px) {
+      //flex-basis: calc(50% - (var(--spacing--xxs)));
+      flex: 0 0 calc(50% - calc(var(--cp-spacing-xxs) / 2));
+      border: 1px solid var(--border-color-light);
+    }
+    @media screen and (min-width: 576px) {
+      border-right: 1px solid var(--border-color-light);
+      transition: background-color 0.2s ease-in-out;
+      &:last-child {
+        border-right: none;
+      }
+      flex: 1 1 128px;
+      //min-width: 130px; // TODO @media breakpoints
+    }
     &:hover {
-      background-color: #ececec;
+      background-color: var(--bs-gray-200);
     }
-    @media screen and (min-width: 576px) {
-      //width: unset;
-      margin: unset;
-    }
-
-    .species-count {
-      font-weight: 500;
-    }
-    .species-name,
-    .species-count {
-      .fs-7();
-    }
-    @media screen and (min-width: 576px) {
-      .species-count {
-        .fs-4();
-      }
-      .species-name {
-        .fs-6();
+    &__count {
+      font-weight: var(--cp-font-weight-medium);
+      @media screen and (min-width: 576px) {
+        font-size: var(--cp-font-size-h2);
       }
     }
-  }
-}
-
-.dashboard-subhead {
-  .fs-6();
-  @media screen and (min-width: 576px) {
-    font-size: unset;
+    &__name {
+      font-size: var(--cp-font-size-lg);
+    }
   }
 }
 </style>
 <style lang="less">
-.species-summary-item {
-  > img {
-    min-width: 24px;
-    min-height: 24px;
+// make sure that the shadow and hover effect of the location card displays - it won't otherwise because of the overflow hidden property
+.locations-summary-wrapper {
+  margin: -4px -6px -12px;
+  .inner {
+    padding: 4px 6px 12px;
   }
 }
 </style>

@@ -42,19 +42,16 @@ import {
 import { rectanglesIntersect } from "@/components/cptv-player/track-merging";
 import type { MotionPath } from "@/components/cptv-player/motion-paths";
 import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
-import type { LoggedInUserAuth, SelectedProject } from "@models/LoggedInUser";
-import { maybeRefreshStaleCredentials } from "@api/fetch";
+import type { SelectedProject } from "@models/LoggedInUser";
 import { type CancelableDelay, delayMs } from "@/utils";
-import { displayLabelForClassificationLabel } from "@api/Classifications";
+import { displayLabelForClassificationLabel } from "@api/classificationsUtils.ts";
 import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils";
-import { getReferenceImageForDeviceAtTime } from "@api/Device.ts";
-import {
-  currentSelectedProject as currentActiveProject,
-  currentUserCreds,
-  currentUserCredsDev,
-} from "@models/provides.ts";
+import { ClientApi } from "@/api";
+import { currentSelectedProject as currentActiveProject } from "@models/provides.ts";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
+import { DEFAULT_AUTH_ID } from "@apiClient/types.ts";
+import { BFormCheckbox, BFormGroup, BProgress } from "bootstrap-vue-next";
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
@@ -98,7 +95,7 @@ const PlaybackSpeeds = Object.freeze([0.5, 1, 2, 4, 6]);
 
 let frames: CptvFrame[] = [];
 const backgroundFrame = ref<CptvFrame | null>(null);
-let frameBuffer: Uint8ClampedArray;
+let frameBuffer: Uint8ClampedArray<ArrayBuffer>;
 let cptvDecoder: CptvDecoder;
 
 // TODO: Check http://localhost:5173/onawe-field-trip-2022/visit/unknown/1350085/tracks
@@ -186,16 +183,6 @@ const emit = defineEmits<{
 // HTML refs
 const canvas = ref<HTMLCanvasElement | null>(null);
 const { width: canvasWidth, height: canvasHeight } = useElementSize(canvas);
-
-// Trailcam image ratio
-const imageBitmap = ref<ImageBitmap | null>(null);
-const imageRatio = computed<number>(() => {
-  if (imageBitmap.value) {
-    return imageBitmap.value.width / imageBitmap.value.height;
-  } else {
-    return 1;
-  }
-});
 
 watch(canvasWidth, () => {
   animationTick.value = 0;
@@ -712,7 +699,11 @@ const renderFrame = (
     animationFrame.value = requestAnimationFrame(() => {
       drawFrame(
         canvasContext.value,
-        new ImageData(frameBuffer, frameWidth.value, frameHeight.value),
+        new ImageData(
+          frameBuffer as Uint8ClampedArray<ArrayBuffer>,
+          frameWidth.value,
+          frameHeight.value,
+        ),
         frameNumToRender,
         force,
       );
@@ -852,22 +843,24 @@ const getPositions = (
   };
   // Add a bit of breathing room around our boxes
   const padding = 0; // 5
-  return ((positions || []) as ApiTrackPosition[]).map((position: ApiTrackPosition) => [
-    position.order ||
-      (position.frameTime && frameAtTime(position.frameTime - timeOffset)) ||
-      0,
-    [
-      Math.max(0, position.x - padding),
-      Math.max(0, position.y - padding),
-      position.x + position.width + padding,
-      position.y + position.height + padding,
+  return ((positions || []) as ApiTrackPosition[]).map(
+    (position: ApiTrackPosition) => [
+      position.order ||
+        (position.frameTime && frameAtTime(position.frameTime - timeOffset)) ||
+        0,
+      [
+        Math.max(0, position.x - padding),
+        Math.max(0, position.y - padding),
+        position.x + position.width + padding,
+        position.y + position.height + padding,
+      ],
     ],
-  ]);
+  );
 };
 
 const tracksIntermediate = computed<IntermediateTrack[]>(() => {
   return (
-    props.recording?.tracks.map(({ positions, tags, id }) => {
+    props.recording?.tracks?.map(({ positions, tags, id }) => {
       let what = null;
       let justTaggedFalseTrigger = false;
       if (tags) {
@@ -1168,7 +1161,11 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
     }
 
     download(
-      URL.createObjectURL(new Blob([uint8Array], { type: "video/mp4" })),
+      URL.createObjectURL(
+        new Blob([uint8Array as ArrayBufferView<ArrayBuffer>], {
+          type: "video/mp4",
+        }),
+      ),
       `${recordingIdSuffix}${date.toFormat("dd-MM-yyyy--HH-mm-ss")}`,
     );
     isExporting.value = false;
@@ -1209,95 +1206,36 @@ const currentAbsoluteTime = computed<string | null>(() => {
   return null;
 });
 
-const drawTrailcamImageAndOverlay = () => {
-  if (overlayContext.value && imageBitmap.value) {
-    clearCanvases();
-    const ctx = overlayContext.value;
-    const canvasWidth = ctx.canvas.width;
-    const canvasHeight = ctx.canvas.height;
-    const restrictedHeight = Math.floor(canvasWidth / imageRatio.value);
-    const offsetY = (canvasHeight - restrictedHeight) * 0.5;
-    overlayContext.value.drawImage(
-      imageBitmap.value,
-      0,
-      offsetY / pixelRatio.value,
-      canvasWidth / pixelRatio.value,
-      restrictedHeight / pixelRatio.value,
-    );
-    if (props.recording && props.recording.tracks) {
-      for (const track of props.recording.tracks) {
-        if (track.positions && track.positions.length) {
-          const pos = { ...track.positions[0] };
-          pos.y = 1 - pos.y - pos.height;
-          pos.x = (pos.x * canvasWidth) / pixelRatio.value;
-          pos.height = (pos.height * restrictedHeight) / pixelRatio.value;
-          pos.y = (pos.y * restrictedHeight) / pixelRatio.value;
-          pos.width = (pos.width * canvasWidth) / pixelRatio.value;
-          const authTag = getAuthoritativeTagForTrack(track.tags);
-          let what = "";
-          let aiTag = false;
-          if (authTag) {
-            what = authTag[0];
-            aiTag = authTag[1];
-          }
-          if (what) {
-            drawRectWithText(
-              ctx,
-              track.id,
-              [pos.x, pos.y, pos.x + pos.width, pos.y + pos.height],
-              displayLabelForClassificationLabel(what, aiTag),
-              false,
-              props.recording.tracks,
-              track,
-              pixelRatio.value,
-              1,
-              restrictedHeight,
-            );
-          }
-        }
-      }
-    }
-  }
-};
-
 const updateOverlayCanvas = (frameNumToRender: number) => {
   if (overlayContext.value) {
-    if (currentRecordingType.value === "cptv") {
-      renderOverlay(
-        overlayContext.value,
-        scale.value,
-        secondsSinceLastFFC.value,
-        false,
-        frameNumToRender,
-        tracksIntermediate.value,
-        props.canSelectTracks,
-        props.currentTrack,
-        motionPathMode.value ? motionPaths.value : [],
-        pixelRatio.value,
-        tracksByFrame.value,
-        framesByTrack.value,
-        trackExportOptions.value,
-      );
+    renderOverlay(
+      overlayContext.value,
+      scale.value,
+      secondsSinceLastFFC.value,
+      false,
+      frameNumToRender,
+      tracksIntermediate.value,
+      props.canSelectTracks,
+      props.currentTrack,
+      motionPathMode.value ? motionPaths.value : [],
+      pixelRatio.value,
+      tracksByFrame.value,
+      framesByTrack.value,
+      trackExportOptions.value,
+    );
 
-      {
-        const time = `${elapsedTime.value} / ${formatTime(
-          Math.max(currentTime.value, actualDuration.value),
-        )}`;
-        drawBottomRightOverlayLabel(
-          time,
-          overlayContext.value,
-          pixelRatio.value,
-        );
-        // Draw time and temperature in
-        // overlayContext.
-        drawBottomLeftOverlayLabel(
-          currentAbsoluteTime.value,
-          overlayContext.value,
-          pixelRatio.value,
-        );
-      }
-    } else {
-      drawTrailcamImageAndOverlay();
+    {
+      const time = `${elapsedTime.value} / ${formatTime(
+        Math.max(currentTime.value, actualDuration.value),
+      )}`;
+      drawBottomRightOverlayLabel(time, overlayContext.value, pixelRatio.value);
+      // Draw time and temperature in
+      // overlayContext.
+      drawBottomLeftOverlayLabel(
+        currentAbsoluteTime.value,
+        overlayContext.value,
+        pixelRatio.value,
+      );
     }
   }
 };
@@ -1384,11 +1322,12 @@ const referenceOpacity = ref<number>(0.3);
 const loadReferenceImageUrl = async () => {
   const rec = props.recording as ApiRecordingResponse;
   // Load the reference photo.
-  const referenceImageResponse = await getReferenceImageForDeviceAtTime(
-    rec.deviceId,
-    new Date(rec.recordingDateTime),
-    true,
-  );
+  const referenceImageResponse =
+    await ClientApi.Devices.getReferenceImageForDeviceAtTime(
+      rec.deviceId,
+      new Date(rec.recordingDateTime),
+      true,
+    );
   if (referenceImageResponse.success) {
     referenceImageURL.value = URL.createObjectURL(
       referenceImageResponse.result,
@@ -1398,7 +1337,10 @@ const loadReferenceImageUrl = async () => {
 
 const toggleReferencePhotoComparison = async () => {
   showingReferencePhoto.value = !showingReferencePhoto.value;
-  window.localStorage.setItem("cptv-player-show-reference-image", showingReferencePhoto.value ? "true" : "false");
+  window.localStorage.setItem(
+    "cptv-player-show-reference-image",
+    showingReferencePhoto.value ? "true" : "false",
+  );
   if (showingReferencePhoto.value) {
     await loadReferenceImageUrl();
   }
@@ -1693,11 +1635,15 @@ const handleKeyboardControls = (event: KeyboardEvent) => {
 };
 
 onBeforeMount(() => {
-  const savedReferenceImageOpacity = window.localStorage.getItem("cptv-player-reference-image-opacity");
+  const savedReferenceImageOpacity = window.localStorage.getItem(
+    "cptv-player-reference-image-opacity",
+  );
   if (savedReferenceImageOpacity !== null) {
     referenceOpacity.value = Number(savedReferenceImageOpacity);
   }
-  const showReferenceImage = window.localStorage.getItem("cptv-player-show-reference-image");
+  const showReferenceImage = window.localStorage.getItem(
+    "cptv-player-show-reference-image",
+  );
   if (showReferenceImage !== null) {
     if (showReferenceImage === "true" && props.hasReferencePhoto) {
       showingReferencePhoto.value = true;
@@ -1761,17 +1707,6 @@ watch(
     }
   },
 );
-
-const prodCreds = inject(currentUserCreds) as Ref<LoggedInUserAuth | null>;
-const devCreds = inject(currentUserCredsDev) as Ref<LoggedInUserAuth | null>;
-const creds = computed<LoggedInUserAuth | null>(() => {
-  if (import.meta.env.DEV) {
-    return devCreds.value;
-  }
-  return prodCreds.value;
-});
-
-const currentRecordingType = ref<"cptv" | "image">("cptv");
 let loadTimeout: CancelableDelay;
 const loadNextRecording = async (nextRecordingId: RecordingId) => {
   loadedStream.value = false;
@@ -1791,6 +1726,8 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
   loadTimeout && loadTimeout.cancel();
   cancelAnimationFrame(animationFrame.value);
 
+  /*
+  // NOTE: Checking if tracks can be merged automatically.
   if ((props.recording?.tracks || []).length > 1) {
     console.warn(
       "Can merge",
@@ -1798,21 +1735,24 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
       Object.keys(mergedTracks.value),
     );
   }
-  // Our api token could be out of date
-  await maybeRefreshStaleCredentials();
+   */
+  const apiToken = await ClientApi.getCredentials(DEFAULT_AUTH_ID);
   loadTimeout && loadTimeout.cancel();
-  if (creds.value) {
-    loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
-      nextRecordingId,
-      props.cptvSize || 0,
-      (creds.value as LoggedInUserAuth).apiToken,
-    );
+  if (!apiToken) {
+    console.warn("api token not found.");
+    return;
   }
-
+  loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
+    nextRecordingId,
+    props.cptvSize || 0,
+    apiToken,
+  );
   if (loadedStream.value === true) {
     loadTimeout && loadTimeout.cancel();
-    currentRecordingType.value = "cptv";
-    header.value = Object.freeze(await cptvDecoder.getHeader());
+    const h = await cptvDecoder.getHeader();
+    if (typeof h !== "string") {
+      header.value = h;
+    }
     loadTimeout && loadTimeout.cancel();
     const thisHeader = (header.value as CptvHeader) || {
       width: 160,
@@ -1848,35 +1788,11 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
       emit("ready-to-play", thisHeader);
       playing.value = true;
     }
-  } else if (loadedStream.value instanceof Blob) {
-    currentRecordingType.value = "image";
-    loadTimeout && loadTimeout.cancel();
-    try {
-      imageBitmap.value = await createImageBitmap(loadedStream.value);
-      drawTrailcamImageAndOverlay();
-    } catch (e) {
-      console.log("Image Error", e);
-    }
-
-    frames = [];
-    header.value = null;
-    resetRecordingNormalisation();
-    buffering.value = false;
-
-    while (!props.recording) {
-      // Wait for the recording data to be loaded if it's not,
-      // so that we can seek to the beginning of any track.
-      loadTimeout = delayMs(10);
-      await loadTimeout.promise;
-    }
-    if (props.recording && props.recording.id === props.recordingId) {
-      await loadedNextRecordingData();
-      loadTimeout && loadTimeout.cancel();
-      emit("ready-to-play", header.value as unknown as CptvHeader);
-      playing.value = true;
-    }
   } else if (typeof loadedStream.value === "string") {
-    streamLoadError.value = loadedStream.value;
+    // FIXME: Show stream load error.
+    // Maybe the CPTV file was deleted.
+    console.warn("Stream load error", loadedStream.value);
+    streamLoadError.value = loadedStream.value as string;
     if (await cptvDecoder.hasStreamError()) {
       await cptvDecoder.free();
       frames = [];
@@ -2067,7 +1983,9 @@ watch(
     if (!hasRef && showingReferencePhoto.value) {
       showingReferencePhoto.value = false;
     } else if (hasRef) {
-      const showReferenceImage = window.localStorage.getItem("cptv-player-show-reference-image");
+      const showReferenceImage = window.localStorage.getItem(
+        "cptv-player-show-reference-image",
+      );
       if (showReferenceImage !== null) {
         if (showReferenceImage === "true") {
           showingReferencePhoto.value = true;
@@ -2082,7 +2000,10 @@ watch(
 );
 
 const updateSavedOpacity = (val: InputEvent) => {
-  window.localStorage.setItem("cptv-player-reference-image-opacity", (val.target as HTMLInputElement).value);
+  window.localStorage.setItem(
+    "cptv-player-reference-image-opacity",
+    (val.target as HTMLInputElement).value,
+  );
 };
 </script>
 <template>
@@ -2091,7 +2012,7 @@ const updateSavedOpacity = (val: InputEvent) => {
       key="container"
       class="video-container"
       ref="container"
-      :class="[currentRecordingType, { 'no-reference': !hasReferencePhoto }]"
+      :class="[{ 'no-reference': !hasReferencePhoto }]"
     >
       <canvas
         key="base"
@@ -2146,7 +2067,6 @@ const updateSavedOpacity = (val: InputEvent) => {
         <font-awesome-icon class="fa-spin buffering" icon="spinner" size="4x" />
       </div>
       <div
-        v-if="currentRecordingType === 'cptv'"
         key="playback-controls"
         :class="[
           'playback-controls',
@@ -2172,11 +2092,7 @@ const updateSavedOpacity = (val: InputEvent) => {
         </button>
       </div>
     </div>
-    <div
-      key="playback-nav"
-      class="playback-nav"
-      v-if="currentRecordingType === 'cptv'"
-    >
+    <div key="playback-nav" class="playback-nav">
       <button
         @click.prevent="togglePlayback"
         ref="playPauseButton"
@@ -2186,17 +2102,31 @@ const updateSavedOpacity = (val: InputEvent) => {
         <font-awesome-icon v-else icon="pause" />
       </button>
       <div class="right-nav">
-        <div :class="['advanced-controls', { open: showAdvancedControls && (!showingReferencePhoto || canvasWidth > 570) }]">
+        <div
+          :class="[
+            'advanced-controls',
+            {
+              open:
+                showAdvancedControls &&
+                (!showingReferencePhoto || canvasWidth > 570),
+            },
+          ]"
+        >
           <button
             @click.prevent="showAdvancedControls = !showAdvancedControls"
             class="advanced-controls-btn"
             :data-tooltip="showAdvancedControls ? 'Show less' : 'Show more'"
-            :disabled="(showingReferencePhoto && canvasWidth <= 570)"
+            :disabled="showingReferencePhoto && canvasWidth <= 570"
             ref="advancedControlsButton"
           >
             <font-awesome-icon
               icon="angle-right"
-              :rotation="(showAdvancedControls && (!showingReferencePhoto || canvasWidth > 570)) ? null : 180"
+              :rotation="
+                showAdvancedControls &&
+                (!showingReferencePhoto || canvasWidth > 570)
+                  ? null
+                  : 180
+              "
             />
           </button>
           <button
@@ -2288,7 +2218,10 @@ const updateSavedOpacity = (val: InputEvent) => {
         >
           <div
             class="reference-opacity-slider"
-            :class="{ open: showingReferencePhoto, 'has-no-reference': !hasReferencePhoto }"
+            :class="{
+              open: showingReferencePhoto,
+              'has-no-reference': !hasReferencePhoto,
+            }"
           >
             <input
               type="range"
@@ -2324,23 +2257,7 @@ const updateSavedOpacity = (val: InputEvent) => {
         </button>
       </div>
     </div>
-    <div v-else-if="hasReferencePhoto" class="playback-nav justify-content-end">
-      <button
-        :class="{ selected: showingReferencePhoto }"
-        @click="toggleReferencePhotoComparison"
-        ref="toggleReferencePhoto"
-        class="reference-photo-btn"
-        data-tooltip="Reference photo"
-      >
-        <font-awesome-icon icon="panorama" />
-      </button>
-    </div>
-    <div v-else class="black-spacer" />
-    <div
-      key="debug-nav"
-      :class="['debug-tools', { open: showDebugTools }]"
-      v-if="currentRecordingType === 'cptv'"
-    >
+    <div key="debug-nav" :class="['debug-tools', { open: showDebugTools }]">
       <div class="debug-info">
         <div ref="frameNumField"></div>
         <div ref="ffcSecsAgo"></div>
@@ -2424,7 +2341,7 @@ const updateSavedOpacity = (val: InputEvent) => {
         </button>
       </div>
     </div>
-    <div class="tracks-container" v-if="currentRecordingType === 'cptv'">
+    <div class="tracks-container">
       <tracks-scrubber
         class="player-tracks"
         :tracks="tracksIntermediate"
@@ -2550,11 +2467,6 @@ const updateSavedOpacity = (val: InputEvent) => {
     padding: 0;
     background: black;
     overflow: hidden;
-    &.image.no-reference {
-      @media screen and (min-width: 1041px) {
-        margin-top: 30px;
-      }
-    }
   }
   .time,
   .temp,
@@ -2858,14 +2770,6 @@ const updateSavedOpacity = (val: InputEvent) => {
   margin-top: 20px;
   text-align: center;
 }
-.black-spacer {
-  // TODO for trailcam images, use minimum height possible.
-
-  @media screen and (min-width: 1041px) {
-    min-height: 30px;
-  }
-  background: black;
-}
 // Reference image overlay + slider
 .reference-image {
   position: absolute;
@@ -3001,7 +2905,6 @@ input[type="range"].reference-opacity-slider-el {
       background: red;
       background: lighten(yellowgreen, 30%);
     }
-
   }
   &::-moz-range-thumb {
     background: lighten(yellowgreen, 10%);

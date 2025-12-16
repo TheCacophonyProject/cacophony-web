@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { computed, ref } from "vue";
+import { computed, inject, type Ref, ref } from "vue";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { CardTableRows } from "@/components/CardTableTypes";
-import { BModal } from "bootstrap-vue-next";
-import { addRecordingNoteLabel, removeRecordingLabel } from "@api/Recording";
-import { CurrentUser } from "@models/LoggedInUser";
+import { BFormTextarea, BModal, BSpinner } from "bootstrap-vue-next";
+import { ClientApi } from "@/api";
+import { currentUser } from "@models/provides.ts";
 import type { TagId } from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
 import { DateTime } from "luxon";
+import type { LoggedInUser } from "@models/LoggedInUser.ts";
 
+const CurrentUser = inject(currentUser) as Ref<LoggedInUser | null>;
 const props = withDefaults(
   defineProps<{
     recording?: ApiRecordingResponse | null;
@@ -71,7 +73,7 @@ const reset = () => {
 const removeNote = async (id: TagId) => {
   if (props.recording) {
     removingNoteInProgress.value = true;
-    const removeNoteResponse = await removeRecordingLabel(
+    const removeNoteResponse = await ClientApi.Recordings.removeRecordingLabel(
       props.recording.id,
       id,
     );
@@ -85,7 +87,7 @@ const removeNote = async (id: TagId) => {
 const doAddNote = async () => {
   if (props.recording && note.value) {
     addingNoteInProgress.value = true;
-    const addLabelResponse = await addRecordingNoteLabel(
+    const addLabelResponse = await ClientApi.Recordings.addRecordingNoteLabel(
       props.recording.id,
       note.value,
     );
@@ -110,7 +112,7 @@ const doAddNote = async () => {
 <template>
   <div v-if="recording" class="recording-labels d-flex flex-column">
     <div class="d-flex align-items-center mt-2">
-    <h2 class="recording-labels-title fs-6">Notes</h2>
+      <h2 class="recording-labels-title fs-6">Notes</h2>
       <div class="d-md-none d-flex justify-content-end flex-grow-1">
         <button
           type="button"

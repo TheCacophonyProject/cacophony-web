@@ -17,12 +17,7 @@ await initSequelize();
         deletedAt: { [Op.eq]: null },
         duration: { [Op.gte]: 3 },
         type: {
-          [Op.in]: [
-            RecordingType.InfraredVideo,
-            RecordingType.TrailCamVideo,
-            RecordingType.TrailCamImage,
-            RecordingType.ThermalRaw,
-          ],
+          [Op.in]: [RecordingType.InfraredVideo, RecordingType.ThermalRaw],
         },
       },
       attributes: ["recordingDateTime"],
@@ -99,12 +94,7 @@ await initSequelize();
         deletedAt: { [Op.eq]: null },
         duration: { [Op.gte]: 3 },
         type: {
-          [Op.in]: [
-            RecordingType.InfraredVideo,
-            RecordingType.TrailCamVideo,
-            RecordingType.TrailCamImage,
-            RecordingType.ThermalRaw,
-          ],
+          [Op.in]: [RecordingType.InfraredVideo, RecordingType.ThermalRaw],
         },
       },
       attributes: ["recordingDateTime"],
@@ -163,12 +153,7 @@ await initSequelize();
         deletedAt: { [Op.eq]: null },
         duration: { [Op.gte]: 3 },
         type: {
-          [Op.in]: [
-            RecordingType.InfraredVideo,
-            RecordingType.TrailCamVideo,
-            RecordingType.TrailCamImage,
-            RecordingType.ThermalRaw,
-          ],
+          [Op.in]: [RecordingType.InfraredVideo, RecordingType.ThermalRaw],
         },
       },
       attributes: ["recordingDateTime"],

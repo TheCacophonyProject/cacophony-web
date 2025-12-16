@@ -16,38 +16,30 @@
 
 <script lang="ts" setup>
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import type { Ref } from "vue";
-import { computed, inject, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { CptvDecoder } from "@/components/cptv-player/cptv-decoder/decoder";
-import type { LoggedInUserAuth } from "@models/LoggedInUser";
-import { currentUserCreds, currentUserCredsDev } from "@models/provides";
 import {
   ColourMaps,
   renderFrameIntoFrameBuffer,
 } from "@/components/cptv-player/cptv-decoder/frameRenderUtils";
+import { ClientApi } from "@/api";
+import { DEFAULT_AUTH_ID, type LoadedResource } from "@apiClient/types.ts";
+import { BSpinner } from "bootstrap-vue-next";
 
-const prodCreds = inject(currentUserCreds) as Ref<LoggedInUserAuth | null>;
-const devCreds = inject(currentUserCredsDev) as Ref<LoggedInUserAuth | null>;
 const defaultPalette = computed(
   () =>
     ColourMaps.find(([name, _val]) => name === props.palette) as [
       string,
-      Uint32Array
+      Uint32Array,
     ],
 );
-const creds = computed<LoggedInUserAuth | null>(() => {
-  if (import.meta.env.DEV) {
-    return devCreds.value;
-  }
-  return prodCreds.value;
-});
 const defaultOverlayPalette = ColourMaps.find(
   ([name, _val]) => name === "Default",
 ) as [string, Uint32Array];
 const canvas = ref<HTMLCanvasElement>();
 const props = withDefaults(
   defineProps<{
-    recording: ApiRecordingResponse | null;
+    recording: LoadedResource<ApiRecordingResponse>;
     overlay?: Uint8ClampedArray;
     width?: string | number;
     apronPixels?: number;
@@ -83,13 +75,18 @@ const loading = ref<boolean>(false);
 
 // TODO: Could 'provide' the frame at a higher level component to avoid all child components having to reload it.
 const loadRecording = async () => {
-  if (creds.value && props.recording) {
+  if (props.recording) {
     loading.value = true;
+    const token = await ClientApi.getCredentials(DEFAULT_AUTH_ID);
+    if (!token) {
+      loading.value = false;
+      return;
+    }
     const cptvDecoder = new CptvDecoder();
     const result = await cptvDecoder.initWithRecordingIdAndKnownSize(
       props.recording.id,
       0,
-      creds.value.apiToken,
+      token,
     );
     if (result === true) {
       let gotGoodFrame = false;
@@ -160,11 +157,12 @@ const renderFrame = () => {
         ctx.putImageData(frameData.value, 0, 0);
       }
       if (props.overlay) {
-        const source = props.overlay;
+        const source = props.overlay as Uint8ClampedArray;
         const imageData = new ImageData(160, 120);
         const frameBufferView = new Uint32Array(imageData.data.buffer);
+        const palette = defaultOverlayPalette[1];
         for (let i = 0; i < frameBufferView.length; i++) {
-          frameBufferView[i] = defaultOverlayPalette[1][source[i]];
+          frameBufferView[i] = palette[source[i] as number] as number;
         }
         const tmp = document.createElement("canvas");
         tmp.width = 160;
@@ -197,21 +195,10 @@ watch(
 </script>
 
 <style scoped lang="less">
-@media screen and (min-width: 640px) {
-  .single-frame-cptv-container {
-    width: 100%;
-    height: auto;
-    min-width: 640px;
-    aspect-ratio: auto 4/3;
-  }
-}
-
-@media screen and (max-width: 639px) {
-  .single-frame-cptv-container {
-    width: 100svw;
-    height: auto;
-    aspect-ratio: auto 4/3;
-  }
+.single-frame-cptv-container {
+  width: 100%;
+  height: auto;
+  aspect-ratio: auto 4/3;
 }
 
 .single-frame-cptv-container {

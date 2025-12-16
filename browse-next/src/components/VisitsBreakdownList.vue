@@ -64,15 +64,3 @@ const hasVisits = computed<boolean>(() => props.visits.length !== 0);
     />
   </div>
 </template>
-
-<style scoped lang="less">
-.visits-breakdown-list {
-  // We want this in the context of Dashboard
-  @media screen and (min-width: 1200px) {
-    width: 540px;
-  }
-  //@media screen and (min-width: 992px) {
-  //  width: 430px;
-  //}
-}
-</style>

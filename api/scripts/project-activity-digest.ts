@@ -32,7 +32,7 @@ const allVisitsForProjectInTimespan = async (
     pageSize: 50,
     from,
     until,
-    types: [RecordingType.ThermalRaw, RecordingType.TrailCamImage],
+    types: [RecordingType.ThermalRaw],
   };
   // TODO: Switch to new visit calculation functions when ready and tested.
   let searchDetails = await calculateMonitoringPageCriteria(

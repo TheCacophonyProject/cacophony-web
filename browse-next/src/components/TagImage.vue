@@ -16,7 +16,7 @@ import {
   displayLabelForClassificationLabel,
   flatClassifications,
   getClassifications,
-} from "@api/Classifications";
+} from "@api/classificationsUtils.ts";
 
 const props = defineProps<{
   width: number | string;

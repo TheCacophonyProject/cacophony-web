@@ -81,15 +81,17 @@ const isBusy = ref<boolean>(false);
       v-model="show"
       centered
       lazy
-      hide-footer
-      hide-header
+      no-footer
+      no-header
       :no-fade="noFadeInternal"
       ref="modal"
       @hide="show = false"
       @hidden="closedModal"
       @shown="onShown"
       :cancel-disabled="isBusy"
-      :no-close-on-backdrop="recordingType === RecordingType.Audio || isBusy || noCloseOnBackdrop"
+      :no-close-on-backdrop="
+        recordingType === RecordingType.Audio || isBusy || noCloseOnBackdrop
+      "
       :no-close-on-esc="isBusy"
       body-class="p-0"
       :content-class="{

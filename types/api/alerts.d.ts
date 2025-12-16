@@ -6,7 +6,7 @@ import {
   Seconds,
   StationId,
   UserId,
-} from "./common";
+} from "./common.ts";
 
 export interface ApiAlertCondition {
   tag: string;

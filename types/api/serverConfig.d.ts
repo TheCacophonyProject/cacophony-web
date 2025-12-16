@@ -1,4 +1,4 @@
-import type {DeviceId, GroupId, UserId} from "./common";
+import type {DeviceId, GroupId, UserId} from "./common.ts";
 
 type DatabaseConfig = {
     benchmark?: boolean;

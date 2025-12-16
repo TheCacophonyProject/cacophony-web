@@ -1,4 +1,4 @@
-import { IsoFormattedDateString, TrackId, TrackTagId, UserId } from "./common";
+import type { IsoFormattedDateString, TrackId, TrackTagId, UserId } from "./common.ts";
 
 export interface ApiTrackTagRequest {
   what: string;
@@ -60,7 +60,7 @@ export type Classification = {
   display?: string;
   displayAudio?: string;
   children?: Classification[];
-  path?: string | string[];
+  path?: string;
 };
 export interface ApiClassificationResponse {
   label: "root";

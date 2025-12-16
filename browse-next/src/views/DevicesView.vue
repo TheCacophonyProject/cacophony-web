@@ -3,7 +3,7 @@ import SectionHeader from "@/components/SectionHeader.vue";
 import { computed, inject, onBeforeMount, onMounted, ref, watch } from "vue";
 import type { Ref, ComputedRef } from "vue";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
-import { getDevicesForProject } from "@api/Project";
+import { ClientApi } from "@/api";
 import {
   DevicesForCurrentProject,
   type SelectedProject,
@@ -13,6 +13,7 @@ import type {
   CardTableItem,
   CardTableRow,
   CardTableRows,
+  GenericCardTableValue,
 } from "@/components/CardTableTypes";
 import { DateTime } from "luxon";
 import MapWithPoints from "@/components/MapWithPoints.vue";
@@ -21,18 +22,11 @@ import type { DeviceId, LatLng } from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
 import { DeviceType } from "@typedefs/api/consts.ts";
 import DeviceName from "@/components/DeviceName.vue";
-import CreateProxyDeviceModal from "@/components/CreateProxyDeviceModal.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
-import {
-  deleteDevice,
-  getDeviceConfig,
-  getDeviceLocationAtTime,
-  getLastKnownDeviceBatteryLevel,
-  setDeviceActive,
-} from "@api/Device";
 import { type RouteLocationRaw, useRoute, useRouter } from "vue-router";
 import { urlNormaliseName } from "@/utils";
 import {
+  allHistoricLocations,
   currentSelectedProject,
   selectedProjectDevices,
   userIsProjectAdmin,
@@ -43,9 +37,15 @@ import {
   deviceScheduledPowerOnTime,
 } from "@/components/DeviceUtils";
 import type { ApiStationResponse } from "@typedefs/api/station";
-import type { LoadedResource } from "@api/types.ts";
-import { latestRecordingTimeForDeviceAtLocation } from "@/helpers/Location.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
+import {
+  latestRecordingTimeForDeviceAtLocation,
+  latLngApproxDistance,
+  MAX_DISTANCE_FROM_STATION_FOR_RECORDING,
+} from "@/helpers/Location.ts";
 import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
+import LocationName from "@/components/LocationName.vue";
+import { BBadge, BButton, BFormCheckbox, BSpinner } from "bootstrap-vue-next";
 
 const activeProjectDevices = inject(selectedProjectDevices) as Ref<
   LoadedResource<ApiDeviceResponse[]>
@@ -53,6 +53,9 @@ const activeProjectDevices = inject(selectedProjectDevices) as Ref<
 const allProjectDevices = ref<LoadedResource<ApiDeviceResponse[]>>(null);
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
+const allLocations = inject(allHistoricLocations) as Ref<
+  LoadedResource<ApiStationResponse[]>
+>;
 const route = useRoute();
 const router = useRouter();
 const devices = computed<ApiDeviceResponse[]>(() => {
@@ -124,7 +127,7 @@ watch(route, async (next) => {
 });
 
 const reloadAllDevices = async () => {
-  const devicesResponse = await getDevicesForProject(
+  const devicesResponse = await ClientApi.Projects.getDevicesForProject(
     (selectedProject.value as SelectedProject).id,
     true,
   );
@@ -134,7 +137,6 @@ const reloadAllDevices = async () => {
       (device) => device.active,
     );
   }
-  showCreateProxyDevicePrompt.value = false;
   const _ = findProbablyOnlineDevices();
 };
 
@@ -146,7 +148,7 @@ const findProbablyOnlineDevices = async () => {
       activeProjectDevices.value.filter((device) => device.isHealthy) || [];
     const configPromises = [];
     for (const device of healthyDevices) {
-      configPromises.push(getDeviceConfig(device.id));
+      configPromises.push(ClientApi.Devices.getDeviceConfig(device.id));
     }
     Promise.all(configPromises).then((configs) => {
       const now = new Date();
@@ -205,9 +207,7 @@ const statusForDevice = (device: ApiDeviceResponse): DeviceStatus => {
   const isPoweredOn = currentlyPoweredOnDevices.value.some(
     (poweredDevice) => poweredDevice.id === device.id,
   );
-  return device.hasOwnProperty("isHealthy") &&
-    device.active &&
-    device.type !== DeviceType.TrailCam
+  return device.hasOwnProperty("isHealthy") && device.active
     ? device.isHealthy
       ? isPoweredOn
         ? "online"
@@ -216,20 +216,34 @@ const statusForDevice = (device: ApiDeviceResponse): DeviceStatus => {
     : "-";
 };
 
-const batteryLevelForDevice = async (
-  device: ApiDeviceResponse,
-): Promise<"unknown" | number> => {
-  const status = statusForDevice(device);
-  if (status === "online" || status == "standby") {
-    const response = await getLastKnownDeviceBatteryLevel(device.id);
-    if (response) {
-      if (response.battery === null) {
-        return "unknown";
-      }
-      return response.battery;
+const locationNameForDevice = (device: ApiDeviceResponse): string => {
+  if (device.location) {
+    const stationDistances = [];
+    for (const station of allLocations.value || []) {
+      // See if any stations match: Looking at the location distance between this recording and the stations.
+      const distanceToStation = latLngApproxDistance(
+        station.location,
+        device.location,
+      );
+      stationDistances.push({ distanceToStation, station });
+    }
+    const validStationDistances = stationDistances.filter(
+      ({ distanceToStation }) =>
+        distanceToStation <= MAX_DISTANCE_FROM_STATION_FOR_RECORDING,
+    );
+
+    // There shouldn't really ever be more than one station within our threshold distance,
+    // since we check that stations aren't too close together when we add them.  However, on the off
+    // chance we *do* get two or more valid stations for a recording, take the closest one.
+    validStationDistances.sort((a, b) => {
+      return b.distanceToStation - a.distanceToStation;
+    });
+    const closest = validStationDistances.pop();
+    if (closest) {
+      return closest.station.name;
     }
   }
-  return "unknown";
+  return "";
 };
 
 const colorForStatus = (status: DeviceStatus): string => {
@@ -251,6 +265,7 @@ interface DeviceTableItem {
   lastSeen: string;
   __active: boolean;
   status: string | boolean;
+  __location: string;
   batteryLevel: ApiDeviceResponse;
 
   __id: string;
@@ -278,6 +293,7 @@ const tableItems = computed<
             : "never (offline device)",
         ),
         status: statusForDevice(device),
+        __location: locationNameForDevice(device),
         batteryLevel: device,
         _deleteAction: {
           value: device,
@@ -295,34 +311,6 @@ const tableItems = computed<
 
 const deviceLocations = computed<NamedPoint[]>(() => {
   return devices.value
-    .filter((device) => device.location !== undefined)
-    .filter(
-      (device) => device.location?.lat !== 0 && device.location?.lng !== 0,
-    )
-    .map((device) => {
-      const { deviceName, location, groupName, id } = device;
-      return {
-        name: deviceName,
-        project: groupName,
-        location: location as LatLng,
-        id,
-        color: colorForStatus(statusForDevice(device)),
-        type: "device",
-      };
-    });
-});
-
-//provide("deviceLocations", deviceLocations);
-
-const devicesSeenInThePast24Hours = computed<NamedPoint[]>(() => {
-  const oneDayAgo = new Date();
-  oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-  return devices.value
-    .filter(
-      (device) =>
-        device.lastConnectionTime &&
-        new Date(device.lastConnectionTime) > oneDayAgo,
-    )
     .filter((device) => device.location !== undefined)
     .filter(
       (device) => device.location?.lat !== 0 && device.location?.lng !== 0,
@@ -364,40 +352,39 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
       Number((highlightedDeviceInternal.value as DeviceTableItem).__id) === id,
   );
   if (device && device.location) {
-    const point = {
+    return {
       name: device.deviceName,
       project: device.groupName,
       location: device.location,
       id: device.id,
     };
-    return point;
   }
   return null;
 });
 
-const highlightedDevice = computed<CardTableRow<string> | null>(() => {
+const highlightedDevice = computed<DeviceTableItem | null>(() => {
   if (route.name !== "devices" && route.params.deviceId) {
-    const device = tableItems.value.find(
+    const device = (tableItems.value as unknown as DeviceTableItem[]).find(
       ({ __id: id }) => Number(route.params.deviceId) === Number(id),
     );
-    return (device && (device as CardTableRow<string>)) || null;
+    return device || null;
   } else if (highlightedPointInternal.value) {
-    const device = tableItems.value.find(
+    const device = (tableItems.value as unknown as DeviceTableItem[]).find(
       ({ __id: id }) =>
         highlightedPointInternal.value &&
         highlightedPointInternal.value.id === Number(id),
     );
-    return (device && (device as CardTableRow<string>)) || null;
+    return device || null;
   } else {
-    return highlightedDeviceInternal.value as CardTableRow<string> | null;
+    return highlightedDeviceInternal.value;
   }
 });
 
-const enteredTableItem = (item: DeviceTableItem | null) => {
-  highlightedDeviceInternal.value = item;
+const enteredTableItem = (item: GenericCardTableValue<unknown>) => {
+  highlightedDeviceInternal.value = item as DeviceTableItem;
 };
 
-const leftTableItem = (_item: DeviceTableItem | null) => {
+const leftTableItem = (_item: GenericCardTableValue<unknown>) => {
   highlightedDeviceInternal.value = null;
 };
 
@@ -417,8 +404,6 @@ const sortDimensions = {
   deviceName: true,
 };
 
-const showCreateProxyDevicePrompt = ref<boolean>(false);
-
 const someDevicesHaveKnownLocations = computed<boolean>(() =>
   devices.value.some(
     (device) =>
@@ -427,12 +412,12 @@ const someDevicesHaveKnownLocations = computed<boolean>(() =>
 );
 
 const deleteOrArchiveDevice = async (deviceId: DeviceId) => {
-  await deleteDevice(selectedProject.value.id, deviceId);
+  await ClientApi.Devices.deleteDevice(selectedProject.value.id, deviceId);
   await reloadAllDevices();
 };
 
 const unarchiveDevice = async (deviceId: DeviceId) => {
-  await setDeviceActive(selectedProject.value.id, deviceId);
+  await ClientApi.Devices.setDeviceActive(selectedProject.value.id, deviceId);
   await reloadAllDevices();
 };
 
@@ -464,7 +449,7 @@ const selectedDevice = computed<ApiDeviceResponse | null>(() => {
 const deviceLocation = ref<LoadedResource<ApiStationResponse>>(null);
 const getSelectedDeviceLocation = async () => {
   if (selectedDevice.value?.location) {
-    deviceLocation.value = await getDeviceLocationAtTime(
+    deviceLocation.value = await ClientApi.Devices.getDeviceLocationAtTime(
       selectedDevice.value.id,
       true,
     );
@@ -477,10 +462,13 @@ watch(selectedDevice, async (next) => {
   }
 });
 
-const selectTableDevice = async ({ __id: deviceId }: { __id: DeviceId }) => {
-  const device = devices.value.find(({ id }) => id === Number(deviceId));
-  if (device) {
-    await openSelectedDevice(device);
+const selectTableDevice = async (val: GenericCardTableValue<unknown>) => {
+  if (typeof val === "object" && val !== null && "__id" in val) {
+    const deviceId = val.__id;
+    const device = devices.value.find(({ id }) => id === Number(deviceId));
+    if (device) {
+      await openSelectedDevice(device);
+    }
   }
 };
 
@@ -618,13 +606,6 @@ const isDevicesRoot = computed(() => {
           :can-change-base-map="false"
         />
         <div class="d-flex align-items-center justify-content-end my-2">
-          <!--          <button-->
-          <!--            type="button"-->
-          <!--            class="btn btn-outline-secondary"-->
-          <!--            @click="showCreateProxyDevicePrompt = true"-->
-          <!--          >-->
-          <!--            Register a trailcam-->
-          <!--          </button>-->
           <b-form-checkbox
             v-model="showInactiveDevicesInternalCheck"
             switch
@@ -641,6 +622,7 @@ const isDevicesRoot = computed(() => {
           :sort-dimensions="sortDimensions"
           :default-sort="'lastSeen'"
           compact
+          standalone
           :break-point="0"
         >
           <template #deviceName="{ cell, row }">
@@ -673,44 +655,31 @@ const isDevicesRoot = computed(() => {
             >
               <div v-if="!cell.value.lastRecordingTime">No recordings</div>
               <two-step-action-button
-                class="text-end"
-                variant="outline-secondary"
                 :action="() => deleteOrArchiveDevice(cell.value.id)"
                 :icon="
                   cell.value.lastConnectionTime && cell.value.lastRecordingTime
-                    ? 'circle-minus'
-                    : 'trash-can'
+                    ? 'do_not_disturb_on'
+                    : 'delete'
                 "
                 :confirmation-label="
                   deleteConfirmationLabelForDevice(cell.value)
                 "
-                :classes="[
-                  'd-flex',
-                  'align-items-center',
-                  'fs-7',
-                  'text-nowrap',
-                  'ms-2',
-                ]"
-                alignment="right"
+                :tooltip-label="
+                  cell.value.lastConnectionTime && cell.value.lastRecordingTime
+                    ? 'Set as inactive'
+                    : 'Delete'
+                "
+                :boundary-padding="false"
               />
             </div>
             <div v-else-if="isProjectAdmin && !cell.value.active">
               <two-step-action-button
-                class="text-end"
-                variant="outline-secondary"
                 :action="() => unarchiveDevice(cell.value.id)"
-                :icon="'circle-plus'"
+                icon="add_circle"
                 :confirmation-label="
                   unarchiveConfirmationLabelForDevice(cell.value)
                 "
-                :classes="[
-                  'd-flex',
-                  'align-items-center',
-                  'fs-7',
-                  'text-nowrap',
-                  'ms-2',
-                ]"
-                alignment="right"
+                :tooltip-label="`Set as active`"
               />
             </div>
             <span v-else></span>
@@ -718,17 +687,19 @@ const isDevicesRoot = computed(() => {
           <template #card="{ card }: { card: DeviceTableItem }">
             <div class="d-flex flex-row">
               <div class="flex-grow-1">
-                <div class="d-flex align-items-center">
-                  <device-name
-                    :name="card.deviceName"
-                    :type="card.__type"
-                  /><b-badge class="ms-2" v-if="!card.__active"
-                    >inactive</b-badge
-                  >
-                  <device-battery-level
-                    :device="card.batteryLevel"
-                    class="ms-3"
-                  />
+                <div class="d-flex justify-content-between">
+                  <div class="d-flex align-items-center">
+                    <device-name
+                      :name="card.deviceName"
+                      :type="card.__type"
+                    /><b-badge class="ms-2" v-if="!card.__active"
+                      >inactive</b-badge
+                    >
+                    <device-battery-level
+                      :device="card.batteryLevel"
+                      class="ms-3"
+                    />
+                  </div>
                 </div>
                 <div>Last seen <span v-html="card.lastSeen"></span></div>
 
@@ -747,35 +718,52 @@ const isDevicesRoot = computed(() => {
                   }}</span>
                 </div>
               </div>
-              <div class="d-flex align-items-end justify-content-end">
-                <div v-if="!card._deleteAction.value.lastRecordingTime">
-                  No recordings
+              <div class="d-flex">
+                <div
+                  class="d-flex flex-column align-items-end"
+                  :class="{
+                    'justify-content-between': card.__location !== '',
+                    'justify-content-end': card.__location === '',
+                  }"
+                >
+                  <location-name
+                    @click.stop.prevent="
+                      () => {
+                        highlightedDeviceInternal = card;
+                      }
+                    "
+                    v-if="card.__location !== ''"
+                    :name="card.__location"
+                  />
+                  <div class="d-flex">
+                    <div v-if="!card._deleteAction.value.lastRecordingTime">
+                      No recordings
+                    </div>
+                    <two-step-action-button
+                      v-if="card.__active"
+                      :action="
+                        () => deleteOrArchiveDevice(card._deleteAction.value.id)
+                      "
+                      :icon="
+                        card._deleteAction.value.lastConnectionTime &&
+                        card._deleteAction.value.lastRecordingTime
+                          ? 'do_not_disturb_on'
+                          : 'delete'
+                      "
+                      :confirmation-label="
+                        deleteConfirmationLabelForDevice(
+                          card._deleteAction.value,
+                        )
+                      "
+                      :tooltip-label="
+                        card._deleteAction.value.lastConnectionTime &&
+                        card._deleteAction.value.lastRecordingTime
+                          ? 'Set as inactive'
+                          : 'Delete'
+                      "
+                    />
+                  </div>
                 </div>
-                <two-step-action-button
-                  v-if="card.__active"
-                  class="text-end"
-                  variant="outline-secondary"
-                  :action="
-                    () => deleteOrArchiveDevice(card._deleteAction.value.id)
-                  "
-                  :icon="
-                    card._deleteAction.value.lastConnectionTime &&
-                    card._deleteAction.value.lastRecordingTime
-                      ? 'circle-minus'
-                      : 'trash-can'
-                  "
-                  :confirmation-label="
-                    deleteConfirmationLabelForDevice(card._deleteAction.value)
-                  "
-                  :classes="[
-                    'd-flex',
-                    'align-items-center',
-                    'fs-7',
-                    'text-nowrap',
-                    'ms-2',
-                  ]"
-                  alignment="right"
-                />
               </div>
             </div>
           </template>
@@ -790,42 +778,30 @@ const isDevicesRoot = computed(() => {
         <a href="#TODO"
           >Find out how to register a thermal camera or a bird monitor.</a
         >
-        <!--        <br /><br />-->
-        <!--        You can also register a trailcam. This represents a third-party trailcam-->
-        <!--        device that you plan to manually upload data for via this web-->
-        <!--        interface.<br />-->
-        <!--        <button-->
-        <!--          type="button"-->
-        <!--          class="mt-3 btn btn-outline-secondary"-->
-        <!--          @click="showCreateProxyDevicePrompt = true"-->
-        <!--        >-->
-        <!--          Register a trailcam-->
-        <!--        </button>-->
       </p>
     </div>
-    <create-proxy-device-modal
-      v-model="showCreateProxyDevicePrompt"
-      id="create-proxy-device-modal"
-      @proxy-device-created="reloadAllDevices"
-    />
   </div>
   <router-view v-else></router-view>
 </template>
 <style lang="less" scoped>
+@import "../assets/less/breakpoints";
 .device-map {
-  @media screen and (max-width: 1040px) {
-    width: 100%;
-    height: 400px;
+  width: 100%;
+  height: 40vh;
+  max-height: calc(var(--cp-grid-base) * 100); // 400px
+  @media screen and (max-width: @breakpoint-md-max) {
+    border-radius: var(--bs-border-radius);
   }
-
-  height: 400px;
-  min-width: 120px;
+  @media screen and (min-width: @breakpoint-lg) {
+    border-radius: var(--bs-border-radius-lg);
+  }
 }
 .power-status-icon {
   border-radius: 50%;
-  width: 21px;
-  height: 21px;
-  color: white;
+  min-width: 22px;
+  width: 22px;
+  height: 22px;
+  color: var(--bs-white);
   &.stopped {
     background-color: darkred;
   }

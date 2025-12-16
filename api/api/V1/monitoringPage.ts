@@ -33,11 +33,7 @@ export interface MonitoringParams {
   until?: Date;
   page: number;
   pageSize: number;
-  types?: (
-    | RecordingType.ThermalRaw
-    | RecordingType.TrailCamVideo
-    | RecordingType.TrailCamImage
-  )[];
+  types?: RecordingType[];
 }
 
 const GROUPS_AND_STATIONS = "GROUPS_AND_STATIONS";
@@ -82,12 +78,7 @@ export async function calculateMonitoringPageCriteria(
 
 const makeRecordingTypes = (suppliedTypes: string[]): string => {
   const types = [];
-  const allowedTypes = [
-    RecordingType.Audio,
-    RecordingType.ThermalRaw,
-    RecordingType.TrailCamImage,
-    RecordingType.TrailCamVideo,
-  ];
+  const allowedTypes = [RecordingType.Audio, RecordingType.ThermalRaw];
   for (const type of suppliedTypes) {
     if ((allowedTypes as string[]).includes(type)) {
       types.push(type);
