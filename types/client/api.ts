@@ -57,7 +57,7 @@ interface NetworkConnectionErrorHandler {
 
 interface RequestStateResolvers {
   // networkConnectionError: NetworkConnectionErrorSignal;
-  ///networkConnectionErrorHandler: NetworkConnectionErrorHandler;
+  networkConnectionErrorHandler: NetworkConnectionErrorHandler;
   requestCredentialsResolver: (authKey: TestHandle | null) => Promise<JwtToken<(UserId | DeviceId)> | false>;
   forgetCredentials: (authKey?: TestHandle | null) => void;
   isDevEnvironment: () => boolean;
@@ -243,21 +243,24 @@ const cacophonyFetchWrapper = async <T>(
         status: HttpStatusCode.BadRequest,
         success: false,
       };
+    } else {
+      return {
+        result: {
+          errors: ["Network error, please try again later"],
+          messages: ["Network error, please try again later"],
+          errorType: "Client",
+        },
+        status: HttpStatusCode.BadRequest,
+        success: false,
+      };
+
+      // Fetch failed, probably network error.
+      // return retryHandler && retryHandler.retry(url, request);
     }
     // TODO: Work out what kind of error fetch throws on no connection, or server not responding etc.
     // Some other kind of connection error?
     // return retryHandler.retry(url, request);
   }
-
-  return {
-    result: {
-      errors: ["Unreachable code"],
-      messages: ["Unreachable code"],
-      errorType: "Client",
-    },
-    status: HttpStatusCode.BadRequest,
-    success: false,
-  };
 };
 
 export interface CacophonyApiClient {

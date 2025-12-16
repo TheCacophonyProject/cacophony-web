@@ -30,6 +30,7 @@ import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import sunCalc from "suncalc";
 import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils.ts";
+import { min } from "@popperjs/core/lib/utils/math";
 
 type Time = { hours: number; minutes: number; seconds: number };
 const devices = inject(selectedProjectDevices) as Ref<
@@ -356,48 +357,8 @@ const timesXPos = computed<OffsetTimesX | null>(() => {
 
   return null;
 });
-
-/** ---------------------------------------------------------------
- *  1. Solar elevation (degrees)
- *
- *  @param {Date}   date   UTC time of observation
- *  @param {number} lat    latitude in decimal degrees (+N, -S)
- *  @param {number} lon    longitude in decimal degrees (+E, -W)
- *  @returns {number}      solar elevation α (°), negative below horizon
- */
-function solarElevation(date: Date, lat: number, lon: number) {
-  const sunPos = sunCalc.getPosition(date, lat, lon);
-  // suncalc gives the angle above the horizon in radians
-  return (sunPos.altitude * 180) / Math.PI;
-}
-
-// /** ---------------------------------------------------------------
-//  *  2. Air mass (Kasten–Young)
-//  *
-//  *  @param {number} alpha   solar elevation in degrees
-//  *  @returns {number}       air mass m (∞ if sun below -0.833°)
-//  */
-// function airMass(alpha: number) {
-//   const threshold = -0.833; // ~sunrise/sunset angle
-//   if (alpha > threshold) {
-//     const radAlpha = alpha * Math.PI / 180;
-//     return 1 /
-//         (Math.sin(radAlpha) + 0.50572 *
-//             Math.pow(96.07995 - alpha, -1.6364));
-//   }
-//   // Sun below horizon → use twilight model instead
-//   return Infinity;
-// }
 const deg2rad = (d: number) => (d * Math.PI) / 180;
-function airMass(alpha: number) {
-  if (alpha > -0.833) {
-    // > ~sunrise/sunset angle
-    const rad = deg2rad(alpha);
-    return 1 / (Math.sin(rad) + 0.50572 * Math.pow(96.07995 - alpha, -1.6364));
-  }
-  return Infinity; // below horizon – handled by twilight branch
-}
-
+const rad2Deg = (r: number) => (r * 180) / Math.PI;
 /** ---------------------------------------------------------------
  *  3. Irradiance & lux calculation
  *
@@ -407,20 +368,30 @@ function airMass(alpha: number) {
  *  @returns {{alpha:number, lux:number}}  solar elevation and perceived light
  */
 function irradiance(date: Date, lat: number, lon: number) {
-  const alpha = solarElevation(date, lat, lon); // degrees
+  let { altitude: sunAltitudeRad } = sunCalc.getPosition(date, lat, lon);
+  // suncalc gives the angle above the horizon in radians
+  const angleAboveHorizonDeg = rad2Deg(sunAltitudeRad);
+  const o = angleAboveHorizonDeg;
+  //angleAboveHorizonDeg += -0.833;
+  sunAltitudeRad = deg2rad(angleAboveHorizonDeg);
   const E0 = 1361; // W/m² (solar constant)
   let Edir;
   let Ediff;
+  let Etot;
+  let luxNormalised;
 
-  if (alpha >= 0) {
-    // daytime – sun above horizon
-    const m = airMass(alpha);
+  if (o >= 0) {
+    // air mass
+    const m =
+      1 /
+      (Math.sin(sunAltitudeRad) +
+        0.50572 * Math.pow(96.07995 - angleAboveHorizonDeg, -1.6364));
     const tau = 0.13; // clear‑air optical depth
 
     /* ---------- Direct beam ----------
-       cosα is the projection onto a horizontal surface */
+    sinα is the projection onto a horizontal surface */
     const Tdir = Math.exp(-tau * m);
-    Edir = E0 * Tdir * Math.sin(deg2rad(alpha));
+    Edir = E0 * Tdir * Math.sin(sunAltitudeRad);
 
     /* ---------- Diffuse sky ----------
      A very simple symmetric model – it peaks at the horizon
@@ -428,24 +399,28 @@ function irradiance(date: Date, lat: number, lon: number) {
      for the shape; you can replace this with a full Perez model if you wish. */
     const Tdiff = Math.exp((-tau * m) / 2);
     // Use cos²(alpha) – this is symmetric about noon
-    Ediff = E0 * Tdiff * (1 + 0.5 * Math.pow(Math.cos(deg2rad(alpha)), 2));
+    Ediff = E0 * Tdiff * (1 + 0.5 * Math.pow(Math.cos(sunAltitudeRad), 2));
+
+    const twilightAtHorizon = E0 * Math.exp(0.2 * -0.833);
+    // Etot = twilightAtHorizon + Edir + Ediff; // W/m² horizontal irradiance
+    // Etot = Edir + Math.max(Ediff, twilightAtHorizon); // W/m² horizontal irradiance
+    Etot = Math.max(twilightAtHorizon, Edir + Ediff);
+    //Etot = Edir + Ediff;
   } else {
     // twilight or night – sun below horizon
     const k = 0.2; // empirical decay constant (deg⁻¹)
-    Ediff = E0 * Math.exp(k * alpha); // crude exponential fall‑off
+    Ediff = E0 * Math.exp(k * angleAboveHorizonDeg); // crude exponential fall‑off
     Edir = 0;
-    // Ediff *= 1e-3;
+    Etot = Edir + Ediff; // W/m² horizontal irradiance
   }
-
-  const Etot = Edir + Ediff; // W/m² horizontal irradiance
-
+  luxNormalised = Math.max(0, Math.min(1, (Etot * 120) / 300_000));
   /* ------------------------------------------------------------------
    *  Convert to lux – approximate luminous efficacy of sunlight:
    *      ~120 lm/W for the full solar spectrum (typical daylight)
    */
-  const lux = Etot * 120;
 
-  return { alpha, lux };
+  // TODO: Figure out a better continuous model of this without the ugly discontinuity around the horizon at sunrise/sunset
+  return { alpha: angleAboveHorizonDeg, lux: Math.pow(luxNormalised, 2.2) };
 }
 
 const minutes = computed(() => {
@@ -463,23 +438,15 @@ const minutes = computed(() => {
       })
       .toJSDate();
     const offsets = [];
-    console.log(location.lat, location.lng);
-    for (let i = 0; i < 60 * 24; i += 10) {
+    for (let i = 0; i < 60 * 24; i += 1) {
       const time = new Date(dayStart.getTime() + i * 1000 * 60);
-
-      const { altitude: altitudeRadians } = sunCalc.getPosition(
-        time,
-        location.lat,
-        location.lng,
-      );
       const ir = irradiance(time, location.lat, location.lng);
-      const altitude = (altitudeRadians * 180) / Math.PI / 90;
-      //console.log(time, ir, altitude);
       offsets.push({
-        irradiance: ir,
-        altitude,
+        irradiance: ir.lux,
+        altitude: Math.max(-1, Math.min(1, ir.alpha / 90)), // Normalise over 90 degrees
       });
     }
+
     return offsets;
   }
   return [];
@@ -500,26 +467,6 @@ const timesZeroOne = computed<OffsetTimesX | null>(() => {
       location.lng,
       0,
     );
-    //const timesInfo: Record<string, { time: Date, intensity: number, angle: number }> = {};
-    for (const [key, time] of Object.entries(times)) {
-      const { altitude: altitudeRadians } = sunCalc.getPosition(
-        time,
-        location.lat,
-        location.lng,
-      );
-      console.log(
-        "Irradiance",
-        key,
-        irradiance(time, location.lat, location.lng),
-      );
-      // // Account for "below the horizon correction"
-      // const altRad = altitudeRadians + ((Math.PI / 180) * 0.833);
-      // const altitudeAngleDegrees = ((180 / Math.PI) * altitudeRadians) + 0.833;
-      // const intensity = Math.cos((Math.PI / 2) - (Math.max(0, altitudeAngleDegrees)));
-      // timesInfo[key].intensity = intensity;
-      // timesInfo[key].time = time;
-      // timesInfo[key].angle = altRad;
-    }
     nowInTz = nowInTz.set({
       hour: 0,
       minute: 0,
@@ -803,11 +750,13 @@ const audioTimes = (offset: {
   );
   const times = [];
   for (let i = 0; i < recordingsInPeriod; i++) {
-    const timeCenter = percentageCovered / recordingsInPeriod;
-    const timeWidth = 1;
+    const timeCenter =
+      (percentageCovered / recordingsInPeriod) * i +
+      (Math.random() - 0.5) * 2.5;
+    const timeWidth = 0.5;
     times.push({
-      x0: offset.x0 + (timeCenter * i - timeWidth / 2),
-      x1: offset.x0 + (timeCenter * i + timeWidth / 2),
+      x0: offset.x0 + (timeCenter - timeWidth / 2),
+      x1: offset.x0 + (timeCenter + timeWidth / 2),
     });
   }
   return times;
@@ -1037,7 +986,7 @@ watch(customRecordingWindowStop, async () => {
               <dd class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 py-sm-2">
                 <span
                   v-if="settings.synced"
-                  class="d-flex d-inline-flex align-items-center px-1 rounded bg-success-subtle text-success-emphasis"
+                  class="d-flex d-inline-flex align-items-center align-self-center px-1 rounded bg-success-subtle text-success-emphasis"
                 >
                   <material-symbol
                     name="check"
@@ -1048,7 +997,7 @@ watch(customRecordingWindowStop, async () => {
                 </span>
                 <span
                   v-else
-                  class="d-flex d-inline-flex align-items-center px-1 rounded bg-warning-subtle text-warning-emphasis"
+                  class="d-flex d-inline-flex align-items-center align-self-center px-1 rounded bg-warning-subtle text-warning-emphasis"
                 >
                   <material-symbol
                     name="close"
@@ -1116,9 +1065,32 @@ watch(customRecordingWindowStop, async () => {
             Visualise how the recording settings and thermal video recording
             schedule are applied over a 24-hour period.
           </p>
-          <div class="rounded-2 overflow-hidden">
-            <svg viewBox="0 0 100 30" v-if="timesXPos">
+          <div class="rounded-2 overflow-hidden position-relative">
+            <svg viewBox="0 0 100 20" v-if="timesXPos" class="svg-diagram">
               <defs>
+                <symbol id="sunrise-icon">
+                  <g transform="scale(0.125 0.125)">
+                    <path
+                      d="M2.197 31.062v-2.383h4.968l.074-.426c.141-.799.521-1.798 1.014-2.662l.492-.863-3.485-3.48 1.702-1.702 3.5 3.495.548-.351c.73-.467 1.512-.796 2.478-1.044l.794-.204.061-5.019h2.488l.061 5.02.795.203c.965.248 1.748.577 2.477 1.044l.548.35 3.498-3.492 1.705 1.694-3.516 3.522.234.34c.458.665 1 1.904 1.195 2.734l.198.84h4.952v2.384zm19.217-2.979c-.277-.946-.721-1.67-1.515-2.47-2.424-2.445-6.186-2.445-8.626-.001-.79.792-1.232 1.514-1.513 2.471l-.175.596H21.59z"
+                    />
+                    <path
+                      d="M241.463 322.031v-32.25s-23.25-.256-23.25-.569 31.5-32.043 31.5-32.043 31.5 31.73 31.5 32.043-23.25.569-23.25.569v32.25z"
+                      transform="translate(-22.195 -34.684)scale(.1513)"
+                    />
+                  </g>
+                </symbol>
+                <symbol id="sunset-icon">
+                  <g transform="scale(0.125 0.125)">
+                    <path
+                      d="M2.197 31.062v-2.383h4.968l.074-.426c.141-.799.521-1.798 1.014-2.662l.492-.863-3.485-3.48 1.702-1.702 3.5 3.495.548-.351c.73-.467 1.512-.796 2.478-1.044l.794-.204.061-5.019h2.488l.061 5.02.795.203c.965.248 1.748.577 2.477 1.044l.548.35 3.498-3.492 1.705 1.694-3.516 3.522.234.34c.458.665 1 1.904 1.195 2.734l.198.84h4.952v2.384zm19.217-2.979c-.277-.946-.721-1.67-1.515-2.47-2.424-2.445-6.186-2.445-8.626-.001-.79.792-1.232 1.514-1.513 2.471l-.175.596H21.59z"
+                    />
+                    <path
+                      d="M241.463 322.031v-32.25s-23.25-.256-23.25-.569 31.5-32.043 31.5-32.043 31.5 31.73 31.5 32.043-23.25.569-23.25.569v32.25z"
+                      transform="translate(53.5 53.684)rotate(180)scale(.1513)"
+                    />
+                  </g>
+                </symbol>
+
                 <linearGradient
                   id="daylight"
                   x1="0%"
@@ -1126,103 +1098,56 @@ watch(customRecordingWindowStop, async () => {
                   x2="100%"
                   y2="0%"
                   gradientUnits="objectBoundingBox"
-                  v-if="timesPercent"
+                  v-if="minutes"
                 >
-                  <stop offset="0%" stop-color="indigo" />
                   <stop
-                    :offset="`${timesPercent.nightEnd}%`"
-                    stop-color="indigo"
+                    v-for="(minute, index) in minutes"
+                    :offset="`${(index / minutes.length) * 100}%`"
+                    :stop-color="`rgb(${minute.irradiance * 255}, ${minute.irradiance * 255}, ${minute.irradiance * 255})`"
                   />
-                  <stop
-                    :offset="`${timesPercent.dawn}%`"
-                    stop-color="darkslateblue"
-                  />
-                  <stop
-                    :offset="`${timesPercent.sunriseStart}%`"
-                    stop-color="goldenrod"
-                  />
-                  <stop
-                    :offset="`${timesPercent.sunriseEnd}%`"
-                    stop-color="goldenrod"
-                  />
-                  <stop
-                    :offset="`${timesPercent.midday}%`"
-                    stop-color="white"
-                  />
-                  <stop
-                    :offset="`${timesPercent.sunsetStart}%`"
-                    stop-color="goldenrod"
-                  />
-                  <stop
-                    :offset="`${timesPercent.sunsetEnd}%`"
-                    stop-color="goldenrod"
-                  />
-                  <stop
-                    :offset="`${timesPercent.dusk}%`"
-                    stop-color="darkslateblue"
-                  />
-                  <stop
-                    :offset="`${timesPercent.nightStart}%`"
-                    stop-color="indigo"
-                  />
-                  <stop offset="100%" stop-color="indigo" />
                 </linearGradient>
               </defs>
-              <!--              <rect x="0" y="0" width="100" height="20" fill="url(#daylight)" />-->
+              <rect x="0" y="0" width="100" height="20" fill="url(#daylight)" />
               <rect
                 v-for="(minute, index) in minutes"
                 :x="(100 / minutes.length) * index"
-                y="0"
+                :y="20 - (5 + minute.altitude * 15)"
                 :key="index"
                 :width="100 / minutes.length"
-                height="20"
-                :fill="`rgba(${minute.irradiance.lux / 2000}, 0, 0, 1)`"
+                height="0.2"
+                fill="white"
               />
-              <text x="1" y="3" font-size="2" fill="white">
-                {{
-                  DateTime.fromJSDate(curveDay)
-                    .setZone(deviceTimezone as string)
-                    .toLocaleString({
-                      month: "short",
-                      day: "numeric",
-                    })
-                }}
-              </text>
-              <path
-                :d="daylightCurve"
-                stroke-width="0.25"
-                stroke="cornflowerblue"
-                fill="transparent"
-              />
-              <!--              <g v-if="false && timesXPos">-->
-              <!--                <circle r="1" fill="#444" :cx="timesXPos.nightEnd" cy="10" />-->
-              <!--                <circle r="1" fill="#444" :cx="timesXPos.dawn" cy="10" />-->
-              <!--                <circle-->
-              <!--                  r="1"-->
-              <!--                  fill="yellow"-->
-              <!--                  :cx="timesXPos.sunriseStart"-->
-              <!--                  cy="10"-->
-              <!--                />-->
-              <!--                <circle-->
-              <!--                  r="1"-->
-              <!--                  fill="goldenrod"-->
-              <!--                  :cx="timesXPos.sunriseEnd"-->
-              <!--                  cy="10"-->
-              <!--                />-->
-              <!--                <circle r="1" fill="#444" :cx="timesXPos.midday" cy="10" />-->
-              <!--                <circle r="1" fill="#444" :cx="timesXPos.dusk" cy="10" />-->
-              <!--                <circle r="1" fill="yellow" :cx="timesXPos.sunsetStart" cy="10" />-->
-              <!--                <circle-->
-              <!--                  r="1"-->
-              <!--                  fill="goldenrod"-->
-              <!--                  :cx="timesXPos.sunsetEnd"-->
-              <!--                  cy="10"-->
-              <!--                />-->
-              <!--                <circle r="1" fill="#444" :cx="timesXPos.nightStart" cy="10" />-->
-              <!--                <circle r="1" fill="lime" :cx="timesXPos.cameraStart" cy="10" />-->
-              <!--                <circle r="1" fill="lime" :cx="timesXPos.cameraEnd" cy="10" />-->
-              <!--              </g>-->
+              <use
+                href="#sunrise-icon"
+                :x="timesXPos.sunriseEnd"
+                y="10"
+                transform="translate(-1.8, 0)"
+                fill="white"
+              ></use>
+              <use
+                href="#sunset-icon"
+                :x="timesXPos.sunsetStart"
+                y="10"
+                transform="translate(-2.2, 0)"
+                fill="white"
+              ></use>
+              <!--              <path-->
+              <!--                :d="daylightCurve"-->
+              <!--                stroke-width="0.25"-->
+              <!--                stroke="cornflowerblue"-->
+              <!--                fill="transparent"-->
+              <!--              />-->
+              <rect x="0" y="15" fill="white" height="0.1" width="100" />
               <rect x="0" y="20" width="100" height="10" fill="#ccc" />
+              <rect
+                v-for="hour in 23"
+                :key="hour"
+                fill="#333"
+                :x="(100 / 24) * hour"
+                y="20"
+                width="0.1"
+                height="0.75"
+              />
               <text
                 fill="#333"
                 x="0.5"
@@ -1250,84 +1175,58 @@ watch(customRecordingWindowStop, async () => {
               >
                 24:00
               </text>
-              <g v-if="thermalEnabled">
-                <rect
-                  v-for="(offset, index) in thermalBarOffsets"
-                  :key="index"
-                  y="24"
-                  :x="offset.x0"
-                  :width="offset.x1 - offset.x0"
-                  height="2"
-                  fill="green"
-                />
-                <text
-                  fill="white"
-                  x="0.5"
-                  y="25.4"
-                  font-weight="bold"
-                  text-anchor="start"
-                  font-size="1.5"
-                >
-                  Thermal
-                </text>
-              </g>
-              <text
-                v-else
-                fill="#333"
-                x="0.5"
-                y="25.4"
-                font-weight="bold"
-                text-anchor="start"
-                font-size="1.5"
-              >
-                Thermal
-              </text>
-              <g v-if="audioEnabled">
-                <rect
-                  v-for="(offset, index) in audioBarOffsets"
-                  :key="index"
-                  y="27"
-                  :x="offset.x0"
-                  :width="offset.x1 - offset.x0"
-                  height="2"
-                  fill="green"
-                  opacity="0.3"
-                />
-                <g v-for="(offset, i) in audioBarOffsets" :key="i">
-                  <rect
-                    v-for="(time, index) in audioTimes(offset)"
-                    :key="index"
-                    y="27"
-                    :x="time.x0"
-                    :width="time.x1 - time.x0"
-                    height="2"
-                    fill="green"
-                    opacity="0.3"
-                  />
-                </g>
-                <text
-                  fill="white"
-                  x="0.5"
-                  y="28.4"
-                  font-weight="bold"
-                  text-anchor="start"
-                  font-size="1.5"
-                >
-                  Audio
-                </text>
-              </g>
-              <text
-                v-else
-                fill="#333"
-                x="0.5"
-                y="28"
-                font-weight="bold"
-                text-anchor="start"
-                font-size="1.5"
-              >
-                Audio
-              </text>
             </svg>
+            <div class="position-absolute text-white" style="top: 10px;left: 10px">
+              {{
+                DateTime.fromJSDate(curveDay)
+                    .setZone(deviceTimezone as string)
+                    .toLocaleString({
+                      month: "short",
+                      day: "numeric",
+                    })
+              }}
+            </div>
+            <div style="height: 20px; width: 100%; outline: 1px solid red" class="position-relative">
+              <div class="d-flex" v-if="thermalEnabled">
+                <div>Thermal</div>
+                <div
+                  style="height: 10px; width: 100%"
+                >
+                  <div
+                    v-for="(offset, index) in thermalBarOffsets"
+                    class="position-absolute"
+                    :key="index"
+                    :style="`left: ${offset.x0}%;width: ${offset.x1 - offset.x0}%;height: 10px; background-color: green;`"
+                  />
+                </div>
+              </div>
+              <div v-else>
+                Thermal
+              </div>
+              <div class="d-flex" v-if="audioEnabled">
+                <div>Audio</div>
+                <div
+                  style="height: 20px; width: 100%"
+                >
+                  <div
+                    v-for="(offset, index) in audioBarOffsets"
+                    :key="index"
+                    class="position-absolute"
+                    :style="`left: ${offset.x0}%;width: ${offset.x1 - offset.x0}%;height: 10px; background-color: rgba(0, 128, 0, 0.3);top:20px;`"
+                  >
+                    <div
+                      v-for="(time, index) in audioTimes(offset)"
+                      :key="index"
+                      class="position-absolute"
+                      :style="`left: ${time.x0}%;width: ${time.x1 - time.x0}%;height: 10px; background-color: rgba(0, 128, 0, 0.3);`"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div v-else>
+                Audio
+              </div>
+            </div>
           </div>
           <b-input
             type="range"
@@ -1678,5 +1577,18 @@ watch(customRecordingWindowStop, async () => {
       }
     }
   }
+}
+.svg-diagram {
+  width: 100%;
+  height: auto;
+  container-type: normal;
+}
+.svg-text {
+  --w: 1cqi;
+  //font-size: 0.5cqw;
+  //font-size: clamp(max(1cqi, 2px), 2px, var(--w));
+  font-size: max(2px, min(14px, 0.2cqi));
+  //text-anchor: middle; /* Optional: centers text at the x, y coordinates */
+  dominant-baseline: middle;
 }
 </style>
