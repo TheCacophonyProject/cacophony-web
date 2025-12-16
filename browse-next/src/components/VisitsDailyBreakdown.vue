@@ -590,22 +590,22 @@ const isStillProcessing = computed<boolean>(() => {
     &.cat {
       background: color-mix(
         in srgb,
-        var(--cp-tag-priority-badge-1),
+        var(--cp-tag-priority-badge-2),
         transparent 88%
       );
       .count {
-        background: var(--cp-tag-priority-badge-1);
+        background: var(--cp-tag-priority-badge-2);
       }
     }
     &.rodent,
     &.hedgehog {
       background: color-mix(
         in srgb,
-        var(--cp-tag-priority-badge-2),
+        var(--cp-tag-priority-badge-3),
         transparent 88%
       );
       .count {
-        background: var(--cp-tag-priority-badge-2);
+        background: var(--cp-tag-priority-badge-3);
       }
     }
   }
@@ -718,11 +718,11 @@ const isStillProcessing = computed<boolean>(() => {
     }
     &.possum,
     &.cat {
-      background: var(--cp-tag-priority-badge-1);
+      background: var(--cp-tag-priority-badge-2);
     }
     &.rodent,
     &.hedgehog {
-      background: var(--cp-tag-priority-badge-2);
+      background: var(--cp-tag-priority-badge-3);
     }
   }
 }

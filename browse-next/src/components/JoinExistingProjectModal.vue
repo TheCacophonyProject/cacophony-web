@@ -135,7 +135,6 @@ const okayButtonText = computed(() => {
   }
 });
 const okayButtonAction = async (event: BvTriggerableEvent) => {
-  console.log(event);
   if (!joinableProjectsLoaded.value) {
     event.preventDefault();
     await getGroupsForAdmin();

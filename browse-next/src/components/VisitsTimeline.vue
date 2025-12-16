@@ -291,6 +291,7 @@ const mouseLeftVisit = (_visit: ApiVisitResponse) => {
   white-space: nowrap;
   font-size: var(--cp-font-size-sm);
   user-select: none;
+  color: var(--bs-secondary-color);
 }
 .visits-timeline-species-name {
   font-size: var(--cp-font-size-sm);

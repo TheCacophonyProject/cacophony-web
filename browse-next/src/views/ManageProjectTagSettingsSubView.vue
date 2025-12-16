@@ -235,7 +235,7 @@ const pendingTagIsValid = computed<boolean>(() => {
       <h3 class="section-card-heading">Project tagging settings</h3>
       <p class="text-secondary">
         Manage the set of default tags that users see for this project when
-        tagging either camera recordings or bird recordings.
+        tagging either thermal video recordings or audio recordings.
       </p>
       <p class="text-secondary pb-1">
         Users can also add and pin their own most-used tags via each tagging
@@ -244,7 +244,7 @@ const pendingTagIsValid = computed<boolean>(() => {
     </div>
     <div class="col-lg-9">
       <section-card>
-        <template #header-title> Camera tags </template>
+        <template #header-title> Thermal video tags </template>
         <template #header-action>
           <div>
             <button
@@ -299,7 +299,7 @@ const pendingTagIsValid = computed<boolean>(() => {
     <div class="col-lg-3"></div>
     <div class="col-lg-9">
       <section-card>
-        <template #header-title> Bird recording tags </template>
+        <template #header-title> Audio tags </template>
         <template #header-action>
           <div>
             <button
