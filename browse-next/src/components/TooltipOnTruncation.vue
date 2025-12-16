@@ -5,7 +5,15 @@ import { BTooltip } from "bootstrap-vue-next";
 const spanItem = ref<HTMLSpanElement>();
 const isTruncated = computed<boolean>(() => {
   if (spanItem.value) {
-    return spanItem.value.offsetWidth < spanItem.value.scrollWidth;
+    const truncated = spanItem.value.offsetWidth < spanItem.value.scrollWidth;
+    console.log(
+      spanItem.value.innerText,
+      spanItem.value.offsetWidth,
+      spanItem.value.scrollWidth,
+      truncated,
+    );
+
+    return truncated;
   }
   return false;
 });
