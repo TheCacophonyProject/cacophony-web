@@ -197,12 +197,21 @@
 </template>
 
 <script lang="ts">
-import {mapState} from "vuex";
-import {toStringTodayYesterdayOrDate} from "@/helpers/datetime";
-import {computed, defineComponent, onMounted, ref, watch,} from "@vue/composition-api";
+import { mapState } from "vuex";
+import { toStringTodayYesterdayOrDate } from "@/helpers/datetime";
+import {
+  computed,
+  defineComponent,
+  onMounted,
+  ref,
+  watch,
+} from "@vue/composition-api";
 import DeviceApi from "@/api/Device.api";
-import {ApiDeviceHistorySettings, WindowsSettings,} from "@typedefs/api/device";
-import {AudioRecordingMode} from "@typedefs/api/consts";
+import {
+  ApiDeviceHistorySettings,
+  WindowsSettings,
+} from "@typedefs/api/device";
+import { AudioRecordingMode } from "@typedefs/api/consts";
 
 export default defineComponent({
   name: "DeviceDetail",
@@ -364,7 +373,10 @@ export default defineComponent({
     const savingAudioSettings = ref<boolean>(false);
     const audioMode = computed<AudioRecordingMode>({
       get: () => {
-        return settings.value?.audioRecording?.audioMode ?? AudioRecordingMode.Disabled;
+        return (
+          settings.value?.audioRecording?.audioMode ??
+          AudioRecordingMode.Disabled
+        );
       },
       set: async (val: AudioRecordingMode) => {
         if (settings.value) {
