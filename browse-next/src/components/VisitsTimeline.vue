@@ -170,7 +170,7 @@ const mouseLeftVisit = (_visit: ApiVisitResponse) => {
       :key="index"
       class="d-flex visits-timeline-row"
     >
-      <div class="d-flex align-items-center" style="width: 110px">
+      <div class="d-flex align-items-center" style="width: 100px">
         <tooltip-on-truncation
           class="visits-timeline-species-name text-capitalize"
           >{{
