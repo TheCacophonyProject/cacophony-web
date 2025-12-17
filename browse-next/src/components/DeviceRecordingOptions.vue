@@ -30,7 +30,6 @@ import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import sunCalc from "suncalc";
 import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils.ts";
-import { min } from "@popperjs/core/lib/utils/math";
 
 type Time = { hours: number; minutes: number; seconds: number };
 const devices = inject(selectedProjectDevices) as Ref<
@@ -307,17 +306,7 @@ const customRecordingWindowStop = computed<Time>({
   },
 });
 const msInDay = 1000 * 60 * 60 * 24;
-const getDayOfYYearForDate = (date: Date): number => {
-  const startOfYear = new Date(date);
-  startOfYear.setMonth(0);
-  startOfYear.setDate(1);
-  startOfYear.setHours(0, 0, 0, 0);
-  const thisDay = new Date(date);
-  thisDay.setHours(0, 0, 0, 0);
-  return (thisDay.getTime() - startOfYear.getTime()) / msInDay;
-};
 
-const dayOfYear = ref<number>(getDayOfYYearForDate(new Date()));
 const deviceTimezone = computed<string | null>(() => {
   const location = device.value?.location;
   if (location) {
@@ -326,12 +315,57 @@ const deviceTimezone = computed<string | null>(() => {
   }
   return null;
 });
+
+const startOfYear = computed<Date>(() => {
+  const location = device.value?.location;
+  if (location) {
+    const timeZone = deviceTimezone.value as string;
+    const now = new Date();
+    const nowInTz = DateTime.fromJSDate(now).setZone(timeZone);
+    return nowInTz
+      .set({
+        month: 1,
+        day: 0,
+        hour: 0,
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+      })
+      .toJSDate();
+  }
+  const now = new Date();
+  now.setMonth(0, 1);
+  now.setHours(0, 0, 0, 0);
+  return new Date(now);
+});
+
+const getDayOfYearForDate = (date: Date): number => {
+  const thisDay = new Date(date);
+  thisDay.setHours(0, 0, 0, 0);
+  return (thisDay.getTime() - startOfYear.value.getTime()) / msInDay;
+};
+
+const dayOfYear = ref<number>(getDayOfYearForDate(new Date()));
+
 const curveDay = computed<Date>(() => {
-  const startOfYear = new Date();
-  startOfYear.setMonth(0);
-  startOfYear.setDate(1);
-  startOfYear.setHours(0, 0, 0, 0);
-  const now = new Date(startOfYear.getTime() + dayOfYear.value * msInDay);
+  const location = device.value?.location;
+  if (location) {
+    const timeZone = deviceTimezone.value as string;
+    const now = DateTime.fromJSDate(
+      new Date(startOfYear.value.getTime() + dayOfYear.value * msInDay),
+    ).setZone(timeZone);
+    return now
+      .set({
+        hour: 0,
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+      })
+      .toJSDate();
+  }
+
+  const now = new Date(startOfYear.value.getTime() + dayOfYear.value * msInDay);
+
   now.setHours(0, 0, 0, 0);
   return now;
 });
@@ -533,16 +567,6 @@ const timesPercent = computed<OffsetTimesX | null>(() => {
     return multiplyTimes(timesZeroOne.value, 100);
   }
   return null;
-});
-
-const daylightCurve = computed<string>(() => {
-  const timesX = timesXPos.value;
-  if (timesX) {
-    const height = 19;
-    const top = 1;
-    return `M0,${height}L${timesX.nightEnd},${height}C${timesX.sunriseEnd},${height},${timesX.sunriseEnd},${top},${timesX.midday},${top}C${timesX.sunsetStart},${top},${timesX.sunsetStart},${height},${timesX.nightStart},${height}L100,${height}`;
-  }
-  return "M0,0Z";
 });
 
 // Computed property for Audio Mode
@@ -1065,244 +1089,192 @@ watch(customRecordingWindowStop, async () => {
             Visualise how the recording settings and thermal video recording
             schedule are applied over a 24-hour period.
           </p>
-          <div class="rounded-2 overflow-hidden position-relative">
-            <svg viewBox="0 0 100 20" v-if="timesXPos" class="svg-diagram">
-              <defs>
-                <symbol id="sunrise-icon">
-                  <g transform="scale(0.125 0.125)">
-                    <path
-                      d="M2.197 31.062v-2.383h4.968l.074-.426c.141-.799.521-1.798 1.014-2.662l.492-.863-3.485-3.48 1.702-1.702 3.5 3.495.548-.351c.73-.467 1.512-.796 2.478-1.044l.794-.204.061-5.019h2.488l.061 5.02.795.203c.965.248 1.748.577 2.477 1.044l.548.35 3.498-3.492 1.705 1.694-3.516 3.522.234.34c.458.665 1 1.904 1.195 2.734l.198.84h4.952v2.384zm19.217-2.979c-.277-.946-.721-1.67-1.515-2.47-2.424-2.445-6.186-2.445-8.626-.001-.79.792-1.232 1.514-1.513 2.471l-.175.596H21.59z"
-                    />
-                    <path
-                      d="M241.463 322.031v-32.25s-23.25-.256-23.25-.569 31.5-32.043 31.5-32.043 31.5 31.73 31.5 32.043-23.25.569-23.25.569v32.25z"
-                      transform="translate(-22.195 -34.684)scale(.1513)"
-                    />
-                  </g>
-                </symbol>
-                <symbol id="sunset-icon">
-                  <g transform="scale(0.125 0.125)">
-                    <path
-                      d="M2.197 31.062v-2.383h4.968l.074-.426c.141-.799.521-1.798 1.014-2.662l.492-.863-3.485-3.48 1.702-1.702 3.5 3.495.548-.351c.73-.467 1.512-.796 2.478-1.044l.794-.204.061-5.019h2.488l.061 5.02.795.203c.965.248 1.748.577 2.477 1.044l.548.35 3.498-3.492 1.705 1.694-3.516 3.522.234.34c.458.665 1 1.904 1.195 2.734l.198.84h4.952v2.384zm19.217-2.979c-.277-.946-.721-1.67-1.515-2.47-2.424-2.445-6.186-2.445-8.626-.001-.79.792-1.232 1.514-1.513 2.471l-.175.596H21.59z"
-                    />
-                    <path
-                      d="M241.463 322.031v-32.25s-23.25-.256-23.25-.569 31.5-32.043 31.5-32.043 31.5 31.73 31.5 32.043-23.25.569-23.25.569v32.25z"
-                      transform="translate(53.5 53.684)rotate(180)scale(.1513)"
-                    />
-                  </g>
-                </symbol>
-
-                <linearGradient
-                  id="daylight"
-                  x1="0%"
-                  y1="0%"
-                  x2="100%"
-                  y2="0%"
-                  gradientUnits="objectBoundingBox"
-                  v-if="minutes"
-                >
-                  <stop
-                    v-for="(minute, index) in minutes"
-                    :offset="`${(index / minutes.length) * 100}%`"
-                    :stop-color="`rgb(${minute.irradiance * 255}, ${minute.irradiance * 255}, ${minute.irradiance * 255})`"
+          <div>
+            <div class="d-flex">
+              <div style="width: 30px"></div>
+              <div
+                class="rounded-2 overflow-hidden position-relative flex-grow-1"
+              >
+                <svg viewBox="0 0 100 20" v-if="timesXPos" class="svg-diagram">
+                  <defs>
+                    <symbol id="sunrise-icon">
+                      <g transform="scale(0.125 0.125)">
+                        <path
+                          d="M2.197 31.062v-2.383h4.968l.074-.426c.141-.799.521-1.798 1.014-2.662l.492-.863-3.485-3.48 1.702-1.702 3.5 3.495.548-.351c.73-.467 1.512-.796 2.478-1.044l.794-.204.061-5.019h2.488l.061 5.02.795.203c.965.248 1.748.577 2.477 1.044l.548.35 3.498-3.492 1.705 1.694-3.516 3.522.234.34c.458.665 1 1.904 1.195 2.734l.198.84h4.952v2.384zm19.217-2.979c-.277-.946-.721-1.67-1.515-2.47-2.424-2.445-6.186-2.445-8.626-.001-.79.792-1.232 1.514-1.513 2.471l-.175.596H21.59z"
+                        />
+                        <path
+                          d="M241.463 322.031v-32.25s-23.25-.256-23.25-.569 31.5-32.043 31.5-32.043 31.5 31.73 31.5 32.043-23.25.569-23.25.569v32.25z"
+                          transform="translate(-22.195 -34.684)scale(.1513)"
+                        />
+                      </g>
+                    </symbol>
+                    <symbol id="sunset-icon">
+                      <g transform="scale(0.125 0.125)">
+                        <path
+                          d="M2.197 31.062v-2.383h4.968l.074-.426c.141-.799.521-1.798 1.014-2.662l.492-.863-3.485-3.48 1.702-1.702 3.5 3.495.548-.351c.73-.467 1.512-.796 2.478-1.044l.794-.204.061-5.019h2.488l.061 5.02.795.203c.965.248 1.748.577 2.477 1.044l.548.35 3.498-3.492 1.705 1.694-3.516 3.522.234.34c.458.665 1 1.904 1.195 2.734l.198.84h4.952v2.384zm19.217-2.979c-.277-.946-.721-1.67-1.515-2.47-2.424-2.445-6.186-2.445-8.626-.001-.79.792-1.232 1.514-1.513 2.471l-.175.596H21.59z"
+                        />
+                        <path
+                          d="M241.463 322.031v-32.25s-23.25-.256-23.25-.569 31.5-32.043 31.5-32.043 31.5 31.73 31.5 32.043-23.25.569-23.25.569v32.25z"
+                          transform="translate(53.5 53.684)rotate(180)scale(.1513)"
+                        />
+                      </g>
+                    </symbol>
+                    <linearGradient
+                      id="daylight"
+                      x1="0%"
+                      y1="0%"
+                      x2="100%"
+                      y2="0%"
+                      gradientUnits="objectBoundingBox"
+                      v-if="minutes"
+                    >
+                      <stop
+                        v-for="(minute, index) in minutes"
+                        :offset="`${(index / minutes.length) * 100}%`"
+                        :stop-color="`rgb(${minute.irradiance * 255}, ${minute.irradiance * 255}, ${minute.irradiance * 255})`"
+                      />
+                    </linearGradient>
+                  </defs>
+                  <rect
+                    x="0"
+                    y="0"
+                    width="100"
+                    height="20"
+                    fill="url(#daylight)"
                   />
-                </linearGradient>
-              </defs>
-              <rect x="0" y="0" width="100" height="20" fill="url(#daylight)" />
-              <rect
-                v-for="(minute, index) in minutes"
-                :x="(100 / minutes.length) * index"
-                :y="20 - (5 + minute.altitude * 15)"
-                :key="index"
-                :width="100 / minutes.length"
-                height="0.2"
-                fill="white"
-              />
-              <use
-                href="#sunrise-icon"
-                :x="timesXPos.sunriseEnd"
-                y="10"
-                transform="translate(-1.8, 0)"
-                fill="white"
-              ></use>
-              <use
-                href="#sunset-icon"
-                :x="timesXPos.sunsetStart"
-                y="10"
-                transform="translate(-2.2, 0)"
-                fill="white"
-              ></use>
-              <!--              <path-->
-              <!--                :d="daylightCurve"-->
-              <!--                stroke-width="0.25"-->
-              <!--                stroke="cornflowerblue"-->
-              <!--                fill="transparent"-->
-              <!--              />-->
-              <rect x="0" y="15" fill="white" height="0.1" width="100" />
-              <rect x="0" y="20" width="100" height="10" fill="#ccc" />
-              <rect
-                v-for="hour in 23"
-                :key="hour"
-                fill="#333"
-                :x="(100 / 24) * hour"
-                y="20"
-                width="0.1"
-                height="0.75"
-              />
-              <text
-                fill="#333"
-                x="0.5"
-                y="22"
-                text-anchor="start"
-                font-size="1.5"
-              >
-                00:00
-              </text>
-              <text
-                fill="#333"
-                x="50"
-                y="22"
-                text-anchor="middle"
-                font-size="1.5"
-              >
-                12:00
-              </text>
-              <text
-                fill="#333"
-                x="99.5"
-                y="22"
-                text-anchor="end"
-                font-size="1.5"
-              >
-                24:00
-              </text>
-            </svg>
-            <div class="position-absolute text-white" style="top: 10px;left: 10px">
-              {{
-                DateTime.fromJSDate(curveDay)
-                    .setZone(deviceTimezone as string)
-                    .toLocaleString({
-                      month: "short",
-                      day: "numeric",
-                    })
-              }}
-            </div>
-            <div style="height: 20px; width: 100%; outline: 1px solid red" class="position-relative">
-              <div class="d-flex" v-if="thermalEnabled">
-                <div>Thermal</div>
+                  <rect
+                    v-for="(minute, index) in minutes"
+                    :x="(100 / minutes.length) * index"
+                    :y="20 - (5 + minute.altitude * 15)"
+                    :key="index"
+                    :width="100 / minutes.length"
+                    height="0.3"
+                    class="sun-curve"
+                  />
+                  <use
+                    href="#sunrise-icon"
+                    :x="timesXPos.sunriseEnd"
+                    y="10"
+                    transform="translate(-1.8, 0)"
+                    fill="white"
+                  ></use>
+                  <use
+                    href="#sunset-icon"
+                    :x="timesXPos.sunsetStart"
+                    y="10"
+                    transform="translate(-2.2, 0)"
+                    fill="white"
+                  ></use>
+                  <rect x="0" y="15" fill="white" height="0.1" width="100" />
+                  <rect x="0" y="20" width="100" height="10" fill="#ccc" />
+                  <rect
+                    v-for="hour in 23"
+                    :key="hour"
+                    fill="#333"
+                    :x="(100 / 24) * hour"
+                    y="20"
+                    width="0.1"
+                    height="0.75"
+                  />
+                  <text
+                    fill="#333"
+                    x="0.5"
+                    y="22"
+                    text-anchor="start"
+                    font-size="1.5"
+                  >
+                    00:00
+                  </text>
+                  <text
+                    fill="#333"
+                    x="50"
+                    y="22"
+                    text-anchor="middle"
+                    font-size="1.5"
+                  >
+                    12:00
+                  </text>
+                  <text
+                    fill="#333"
+                    x="99.5"
+                    y="22"
+                    text-anchor="end"
+                    font-size="1.5"
+                  >
+                    24:00
+                  </text>
+                </svg>
                 <div
-                  style="height: 10px; width: 100%"
+                  class="position-absolute text-white"
+                  style="top: 7px; left: 10px"
+                >
+                  {{
+                    DateTime.fromJSDate(curveDay)
+                      .setZone(deviceTimezone as string)
+                      .toLocaleString({
+                        month: "short",
+                        day: "numeric",
+                      })
+                  }}
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="d-flex align-items-center mt-2">
+                <div style="min-width: 30px"></div>
+                <div
+                  class="flex-grow-1 hours-container d-flex justify-content-between align-items-end"
+                >
+                  <div
+                    v-for="n in 25"
+                    :key="n"
+                    class="hour-notch bg-dark-subtle"
+                  ></div>
+                </div>
+              </div>
+              <div class="d-flex align-items-center mt-2">
+                <div class="align-items-center d-flex" style="min-width: 30px">
+                  <material-symbol name="videocam" />
+                </div>
+                <div
+                  class="bars-container rounded-4 position-relative flex-grow-1"
                 >
                   <div
                     v-for="(offset, index) in thermalBarOffsets"
-                    class="position-absolute"
+                    class="position-absolute rounded-4 thermal-bar"
                     :key="index"
-                    :style="`left: ${offset.x0}%;width: ${offset.x1 - offset.x0}%;height: 10px; background-color: green;`"
+                    :style="`left: ${offset.x0}%;width: ${offset.x1 - offset.x0}%;`"
                   />
                 </div>
               </div>
-              <div v-else>
-                Thermal
-              </div>
-              <div class="d-flex" v-if="audioEnabled">
-                <div>Audio</div>
+              <div class="d-flex mt-2 align-items-center">
+                <div class="align-items-center d-flex" style="min-width: 30px">
+                  <material-symbol name="music_note" />
+                </div>
                 <div
-                  style="height: 20px; width: 100%"
+                  class="bars-container rounded-4 position-relative flex-grow-1"
                 >
                   <div
                     v-for="(offset, index) in audioBarOffsets"
                     :key="index"
-                    class="position-absolute"
-                    :style="`left: ${offset.x0}%;width: ${offset.x1 - offset.x0}%;height: 10px; background-color: rgba(0, 128, 0, 0.3);top:20px;`"
+                    class="position-absolute rounded-4 overflow-hidden audio-bar"
+                    :style="`left: ${offset.x0}%;width: ${offset.x1 - offset.x0}%;`"
                   >
                     <div
                       v-for="(time, index) in audioTimes(offset)"
                       :key="index"
-                      class="position-absolute"
-                      :style="`left: ${time.x0}%;width: ${time.x1 - time.x0}%;height: 10px; background-color: rgba(0, 128, 0, 0.3);`"
+                      class="position-absolute audio-item"
+                      :style="`left: ${time.x0}%;width: ${time.x1 - time.x0}%;height: 100%;`"
                     />
                   </div>
                 </div>
               </div>
-              <div v-else>
-                Audio
+              <div class="d-flex mt-2 align-items-center">
+                <div style="min-width: 30px"></div>
+                <b-input type="range" min="1" max="365" v-model="dayOfYear" />
               </div>
             </div>
           </div>
-          <b-input
-            type="range"
-            min="1"
-            max="365"
-            v-model="dayOfYear"
-            class="mt-3"
-          />
-          <!--          <div-->
-          <!--            class="mb-0 ps-3 pe-4 py-3 border-0 bg-light bg-opacity-75 rounded"-->
-          <!--          >-->
-          <!--            <div>-->
-          <!--              <div class="d-flex align-items-center flex-fill">-->
-          <!--                <div :style="{ width: '72px' }"></div>-->
-          <!--                <div-->
-          <!--                  class="d-flex flex-fill justify-content-between lh-1 font-monospace"-->
-          <!--                >-->
-          <!--                  <small-->
-          <!--                    class="text-center"-->
-          <!--                    :style="{ marginLeft: '-18px', width: '40px' }"-->
-          <!--                    >00:00</small-->
-          <!--                  >-->
-          <!--                  <small class="text-center" :style="{ width: '40px' }"-->
-          <!--                    >12:00</small-->
-          <!--                  >-->
-          <!--                  <small-->
-          <!--                    class="text-center"-->
-          <!--                    :style="{ marginRight: '-18px', width: '40px' }"-->
-          <!--                    >24:00</small-->
-          <!--                  >-->
-          <!--                </div>-->
-          <!--              </div>-->
-          <!--              <div-->
-          <!--                class="d-flex align-items-center flex-fill lh-1 mt-1 text-body-tertiary"-->
-          <!--              >-->
-          <!--                <div :style="{ width: '72px' }"></div>-->
-          <!--                <div class="d-flex flex-fill justify-content-between">-->
-          <!--                  <small>❘</small>-->
-          <!--                  <small>❘</small>-->
-          <!--                  <small>❘</small>-->
-          <!--                </div>-->
-          <!--              </div>-->
-          <!--            </div>-->
-          <!--            <div class="d-flex flex-column mt-1">-->
-          <!--              <div class="d-flex align-items-center mb-2">-->
-          <!--                <span class="mb-0" :style="{ width: '72px' }"> Thermal: </span>-->
-          <!--                <div-->
-          <!--                  class="position-relative flex-fill bg-secondary-subtle p-0"-->
-          <!--                  :style="{ height: '0.7rem' }"-->
-          <!--                >-->
-          <!--                  &lt;!&ndash; Thermal Recording Windows &ndash;&gt;-->
-          <!--                  <div-->
-          <!--                    v-for="(style, index) in thermalBarStyles"-->
-          <!--                    :key="'thermal-' + index"-->
-          <!--                    class="position-absolute h-100 bg-success p-0"-->
-          <!--                    :style="style"-->
-          <!--                  ></div>-->
-          <!--                </div>-->
-          <!--              </div>-->
-          <!--              <div class="d-flex align-items-center">-->
-          <!--                <span class="mb-0" :style="{ width: '72px' }"> Audio: </span>-->
-          <!--                <div-->
-          <!--                  class="position-relative flex-fill bg-secondary-subtle"-->
-          <!--                  :style="{ height: '0.7rem' }"-->
-          <!--                >-->
-          <!--                  &lt;!&ndash; Audio Recording Windows &ndash;&gt;-->
-          <!--                  <div-->
-          <!--                    v-for="(style, index) in audioBarStyles"-->
-          <!--                    :key="'audio-' + index"-->
-          <!--                    class="position-absolute h-100 bg-primary"-->
-          <!--                    :style="style"-->
-          <!--                  ></div>-->
-          <!--                </div>-->
-          <!--              </div>-->
-          <!--            </div>-->
-          <!--          </div>-->
         </div>
       </section-card>
 
@@ -1578,17 +1550,35 @@ watch(customRecordingWindowStop, async () => {
     }
   }
 }
-.svg-diagram {
-  width: 100%;
-  height: auto;
-  container-type: normal;
+.bars-container {
+  background: #ccc;
 }
-.svg-text {
-  --w: 1cqi;
-  //font-size: 0.5cqw;
-  //font-size: clamp(max(1cqi, 2px), 2px, var(--w));
-  font-size: max(2px, min(14px, 0.2cqi));
-  //text-anchor: middle; /* Optional: centers text at the x, y coordinates */
-  dominant-baseline: middle;
+.thermal-bar,
+.audio-bar,
+.bars-container,
+.hours-container {
+  height: 15px;
+}
+.hour-notch {
+  min-width: 1px;
+  height: 50%;
+  &:nth-child(13),
+  &:first-child,
+  &:last-child {
+    height: 100%;
+    margin-top: 0;
+  }
+}
+.thermal-bar {
+  background-color: var(--cp-color-green-600);
+}
+.audio-bar {
+  background-color: color-mix(in oklch, green, transparent 10%);
+}
+.audio-item {
+  background-color: var(--cp-color-green-800);
+}
+.sun-curve {
+  fill: var(--cp-color-green-500);
 }
 </style>
