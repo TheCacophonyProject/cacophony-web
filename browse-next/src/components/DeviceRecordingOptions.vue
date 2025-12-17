@@ -404,17 +404,18 @@ const rad2Deg = (r: number) => (r * 180) / Math.PI;
 function irradiance(date: Date, lat: number, lon: number) {
   let { altitude: sunAltitudeRad } = sunCalc.getPosition(date, lat, lon);
   // suncalc gives the angle above the horizon in radians
-  const angleAboveHorizonDeg = rad2Deg(sunAltitudeRad);
+  let angleAboveHorizonDeg = rad2Deg(sunAltitudeRad);
   const o = angleAboveHorizonDeg;
-  //angleAboveHorizonDeg += -0.833;
+  angleAboveHorizonDeg += 7;
+  angleAboveHorizonDeg = Math.min(90, angleAboveHorizonDeg);
   sunAltitudeRad = deg2rad(angleAboveHorizonDeg);
   const E0 = 1361; // W/m² (solar constant)
   let Edir;
   let Ediff;
-  let Etot;
+  let Etot = 0;
   let luxNormalised;
 
-  if (o >= 0) {
+  if (angleAboveHorizonDeg >= 0) {
     // air mass
     const m =
       1 /
@@ -434,27 +435,14 @@ function irradiance(date: Date, lat: number, lon: number) {
     const Tdiff = Math.exp((-tau * m) / 2);
     // Use cos²(alpha) – this is symmetric about noon
     Ediff = E0 * Tdiff * (1 + 0.5 * Math.pow(Math.cos(sunAltitudeRad), 2));
-
-    const twilightAtHorizon = E0 * Math.exp(0.2 * -0.833);
-    // Etot = twilightAtHorizon + Edir + Ediff; // W/m² horizontal irradiance
-    // Etot = Edir + Math.max(Ediff, twilightAtHorizon); // W/m² horizontal irradiance
-    Etot = Math.max(twilightAtHorizon, Edir + Ediff);
-    //Etot = Edir + Ediff;
-  } else {
-    // twilight or night – sun below horizon
-    const k = 0.2; // empirical decay constant (deg⁻¹)
-    Ediff = E0 * Math.exp(k * angleAboveHorizonDeg); // crude exponential fall‑off
-    Edir = 0;
-    Etot = Edir + Ediff; // W/m² horizontal irradiance
+    Etot = Edir + Ediff;
   }
   luxNormalised = Math.max(0, Math.min(1, (Etot * 120) / 300_000));
   /* ------------------------------------------------------------------
    *  Convert to lux – approximate luminous efficacy of sunlight:
    *      ~120 lm/W for the full solar spectrum (typical daylight)
    */
-
-  // TODO: Figure out a better continuous model of this without the ugly discontinuity around the horizon at sunrise/sunset
-  return { alpha: angleAboveHorizonDeg, lux: Math.pow(luxNormalised, 2.2) };
+  return { alpha: o, lux: Math.pow(luxNormalised, 2.2) };
 }
 
 const minutes = computed(() => {
