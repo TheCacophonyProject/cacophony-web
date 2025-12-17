@@ -1253,9 +1253,7 @@ export const tracksFromMeta = async (
                 // if (prediction.predictions) {
                 //   tag_data["predictions"] = prediction["predictions"];
                 // }
-                if (prediction.label) {
-                  tag_data["raw_tag"] = prediction["label"];
-                }
+
                 if (prediction.all_class_confidences) {
                   tag_data["all_class_confidences"] =
                     prediction.all_class_confidences;
@@ -1264,7 +1262,18 @@ export const tracksFromMeta = async (
                 if (prediction.confident_tag) {
                   tag = prediction.confident_tag;
                 }
-                trackPromises.push();
+                if (prediction.label) {
+                  tag_data["raw_tag"] = prediction["label"];
+                }
+
+                tag_data["raw_tag"] = prediction["tag"];
+                if (prediction.confident) {
+                  tag = prediction["tag"];
+                }
+
+                trackPromises.push(
+                  track.addTag(tag, prediction["confidence"], true, tag_data),
+                );
               }
               Promise.all(trackPromises).then(resolve);
             }
