@@ -160,7 +160,7 @@ Cypress.Commands.add(
     );
 
     const url = v1ApiPath(
-      "processing/" + id.toString() + "/tracks/" + trackId.toString() + "/tagsBulk",
+      "processing/" + id.toString() + "/tracks/" + trackId.toString() + "/tags-bulk",
     );
     makeAuthorizedRequestWithStatus(
       {
@@ -378,7 +378,7 @@ Cypress.Commands.add(
       algorithmId: algorithmId,
     };
 
-    const url = v1ApiPath(`processing/${id.toString()}/tracksAndTags`);
+    const url = v1ApiPath(`processing/${id.toString()}/tracks-and-tags`);
     makeAuthorizedRequestWithStatus(
       {
         method: "POST",

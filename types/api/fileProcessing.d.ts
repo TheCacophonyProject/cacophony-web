@@ -82,13 +82,13 @@ export interface TrackClassification {
   classify_time?: Seconds;
   tag: string;
   message?: string;
-  model_id: integer;
-  rat_thresh_version?: string;
-  // Used in api when calculating good tags
-  name?: string;
+  model_id?: integer;
   model_used?: string;
+  rat_thresh_version?: string;
   threshold_used?: FloatZeroToOne
 
+  // Used in api when calculating good tags
+  name?: string;
   // just used for metadata uploaded in the field will become deprecated
   label?: string;
   confident_tag?: string;
