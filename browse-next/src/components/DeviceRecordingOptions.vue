@@ -1129,6 +1129,7 @@ watch(customRecordingWindowStop, async () => {
                       v-if="minutes"
                     >
                       <stop
+                        :key="index"
                         v-for="(minute, index) in minutes"
                         :offset="`${(index / minutes.length) * 100}%`"
                         :stop-color="`rgb(${minute.irradiance * 255}, ${minute.irradiance * 255}, ${minute.irradiance * 255})`"
