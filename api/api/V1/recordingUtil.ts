@@ -1245,13 +1245,14 @@ export const tracksFromMeta = async (
                 if (prediction.classify_time) {
                   tag_data["classify_time"] = prediction["classify_time"];
                 }
-                if (prediction.prediction_frames) {
-                  tag_data["prediction_frames"] =
-                    prediction["prediction_frames"];
-                }
-                if (prediction.predictions) {
-                  tag_data["predictions"] = prediction["predictions"];
-                }
+                //GP 2025 Dec dont think we are using this at all
+                // if (prediction.prediction_frames) {
+                //   tag_data["prediction_frames"] =
+                //     prediction["prediction_frames"];
+                // }
+                // if (prediction.predictions) {
+                //   tag_data["predictions"] = prediction["predictions"];
+                // }
                 if (prediction.label) {
                   tag_data["raw_tag"] = prediction["label"];
                 }
@@ -1263,9 +1264,7 @@ export const tracksFromMeta = async (
                 if (prediction.confident_tag) {
                   tag = prediction.confident_tag;
                 }
-                trackPromises.push(
-                  track.addTag(tag, prediction["confidence"], true, tag_data),
-                );
+                trackPromises.push();
               }
               Promise.all(trackPromises).then(resolve);
             }

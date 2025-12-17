@@ -13,7 +13,7 @@ import type { Application, NextFunction, Request, Response } from "express";
 import { trackIsMasked, getMask, maskMatch } from "@api/V1/trackMasking.js";
 import ApiMinimalTracksRequestSchema from "@schemas/api/fileProcessing/MinimalTracksRequestData.schema.json" with { type: "json" };
 import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" with { type: "json" };
-import ApiMinimalTrackClassifications from "@schemas/api/fileProcessing/MinimalTrackClassifications.schema.json" with { type: "json" };
+import ApiTrackClassifications from "@schemas/api/fileProcessing/TrackClassifications.schema.json" with { type: "json" };
 
 import ApiThumbnailInfo from "@schemas/api/fileProcessing/ThumbnailInfo.schema.json" with { type: "json" };
 import { jsonSchemaOf } from "../schema-validation.js";
@@ -47,7 +47,7 @@ import { Recording } from "@models/Recording.js";
 
 import type {
   MinimalTrackRequestData,
-  MinimalTrackClassification,
+  TrackClassification,
   MinimalTrack,
 } from "@/../types/api/fileProcessing.js";
 import { promises } from "node:dns";
@@ -714,7 +714,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("id")),
       idOf(param("trackId")),
-      body("data").custom(jsonSchemaOf(ApiMinimalTrackClassifications)),
+      body("data").custom(jsonSchemaOf(ApiTrackClassifications)),
     ]),
     parseJSONField(body("data")),
     (request, response, next) => {

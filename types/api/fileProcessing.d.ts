@@ -74,47 +74,27 @@ export interface ThumbnailInfo {
 }
 
 
-interface TrackClassification {
-  classify_time?: Seconds;
-  label: string;
-  confidence: number;
-  clarity: number;
-  average_novelty: float;
-  max_novelty: float;
+export interface TrackClassification {
   all_class_confidences?: null | Record<string, number>;
-  confident_tag: string;
-  prediction_frames: number[];
-  predictions: integer[][];
+  confidence: number;
+  confident: boolean
+  clarity?: number;
+  classify_time?: Seconds;
+  tag: string;
+  message?: string;
   model_id: integer;
-  //prediction_frames:
-
+  rat_thresh_version?: string;
   // Used in api when calculating good tags
   name?: string;
-
-  tag: string;
-  message?: string;
   model_used?: string;
-  raw_tag?: string;
-
-}
-
-export type MinimalTrackClassifications  =  MinimalTrackClassification[];
-
-
-export interface MinimalTrackClassification {
-  classify_time?: Seconds;
-  confidence: integer;
-  clarity?: integer;
-  all_class_confidences?: null | Record<string, number>;
-  name: string;
-
-  tag: string;
-  message?: string;
-  model_used?: string;
-  raw_tag?: string;
-  confident: boolean
   threshold_used?: FloatZeroToOne
+
+  // just used for metadata uploaded in the field will become deprecated
+  label?: string;
+  confident_tag?: string;
 }
+
+export type TrackClassifications  =  TrackClassification[];
 
 
  export interface MinimalTrack{
@@ -140,7 +120,7 @@ export interface MinimalTrackRequestData {
   frame_start?: integer;
   frame_end?: integer;
   positions?: TrackFramePosition[];
-  predictions?: MinimalTrackClassification[];
+  predictions?: TrackClassification[];
 
   // Fields used in api when calculating good tracks/tags
   confidence?: number;

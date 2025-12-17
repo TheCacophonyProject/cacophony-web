@@ -10,7 +10,7 @@ export const getMask = async (
   deviceId: DeviceId,
   groupId: GroupId,
   atTime: Date,
-): Promise<Uint8Array> => {
+): Promise<Uint8Array | null> => {
   // NOTE: When track is created, we need to check against any
   //  mask regions set on the device at the time of the recording.
   const deviceHistoryEntry = await DeviceHistory.findOne({
