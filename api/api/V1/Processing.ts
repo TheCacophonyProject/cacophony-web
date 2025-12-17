@@ -10,7 +10,7 @@ import {
   updateMetadata,
 } from "../V1/recordingUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
-import { trackIsMasked } from "@api/V1/trackMasking.js";
+import { trackIsMasked, getMask, maskMatch } from "@api/V1/trackMasking.js";
 import ApiMinimalTracksRequestSchema from "@schemas/api/fileProcessing/MinimalTracksRequestData.schema.json" with { type: "json" };
 import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" with { type: "json" };
 import ApiMinimalTrackClassifications from "@schemas/api/fileProcessing/MinimalTrackClassifications.schema.json" with { type: "json" };
@@ -50,6 +50,7 @@ import type {
   MinimalTrackClassification,
   MinimalTrack,
 } from "@/../types/api/fileProcessing.js";
+import { promises } from "node:dns";
 
 const NULL_TRACK_ID = 1;
 
@@ -368,7 +369,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/v1/:id/tracksAndTags Add tracks and tags to a recording
+   * @api {post} /api/v1/:id/tracks-and-tags Add tracks and tags to a recording
    * @apiName PostTracksAndTags
    * @apiGroup Processing
    *
@@ -385,7 +386,7 @@ export default function (app: Application, baseUrl: string) {
    *
    */
   app.post(
-    `${apiUrl}/:id/tracksAndTags`,
+    `${apiUrl}/:id/tracks-and-tags`,
     extractJwtAuthorisedSuperAdminUser,
     validateFields([
       idOf(param("id")),
@@ -405,12 +406,15 @@ export default function (app: Application, baseUrl: string) {
       const data = response.locals.data;
       const trackIds: number[] = [];
       const tracks = [];
+
+      const deviceId = recording.DeviceId;
+      const groupId = recording.GroupId;
+      const atTime = recording.recordingDateTime;
+
+      const mask = await getMask(deviceId, groupId, atTime);
       for (const trackData of data) {
-        const isMasked = await isTrackMasked(
-          recording,
-          trackData,
-          request.body.algorithmId,
-        );
+        const isMasked = mask && maskMatch(mask, trackData);
+
         if (isMasked) {
           continue;
         }
@@ -425,6 +429,7 @@ export default function (app: Application, baseUrl: string) {
 
       const trackTags = [];
       const trackTagData = [];
+      const trackDataPromises = [];
       for (let i = 0; i < modelTracks.length; i++) {
         const track = tracks[i];
         const trackData = data[i];
@@ -459,7 +464,7 @@ export default function (app: Application, baseUrl: string) {
         }
 
         delete trackData.predictions;
-        await Track.saveTrackData(track.id, trackData);
+        trackDataPromises.push(Track.saveTrackData(track.id, trackData));
       }
 
       const modelTrackTags = await TrackTag.bulkCreate(trackTags);
@@ -467,9 +472,12 @@ export default function (app: Application, baseUrl: string) {
         const modelTrackTag = modelTrackTags[i];
         if (modelTrackTag.model) {
           // Save the additional Track metadata to object storage
-          await Track.saveTrackTagData(modelTrackTag.id, trackTagData[i]);
+          trackDataPromises.push(
+            Track.saveTrackTagData(modelTrackTag.id, trackTagData[i]),
+          );
         }
       }
+      await Promise.all(trackDataPromises);
 
       return successResponse(response, "Tracks added.", { trackIds });
     },
@@ -478,7 +486,6 @@ export default function (app: Application, baseUrl: string) {
   const isTrackMasked = async (
     recording: Recording,
     trackData: MinimalTrackRequestData,
-    algorithmId: number,
   ): Promise<boolean> => {
     const deviceId = recording.DeviceId;
     const groupId = recording.GroupId;
@@ -499,8 +506,8 @@ export default function (app: Application, baseUrl: string) {
   ): MinimalTrack => {
     const newTrack = {
       AlgorithmId: algorithmId,
-      startSeconds: trackData.start_s || 0,
-      endSeconds: trackData.end_s || 0,
+      startSeconds: trackData.start_s,
+      endSeconds: trackData.end_s,
       minFreqHz: null,
       maxFreqHz: null,
       RecordingId: recording.id,
@@ -523,11 +530,7 @@ export default function (app: Application, baseUrl: string) {
     trackData: MinimalTrackRequestData,
     algorithmId: number,
   ): Promise<number> => {
-    const discardMaskedTrack = await isTrackMasked(
-      recording,
-      trackData,
-      algorithmId,
-    );
+    const discardMaskedTrack = await isTrackMasked(recording, trackData);
     if (discardMaskedTrack) {
       return 1;
     }
@@ -635,7 +638,7 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/processing/:id/tracks/:trackId/tags Add tag to track
    * @apiName PostTrackTag
    * @apiGroup Processing
-   * @apiDeprecated Use /api/v1/processing/:id/tracks/:trackId/tagsBulk
+   * @apiDeprecated Use /api/v1/processing/:id/tracks/:trackId/tags-bulk
 
    *
    * Requires super-admin user credentials
@@ -692,8 +695,8 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/v1/processing/:id/tracks/:trackId/tagsBulk Add tags to track
-   * @apiName PostTrackTag
+   * @api {post} /api/v1/processing/:id/tracks/:trackId/tags-bulk Add tags to track
+   * @apiName PostTrackTagsBulk
    * @apiGroup Processing
    *
    * Requires super-admin user credentials
@@ -706,7 +709,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1ResponseError
    */
   app.post(
-    `${apiUrl}/:id/tracks/:trackId/tagsBulk`,
+    `${apiUrl}/:id/tracks/:trackId/tags-bulk`,
     extractJwtAuthorisedSuperAdminUser,
     validateFields([
       idOf(param("id")),
@@ -757,14 +760,18 @@ export default function (app: Application, baseUrl: string) {
 
         const trackTagIds = [];
         const modelTrackTags = await TrackTag.bulkCreate(trackTags);
+        const trackTagDataPromises = [];
         for (let i = 0; i < modelTrackTags.length; i++) {
           const modelTrackTag = modelTrackTags[i];
           trackTagIds.push(modelTrackTag.id);
           if (modelTrackTag.model) {
             // Save the additional Track metadata to object storage
-            await Track.saveTrackTagData(modelTrackTag.id, trackTagData[i]);
+            trackTagDataPromises.push(
+              Track.saveTrackTagData(modelTrackTag.id, trackTagData[i]),
+            );
           }
         }
+        await Promise.all(trackTagDataPromises);
 
         return successResponse(response, "Track tags added.", {
           trackTagIds: trackTagIds,
