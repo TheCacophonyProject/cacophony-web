@@ -413,7 +413,6 @@ function irradiance(date: Date, lat: number, lon: number) {
   let Edir;
   let Ediff;
   let Etot = 0;
-  let luxNormalised;
 
   if (angleAboveHorizonDeg >= 0) {
     // air mass
@@ -437,7 +436,7 @@ function irradiance(date: Date, lat: number, lon: number) {
     Ediff = E0 * Tdiff * (1 + 0.5 * Math.pow(Math.cos(sunAltitudeRad), 2));
     Etot = Edir + Ediff;
   }
-  luxNormalised = Math.max(0, Math.min(1, (Etot * 120) / 300_000));
+  const luxNormalised = Math.max(0, Math.min(1, (Etot * 120) / 300_000));
   /* ------------------------------------------------------------------
    *  Convert to lux – approximate luminous efficacy of sunlight:
    *      ~120 lm/W for the full solar spectrum (typical daylight)
@@ -765,7 +764,7 @@ const audioTimes = (offset: {
     const timeCenter =
       (percentageCovered / recordingsInPeriod) * i +
       (Math.random() - 0.5) * 2.5;
-    const timeWidth = 0.5;
+    const timeWidth = 0.9;
     times.push({
       x0: offset.x0 + (timeCenter - timeWidth / 2),
       x1: offset.x0 + (timeCenter + timeWidth / 2),
@@ -1246,14 +1245,14 @@ watch(customRecordingWindowStop, async () => {
                   <div
                     v-for="(offset, index) in audioBarOffsets"
                     :key="index"
-                    class="position-absolute rounded-4 overflow-hidden audio-bar"
+                    class="position-absolute rounded-4 overflow-hidden audio-bar align-items-center d-flex"
                     :style="`left: ${offset.x0}%;width: ${offset.x1 - offset.x0}%;`"
                   >
                     <div
                       v-for="(time, index) in audioTimes(offset)"
                       :key="index"
-                      class="position-absolute audio-item"
-                      :style="`left: ${time.x0}%;width: ${time.x1 - time.x0}%;height: 100%;`"
+                      class="position-absolute audio-item rounded-circle"
+                      :style="`left: ${time.x0}%;width: ${time.x1 - time.x0}%;height: 50%;`"
                     />
                   </div>
                 </div>
@@ -1565,7 +1564,7 @@ watch(customRecordingWindowStop, async () => {
   background-color: color-mix(in oklch, green, transparent 10%);
 }
 .audio-item {
-  background-color: var(--cp-color-green-800);
+  background-color: rgba(255, 255, 255, 0.5);
 }
 .sun-curve {
   fill: var(--cp-color-green-500);
