@@ -89,7 +89,7 @@ export interface TrackClassification {
 
   // Used in api when calculating good tags
   name?: string;
-  // just used for metadata uploaded in the field will become deprecated
+  // just used for metadata uploaded in the field will become deprecated once all pi classifiers are updated
   label?: string;
   confident_tag?: string;
 }

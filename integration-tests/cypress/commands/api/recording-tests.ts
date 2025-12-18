@@ -719,14 +719,14 @@ export function trackResponseFromSet(
       if (
         track.predictions &&
         track.predictions.length &&
-        track.predictions[0].confident_tag !== undefined
+        track.predictions[0].confident
       ) {
-        if (filtered_tags.indexOf(track.predictions[0].confident_tag) === -1) {
+        if (filtered_tags.indexOf(track.predictions[0].tag) === -1) {
           filtered = false;
         }
         newTrack.tags = [
           {
-            what: track.predictions[0].confident_tag,
+            what: track.predictions[0].tag,
             automatic: true,
             trackId: -99,
             model: "Master",
