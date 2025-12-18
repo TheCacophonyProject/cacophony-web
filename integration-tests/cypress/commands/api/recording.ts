@@ -427,8 +427,8 @@ Cypress.Commands.add(
         const prediction = trackT.predictions.pop();
         for (const tag of track) {
           const trackTag = JSON.parse(JSON.stringify(prediction));
-          trackTag.label = tag;
-          trackTag.confident_tag = tag;
+          trackTag.confident = true;
+          trackTag.tag = tag;
           trackTag.confidence = 90;
           trackT.predictions.push(trackTag);
         }

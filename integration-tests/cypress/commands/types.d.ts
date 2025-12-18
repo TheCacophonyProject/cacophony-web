@@ -492,8 +492,9 @@ export interface ApiTrackSet {
   predictions: (
     | {
         model_id: number;
-        confident_tag?: string;
+        tag: string;
         confidence?: number;
+        confident: boolean;
       }
     | any
   )[];

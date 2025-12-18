@@ -123,7 +123,7 @@ describe("Recording filtering", () => {
     const recording3: ApiRecordingSet = JSON.parse(
       JSON.stringify(TEMPLATE_THERMAL_RECORDING),
     );
-    recording3.metadata.tracks[0].predictions[0].confident_tag =
+    recording3.metadata.tracks[0].predictions[0].tag =
       "false-positive";
 
     let expectedRecording3: ApiThermalRecordingResponse;
@@ -801,7 +801,7 @@ describe("Recording filtering", () => {
       const recording19: ApiRecordingSet = JSON.parse(
         JSON.stringify(TEMPLATE_THERMAL_RECORDING),
       );
-      recording19.metadata.tracks[0].predictions[0].confident_tag = thistag;
+      recording19.metadata.tracks[0].predictions[0].tag = thistag;
 
       let expectedRecording19: ApiThermalRecordingResponse;
       cy.apiRecordingAdd(
