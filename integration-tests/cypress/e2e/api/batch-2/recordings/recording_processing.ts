@@ -122,6 +122,55 @@ describe("Recordings - processing tests", () => {
       );
     });
 
+
+    it("Recordings with old format", () => {
+      const templateWithTrack = JSON.parse(JSON.stringify(TEMPLATE_THERMAL_RECORDING));
+      const recording18 = TestCreateRecordingData(templateWithTrack);
+      const firstTag = recording18.metadata.tracks[0].predictions[0];
+
+      firstTag.raw_tag = firstTag.tag;
+      firstTag.confident_tag = firstTag.tag;
+      delete firstTag.confident;
+      delete firstTag.tag;
+      cy.log("Create recording with deprecated metadata format");
+      cy.apiRecordingAdd(
+        "rpCamera1",
+        recording18,
+        "oneframe.cptv",
+        "rpRecording18",
+      ).then(() => {
+        const expectedRecording18 = TestCreateExpectedRecordingData(
+          templateExpectedThermalRecording,
+          "rpRecording18",
+          "rpCamera1",
+          "rpGroup",
+          null,
+          recording18,
+        );
+        expectedRecording18.tracks[0].filtered = false;
+        expectedRecording18.tracks[0].tags = [
+            {
+              what: "cat",
+              automatic: true,
+              confidence: 97,
+              model: "Master",
+              trackId: -99,
+              id: -99,
+              path: "all",
+            },
+          ];
+        expectedRecording18.processingState =RecordingProcessingState.Finished;
+        cy.log("Check track has been made with tag");
+          cy.apiRecordingCheck(
+            "rpGroupAdmin",
+            "rpRecording18",
+            expectedRecording18,
+            EXCLUDE_ALL_IDS,
+          );
+
+      });
+    });
+
     it("Tracking stage can bulk upload", () => {
       const recording18 = TestCreateRecordingData(templateRecording);
       cy.apiRecordingAdd(
