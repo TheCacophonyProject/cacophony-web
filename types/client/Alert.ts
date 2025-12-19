@@ -8,8 +8,9 @@ import type {
   ApiAlertResponse,
   ApiPostAlertRequestBody,
 } from "@typedefs/api/alerts";
-import { type CacophonyApiClient } from "./api";
-import { DEFAULT_AUTH_ID, type FetchResult, type TestHandle } from "./types";
+import type{  CacophonyApiClient } from "./api";
+import type {FetchResult,TestHandle} from "./types";
+import { DEFAULT_AUTH_ID } from "./types";
 
 export const getAlertsForLocation = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
   locationId: LocationId,

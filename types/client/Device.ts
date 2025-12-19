@@ -23,16 +23,18 @@ import {
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { ApiTrackResponse } from "@typedefs/api/track";
-import { type CacophonyApiClient, optionalQueryString, unwrapLoadedResource } from "./api";
-import {
-    type BatteryInfo,
-    type BatteryInfoEvent,
-    DEFAULT_AUTH_ID,
-    type FetchResult,
-    type LoadedResource,
-    type LoggedInDeviceCredentials,
-    type TestHandle,
+import type{  CacophonyApiClient } from "./api";
+
+import { optionalQueryString, unwrapLoadedResource } from "./api";
+import type{
+     BatteryInfo,
+     BatteryInfoEvent,
+     FetchResult,
+     LoadedResource,
+     LoggedInDeviceCredentials,
+     TestHandle,
 } from "./types";
+import { DEFAULT_AUTH_ID } from "./types";
 
 const deleteDevice = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
   projectNameOrId: string | ProjectId,
