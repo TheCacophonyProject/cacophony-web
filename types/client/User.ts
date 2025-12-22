@@ -1,12 +1,13 @@
-import { type CacophonyApiClient, unwrapLoadedResource } from "./api";
+import type{  CacophonyApiClient } from "./api";
+import { unwrapLoadedResource } from "./api";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import type { GroupId, UserId } from "@typedefs/api/common";
 import type{
-  type FetchResult,
-  type JwtToken,
-  type LoadedResource,
-  type LoggedInUserWithCredentials,
-  type TestHandle,
+   FetchResult,
+   JwtToken,
+   LoadedResource,
+   LoggedInUserWithCredentials,
+   TestHandle,
 } from "./types";
 import { DEFAULT_AUTH_ID } from "./types";
 
