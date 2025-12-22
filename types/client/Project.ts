@@ -1,5 +1,7 @@
 import { DEFAULT_AUTH_ID } from "./types";
-import { type CacophonyApiClient, unwrapLoadedResource } from "./api";
+import { unwrapLoadedResource } from "./api";
+import type{  CacophonyApiClient } from "./api";
+
 import type{  FetchResult,  LoadedResource,  TestHandle } from "./types";
 import type { GroupId as ProjectId, UserId } from "@typedefs/api/common";
 import type {

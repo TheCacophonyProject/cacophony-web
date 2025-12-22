@@ -15,11 +15,12 @@ import type {
   DeviceEvent,
   IsoFormattedString,
 } from "@typedefs/api/event";
-import {
-  type DeviceEventType,
-  DeviceType,
-  type DeviceTypeUnion,
+import type {
+   DeviceEventType,
+   DeviceTypeUnion,
 } from "@typedefs/api/consts";
+import {DeviceType} from "@typedefs/api/consts";
+
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { ApiTrackResponse } from "@typedefs/api/track";

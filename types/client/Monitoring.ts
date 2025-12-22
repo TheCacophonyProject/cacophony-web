@@ -6,7 +6,7 @@ import type {
   ApiVisitResponse,
   MonitoringPageCriteria,
 } from "@typedefs/api/monitoring";
-import type { RecordingType } from "@typedefs/api/consts.ts";
+import type { RecordingType } from "@typedefs/api/consts";
 import { RecordingType as ConcreteRecordingType } from "@typedefs/api/consts";
 import type { CacophonyApiClient } from "./api";
 import type {   FetchResult,  TestHandle } from "./types";
