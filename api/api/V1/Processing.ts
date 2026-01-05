@@ -464,7 +464,9 @@ export default function (app: Application, baseUrl: string) {
         }
 
         delete trackData.predictions;
-        trackDataPromises.push(Track.saveTrackData(track.id, trackData));
+        trackDataPromises.push(
+          Track.saveTrackData(modelTracks[i].id, trackData),
+        );
       }
 
       const modelTrackTags = await TrackTag.bulkCreate(trackTags);
@@ -478,7 +480,6 @@ export default function (app: Application, baseUrl: string) {
         }
       }
       await Promise.all(trackDataPromises);
-
       return successResponse(response, "Tracks added.", { trackIds });
     },
   );
