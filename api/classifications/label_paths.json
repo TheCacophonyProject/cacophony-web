@@ -19,6 +19,7 @@
   "otter": "all.mammal.mustelid.otter",
   "pig": "all.mammal.pig",
   "possum": "all.mammal.possum",
+  "agouti": "all.mammal.agouti",
   "rodent": "all.mammal.rodent",
   "mouse": "all.mammal.rodent.mouse",
   "rat": "all.mammal.rodent.rat",

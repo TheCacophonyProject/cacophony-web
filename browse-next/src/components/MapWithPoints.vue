@@ -311,7 +311,7 @@ const _onZoomChange = (_zoomLevel: number) => {
 const tileLayers: Record<string, Layer> = {};
 let showAttribution = false;
 let map: null | LeafletMap = null;
-let currentLayer = "OpenTopoMap Basemap";
+let currentLayer = "OpenStreetMap Basemap";
 const maybeShowAttributionForCurrentLayer = () => {
   // Should be current layer
   const tileLayer = tileLayers[currentLayer];
