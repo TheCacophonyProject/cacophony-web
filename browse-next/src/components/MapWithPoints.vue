@@ -215,11 +215,11 @@ const mapLayers = [
     url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
     attribution:
       "Map data: &copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors, <a href=\"http://viewfinderpanoramas.org\">SRTM</a> | Map style: &copy; <a href=\"https://opentopomap.org\">OpenTopoMap</a> (<a href=\"https://creativecommons.org/licenses/by-sa/3.0/\">CC-BY-SA</a>)",
-    visible: false,
+    visible: true,
   },
   {
     name: "OpenStreetMap Basemap",
-    visible: true,
+    visible: false,
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     attribution:
       "&copy; <a href=\"http://osm.org/copyright\">OpenStreetMap</a> contributors",
@@ -311,7 +311,7 @@ const _onZoomChange = (_zoomLevel: number) => {
 const tileLayers: Record<string, Layer> = {};
 let showAttribution = false;
 let map: null | LeafletMap = null;
-let currentLayer = "OpenStreetMap Basemap";
+let currentLayer = "OpenTopoMap Basemap";
 const maybeShowAttributionForCurrentLayer = () => {
   // Should be current layer
   const tileLayer = tileLayers[currentLayer];
