@@ -55,7 +55,6 @@ describe("Tracks: add, check, delete", () => {
     start_s: 1,
     end_s: 3,
     positions: positions1,
-    label: "a label",
     clarity: 0.9,
     message: "a message",
     tag: "a tag",

@@ -241,10 +241,10 @@ export const TEMPLATE_TRACK: ApiTrackSet = {
   ],
   predictions: [
     {
-      label: "cat",
-      confident_tag: "cat",
-      confidence: 0.97,
-      clarity: 0.949,
+      tag: "cat",
+      confident: true,
+      confidence: 97,
+      clarity: 95,
       all_class_confidences: {
         bird: 0.0,
         cat: 0.97,
@@ -285,7 +285,7 @@ export const TEMPLATE_EXPECTED_TRACK: ApiTrackResponse = {
     {
       what: "cat",
       automatic: true,
-      confidence: 0.97,
+      confidence: 97,
       model: "Master",
       trackId: NOT_NULL,
       id: NOT_NULL,

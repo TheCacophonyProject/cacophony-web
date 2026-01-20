@@ -138,7 +138,7 @@ export class Track extends ModelStaticCommon<Track> {
     }
   }
 
-  private async saveTrackTagData(
+  static async saveTrackTagData(
     trackTagId: TrackTagId,
     newData: TrackTagData,
     existingData = {},
@@ -225,7 +225,7 @@ export class Track extends ModelStaticCommon<Track> {
       },
     );
     if (userData) {
-      await this.saveTrackTagData(trackTag.id, userData);
+      await Track.saveTrackTagData(trackTag.id, userData);
     }
     await this.updateIsFiltered();
     return trackTag;
@@ -241,7 +241,7 @@ export class Track extends ModelStaticCommon<Track> {
     if (!tag || tag.TrackId !== trackId) {
       return null;
     }
-    await this.saveTrackTagData(tagId, data, tag.data);
+    await Track.saveTrackTagData(tagId, data, tag.data);
     return tag;
   }
 
@@ -260,6 +260,10 @@ export class Track extends ModelStaticCommon<Track> {
         ? data.name
         : null;
     const used = userId !== null || modelName === AI_MASTER;
+    // confidence will always be over 50 if it was already put in the 0-100 range
+    if (confidence < 1) {
+      confidence = Math.round(100 * confidence);
+    }
     const tag = (await this.createTrackTag({
       what,
       confidence,
@@ -270,7 +274,7 @@ export class Track extends ModelStaticCommon<Track> {
     })) as TrackTag;
     if (modelName) {
       // Save the additional Track metadata to object storage
-      await this.saveTrackTagData(tag.id, data as TrackTagData);
+      await Track.saveTrackTagData(tag.id, data as TrackTagData);
     }
 
     if (updateFiltered) {

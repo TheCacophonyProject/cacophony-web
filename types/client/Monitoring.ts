@@ -6,10 +6,11 @@ import type {
   ApiVisitResponse,
   MonitoringPageCriteria,
 } from "@typedefs/api/monitoring";
-import type { RecordingType } from "@typedefs/api/consts.ts";
+import type { RecordingType } from "@typedefs/api/consts";
 import { RecordingType as ConcreteRecordingType } from "@typedefs/api/consts";
 import type { CacophonyApiClient } from "./api";
-import { DEFAULT_AUTH_ID, type FetchResult, type TestHandle } from "./types";
+import type {   FetchResult,  TestHandle } from "./types";
+import { DEFAULT_AUTH_ID } from "./types";
 
 export interface VisitsQueryResult {
   statusCode: number;

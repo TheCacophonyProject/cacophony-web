@@ -56,6 +56,34 @@ declare namespace Cypress {
       statusCode?: number
     ): any;
 
+
+    /** Post to /api/fileProcessing/:id/tracksAndTags
+     * recordingId is looked up using recordingName
+     * other parameters are passed to the endpoint transparently
+     * Optionally: check for a non-200 statusCode
+     */
+    processingApiTracksAndTagsPost(
+      userName: string,
+      trackName: string,
+      recordingName: string,
+      data: any[],
+      algorithmId: number,
+      statusCode?: number
+    ): any;
+
+    /** Post to /api/fileProcessing/:id/tracks/:trackId/tagsBulk
+     * recordingId is looked up using recordingName
+     * other parameters are passed to the endpoint transparently
+     * Optionally: check for a non-200 statusCode
+     */
+    processingApiTracksTagsBulkPost(
+      userName: string,
+      trackName: string,
+      recordingName: string,
+      data: any,
+      statusCode?: number
+    ): any;
+
     /** Post to /api/fileProcessing/:id/tracks/:trackId/tags
      * recordingId is looked up using recordingName
      * other parameters are passed to the endpoint transparently

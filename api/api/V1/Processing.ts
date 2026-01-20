@@ -10,8 +10,11 @@ import {
   updateMetadata,
 } from "../V1/recordingUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
-import { trackIsMasked } from "@api/V1/trackMasking.js";
+import { trackIsMasked, getMask, maskMatch } from "@api/V1/trackMasking.js";
+import ApiMinimalTracksRequestSchema from "@schemas/api/fileProcessing/MinimalTracksRequestData.schema.json" with { type: "json" };
 import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" with { type: "json" };
+import ApiTrackClassifications from "@schemas/api/fileProcessing/TrackClassifications.schema.json" with { type: "json" };
+
 import ApiThumbnailInfo from "@schemas/api/fileProcessing/ThumbnailInfo.schema.json" with { type: "json" };
 import { jsonSchemaOf } from "../schema-validation.js";
 import { booleanOf, idOf } from "../validation-middleware.js";
@@ -31,13 +34,24 @@ import {
   fetchUnauthorizedRequiredFlatRecordingById,
 } from "@api/extract-middleware.js";
 import { Track } from "@/models/Track.js";
+
 import { DeviceHistory } from "@models/DeviceHistory.js";
 import Sequelize, { Op } from "sequelize";
 import type { TrackId } from "@typedefs/api/common.js";
 import { openS3 } from "@models/util/util.js";
+
+import type { TrackTagData } from "@/../types/api/trackTag.js";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
-import { TrackTag } from "@models/TrackTag.js";
+import { TrackTag, AI_MASTER } from "@models/TrackTag.js";
 import { Recording } from "@models/Recording.js";
+
+import type {
+  MinimalTrackRequestData,
+  TrackClassification,
+  MinimalTrack,
+} from "@/../types/api/fileProcessing.js";
+import { promises } from "node:dns";
+
 const NULL_TRACK_ID = 1;
 
 export default function (app: Application, baseUrl: string) {
@@ -314,8 +328,10 @@ export default function (app: Application, baseUrl: string) {
         }
         return successResponse(response, "Processing finished.");
       } else {
-        recording.processingState =
-          `${recording.processingState}.failed` as RecordingProcessingState;
+        if (!recording.isFailed()) {
+          recording.processingState =
+            `${recording.processingState}.failed` as RecordingProcessingState;
+        }
         recording.processingFailedCount += 1;
         await recording.save();
 
@@ -353,9 +369,191 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
+   * @api {post} /api/v1/:id/tracks-and-tags Add tracks and tags to a recording
+   * @apiName PostTracksAndTags
+   * @apiGroup Processing
+   *
+   * Requires super-admin user credentials
+   *
+   * @apiParam {JSON} data Data which defines the tracks and tags (type specific).
+   * @apiParam {Number} AlgorithmId Database ID of the Tracking algorithm details retrieved from
+   * (#FileProcessing:Algorithm) request
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {int[]} trackIds of the newly created track.
+   *
+   * @apiUse V1ResponseError
+   *
+   */
+  app.post(
+    `${apiUrl}/:id/tracks-and-tags`,
+    extractJwtAuthorisedSuperAdminUser,
+    validateFields([
+      idOf(param("id")),
+      body("data").custom(jsonSchemaOf(ApiMinimalTracksRequestSchema)),
+      idOf(body("algorithmId")),
+    ]),
+    parseJSONField(body("data")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const recording = await Recording.findByPk(request.params.id);
+      if (!recording) {
+        return next(
+          new AuthorizationError(
+            `Could not find a Recording with an id of '${request.params.id}'`,
+          ),
+        );
+      }
+      const data = response.locals.data;
+      const trackIds: number[] = [];
+      const tracks = [];
+
+      const deviceId = recording.DeviceId;
+      const groupId = recording.GroupId;
+      const atTime = recording.recordingDateTime;
+
+      const mask = await getMask(deviceId, groupId, atTime);
+      for (const trackData of data) {
+        const isMasked = mask && maskMatch(mask, trackData);
+
+        if (isMasked) {
+          continue;
+        }
+        const track = prepareTrackToSave(
+          recording,
+          trackData,
+          request.body.algorithmId,
+        );
+        tracks.push(track);
+      }
+      const modelTracks = await Track.bulkCreate(tracks);
+
+      const trackTags = [];
+      const trackTagData = [];
+      const trackDataPromises = [];
+      for (let i = 0; i < modelTracks.length; i++) {
+        const track = tracks[i];
+        const trackData = data[i];
+        trackIds.push(modelTracks[i].id);
+
+        for (const pred of trackData.predictions) {
+          const modelName = pred.name;
+          const used = modelName === AI_MASTER;
+          let confidence = pred.confidence;
+          // confidence will always be over 50 if it was already put in the 0-100 range
+          if (confidence < 1) {
+            confidence = Math.round(100 * confidence);
+          }
+          const predData = pred as TrackTagData;
+          if (!pred.confident) {
+            predData.raw_tag = pred.tag;
+            pred.tag = "unidentified";
+          }
+
+          const tag = {
+            TrackId: modelTracks[i].id,
+            what: pred.tag,
+            confidence: pred.confidence,
+            automatic: true,
+            model: modelName,
+            UserId: null,
+            used,
+          } as TrackTag;
+          trackTags.push(tag);
+
+          trackTagData.push(predData);
+        }
+
+        delete trackData.predictions;
+        trackDataPromises.push(
+          Track.saveTrackData(modelTracks[i].id, trackData),
+        );
+      }
+
+      const modelTrackTags = await TrackTag.bulkCreate(trackTags);
+      for (let i = 0; i < modelTrackTags.length; i++) {
+        const modelTrackTag = modelTrackTags[i];
+        if (modelTrackTag.model) {
+          // Save the additional Track metadata to object storage
+          trackDataPromises.push(
+            Track.saveTrackTagData(modelTrackTag.id, trackTagData[i]),
+          );
+        }
+      }
+      await Promise.all(trackDataPromises);
+      return successResponse(response, "Tracks added.", { trackIds });
+    },
+  );
+
+  const isTrackMasked = async (
+    recording: Recording,
+    trackData: MinimalTrackRequestData,
+  ): Promise<boolean> => {
+    const deviceId = recording.DeviceId;
+    const groupId = recording.GroupId;
+    const atTime = recording.recordingDateTime;
+    if (recording.type === RecordingType.ThermalRaw) {
+      const positions = trackData && trackData.positions;
+      if (positions) {
+        return trackIsMasked(deviceId, groupId, atTime, positions);
+      }
+    }
+    return false;
+  };
+
+  const prepareTrackToSave = (
+    recording: Recording,
+    trackData: MinimalTrackRequestData,
+    algorithmId: number,
+  ): MinimalTrack => {
+    const newTrack = {
+      AlgorithmId: algorithmId,
+      startSeconds: trackData.start_s,
+      endSeconds: trackData.end_s,
+      minFreqHz: null,
+      maxFreqHz: null,
+      RecordingId: recording.id,
+    };
+    if (recording.type === RecordingType.Audio) {
+      newTrack.minFreqHz = trackData.minFreq || 0;
+      newTrack.maxFreqHz = trackData.maxFreq || 0;
+    }
+    delete trackData.start_s;
+    delete trackData.end_s;
+    return newTrack;
+  };
+
+  const addTrack = async (
+    recording: Recording,
+    trackData: MinimalTrackRequestData,
+    algorithmId: number,
+  ): Promise<number> => {
+    const discardMaskedTrack = await isTrackMasked(recording, trackData);
+    if (discardMaskedTrack) {
+      return 1;
+    }
+    const predictions = trackData.predictions;
+    const newTrack = {
+      data: trackData,
+      AlgorithmId: algorithmId,
+      startSeconds: trackData.start_s || 0,
+      endSeconds: trackData.end_s || 0,
+      minFreqHz: null,
+      maxFreqHz: null,
+      RecordingId: recording.id,
+    };
+    delete newTrack.data.predictions;
+    if (recording.type === RecordingType.Audio) {
+      newTrack.minFreqHz = trackData.minFreq || 0;
+      newTrack.maxFreqHz = trackData.maxFreq || 0;
+    }
+    const track = await recording.addTrack(newTrack);
+    return track.id;
+  };
+  /**
    * @api {post} /api/v1/processing/:id/tracks Add track to recording
    * @apiName PostTrack
    * @apiGroup Processing
+   * @apiDeprecated Use /api/v1/processing/:id/tracksAndTags
    *
    * Requires super-admin user credentials
    *
@@ -387,39 +585,9 @@ export default function (app: Application, baseUrl: string) {
           ),
         );
       }
-      const deviceId = recording.DeviceId;
-      const groupId = recording.GroupId;
-      const atTime = recording.recordingDateTime;
-      let discardMaskedTrack = false;
-      let trackId: TrackId = 1;
       const data = response.locals.data;
-      if (recording.type === RecordingType.ThermalRaw) {
-        const positions = data && data.positions;
-        if (positions) {
-          discardMaskedTrack = await trackIsMasked(
-            deviceId,
-            groupId,
-            atTime,
-            positions,
-          );
-        }
-      }
-      if (!discardMaskedTrack) {
-        const newTrack = {
-          data,
-          AlgorithmId: request.body.algorithmId,
-          startSeconds: data.start_s || 0,
-          endSeconds: data.end_s || 0,
-          minFreqHz: null,
-          maxFreqHz: null,
-        };
-        if (recording.type === RecordingType.Audio) {
-          newTrack.minFreqHz = data.minFreq || 0;
-          newTrack.maxFreqHz = data.maxFreq || 0;
-        }
-        const track = await recording.addTrack(newTrack);
-        trackId = track.id;
-      }
+
+      const trackId = await addTrack(recording, data, request.body.algorithmId);
       // If it gets filtered out, we can just give it a trackId of 1, and then just not do anything when you try to add
       // trackTags to tag id 1.
       return successResponse(response, "Track added.", {
@@ -467,6 +635,8 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/processing/:id/tracks/:trackId/tags Add tag to track
    * @apiName PostTrackTag
    * @apiGroup Processing
+   * @apiDeprecated Use /api/v1/processing/:id/tracks/:trackId/tags-bulk
+
    *
    * Requires super-admin user credentials
    *
@@ -518,6 +688,97 @@ export default function (app: Application, baseUrl: string) {
       return successResponse(response, "Track tag added.", {
         trackTagId: 1,
       });
+    },
+  );
+
+  /**
+   * @api {post} /api/v1/processing/:id/tracks/:trackId/tags-bulk Add tags to track
+   * @apiName PostTrackTagsBulk
+   * @apiGroup Processing
+   *
+   * Requires super-admin user credentials
+   *
+   * @apiParam {JSON} data Describing track tags.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {int[]} trackTagIds Unique ids of the newly created track tags.
+   *
+   * @apiUse V1ResponseError
+   */
+  app.post(
+    `${apiUrl}/:id/tracks/:trackId/tags-bulk`,
+    extractJwtAuthorisedSuperAdminUser,
+    validateFields([
+      idOf(param("id")),
+      idOf(param("trackId")),
+      body("data").custom(jsonSchemaOf(ApiTrackClassifications)),
+    ]),
+    parseJSONField(body("data")),
+    (request, response, next) => {
+      const trackId = param("trackId");
+      const id = Number(extractValFromRequest(request, trackId));
+      if (id !== NULL_TRACK_ID) {
+        fetchUnauthorizedRequiredTrackById(trackId)(request, response, next);
+      } else {
+        response.locals.skip = true;
+        next();
+      }
+    },
+    async (request: Request, response: Response) => {
+      if (!response.locals.skip) {
+        const trackTags: TrackTag[] = [];
+        const trackTagData = [];
+        for (const pred of response.locals.data) {
+          const modelName = pred.name;
+          const used = modelName === AI_MASTER;
+          let confidence = pred.confidence;
+          // confidence will always be over 50 if it was already put in the 0-100 range
+          if (confidence < 1) {
+            confidence = Math.round(100 * confidence);
+          }
+          const predData = pred as TrackTagData;
+          if (!pred.confident) {
+            predData.raw_tag = pred.tag;
+            pred.tag = "unidentified";
+          }
+
+          const tag = {
+            TrackId: response.locals.track.id,
+            what: pred.tag,
+            confidence: pred.confidence,
+            automatic: true,
+            model: modelName,
+            UserId: null,
+            used,
+          } as TrackTag;
+          trackTags.push(tag);
+          trackTagData.push(predData);
+        }
+
+        const trackTagIds = [];
+        const modelTrackTags = await TrackTag.bulkCreate(trackTags);
+        const trackTagDataPromises = [];
+        for (let i = 0; i < modelTrackTags.length; i++) {
+          const modelTrackTag = modelTrackTags[i];
+          trackTagIds.push(modelTrackTag.id);
+          if (modelTrackTag.model) {
+            // Save the additional Track metadata to object storage
+            trackTagDataPromises.push(
+              Track.saveTrackTagData(modelTrackTag.id, trackTagData[i]),
+            );
+          }
+        }
+        await Promise.all(trackTagDataPromises);
+
+        return successResponse(response, "Track tags added.", {
+          trackTagIds: trackTagIds,
+        });
+      } else {
+        // Returns without creating track if this is a masked out track.
+        return successResponse(response, "Track tags added.", {
+          trackTagIds: 1,
+        });
+      }
     },
   );
 
