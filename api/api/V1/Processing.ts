@@ -517,12 +517,8 @@ export default function (app: Application, baseUrl: string) {
       newTrack.minFreqHz = trackData.minFreq || 0;
       newTrack.maxFreqHz = trackData.maxFreq || 0;
     }
-    if (trackData.start_s) {
-      delete trackData.start_s;
-    }
-    if (trackData.end_s) {
-      delete trackData.end_s;
-    }
+    delete trackData.start_s;
+    delete trackData.end_s;
     return newTrack;
   };
 
