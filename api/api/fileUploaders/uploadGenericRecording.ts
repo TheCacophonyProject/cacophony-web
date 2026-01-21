@@ -662,15 +662,20 @@ export const uploadGenericRecording =
       }
 
       // Work out which group and station to assign based on recordingDateTime, device history etc.
-      const {
-        deviceId,
-        groupId,
-        station: stationToAssignToRecording,
-      } = await assignGroupAndStationToRecording(
+      const groupAndStation = await assignGroupAndStationToRecording(
         recordingDevice,
         recordingTemplate.recordingDateTime,
         recordingTemplate.location,
       );
+      if (typeof groupAndStation === "string") {
+        await deleteUploads(uploadResults);
+        return next(new UnprocessableError(groupAndStation));
+      }
+      const {
+        deviceId,
+        groupId,
+        station: stationToAssignToRecording,
+      } = groupAndStation;
 
       if (!deviceId || !groupId) {
         // We can throw a 422 or similar
@@ -885,17 +890,27 @@ const assignGroupAndStationToRecording = async (
   deviceForRecording: Device,
   recordingDateTime: Date,
   recordingLocation?: LatLng,
-): Promise<{ groupId: GroupId; deviceId: DeviceId; station: Station }> => {
+): Promise<
+  | {
+      groupId: GroupId;
+      deviceId: DeviceId;
+      station: Station;
+    }
+  | string
+> => {
   let groupId: GroupId;
   let deviceId: DeviceId;
   let station: Station;
   if (recordingLocation) {
-    const { stationToAssignToRecording, deviceHistoryEntry } =
-      await maybeUpdateDeviceHistory(
-        deviceForRecording,
-        recordingLocation,
-        recordingDateTime,
-      );
+    const result = await maybeUpdateDeviceHistory(
+      deviceForRecording,
+      recordingLocation,
+      recordingDateTime,
+    );
+    if (typeof result === "string") {
+      return result;
+    }
+    const { stationToAssignToRecording, deviceHistoryEntry } = result;
     station = stationToAssignToRecording;
     deviceId = deviceHistoryEntry.DeviceId;
     groupId = deviceHistoryEntry.GroupId;

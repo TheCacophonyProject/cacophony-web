@@ -4,13 +4,15 @@ import type { ApiLoggedInUserResponse } from "../api/user";
 import { RecordingType, TagMode } from "../api/consts";
 import type { ApiRecordingResponse } from "../api/recording";
 import type { IsoFormattedString } from "../api/event";
+import {ProjectId} from "../api/common";
 
 export type JwtToken<_T> = string;
 export type TestHandle = string;
 export const DEFAULT_AUTH_ID = "default";
-export type UserName = TestHandle;
-export type DeviceName = TestHandle;
-export type ProjectName = TestHandle;
+export type TestUserHandle = { id: UserId, testId: TestHandle, type: "user" };
+export type TestDeviceHandle = { id: DeviceId, testId: TestHandle, type: "device" };
+export type TestProjectHandle = { id: ProjectId, testId: TestHandle, type: "project" };
+export type TestEntityHandle = { id: number, testId: TestHandle, type: "user" | "device" | "project" };
 
 export interface LoggedInUserWithCredentials {
   userData: ApiLoggedInUserResponse;

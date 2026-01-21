@@ -122,12 +122,17 @@ const uploadEvent = async (
           );
         }
         try {
-          await maybeUpdateDeviceHistory(
+          const result = await maybeUpdateDeviceHistory(
             device,
             { lat, lng },
             new Date(details["location"].updated),
             "config",
           );
+          if (typeof result === "string") {
+            return next(
+              new ClientError(`Failed to update device history: ${result}`),
+            );
+          }
         } catch (e) {
           const message = e?.message || "unknown error";
           if (

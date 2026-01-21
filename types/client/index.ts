@@ -116,4 +116,5 @@ export const TestApi = {
   Users,
   Recordings,
   registerCredentials: (authKey: TestHandle, creds: LoggedInDeviceCredentials | LoggedInUserAuth) => api.registerCredentials(authKey, creds),
+  //getCredentials: (authKey: TestHandle) => api.getCredentials(authKey),
 };

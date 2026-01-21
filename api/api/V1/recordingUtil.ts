@@ -598,10 +598,13 @@ export const maybeUpdateDeviceHistory = async (
   location: LatLng,
   dateTime: Date,
   setBy: DeviceHistorySetBy = "automatic",
-): Promise<{
-  stationToAssignToRecording: Station;
-  deviceHistoryEntry: DeviceHistory;
-}> => {
+): Promise<
+  | {
+      stationToAssignToRecording: Station;
+      deviceHistoryEntry: DeviceHistory;
+    }
+  | string
+> => {
   if (location.lat === 0 || location.lng === 0) {
     const existingHistory = await DeviceHistory.findOne({
       where: {
@@ -620,9 +623,7 @@ export const maybeUpdateDeviceHistory = async (
         deviceHistoryEntry: existingHistory,
       };
     }
-    throw new Error(
-      "Invalid location provided (lat or lng is 0) and no device history exists.",
-    );
+    return "Invalid location provided (lat or lng is 0) and no device history exists.";
   }
   {
     // Update the device location on config change. (It gets updated elsewhere if a newer recording comes in)

@@ -113,3 +113,12 @@ export interface ApiRecordingUpdateRequest {
 
 export type ApiGenericRecordingResponse = ApiThermalRecordingResponse &
   ApiAudioRecordingResponse;
+
+export interface ApiRecordingUploadData {
+  fileHash?: string,
+  location?: LatLng,
+  type?: RecordingType,
+  recordingDateTime?: Date | IsoFormattedDateString,
+  duration?: number,
+  additionalMetadata?: Record<string, any>
+}

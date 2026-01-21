@@ -1,6 +1,6 @@
 import type {
   DeviceId,
-  GroupId as ProjectId,
+  GroupId as ProjectId, IsoFormattedDateString, LatLng,
   RecordingId,
   StationId as LocationId,
   TagId,
@@ -15,6 +15,7 @@ import type {
 } from "@typedefs/api/track";
 import { DEFAULT_AUTH_ID, type FetchResult, type LoadedResource, type TestHandle, type WrappedFetchResult } from "./types";
 import { type CacophonyApiClient, unwrapLoadedResource } from "./api";
+import {ApiRecordingUploadData} from "../api/recording";
 
 export interface QueryRecordingsOptions {
   devices?: DeviceId[];
@@ -320,9 +321,9 @@ const longRunningQuery = (api: CacophonyApiClient, authKey: TestHandle | null = 
   ) as Promise<FetchResult<{ count: number }>>;
 };
 
-const uploadRecording = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
+const uploadRecordingOnBehalfOfDevice = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
   deviceId: DeviceId,
-  data: { fileHash: string },
+  data: ApiRecordingUploadData,
   rawFile: ArrayBuffer,
   rawFileName: string,
   derivedFile?: ArrayBuffer,
@@ -330,6 +331,23 @@ const uploadRecording = (api: CacophonyApiClient, authKey: TestHandle | null = D
   thumbFile?: ArrayBuffer,
   thumbFileName?: string,
 ) => {
+  const formData = prepareUploadedRecordingData(data, rawFile, rawFileName, derivedFile, derivedFileName, thumbFile, thumbFileName);
+  console.log("Uploading recording with authKey", authKey);
+
+  return api.post(authKey,
+    `/api/v1/recordings/device/${deviceId}`,
+    formData,
+    true,
+  ) as Promise<FetchResult<{ recordingId: RecordingId; messages: string[] }>>;
+};
+
+const prepareUploadedRecordingData = (data: ApiRecordingUploadData,
+                                      rawFile: ArrayBuffer,
+                                      rawFileName: string,
+                                      derivedFile?: ArrayBuffer,
+                                      derivedFileName?: string,
+                                      thumbFile?: ArrayBuffer,
+                                      thumbFileName?: string) => {
   const formData = new FormData();
   formData.set("data", JSON.stringify(data));
   formData.set("file", new Blob([rawFile]), rawFileName);
@@ -339,10 +357,26 @@ const uploadRecording = (api: CacophonyApiClient, authKey: TestHandle | null = D
   if (thumbFile && thumbFileName) {
     formData.set("thumb", new Blob([thumbFile]), thumbFileName);
   }
+  return formData;
+};
+
+
+const uploadRecordingFromDevice = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
+    data: ApiRecordingUploadData,
+    rawFile: ArrayBuffer,
+    rawFileName: string,
+    derivedFile?: ArrayBuffer,
+    derivedFileName?: string,
+    thumbFile?: ArrayBuffer,
+    thumbFileName?: string,
+) => {
+  const formData = prepareUploadedRecordingData(data, rawFile, rawFileName, derivedFile, derivedFileName, thumbFile, thumbFileName);
+  console.log("Uploading recording with authKey", authKey);
+
   return api.post(authKey,
-    `/api/v1/recordings/device/${deviceId}`,
-    formData,
-    true,
+      `/api/v1/recordings`,
+      formData,
+      true,
   ) as Promise<FetchResult<{ recordingId: RecordingId; messages: string[] }>>;
 };
 
@@ -384,7 +418,7 @@ export default (api: CacophonyApiClient) => {
     getRecordingsForLocationsAndDevicesInProject: getRecordingsForLocationsAndDevicesInProject(api),
     getAllRecordingsForProjectBetweenTimes: getAllRecordingsForProjectBetweenTimes(api),
     longRunningQuery: longRunningQuery(api),
-    uploadRecording: uploadRecording(api),
+    uploadRecordingOnBehalfOfDevice: uploadRecordingOnBehalfOfDevice(api),
     getRawRecording: getRawRecording(api),
     updateResizedTrack: updateResizedTrack(api),
     withAuth: (authKey: TestHandle) => ({
@@ -404,7 +438,8 @@ export default (api: CacophonyApiClient) => {
       getRecordingsForLocationsAndDevicesInProject: getRecordingsForLocationsAndDevicesInProject(api, authKey),
       getAllRecordingsForProjectBetweenTimes: getAllRecordingsForProjectBetweenTimes(api, authKey),
       longRunningQuery: longRunningQuery(api, authKey),
-      uploadRecording: uploadRecording(api, authKey),
+      uploadRecordingOnBehalfOfDevice: uploadRecordingOnBehalfOfDevice(api, authKey),
+      uploadRecordingFromDevice: uploadRecordingFromDevice(api, authKey),
       getRawRecording: getRawRecording(api, authKey),
       updateResizedTrack: updateResizedTrack(api, authKey),
     }),
