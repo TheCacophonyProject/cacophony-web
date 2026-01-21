@@ -142,6 +142,43 @@ Cypress.Commands.add(
   },
 );
 
+
+Cypress.Commands.add(
+  "processingApiTracksTagsBulkPost",
+  (
+    userName: string,
+    trackName: string,
+    recordingName: string,
+    data: any,
+    statusCode: number = 200,
+  ) => {
+    const id = getCreds(recordingName).id;
+    const trackId = getCreds(trackName).id;
+    logTestDescription(
+      `Adding tracktags for recording ${recordingName}`,
+      { id: id, trackId: trackId, data },
+    );
+
+    const url = v1ApiPath(
+      "processing/" + id.toString() + "/tracks/" + trackId.toString() + "/tags-bulk",
+    );
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: url,
+        body: {data:JSON.stringify(data)},
+      },
+      userName,
+      statusCode,
+    ).then((response) => {
+      expect(response.status, "Check return statusCode is").to.equal(
+        statusCode,
+      );
+    });
+  },
+);
+
+
 Cypress.Commands.add(
   "processingApiTracksTagsPost",
   (
@@ -318,6 +355,55 @@ Cypress.Commands.add(
   },
 );
 
+
+    Cypress.Commands.add(
+"processingApiTracksAndTagsPost",
+(
+      userName: string,
+      trackName: string,
+      recordingName: string,
+      data: any[],
+      algorithmId: number,
+    statusCode: number = 200,
+    )=> {
+
+      const id = getCreds(recordingName).id;
+    logTestDescription(`Adding tracks for recording ${recordingName}`, {
+      id,
+      data,
+      algorithmId: algorithmId,
+    });
+    const params = {
+      data,
+      algorithmId: algorithmId,
+    };
+
+    const url = v1ApiPath(`processing/${id.toString()}/tracks-and-tags`);
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url,
+        body: params,
+      },
+      userName,
+      statusCode,
+    ).then((response) => {
+      expect(response.status, "Check return statusCode is").to.equal(
+        statusCode,
+      );
+      let i = 0;
+      for(const trackId of response.body.trackIds){
+        i++;
+        let name = trackName;
+        if (response.body.trackIds.length>1){
+          name = `${name}-${i}`;
+        }
+        saveIdOnly(name, trackId);
+      }
+    });
+  },
+);
+
 Cypress.Commands.add(
   "apiRecordingAddWithTracks",
   (
@@ -341,9 +427,9 @@ Cypress.Commands.add(
         const prediction = trackT.predictions.pop();
         for (const tag of track) {
           const trackTag = JSON.parse(JSON.stringify(prediction));
-          trackTag.label = tag;
-          trackTag.confident_tag = tag;
-          trackTag.confidence = 0.9;
+          trackTag.confident = true;
+          trackTag.tag = tag;
+          trackTag.confidence = 90;
           trackT.predictions.push(trackTag);
         }
         data.metadata.tracks.push(trackT);

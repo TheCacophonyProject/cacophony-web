@@ -1,10 +1,12 @@
-import CacophonyApi, { type CacophonyApiClient } from "./api";
+import CacophonyApi from "./api";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import type {
   GroupId as ProjectId,
   StationId as LocationId,
 } from "@typedefs/api/common";
-import { DEFAULT_AUTH_ID, type FetchResult, type LoadedResource, type TestHandle } from "./types";
+import type {   FetchResult,  LoadedResource,  TestHandle } from "./types";
+import { DEFAULT_AUTH_ID } from "./types";
+import type { CacophonyApiClient } from "./api";
 
 const createNewLocationForProject = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
   projectNameOrId: string | ProjectId,

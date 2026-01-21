@@ -624,7 +624,7 @@ describe("Recordings - reprocessing tests", () => {
                     path: "all",
                     automatic: true,
                     trackId: getCreds("rrpTrack18").id,
-                    confidence: 0.9,
+                    confidence: 90,
                     model: "Master",
                     id: -1,
                   },
@@ -643,7 +643,7 @@ describe("Recordings - reprocessing tests", () => {
               "rrpTrack18",
               "rrpRecording18",
               "possum",
-              0.9,
+              90,
               { name: "Master" },
             );
             cy.apiRecordingCheck(
@@ -738,7 +738,7 @@ describe("Recordings - reprocessing tests", () => {
             "rrpTrack20",
             "rrpRecording20",
             "possum",
-            0.9,
+            90,
             {
               name: "Master",
               clarity: 1,

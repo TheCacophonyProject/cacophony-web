@@ -183,7 +183,7 @@ Cypress.Commands.add(
           url: v1ApiPath(
             `recordings/${recordingId}/tracks/${response.body.tracks[trackIndex].id}/replace-tag`,
           ),
-          body: { what: tag, confidence: 0.7, automatic: false },
+          body: { what: tag, confidence: 70, automatic: false },
         },
         tagger,
       );
@@ -214,7 +214,7 @@ Cypress.Commands.add(
           url: v1ApiPath(
             `recordings/${recordingId}/tracks/${response.body.tracks[trackIndex].id}/tags`,
           ),
-          body: { what: tag, confidence: 0.7, automatic: false },
+          body: { what: tag, confidence: 70, automatic: false },
         },
         tagger,
       );
@@ -320,7 +320,7 @@ function addTracksToRecording(
       predictions: [
         {
           confident_tag: confident_tag,
-          confidence: 0.9,
+          confidence: 90,
           model_id: 1,
         },
       ],
@@ -342,7 +342,7 @@ function addTracksToRecording(
           {
             model_id: 1,
             confident_tag: tag,
-            confidence: 0.9,
+            confidence: 90,
           },
         ],
       };
@@ -356,7 +356,7 @@ function addTracksToRecording(
         {
           model_id: 1,
           confident_tag: "possum",
-          confidence: 0.5,
+          confidence: 50,
         },
       ],
     });
@@ -719,14 +719,14 @@ export function trackResponseFromSet(
       if (
         track.predictions &&
         track.predictions.length &&
-        track.predictions[0].confident_tag !== undefined
+        track.predictions[0].confident
       ) {
-        if (filtered_tags.indexOf(track.predictions[0].confident_tag) === -1) {
+        if (filtered_tags.indexOf(track.predictions[0].tag) === -1) {
           filtered = false;
         }
         newTrack.tags = [
           {
-            what: track.predictions[0].confident_tag,
+            what: track.predictions[0].tag,
             automatic: true,
             trackId: -99,
             model: "Master",

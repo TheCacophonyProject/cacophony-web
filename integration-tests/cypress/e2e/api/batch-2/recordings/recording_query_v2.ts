@@ -79,7 +79,7 @@ describe("Recordings query using improved query API", () => {
         what: "cat",
         model: "Master",
         automatic: true,
-        confidence: 0.9,
+        confidence: 90,
         id: NOT_NULL,
         path: "all",
       },
@@ -108,15 +108,15 @@ describe("Recordings query using improved query API", () => {
   const track1 = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
   track1.start_s = 2;
   track1.end_s = 5;
-  track1.predictions[0].label = "cat";
-  track1.predictions[0].confident_tag = "cat";
-  track1.predictions[0].confidence = 0.9;
+  track1.predictions[0].tag = "cat";
+  track1.predictions[0].condient = true;
+  track1.predictions[0].confidence = 90;
   const track2 = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
   track2.start_s = 1;
   track2.end_s = 3;
-  track2.predictions[0].label = "possum";
-  track2.predictions[0].confident_tag = "possum";
-  track2.predictions[0].confidence = 0.8;
+  track2.predictions[0].tag = "possum";
+  track2.predictions[0].confident = true;
+  track2.predictions[0].confidence = 80;
   const track4 = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
   track4.start_s = 2;
   track4.end_s = 5;
@@ -231,7 +231,7 @@ describe("Recordings query using improved query API", () => {
               expectedRecording2.tracks[0].tags[0].confidence =
                 recording2.metadata.tracks[0].predictions[0].confidence;
               expectedRecording2.tracks[0].tags[0].what =
-                recording2.metadata.tracks[0].predictions[0].confident_tag;
+                recording2.metadata.tracks[0].predictions[0].tag;
               expectedRecording2.processingState =
                 RecordingProcessingState.Corrupt;
               cy.apiRecordingsQueryV2Check(
@@ -314,11 +314,11 @@ describe("Recordings query using improved query API", () => {
 
               cy.testUserAddTagRecording(id, 0, groupAdmin, "possum").then(
                 () => {
-                  expectedRecording4.tracks[0].tags[0].confidence = 0.97;
+                  expectedRecording4.tracks[0].tags[0].confidence = 97;
                   expectedRecording4.tracks[0].tags.push({
                     what: "possum",
                     automatic: false,
-                    confidence: 0.7,
+                    confidence: 70,
                     path: "all",
                     model: null,
                     id: -1,

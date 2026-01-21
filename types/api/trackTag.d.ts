@@ -14,11 +14,14 @@ export interface ApiTrackTagAttributes {
 }
 
 export interface TrackTagData extends ApiTrackTagAttributes {
-  name?: string; // Model name
+  name?: string;
   all_class_confidences?: null | Record<string, number>;
   classify_time?: number;
   message?: string;
+  model_used?: string;
+  raw_tag?: string;
 }
+
 
 export interface ApiTrackTagResponse {
   what: string;

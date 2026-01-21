@@ -1,6 +1,8 @@
 import type {
   DeviceId,
-  GroupId as ProjectId, IsoFormattedDateString, LatLng,
+  GroupId as ProjectId,
+  IsoFormattedDateString,
+  LatLng,
   RecordingId,
   StationId as LocationId,
   TagId,
@@ -13,9 +15,12 @@ import { RecordingType, TagMode } from "@typedefs/api/consts";
 import type {
   ApiTrackDataRequest,
 } from "@typedefs/api/track";
-import { DEFAULT_AUTH_ID, type FetchResult, type LoadedResource, type TestHandle, type WrappedFetchResult } from "./types";
-import { type CacophonyApiClient, unwrapLoadedResource } from "./api";
-import {ApiRecordingUploadData} from "../api/recording";
+import type { FetchResult,  LoadedResource,  TestHandle,  WrappedFetchResult } from "./types";
+import { DEFAULT_AUTH_ID } from "./types";
+import type { CacophonyApiClient } from "./api";
+
+import { unwrapLoadedResource } from "./api";
+import { ApiRecordingUploadData} from "../api/recording";
 
 export interface QueryRecordingsOptions {
   devices?: DeviceId[];
