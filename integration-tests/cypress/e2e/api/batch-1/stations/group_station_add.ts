@@ -226,7 +226,7 @@ describe("Stations: adding", () => {
           HttpStatusCode.Ok,
           {
             warnings: [
-              `New station is too close to ${getTestName(
+              `New location is too close to ${getTestName(
                 station1.name,
               )} (#${station1Id}) - recordings may be incorrectly matched`,
             ],

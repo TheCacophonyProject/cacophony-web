@@ -346,6 +346,40 @@ const uploadRecordingOnBehalfOfDevice = (api: CacophonyApiClient, authKey: TestH
   ) as Promise<FetchResult<{ recordingId: RecordingId; messages: string[] }>>;
 };
 
+
+const getMimeTypeFromFileName = (fileName: string): string => {
+  const ext = fileName.split(".").pop();
+  let mimeType = "application/octet-stream";
+  switch (ext) {
+    case "mp4":
+      mimeType = "video/mp4";
+      break;
+    case "m4a":
+      mimeType = "audio/mp4";
+      break;
+    case "mp3":
+      mimeType = "audio/mpeg";
+      break;
+    case "cptv":
+      mimeType = "application/x-cptv";
+      break;
+    case "webp":
+      mimeType = "image/webp";
+      break;
+    case "jpg":
+    case "jpeg":
+      mimeType = "image/jpeg";
+      break;
+    case "ogg":
+      mimeType = "audio/ogg";
+      break;
+    case "wav":
+      mimeType = "audio/wav";
+      break;
+  }
+  return mimeType;
+};
+
 const prepareUploadedRecordingData = (data: ApiRecordingUploadData,
                                       rawFile: ArrayBuffer,
                                       rawFileName: string,
@@ -355,7 +389,7 @@ const prepareUploadedRecordingData = (data: ApiRecordingUploadData,
                                       thumbFileName?: string) => {
   const formData = new FormData();
   formData.set("data", JSON.stringify(data));
-  formData.set("file", new Blob([rawFile]), rawFileName);
+  formData.set("file", new Blob([rawFile], { type: getMimeTypeFromFileName(rawFileName) }), rawFileName);
   if (derivedFile && derivedFileName) {
     formData.set("derived", new Blob([derivedFile]), derivedFileName);
   }
@@ -376,8 +410,6 @@ const uploadRecordingFromDevice = (api: CacophonyApiClient, authKey: TestHandle 
     thumbFileName?: string,
 ) => {
   const formData = prepareUploadedRecordingData(data, rawFile, rawFileName, derivedFile, derivedFileName, thumbFile, thumbFileName);
-  console.log("Uploading recording with authKey", authKey);
-
   return api.post(authKey,
       `/api/v1/recordings`,
       formData,

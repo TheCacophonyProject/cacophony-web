@@ -62,9 +62,9 @@ const getDeviceById = (api: CacophonyApiClient, authKey: TestHandle | null = DEF
   if (activeAndInactive) {
     params.append("only-active", false.toString());
   }
-  return api.get(
+  return unwrapLoadedResource(api.get(
     authKey, `/api/v1/devices/${deviceId}${optionalQueryString(params)}`,
-  ) as Promise<FetchResult<{ device: ApiDeviceResponse }>>;
+  ) as Promise<FetchResult<{ device: ApiDeviceResponse }>>, "device");
 };
 
 const getDeviceLocationAtTime = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (

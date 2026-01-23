@@ -243,7 +243,7 @@ Cypress.Commands.add(
   { prevSubject: true },
   (subject: RecordingId, userName: string) => {
     checkRecording(userName, subject, (recording) => {
-      expect(recording.stationName).contains("New station for ");
+      expect(recording.stationName).contains("New location for ");
       expect(recording.stationName).contains(recording.recordingDateTime);
       saveIdOnly(recording.stationName, recording.stationId);
       return { id: recording.stationId, name: recording.stationName };
@@ -263,7 +263,7 @@ Cypress.Commands.add(
   "checkRecordingsStationIsNew",
   (userName: string, recId: number) => {
     checkRecording(userName, recId, (recording) => {
-      expect(recording.stationName).contains("New station for ");
+      expect(recording.stationName).contains("New location for ");
       expect(recording.stationName).contains(recording.recordingDateTime);
       saveIdOnly(recording.stationName, recording.stationId);
 

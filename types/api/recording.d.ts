@@ -47,6 +47,7 @@ export interface ApiThermalRecordingMetadataResponse {
     frameNumber: number;
   };
   metadataSource?: string;
+  status?: "test" | "startup" | "shutdown";
 }
 
 export interface ApiAudioRecordingMetadataResponse {
@@ -68,6 +69,7 @@ export interface ApiAudioRecordingMetadataResponse {
   "Android API Level": number;
   "Phone manufacturer": string;
   "App has root access": boolean;
+  status?: "test";
 }
 
 export interface ApiThermalRecordingResponse extends ApiRecordingResponse {
@@ -115,10 +117,11 @@ export type ApiGenericRecordingResponse = ApiThermalRecordingResponse &
   ApiAudioRecordingResponse;
 
 export interface ApiRecordingUploadData {
-  fileHash?: string,
-  location?: LatLng,
-  type?: RecordingType,
-  recordingDateTime?: Date | IsoFormattedDateString,
-  duration?: number,
-  additionalMetadata?: Record<string, any>
+  fileHash?: string;
+  status?: "test" | "startup" | "shutdown";
+  location?: LatLng;
+  type?: RecordingType;
+  recordingDateTime?: Date | IsoFormattedDateString;
+  duration?: number;
+  additionalMetadata?: Record<string, any>;
 }

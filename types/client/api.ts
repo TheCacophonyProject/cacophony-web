@@ -21,7 +21,7 @@ type HttpMethod = "POST" | "PATCH" | "DELETE" | "GET";
 
 interface NetworkConnectionErrorHandler {
   // eslint-disable-next-line no-undef
-  retry: <T>(authKey: TestHandle | null, url: string, request: RequestInit) => Promise<FetchResult<T>>;
+  retry: (authKey: TestHandle | null, url: string, request: RequestInit) => Promise<FetchResult<unknown>>;
 }
 
 /*

@@ -25,7 +25,7 @@ import type { RecordingQueryOptions } from "@models/Recording.js";
 import { Recording } from "@models/Recording.js";
 import { Event } from "@models/Event.js";
 import { User } from "@models/User.js";
-import { Op, QueryTypes } from "sequelize";
+import Sequelize, { Op, QueryTypes, Transaction } from "sequelize";
 import { getCanonicalTrackTag, NON_ANIMAL_TAGS } from "./tagUtil.js";
 import { Station } from "@models/Station.js";
 import { Device } from "@models/Device.js";
@@ -634,8 +634,21 @@ export const maybeUpdateDeviceHistory = async (
       (!lastLocation ||
         (lastLocation && !locationsAreEqual(lastLocation, location)))
     ) {
-      await device.update({
-        location,
+      await device.sequelize.transaction(async (transaction) => {
+        await Device.update(
+          {
+            location,
+          },
+          {
+            where: {
+              id: device.id,
+              lastRecordingTime: {
+                [Op.or]: [{ [Op.lt]: dateTime }, { [Op.eq]: null }],
+              },
+            },
+            transaction,
+          },
+        );
       });
     }
   }
@@ -656,6 +669,7 @@ export const maybeUpdateDeviceHistory = async (
         : [setBy];
     let shouldInsertLocation = false;
     let existingDeviceHistoryEntry: DeviceHistory;
+
     const priorLocation = await DeviceHistory.findOne({
       where: {
         uuid: device.uuid,
@@ -788,6 +802,75 @@ export const maybeUpdateDeviceHistory = async (
         delete settings.warp;
         newDeviceHistoryEntry.settings = settings;
       }
+      // FIXME: We probably do want to look forwards for stations if later recordings were processed first in a set of recordings?
+      const point = (location: LatLng) => {
+        return Sequelize.cast(
+          Sequelize.fn(
+            "ST_SetSRID",
+            Sequelize.fn("ST_MakePoint", location.lng, location.lat),
+            4326, // SRID 4326 (WGS 84)
+          ),
+          "geography",
+        );
+      };
+      const distance = (location: LatLng) => {
+        return Sequelize.fn(
+          "ST_Distance",
+          Sequelize.cast(Sequelize.col("location"), "geography"),
+          point(location),
+        );
+      };
+      const fuzzyMatchLocation = (
+        column: string,
+        location: LatLng,
+        toleranceMeters = 5,
+      ) => {
+        return Sequelize.where(
+          Sequelize.fn(
+            "ST_DWithin",
+            Sequelize.cast(Sequelize.col(column), "geography"),
+            point(location),
+            toleranceMeters,
+          ),
+          true,
+        );
+      };
+
+      const locationExactlyMatches = (location: LatLng) => {
+        const point = {
+          type: "Point",
+          coordinates: [location.lng, location.lat],
+        };
+        return {
+          [Op.eq]: point,
+        };
+      };
+      //
+      // const stationsInSameLocationForProject = await Station.findAll({
+      //   attributes: {
+      //     include: [
+      //       "id",
+      //       "location",
+      //       "GroupId",
+      //       "activeAt",
+      //       [distance(location), "distance"],
+      //     ],
+      //   },
+      //   where: [
+      //     {
+      //       GroupId: device.GroupId,
+      //       // activeAt: { [Op.lte]: dateTime },
+      //       location: locationExactlyMatches(location),
+      //     },
+      //   ],
+      //   order: [[distance(location), "ASC"]],
+      //   raw: true,
+      // });
+      // console.log(
+      //   "#### Stations in same location for project",
+      //   stationsInSameLocationForProject,
+      // );
+
       let stationToAssign = await tryToMatchLocationToStationInGroup(
         location,
         device.GroupId,
@@ -797,19 +880,55 @@ export const maybeUpdateDeviceHistory = async (
       if (stationToAssign && stationToAssign.activeAt > dateTime) {
         // We matched a future station in this location, so it's likely this is an older recording coming in out
         // of order.  We want to back-date the existing station to this time.
-        await stationToAssign.update({ activeAt: dateTime });
+        await Station.update(
+          {
+            activeAt: dateTime,
+          },
+          {
+            where: {
+              id: stationToAssign.id,
+              activeAt: {
+                [Op.gt]: dateTime,
+              },
+            },
+          },
+        );
       }
       if (!stationToAssign) {
-        // Create a new automatic station
-        stationToAssign = await Station.create({
-          name: `New station for ${
-            device.deviceName
-          }_${dateTime.toISOString()}`,
-          location,
-          activeAt: dateTime,
-          automatic: true,
-          needsRename: true,
-          GroupId: device.GroupId,
+        // Create a new automatic station.  With concurrent recording uploads from the same device/location,
+        // we're in danger of creating duplicate stations, so we take a lock on the group/lat/lng to
+        // prevent duplicate inserts.
+
+        await Station.sequelize.transaction(async (transaction) => {
+          // lock on a derived key from group + location to prevent duplicate inserts
+          await sequelize.query(
+            `SELECT pg_advisory_xact_lock(hashtext(:key))`,
+            {
+              transaction,
+              replacements: {
+                key: `${device.GroupId}:${location.lat},${location.lng}`,
+              },
+            },
+          );
+          let _created;
+          [stationToAssign, _created] = await Station.findOrCreate({
+            where: {
+              GroupId: device.GroupId,
+              location: locationExactlyMatches(location),
+              automatic: true,
+            },
+            defaults: {
+              name: `New location for ${
+                device.deviceName
+              }_${dateTime.toISOString()}`,
+              location,
+              activeAt: dateTime,
+              automatic: true,
+              needsRename: true,
+              GroupId: device.GroupId,
+            },
+            transaction,
+          });
         });
       }
 
@@ -830,11 +949,20 @@ export const maybeUpdateDeviceHistory = async (
         // Now, if the device history table has updated, that can mean that the activeAt date of an automatically
         // created station may need to move back too.
         // There shouldn't be recordings that need their station id updated in this instance.
-        await stationToAssign.update({
-          activeAt: existingDeviceHistoryEntry.fromDateTime,
-        });
+        await Station.update(
+          {
+            activeAt: existingDeviceHistoryEntry.fromDateTime,
+          },
+          {
+            where: {
+              id: stationToAssign.id,
+              activeAt: {
+                [Op.gt]: existingDeviceHistoryEntry.fromDateTime,
+              },
+            },
+          },
+        );
       }
-
       return {
         stationToAssignToRecording: stationToAssign,
         deviceHistoryEntry: existingDeviceHistoryEntry,

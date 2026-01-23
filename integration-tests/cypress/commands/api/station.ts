@@ -77,7 +77,7 @@ Cypress.Commands.add(
     userName: string,
     stationIdOrName: string,
     expectedStation: ApiStationResponse,
-    excludeCheckOn: any = [".lastActiveThermalTime"],
+    excludeCheckOn: any = [".lastActiveThermalTime", ".lastActiveAudioTime"],
     statusCode: number = 200,
     additionalChecks: any = {},
   ) => {
@@ -364,7 +364,7 @@ export function TestCreateExpectedAutomaticStation(
   );
   const thisLocation = TestGetLocation(identifier);
   expectedStation.name =
-    "New station for " + getTestName(deviceName) + "_" + recTime;
+    "New location for " + getTestName(deviceName) + "_" + recTime;
   expectedStation.location.lat = thisLocation.lat;
   expectedStation.location.lng = thisLocation.lng;
   expectedStation.automatic = true;

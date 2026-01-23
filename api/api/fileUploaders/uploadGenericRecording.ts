@@ -15,7 +15,7 @@ import {
 import { successResponse } from "@api/V1/responseUtil.js";
 import multiparty from "multiparty";
 import type { NextFunction, Request, Response } from "express";
-import { Op } from "sequelize";
+import Sequelize, { Op } from "sequelize";
 import { Recording } from "@models/Recording.js";
 import { openS3 } from "@models/util/util.js";
 import { Readable } from "stream";
@@ -27,7 +27,12 @@ import type { User } from "@models/User.js";
 import crypto from "crypto";
 import moment from "moment";
 import { v4 as uuidv4 } from "uuid";
-import type { DeviceId, GroupId, LatLng } from "@typedefs/api/common.js";
+import type {
+  DeviceId,
+  GroupId,
+  IsoFormattedDateString,
+  LatLng,
+} from "@typedefs/api/common.js";
 import {
   getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime,
   guessMimeType,
@@ -35,11 +40,12 @@ import {
   sendAlerts,
   tracksFromMeta,
 } from "@api/V1/recordingUtil.js";
-import type { Station } from "@models/Station.js";
+import { Station } from "@models/Station.js";
 import { Group } from "@models/Group.js";
 import { isLatLon } from "@models/util/validation.js";
 import { tryReadingM4aMetadata } from "@api/m4a-metadata-reader/m4a-metadata-reader.js";
 import { RawTrack } from "@typedefs/api/fileProcessing.js";
+import { Fn } from "sequelize/lib/utils";
 
 const cameraTypes = [RecordingType.ThermalRaw, RecordingType.InfraredVideo];
 
@@ -52,6 +58,7 @@ export interface RecordingDataSuppliedMetadata {
 
 interface RecordingData {
   duration?: number;
+  status?: "test" | "startup" | "shutdown";
   type: RecordingType;
   location?: LatLng;
   recordingDateTime?: Date;
@@ -84,6 +91,21 @@ const mergeEmbeddedDataWithSuppliedRecordingData = (
       };
     }
 
+    if ("motionConfig" in mergedData) {
+      // See if it's a low power test/startup/shutdown recording.
+      try {
+        const motionConfig = JSON.parse(mergedData.motionConfig as string);
+        if (motionConfig.status) {
+          if (!mergedData.additionalMetadata) {
+            mergedData.additionalMetadata = {};
+          }
+          mergedData.additionalMetadata.status = motionConfig.status;
+        }
+      } catch (_e) {
+        // Failed to parse motion config JSON.
+      }
+    }
+
     if (
       (!("duration" in data) && metadata.duration) ||
       (Number(data.duration) === 321 && metadata.duration)
@@ -114,6 +136,12 @@ const mergeEmbeddedDataWithSuppliedRecordingData = (
     }
   } else if (!("recordingDateTime" in mergedData)) {
     throw new UnprocessableError("recordingDateTime not supplied");
+  }
+  if (mergedData.status) {
+    if (!mergedData.additionalMetadata) {
+      mergedData.additionalMetadata = {};
+    }
+    mergedData.additionalMetadata.status = mergedData.status;
   }
   return mergedData;
 };
@@ -305,6 +333,7 @@ const processFilePart = async (
           //  test this case.
           const header = await decoder.getHeader();
           if (header) {
+            console.log("Header found in corrupt CPTV file", header);
             embeddedMetadata = header;
           }
         }
@@ -689,10 +718,18 @@ export const uploadGenericRecording =
 
       recordingTemplate.DeviceId = deviceId;
       recordingTemplate.GroupId = groupId;
-
-      // TODO: Decide what we're doing about thumbnails etc.
       let recordingGroup: Group = recordingDevice.Group;
-      console.assert(!!recordingDevice.Group, "NO DEVICE GROUP");
+      if (!recordingGroup) {
+        await deleteUploads(uploadResults);
+        log.error(
+          `Uploading device (${deviceId}) is not assigned to any group.`,
+        );
+        return next(
+          new UnprocessableError(
+            `Device (${deviceId}) is not assigned to any group.`,
+          ),
+        );
+      }
       if (deviceId !== recordingDevice.id) {
         // Get the actual device at the recording time.
         recordingDevice = await Device.findByPk(deviceId, {
@@ -722,7 +759,7 @@ export const uploadGenericRecording =
         }
         // Set the device active and update its connection time.
         recordingDeviceUpdatePayload = {
-          lastConnectionTime: new Date(),
+          lastConnectionTime: greaterDate(new Date(), "lastConnectionTime"),
         };
         if (shouldSetActive) {
           recordingDeviceUpdatePayload.active = true;
@@ -750,6 +787,8 @@ export const uploadGenericRecording =
         // or there is no previous lastConnectionTime, we can null out the lastConnectionTime,
         // which indicates that this device is now "offline".
         // As such, it will no longer be targeted by stopped device emails, and can show up as offline in browse.
+
+        // FIXME: Test NULLING out lastConnectionTime
         recordingDeviceUpdatePayload = {
           lastConnectionTime: null,
         };
@@ -765,6 +804,7 @@ export const uploadGenericRecording =
         wouldHaveSuppliedTracks;
       setInitialProcessingState(recordingTemplate, data, metadataSupplied);
 
+      // We need transactions for these updates.
       const [recording, _station] = await Promise.all([
         recordingTemplate.save(),
         maybeUpdateLastRecordingTimesForStation(
@@ -802,6 +842,9 @@ export const uploadGenericRecording =
           new Date().getTime() - recording.recordingDateTime.getTime();
         if (uploader === "device" && recordingAgeMs < twentyFourHoursMs) {
           // Alerts should only be sent for uploading devices.
+
+          // FIXME: Alerts should really be added to a queue table, and processed out of band, rather than
+          //  blocking the upload request.
           await sendAlerts(recording.id);
         }
       }
@@ -937,53 +980,71 @@ const maybeUpdateLastRecordingTimesForStation = async (
   recordingData: Recording,
   isDeviceUpload: boolean,
   station?: Station,
-): Promise<void | Station> => {
-  let stationUpdatePromise = new Promise<void | Station>((resolve, _reject) => {
-    resolve();
-  });
+): Promise<void | [number]> => {
+  if (!station) {
+    return new Promise<void | [number]>((resolve, _reject) => {
+      resolve();
+    });
+  }
 
-  if (station) {
-    recordingData.StationId = station.id;
-
-    // Update lastActiveTimes
-
-    // Only update our times for non-status recordings
-    if (recordingData.duration >= 3) {
-      // Update station lastRecordingTimes if needed.
-      if (
-        recordingData.type === RecordingType.Audio &&
-        (!station.lastAudioRecordingTime ||
-          recordingData.recordingDateTime > station.lastAudioRecordingTime)
-      ) {
-        station.lastAudioRecordingTime = recordingData.recordingDateTime;
-        if (isDeviceUpload) {
-          station.lastActiveThermalTime = new Date();
-        }
-        stationUpdatePromise = station.save();
-      } else if (
-        cameraTypes.includes(recordingData.type) &&
-        (!station.lastThermalRecordingTime ||
-          recordingData.recordingDateTime > station.lastThermalRecordingTime)
-      ) {
-        station.lastThermalRecordingTime = recordingData.recordingDateTime;
-        if (isDeviceUpload) {
-          station.lastActiveThermalTime = new Date();
-        }
-        stationUpdatePromise = station.save();
-      }
+  const updatePayload: {
+    lastAudioRecordingTime?: Date;
+    lastThermalRecordingTime?: Date;
+    lastActiveAudioTime?: Date;
+    lastActiveThermalTime?: Date;
+  } = {};
+  const updateField = cameraTypes.includes(recordingData.type)
+    ? "lastThermalRecordingTime"
+    : "lastAudioRecordingTime";
+  recordingData.StationId = station.id;
+  if (
+    recordingData.type === RecordingType.Audio &&
+    (!station.lastAudioRecordingTime ||
+      recordingData.recordingDateTime > station.lastAudioRecordingTime)
+  ) {
+    updatePayload.lastAudioRecordingTime = recordingData.recordingDateTime;
+    if (isDeviceUpload) {
+      updatePayload.lastActiveAudioTime = new Date();
+    }
+  } else if (
+    cameraTypes.includes(recordingData.type) &&
+    (!station.lastThermalRecordingTime ||
+      recordingData.recordingDateTime > station.lastThermalRecordingTime)
+  ) {
+    updatePayload.lastThermalRecordingTime = recordingData.recordingDateTime;
+    if (isDeviceUpload) {
+      updatePayload.lastActiveThermalTime = new Date();
     }
   }
-  return stationUpdatePromise;
+  if (Object.keys(updatePayload).length !== 0) {
+    return station.sequelize.transaction(async (transaction) => {
+      return await Station.update(updatePayload, {
+        where: {
+          id: station.id,
+          [updateField]: {
+            [Op.or]: [
+              { [Op.lt]: recordingData.recordingDateTime },
+              { [Op.eq]: null },
+            ],
+          },
+        },
+        transaction,
+      });
+    });
+  }
 };
 
 interface UpdateDevicePayload {
   kind?: DeviceType;
   location?: LatLng;
-  lastRecordingTime?: Date;
-  lastConnectionTime?: Date;
+  lastRecordingTime?: Fn;
+  lastConnectionTime?: Fn;
   active?: boolean;
 }
 
+const greaterDate = (date: Date | IsoFormattedDateString, column: string) => {
+  return Sequelize.fn("GREATEST", Sequelize.col(column), date);
+};
 const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
   recording: Recording,
   uploadingDevice: Device,
@@ -1012,15 +1073,18 @@ const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
   // if the recording time is *later* than the last recording time, or there
   // is no last recording time
   const updateGroupPayload: {
-    lastThermalRecordingTime?: Date;
-    lastAudioRecordingTime?: Date;
+    lastThermalRecordingTime?: Fn;
+    lastAudioRecordingTime?: Fn;
   } = {};
   if (
     !uploadingDevice.lastRecordingTime ||
     uploadingDevice.lastRecordingTime < recording.recordingDateTime
   ) {
     updateDevicePayload.location = recording.location;
-    updateDevicePayload.lastRecordingTime = recording.recordingDateTime;
+    updateDevicePayload.lastRecordingTime = greaterDate(
+      recording.recordingDateTime,
+      "lastRecordingTime",
+    );
   }
 
   if (
@@ -1028,31 +1092,34 @@ const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
     (!uploadingGroup.lastThermalRecordingTime ||
       uploadingGroup.lastThermalRecordingTime < recording.recordingDateTime)
   ) {
-    updateGroupPayload.lastThermalRecordingTime = recording.recordingDateTime;
+    updateGroupPayload.lastThermalRecordingTime = greaterDate(
+      recording.recordingDateTime,
+      "lastThermalRecordingTime",
+    );
   } else if (
     recording.type === RecordingType.Audio &&
     (!uploadingGroup.lastAudioRecordingTime ||
       uploadingGroup.lastAudioRecordingTime < recording.recordingDateTime)
   ) {
-    updateGroupPayload.lastAudioRecordingTime = recording.recordingDateTime;
+    updateGroupPayload.lastAudioRecordingTime = greaterDate(
+      recording.recordingDateTime,
+      "lastAudioRecordingTime",
+    );
   }
   const hasGroupUpdate = Object.keys(updateGroupPayload).length !== 0;
   const hasDeviceUpdate = Object.keys(updateDevicePayload).length !== 0;
-  if (hasDeviceUpdate && hasGroupUpdate) {
+  const updates = [];
+  if (hasGroupUpdate) {
+    updates.push(uploadingGroup.update(updateGroupPayload));
+  }
+  if (hasDeviceUpdate) {
+    updates.push(uploadingDevice.update(updateDevicePayload));
+  }
+
+  if (updates.length !== 0) {
+    // Maybe just update where this is still true?
     return new Promise((resolve, _reject) => {
-      Promise.all([
-        uploadingDevice.update(updateDevicePayload),
-        uploadingGroup.update(updateGroupPayload),
-      ]).then(() => resolve());
-    });
-  } else if (hasDeviceUpdate) {
-    return new Promise((resolve, _reject) => {
-      uploadingDevice.update(updateDevicePayload).then(() => resolve());
-    });
-  } else if (hasGroupUpdate) {
-    // Is it possible to have a group update without a device update?
-    return new Promise((resolve, _reject) => {
-      uploadingGroup.update(updateGroupPayload).then(() => resolve());
+      Promise.all(updates).then(() => resolve());
     });
   } else {
     return new Promise((resolve, _reject) => {

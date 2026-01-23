@@ -661,7 +661,7 @@ order by hour;
             // Create new automatic station
             stationToAssign = await Station.create(
               {
-                name: `New station for ${newName}_${now.toISOString()}`,
+                name: `New location for ${newName}_${now.toISOString()}`,
                 location: this.location,
                 activeAt: now,
                 automatic: true,

@@ -25,7 +25,11 @@ import {
   timezoneForLatLng,
   visitDuration,
 } from "@models/visitsUtils";
-import type { ApiRecordingResponse } from "@typedefs/api/recording";
+import type {
+  ApiAudioRecordingResponse,
+  ApiRecordingResponse,
+  ApiThermalRecordingResponse
+} from "@typedefs/api/recording";
 import router from "@/router";
 import type {
   ApiVisitResponse,
@@ -56,11 +60,11 @@ import {
   type LoggedInUserAuth,
 } from "@apiClient/types";
 import {
-  RecordingProcessingState,
+  RecordingProcessingState, RecordingType as ConcreteRecordingType,
   RecordingType,
 } from "@typedefs/api/consts.ts";
 import sunCalc from "suncalc";
-import { urlNormaliseName } from "@/utils.ts";
+import {capitalize, urlNormaliseName} from "@/utils.ts";
 import SpectrogramViewer from "@/components/SpectrogramViewer.vue";
 import RecordingViewNotes from "@/components/RecordingViewNotes.vue";
 import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
@@ -802,18 +806,23 @@ const loadRecording = async () => {
     );
     if (recordingResponse) {
       recording.value = recordingResponse;
+
       if (
-        (recording.value.type === RecordingType.ThermalRaw &&
-          recording.value.duration < 2.5 &&
-          recording.value.duration > 1.8) ||
-        (recording.value.type === RecordingType.Audio &&
-          recording.value.duration > 9.8 &&
-          recording.value.duration < 11)
+          (recording.value.type === ConcreteRecordingType.ThermalRaw &&
+              (recording.value.duration < 2.5 &&
+                  recording.value.duration > 1.8) || "status" in ((recording.value as ApiThermalRecordingResponse).additionalMetadata || {})) ||
+          (recording.value.type === ConcreteRecordingType.Audio &&
+              (recording.value.duration < 11 &&
+                  recording.value.duration > 9.8)) || "status" in ((recording.value as ApiAudioRecordingResponse).additionalMetadata || {})
       ) {
+        let detail = "Test Recording";
+        if ("status" in ((recording.value as ApiAudioRecordingResponse | ApiThermalRecordingResponse).additionalMetadata || {})) {
+          detail = capitalize(`${((recording.value as ApiAudioRecordingResponse).additionalMetadata as any).status} recording`);
+        }
         recording.value.tags.push({
           id: -1,
           confidence: 1,
-          detail: "Test recording",
+          detail,
           createdAt: recording.value.recordingDateTime,
         });
       }

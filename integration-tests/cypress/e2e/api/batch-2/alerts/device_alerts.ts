@@ -83,7 +83,7 @@ describe("Devices alerts", () => {
     });
   });
 
-  it.only("Can receive an alert", () => {
+  it("Can receive an alert", () => {
     const usera = getNewIdentity("andrew");
     cy.testCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 

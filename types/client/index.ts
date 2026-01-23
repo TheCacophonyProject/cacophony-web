@@ -8,6 +8,7 @@ import recordingsInit from "./Recording";
 import locationsInit from "./Location";
 import monitoringInit from "./Monitoring";
 import {
+  FetchResult,
   JwtToken,
   LoggedInDeviceCredentials,
   LoggedInUserAuth,
@@ -15,6 +16,7 @@ import {
 } from "./types";
 import { decodeJWT } from "./utils";
 import type { DeviceId, UserId } from "../api/common";
+import {HttpStatusCode} from "../api/consts";
 
 const userCredentials = new Map<TestHandle, LoggedInUserAuth>();
 const deviceCredentials = new Map<TestHandle, LoggedInDeviceCredentials>();
@@ -84,13 +86,16 @@ const credentialsResolvers = {
     }
   },
   isDevEnvironment: () => false,
-  // networkConnectionErrorHandler: {
-  //   // eslint-disable-next-line no-undef
-  //   retry: async (authKey: TestHandle | null, url: string, request: RequestInit) => {
-  //     console.log("Would retry network connection in prod environment");
-  //     // FIXME:
-  //   },
-  // },
+  networkConnectionErrorHandler: {
+    // eslint-disable-next-line no-undef
+    retry: async (_authKey: TestHandle | null, _url: string, _request: RequestInit): Promise<FetchResult<unknown>> => {
+      console.log("Would retry network connection in prod environment");
+      return new Promise<FetchResult<unknown>>((resolve, _reject) => {
+          resolve({ success: true, result: null, status: HttpStatusCode.Ok });
+      });
+      // FIXME:
+    },
+  },
   getApiRoot: () => {
     return "http://localhost:1080";
   },
