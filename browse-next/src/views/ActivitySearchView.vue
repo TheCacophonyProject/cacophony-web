@@ -2232,7 +2232,7 @@ onBeforeUnmount(() => {
 .search-results-toggle {
   top: calc(var(--cp-grid-base) * 36); //144px
   right: 0;
-  z-index: 1021;
+  z-index: 1019;
   > .btn {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
