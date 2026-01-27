@@ -583,7 +583,10 @@ export const uploadGenericRecording =
       }
 
       // Reject recordings with invalid locations
-      if (data.location && !isLatLon(data.location, false)) {
+      if (
+        !data.location ||
+        (data.location && !isLatLon(data.location, false))
+      ) {
         if (!canceledRequest.canceled) {
           canceledRequest.canceled = true;
           await deleteUploads(uploadResults);
@@ -690,6 +693,10 @@ export const uploadGenericRecording =
         recordingTemplate.recordingDateTime = new Date();
       }
 
+      console.log(
+        "=============================================",
+        recordingTemplate.location,
+      );
       // Work out which group and station to assign based on recordingDateTime, device history etc.
       const groupAndStation = await assignGroupAndStationToRecording(
         recordingDevice,
@@ -804,6 +811,13 @@ export const uploadGenericRecording =
         wouldHaveSuppliedTracks;
       setInitialProcessingState(recordingTemplate, data, metadataSupplied);
 
+      if (metadataSupplied && data.type === RecordingType.ThermalRaw) {
+        recordingTemplate.additionalMetadata = {
+          ...recordingTemplate.additionalMetadata,
+          metadataSource: data.metadata.metadata_source,
+        };
+      }
+
       // We need transactions for these updates.
       const [recording, _station] = await Promise.all([
         recordingTemplate.save(),
@@ -820,16 +834,8 @@ export const uploadGenericRecording =
         ),
       ]);
 
-      if (metadataSupplied && data.type === RecordingType.ThermalRaw) {
-        recording.additionalMetadata = {
-          ...recording.additionalMetadata,
-          metadataSource: data.metadata.metadata_source,
-        };
-        await recording.save();
-      }
-
       if (wouldHaveSuppliedTracks) {
-        // Now that we have a recording saved to the DB, we can creat./e any associated track items
+        // Now that we have a recording saved to the DB, we can create any associated track items
         await tracksFromMeta(recording, data.metadata);
       }
 
@@ -981,6 +987,7 @@ const maybeUpdateLastRecordingTimesForStation = async (
   isDeviceUpload: boolean,
   station?: Station,
 ): Promise<void | [number]> => {
+  // FIXME: Probably simplify this like I did for device/group
   if (!station) {
     return new Promise<void | [number]>((resolve, _reject) => {
       resolve();
@@ -1045,85 +1052,76 @@ interface UpdateDevicePayload {
 const greaterDate = (date: Date | IsoFormattedDateString, column: string) => {
   return Sequelize.fn("GREATEST", Sequelize.col(column), date);
 };
+const mapRecordingTypeToDeviceKind = (
+  recordingType: RecordingType,
+  existingType: DeviceType,
+): DeviceType => {
+  switch (recordingType) {
+    case RecordingType.Audio: {
+      if (existingType === DeviceType.Thermal) {
+        return DeviceType.Hybrid;
+      }
+      return DeviceType.Audio;
+    }
+    case RecordingType.ThermalRaw:
+    default: {
+      if (existingType === DeviceType.Audio) {
+        return DeviceType.Hybrid;
+      }
+      return DeviceType.Thermal;
+    }
+  }
+};
 const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
   recording: Recording,
   uploadingDevice: Device,
   updateDevicePayload: UpdateDevicePayload,
   uploadingGroup: Group,
 ): Promise<void> => {
-  if (uploadingDevice.kind === DeviceType.Unknown) {
-    // If this is the first recording we've got from a device, we can set its type.
-    const typeMappings = {
-      [RecordingType.Audio]: DeviceType.Audio,
-      [RecordingType.ThermalRaw]: DeviceType.Thermal,
-      [RecordingType.InfraredVideo]: DeviceType.TrapIrCam,
-    };
-    updateDevicePayload.kind = typeMappings[recording.type];
+  const updateColumn = cameraTypes.includes(recording.type)
+    ? "lastThermalRecordingTime"
+    : "lastAudioRecordingTime";
+  console.log("---------------------------------", recording.location);
+  if (!isLatLon(recording.location)) {
+    // FIXME: Handle this, maybe further down the stack
+    throw new Error("Invalid location");
   }
-  if (
-    (uploadingDevice.kind === DeviceType.Thermal &&
-      recording.type === RecordingType.Audio) ||
-    (uploadingDevice.kind === DeviceType.Audio &&
-      recording.type === RecordingType.ThermalRaw)
-  ) {
-    // If we have a hybrid bird monitor/thermal camera device, we can update its type when we know it's used for both things.
-    updateDevicePayload.kind = DeviceType.Hybrid;
-  }
-  // Update the device location and lastRecordingTime from the recording data,
-  // if the recording time is *later* than the last recording time, or there
-  // is no last recording time
-  const updateGroupPayload: {
-    lastThermalRecordingTime?: Fn;
-    lastAudioRecordingTime?: Fn;
-  } = {};
-  if (
-    !uploadingDevice.lastRecordingTime ||
-    uploadingDevice.lastRecordingTime < recording.recordingDateTime
-  ) {
-    updateDevicePayload.location = recording.location;
-    updateDevicePayload.lastRecordingTime = greaterDate(
-      recording.recordingDateTime,
-      "lastRecordingTime",
-    );
-  }
-
-  if (
-    cameraTypes.includes(recording.type) &&
-    (!uploadingGroup.lastThermalRecordingTime ||
-      uploadingGroup.lastThermalRecordingTime < recording.recordingDateTime)
-  ) {
-    updateGroupPayload.lastThermalRecordingTime = greaterDate(
-      recording.recordingDateTime,
-      "lastThermalRecordingTime",
-    );
-  } else if (
-    recording.type === RecordingType.Audio &&
-    (!uploadingGroup.lastAudioRecordingTime ||
-      uploadingGroup.lastAudioRecordingTime < recording.recordingDateTime)
-  ) {
-    updateGroupPayload.lastAudioRecordingTime = greaterDate(
-      recording.recordingDateTime,
-      "lastAudioRecordingTime",
-    );
-  }
-  const hasGroupUpdate = Object.keys(updateGroupPayload).length !== 0;
-  const hasDeviceUpdate = Object.keys(updateDevicePayload).length !== 0;
-  const updates = [];
-  if (hasGroupUpdate) {
-    updates.push(uploadingGroup.update(updateGroupPayload));
-  }
-  if (hasDeviceUpdate) {
-    updates.push(uploadingDevice.update(updateDevicePayload));
-  }
-
-  if (updates.length !== 0) {
-    // Maybe just update where this is still true?
-    return new Promise((resolve, _reject) => {
-      Promise.all(updates).then(() => resolve());
-    });
-  } else {
-    return new Promise((resolve, _reject) => {
-      resolve();
-    }) as Promise<void>;
-  }
+  return new Promise((resolve, _reject) => {
+    Promise.all([
+      uploadingGroup.update({
+        [updateColumn]: greaterDate(recording.recordingDateTime, updateColumn),
+      }),
+      Device.update(
+        {
+          ...updateDevicePayload,
+          lastRecordingTime: greaterDate(
+            recording.recordingDateTime,
+            "lastRecordingTime",
+          ),
+          location: Sequelize.literal(`
+            case
+              when '${recording.recordingDateTime.toISOString()}' > "lastRecordingTime" or "lastRecordingTime" is null 
+                then ST_GeomFromGeoJSON('{"type":"Point","coordinates":[${recording.location.lng},${recording.location.lat}]}')
+              else "location"
+            end
+          `),
+          kind: Sequelize.literal(`
+            case "kind"
+              when '${DeviceType.Unknown}' then '${mapRecordingTypeToDeviceKind(recording.type, DeviceType.Unknown)}'
+              when '${DeviceType.Thermal}' then '${mapRecordingTypeToDeviceKind(recording.type, DeviceType.Thermal)}'
+              when '${DeviceType.Audio}' then '${mapRecordingTypeToDeviceKind(recording.type, DeviceType.Audio)}'
+              else "kind"
+            end  
+          `),
+        },
+        {
+          validate: false,
+          sideEffects: false,
+          where: {
+            id: uploadingDevice.id,
+          },
+        },
+      ),
+    ]).then(() => resolve());
+  });
 };

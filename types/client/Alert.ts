@@ -3,67 +3,76 @@ import type {
   DeviceId,
   GroupId as ProjectId,
   StationId as LocationId,
-} from "@typedefs/api/common";
+} from "@typedefs/api/common.js";
 import type {
   ApiAlertResponse,
   ApiPostAlertRequestBody,
-} from "@typedefs/api/alerts";
-import type{  CacophonyApiClient } from "./api";
-import type {FetchResult,TestHandle} from "./types";
-import { DEFAULT_AUTH_ID } from "./types";
+} from "@typedefs/api/alerts.js";
+import type { CacophonyApiClient } from "@typedefs/client/api.js";
+import type { FetchResult, TestHandle } from "@typedefs/client/types.js";
+import { DEFAULT_AUTH_ID } from "@typedefs/client/types.js";
 
-export const getAlertsForLocation = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
-  locationId: LocationId,
-): Promise<FetchResult<{ alerts: ApiAlertResponse[] }>> => {
-  return api.get(authKey, `/api/v1/alerts/station/${locationId}`) as Promise<
-    FetchResult<{ alerts: ApiAlertResponse[] }>
-  >;
-};
-
-export const getAlertsForCurrentUser = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (): Promise<
-  FetchResult<{ alerts: ApiAlertResponse[] }>
-> => {
-  return api.get(authKey, `/api/v1/alerts?view-mode=user`) as Promise<
-    FetchResult<{ alerts: ApiAlertResponse[] }>
-  >;
-};
-
-export const getAlertsForCurrentProject = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
-  projectId: ProjectId,
-): Promise<FetchResult<{ alerts: ApiAlertResponse[] }>> => {
-  return api.get(
-    authKey, `/api/v1/alerts/project/${projectId}?view-mode=user`,
-  ) as Promise<FetchResult<{ alerts: ApiAlertResponse[] }>>;
-};
-
-export const removeAlert = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (alertId: AlertId) => {
-  return api.delete(authKey, `/api/v1/alerts/${alertId}`) as Promise<
-    FetchResult<void>
-  >;
-};
-
-export const createAlertForScope = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
-  scope: "project" | "location" | "device",
-  scopeId: ProjectId | LocationId | DeviceId,
-  tags: string[],
-  frequencySeconds: number,
-) => {
-  const body: ApiPostAlertRequestBody = {
-    name: `${scope}_${scopeId}__${tags.join("_")}`, // We don't really use name in the UI.
-    conditions: tags.map((tag) => ({ tag, automatic: true })),
-    frequencySeconds,
+export const getAlertsForLocation =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    locationId: LocationId,
+  ): Promise<FetchResult<{ alerts: ApiAlertResponse[] }>> => {
+    return api.get(authKey, `/api/v1/alerts/station/${locationId}`) as Promise<
+      FetchResult<{ alerts: ApiAlertResponse[] }>
+    >;
   };
-  if (scope === "project") {
-    body.projectId = scopeId;
-  } else if (scope === "location") {
-    body.stationId = scopeId;
-  } else if (scope === "device") {
-    body.deviceId = scopeId;
-  }
-  return api.post(authKey, `/api/v1/alerts`, body, true) as Promise<
-    FetchResult<{ id: AlertId }>
-  >;
-};
+
+export const getAlertsForCurrentUser =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (): Promise<FetchResult<{ alerts: ApiAlertResponse[] }>> => {
+    return api.get(authKey, `/api/v1/alerts?view-mode=user`) as Promise<
+      FetchResult<{ alerts: ApiAlertResponse[] }>
+    >;
+  };
+
+export const getAlertsForCurrentProject =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    projectId: ProjectId,
+  ): Promise<FetchResult<{ alerts: ApiAlertResponse[] }>> => {
+    return api.get(
+      authKey,
+      `/api/v1/alerts/project/${projectId}?view-mode=user`,
+    ) as Promise<FetchResult<{ alerts: ApiAlertResponse[] }>>;
+  };
+
+export const removeAlert =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (alertId: AlertId) => {
+    return api.delete(authKey, `/api/v1/alerts/${alertId}`) as Promise<
+      FetchResult<void>
+    >;
+  };
+
+export const createAlertForScope =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    scope: "project" | "location" | "device",
+    scopeId: ProjectId | LocationId | DeviceId,
+    tags: string[],
+    frequencySeconds: number,
+  ) => {
+    const body: ApiPostAlertRequestBody = {
+      name: `${scope}_${scopeId}__${tags.join("_")}`, // We don't really use name in the UI.
+      conditions: tags.map((tag) => ({ tag, automatic: true })),
+      frequencySeconds,
+    };
+    if (scope === "project") {
+      body.projectId = scopeId;
+    } else if (scope === "location") {
+      body.stationId = scopeId;
+    } else if (scope === "device") {
+      body.deviceId = scopeId;
+    }
+    return api.post(authKey, `/api/v1/alerts`, body, true) as Promise<
+      FetchResult<{ id: AlertId }>
+    >;
+  };
 
 export default (api: CacophonyApiClient) => {
   // NOTE: this is a bit tedious, but it makes the type inference work for the return type.

@@ -37,7 +37,6 @@ import { Track } from "@/models/Track.js";
 
 import { DeviceHistory } from "@models/DeviceHistory.js";
 import Sequelize, { Op } from "sequelize";
-import type { TrackId } from "@typedefs/api/common.js";
 import { openS3 } from "@models/util/util.js";
 
 import type { TrackTagData } from "@/../types/api/trackTag.js";
@@ -47,10 +46,8 @@ import { Recording } from "@models/Recording.js";
 
 import type {
   MinimalTrackRequestData,
-  TrackClassification,
   MinimalTrack,
 } from "@/../types/api/fileProcessing.js";
-import { promises } from "node:dns";
 
 const NULL_TRACK_ID = 1;
 
@@ -431,7 +428,6 @@ export default function (app: Application, baseUrl: string) {
       const trackTagData = [];
       const trackDataPromises = [];
       for (let i = 0; i < modelTracks.length; i++) {
-        const track = tracks[i];
         const trackData = data[i];
         trackIds.push(modelTracks[i].id);
 
@@ -531,7 +527,6 @@ export default function (app: Application, baseUrl: string) {
     if (discardMaskedTrack) {
       return 1;
     }
-    const predictions = trackData.predictions;
     const newTrack = {
       data: trackData,
       AlgorithmId: algorithmId,

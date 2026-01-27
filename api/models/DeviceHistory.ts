@@ -28,18 +28,14 @@ import type {
   StationId,
 } from "@typedefs/api/common.js";
 import { locationField } from "@models/util/util.js";
-import type { ApiDeviceHistorySettings } from "@typedefs/api/device.js";
+import type {
+  ApiDeviceHistorySettings,
+  DeviceHistorySetBy,
+} from "@typedefs/api/device.js";
 import { Station } from "@models/Station.js";
 import { Op } from "sequelize";
 import { Device } from "@models/Device.js";
 import { Group } from "@models/Group.js";
-
-export type DeviceHistorySetBy =
-  | "automatic"
-  | "user"
-  | "config"
-  | "register"
-  | "re-register";
 
 export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
   declare location: CreationOptional<LatLng>;

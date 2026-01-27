@@ -40,10 +40,11 @@ import { tryToMatchLocationToStationInGroup } from "@models/util/locationUtils.j
 import { locationField } from "@models/util/util.js";
 import { ClientError } from "@api/customErrors.js";
 import { Recording } from "@models/Recording.js";
-import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory.js";
+import { DeviceHistory } from "@models/DeviceHistory.js";
 import { Event } from "@models/Event.js";
 import { Schedule } from "@models/Schedule.js";
 import { Alert } from "@models/Alert.js";
+import { DeviceHistorySetBy } from "@typedefs/api/device.js";
 
 const Op = Sequelize.Op;
 export class Device extends ModelStaticCommon<Device> {

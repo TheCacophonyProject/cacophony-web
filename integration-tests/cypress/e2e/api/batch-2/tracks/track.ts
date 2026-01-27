@@ -3,7 +3,6 @@ import { NOT_NULL_STRING } from "@commands/constants";
 import { ApiRecordingSet } from "@commands/types";
 import {
   TestCreateRecordingData,
-  predictionResponseFromSet,
   positionResponseFromSet,
 } from "@commands/api/recording-tests";
 import {

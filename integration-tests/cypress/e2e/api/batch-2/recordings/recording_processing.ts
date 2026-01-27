@@ -122,9 +122,10 @@ describe("Recordings - processing tests", () => {
       );
     });
 
-
     it("Recordings with old format", () => {
-      const templateWithTrack = JSON.parse(JSON.stringify(TEMPLATE_THERMAL_RECORDING));
+      const templateWithTrack = JSON.parse(
+        JSON.stringify(TEMPLATE_THERMAL_RECORDING),
+      );
       const recording18 = TestCreateRecordingData(templateWithTrack);
       const firstTag = recording18.metadata.tracks[0].predictions[0];
 
@@ -149,25 +150,24 @@ describe("Recordings - processing tests", () => {
         );
         expectedRecording18.tracks[0].filtered = false;
         expectedRecording18.tracks[0].tags = [
-            {
-              what: "cat",
-              automatic: true,
-              confidence: 97,
-              model: "Master",
-              trackId: -99,
-              id: -99,
-              path: "all",
-            },
-          ];
-        expectedRecording18.processingState =RecordingProcessingState.Finished;
+          {
+            what: "cat",
+            automatic: true,
+            confidence: 97,
+            model: "Master",
+            trackId: -99,
+            id: -99,
+            path: "all",
+          },
+        ];
+        expectedRecording18.processingState = RecordingProcessingState.Finished;
         cy.log("Check track has been made with tag");
-          cy.apiRecordingCheck(
-            "rpGroupAdmin",
-            "rpRecording18",
-            expectedRecording18,
-            EXCLUDE_ALL_IDS,
-          );
-
+        cy.apiRecordingCheck(
+          "rpGroupAdmin",
+          "rpRecording18",
+          expectedRecording18,
+          EXCLUDE_ALL_IDS,
+        );
       });
     });
 
@@ -212,22 +212,26 @@ describe("Recordings - processing tests", () => {
           "tracking-format": 42,
           model_name: "Master",
         }).then((algorithmId) => {
-
           const tracksData = [];
-          tracksData.push({ start_s: 1, end_s: 4, predictions:[{
-                    tag: "possum",
-                    confidence: 90,
-                    name: "Master",
-                    confident:true,
-                  },
-                {
-                    tag: "possum",
-                    confidence: 90,
-                    name: "Resnet",
-                    confident:true,
-                  },
-                ] });
-          tracksData.push({ start_s: 2, end_s: 5, predictions:[] });
+          tracksData.push({
+            start_s: 1,
+            end_s: 4,
+            predictions: [
+              {
+                tag: "possum",
+                confidence: 90,
+                name: "Master",
+                confident: true,
+              },
+              {
+                tag: "possum",
+                confidence: 90,
+                name: "Resnet",
+                confident: true,
+              },
+            ],
+          });
+          tracksData.push({ start_s: 2, end_s: 5, predictions: [] });
 
           cy.processingApiTracksAndTagsPost(
             superuser,
@@ -237,27 +241,27 @@ describe("Recordings - processing tests", () => {
             algorithmId,
           );
 
-                   const trackTagData = [{
-                    tag: "hedgehog",
-                    confidence: 75,
-                    name: "Master",
-                    confident:false,
-                  },
-                {
-                    tag: "hedgehog",
-                    confidence: 75,
-                    name: "Resnet",
-                    confident:false,
-                  },
-                ];
-                           cy.log("Bulk add just tags for track 2");
- 
-         cy.processingApiTracksTagsBulkPost(
+          const trackTagData = [
+            {
+              tag: "hedgehog",
+              confidence: 75,
+              name: "Master",
+              confident: false,
+            },
+            {
+              tag: "hedgehog",
+              confidence: 75,
+              name: "Resnet",
+              confident: false,
+            },
+          ];
+          cy.log("Bulk add just tags for track 2");
+
+          cy.processingApiTracksTagsBulkPost(
             superuser,
             "rpTrack18-2",
             "rpRecording18",
             trackTagData,
-          
           ).then(() => {
             cy.log("Check tracks added to recording");
 
@@ -272,7 +276,8 @@ describe("Recordings - processing tests", () => {
                     confidence: 90,
                     model: "Master",
                     id: -1,
-                  },     {
+                  },
+                  {
                     what: "possum",
                     path: "all",
                     automatic: true,
@@ -287,7 +292,7 @@ describe("Recordings - processing tests", () => {
                 id: 1,
                 filtered: false,
               },
-                            {
+              {
                 tags: [
                   {
                     what: "unidentified",
@@ -297,7 +302,8 @@ describe("Recordings - processing tests", () => {
                     confidence: 75,
                     model: "Master",
                     id: -1,
-                  }, {
+                  },
+                  {
                     what: "unidentified",
                     path: "all",
                     automatic: true,
@@ -337,7 +343,6 @@ describe("Recordings - processing tests", () => {
       });
     });
 
-    
     it("Check default state for uploaded thermal recording is tracking", () => {
       const recording1 = TestCreateRecordingData(templateRecording);
       delete recording1.processingState;
@@ -375,11 +380,8 @@ describe("Recordings - processing tests", () => {
       const recording1 = TestCreateRecordingData(templateRecording);
       let expectedRecording1: ApiThermalRecordingResponse;
       let expectedRecording1b: ApiThermalRecordingResponse;
-      let expectedRecording1c: ApiThermalRecordingResponse;
-      let expectedRecording1d: ApiThermalRecordingResponse;
       let expectedRecording1e: ApiThermalRecordingResponse;
       let expectedProcessing1: ApiRecordingForProcessing;
-      let expectedProcessing1c: ApiRecordingForProcessing;
 
       cy.log("Add recording as device");
       cy.apiRecordingAdd(
@@ -1172,7 +1174,7 @@ describe("Recordings - processing tests", () => {
           algorithm: 99999,
           totalFrames: 4,
           previewSecs: null,
-        } as any;
+        };
 
         cy.processingApiCheck(
           superuser,
@@ -1611,6 +1613,7 @@ describe("Recordings - processing tests", () => {
             currentStateStartTime: new Date(
               new Date().getTime() - 30 * 60 * 1000,
             ).toISOString(),
+            processingFailedCount: 0,
           };
 
           cy.processingApiPut(
@@ -1643,12 +1646,12 @@ describe("Recordings - processing tests", () => {
             cy.log(
               "Update the recording setting currentStartTime to 30 minutes ago",
             );
-            (fieldUpdates as any).processingFailedCount = 1;
+            fieldUpdates.processingFailedCount = 1;
             cy.processingApiPut(
               superuser,
               "rpRecording24",
               true,
-              { fieldUpdates: fieldUpdates },
+              { fieldUpdates },
               undefined,
             );
             cy.log(
@@ -1771,6 +1774,8 @@ describe("Recordings - processing tests", () => {
       });
     });
   } else {
-    it.skip("NOTE: Processing tests skipped superuser disabled in environment variables", () => {});
+    it.skip("NOTE: Processing tests skipped superuser disabled in environment variables", () => {
+      return;
+    });
   }
 });

@@ -10,9 +10,210 @@ import {
   checkTreeStructuresAreEqualExcept,
 } from "../server";
 
-import { ApiGroupReturned, ApiGroupsDevice } from "../types";
+import { ApiGroupReturned } from "../types";
 
 import { ApiGroupUserResponse } from "@typedefs/api/group";
+import { ApiDeviceResponse } from "@shared/api/device";
+import { GroupId } from "@shared/api/common";
+import { HttpStatusCode } from "@shared/api/consts";
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Cypress {
+    interface Chainable {
+      /**
+       * create a group for the given user (who has already been referenced in the test)
+       * Optionally check for fail response (statusCode!=200))
+       * By default userName and groupName are converted into unique (for this test run) names.
+       * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
+       */
+
+      apiGroupAdd(
+        userName: string,
+        groupName: string,
+        log?: boolean,
+        statusCode?: number,
+        additionalChecks?: { useRawGroupName?: boolean },
+      ): Cypress.Chainable<GroupId>;
+
+      /**
+       * Add user to group
+       * Optionally check for fail response (statusCode!=200)
+       * By default userName and groupName are converted into unique (for this test run) names.
+       * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
+       */
+      apiGroupUserAdd(
+        groupAdminUser: string,
+        userName: string,
+        groupName: string,
+        admin?: boolean,
+        owner?: boolean,
+        log?: boolean,
+        statusCode?: HttpStatusCode,
+        additionalChecks?: {
+          useRawGroupName?: boolean;
+          useRawUserName?: boolean;
+        },
+      ): Cypress.Chainable<void>;
+
+      /**
+       * Invite user to group
+       * Optionally check for fail response (statusCode!=200)
+       * By default groupAdminUser and groupName are converted into unique (for this test run) names.
+       */
+      apiGroupUserInvite(
+        groupAdminUser: string,
+        inviteeEmail: string,
+        groupName: string,
+        admin?: boolean,
+        owner?: boolean,
+        log?: boolean,
+        statusCode?: HttpStatusCode,
+      ): Chainable<void>;
+
+      /**
+       * Ask an admin user to join one of their groups.
+       */
+      apiGroupUserRequestInvite(
+        groupAdminUserEmail: string | undefined,
+        userName: string,
+        groupName: string,
+        log?: boolean,
+        statusCode?: HttpStatusCode,
+      ): Chainable<void>;
+
+      /**
+       * Ask to join a group via device access using device name and group name.
+       */
+      apiDeviceUserRequestInvite(
+        groupAdminUserEmail: string | undefined,
+        userName: string,
+        deviceName: string,
+        groupName: string,
+        log?: boolean,
+        statusCode?: HttpStatusCode,
+      ): Chainable<void>;
+
+      /**
+       * Ask to join a group via device access using device ID.
+       */
+      apiDeviceUserRequestInviteById(
+        groupAdminUserEmail: string | undefined,
+        userName: string,
+        deviceName: string,
+        log?: boolean,
+        statusCode?: HttpStatusCode,
+      ): Chainable<void>;
+
+      /**
+       * Accept a user request to join one of your groups.
+       */
+      apiGroupUserAcceptInviteRequest(
+        groupAdminUser: string,
+        token: string,
+        log?: boolean,
+        statusCode?: HttpStatusCode,
+      ): Chainable<void>;
+
+      /**
+       * Accept group invitation
+       * Optionally check for fail response (statusCode!=200)
+       * By default invitedUser and groupName are converted into unique (for this test run) names.
+       */
+      apiGroupUserAcceptInvite(
+        invitedUser: string,
+        groupName: string,
+        token: string,
+        useExistingUser?: boolean,
+        log?: boolean,
+        statusCode?: HttpStatusCode,
+      ): Chainable<void>;
+
+      /**
+       * Call api/v1/groups/<groupnameorid> and check that returned values match expectedGroups
+       * Optionally check for fail response (statusCode!=200)
+       * By default userName and groupName are converted into unique (for this test run) names.
+       * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
+       * By default groups and expectedGroups are sorted on groupName before comparison and
+       * devices by devicename, Users by username, GroupUsers by userId
+       * Optionally: disable sorting of arrays before comparing (additionalChecks["doNotSort"]=true)
+       */
+      apiGroupCheck(
+        userName: string,
+        groupNameOrId: string,
+        expectedGroups: ApiGroupReturned[],
+        excludeCheckOn?: string[],
+        statusCode?: number,
+        additionalChecks?: { useRawGroupName?: boolean },
+      ): Chainable<void>;
+
+      /**
+       * Call api/v1/groups/<groupnameorid>/devices and check that returned values match expectedGroups
+       * Optionally check for fail response (statusCode!=200)
+       * By default devices and expectedDevices are sorted on devicename before comparison
+       * Optionally: disable sorting of arrays before comparing (additionalChecks["doNotSort"]=true)
+       * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
+       */
+      apiGroupDevicesCheck(
+        userName: string,
+        groupNameOrId: string,
+        expectedDevices: ApiDeviceResponse[],
+        excludeCheckOn?: string[],
+        statusCode?: HttpStatusCode,
+        additionalChecks?: { useRawGroupName?: boolean; doNotSort?: boolean },
+      ): Chainable<void>;
+
+      /**
+       * Call api/v1/groups/<groupname>/users and check that returned values match expectedUsers
+       * Optionally check for fail response (statusCode!=200)
+       * By default userName and groupName are converted into unique (for this test run) names.
+       * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
+       * By default users and expectedUsers are sorted on userName before comparison
+       * Optionally: disable sorting of arrays before comparing (additionalChecks["doNotSort"]=true)
+       */
+      apiGroupUsersCheck(
+        userName: string,
+        groupName: string,
+        expectedUsers: ApiGroupUserResponse[],
+        excludeCheckOn?: string[],
+        statusCode?: HttpStatusCode,
+        additionalChecks?: { useRawGroupName?: boolean; doNotSort?: boolean },
+      ): Chainable<void>;
+
+      /**
+       * Remove user from group
+       * Optionally check for fail response (statusCode!=200)
+       * By default userName and groupName are converted into unique (for this test run) names.
+       * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
+       */
+      apiGroupUserRemove(
+        groupAdminUser: string,
+        userName: string,
+        groupName: string,
+        statusCode?: HttpStatusCode,
+        additionalChecks?: {
+          useRawGroupName?: boolean;
+          useRawUserName?: boolean;
+        },
+      ): Chainable<void>;
+
+      /*******************************************************************************************************
+       * Following are legacy test functions from old tests. The above standard-format API wrappers should be used in
+       * preference to these functions.  These may be deleted in the future
+       *****************************************************************************************************/
+
+      /**
+       * Verify that user can see a group
+       * Optionally verify they can't see the group (set testForSuccess=false)
+       */
+      testGroupUserCheckAccess(
+        username: string,
+        groupname: string,
+        testForSuccess?: boolean,
+      ): Chainable<void>;
+    }
+  }
+}
 
 Cypress.Commands.add(
   "apiGroupUserAdd",
@@ -23,17 +224,20 @@ Cypress.Commands.add(
     admin = false,
     owner = false,
     log = true,
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: {
+      useRawGroupName?: boolean;
+      useRawUserName?: boolean;
+    } = {},
   ) => {
     let fullGroupName: string;
-    if (additionalChecks["useRawGroupName"] === true) {
+    if (additionalChecks.useRawGroupName === true) {
       fullGroupName = groupName;
     } else {
       fullGroupName = getTestName(groupName);
     }
     let fullName: string;
-    if (additionalChecks["useRawUserName"] === true) {
+    if (additionalChecks.useRawUserName === true) {
       fullName = userName;
     } else {
       fullName = getTestEmail(userName);
@@ -52,7 +256,7 @@ Cypress.Commands.add(
       email: fullName,
     };
     if (owner) {
-      (body as any).owner = owner.toString();
+      body["owner"] = owner.toString();
     }
     makeAuthorizedRequestWithStatus(
       {
@@ -72,10 +276,10 @@ Cypress.Commands.add(
     groupAdminUser: string,
     inviteeEmail: string,
     groupName: string,
-    admin: boolean = false,
-    owner: boolean = false,
-    log: boolean = true,
-    statusCode: number = 200,
+    admin = false,
+    owner = false,
+    log = true,
+    statusCode = 200,
   ) => {
     const fullGroupName = getTestName(groupName);
     const email = getTestEmail(inviteeEmail);
@@ -87,14 +291,14 @@ Cypress.Commands.add(
       { user: inviteeEmail, groupName, admin, owner },
       log,
     );
-    const body = {
+    const body: { admin?: boolean; owner?: boolean; email: string } = {
       email,
     };
     if (admin) {
-      (body as any).admin = true;
+      body.admin = true;
     }
     if (owner) {
-      (body as any).owner = true;
+      body.owner = true;
     }
     makeAuthorizedRequestWithStatus(
       {
@@ -114,9 +318,9 @@ Cypress.Commands.add(
     invitedUser: string,
     groupName: string,
     token: string,
-    useExistingUser: boolean = false,
-    log: boolean = true,
-    statusCode: number = 200,
+    useExistingUser = false,
+    log = true,
+    statusCode = 200,
   ) => {
     const fullGroupName = getTestName(groupName);
     const body = {
@@ -148,8 +352,8 @@ Cypress.Commands.add(
     groupAdminUserEmail: string | undefined,
     userName: string,
     groupName: string,
-    log: boolean = true,
-    statusCode: number = 200,
+    log = true,
+    statusCode = 200,
   ) => {
     const logMessage = groupAdminUserEmail
       ? `${userName} requesting access to group '${groupName}' from ${groupAdminUserEmail}`
@@ -186,8 +390,8 @@ Cypress.Commands.add(
     userName: string,
     deviceName: string,
     groupName: string,
-    log: boolean = true,
-    statusCode: number = 200,
+    log = true,
+    statusCode = 200,
   ) => {
     const logMessage = groupAdminUserEmail
       ? `${userName} requesting access to device '${deviceName}' in group '${groupName}' from ${groupAdminUserEmail}`
@@ -197,7 +401,11 @@ Cypress.Commands.add(
       { user: userName, deviceName, groupName, groupAdminUserEmail },
       log,
     );
-    const body: { deviceName: string; groupName: string; groupAdminEmail?: string } = {
+    const body: {
+      deviceName: string;
+      groupName: string;
+      groupAdminEmail?: string;
+    } = {
       deviceName: getTestName(deviceName),
       groupName: getTestName(groupName),
     };
@@ -224,8 +432,8 @@ Cypress.Commands.add(
     groupAdminUserEmail: string | undefined,
     userName: string,
     deviceName: string,
-    log: boolean = true,
-    statusCode: number = 200,
+    log = true,
+    statusCode = 200,
   ) => {
     const logMessage = groupAdminUserEmail
       ? `${userName} requesting access to device ID '${getCreds(deviceName).id}' from ${groupAdminUserEmail}`
@@ -257,12 +465,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "apiGroupUserAcceptInviteRequest",
-  (
-    groupAdminUser: string,
-    token: string,
-    log: boolean = true,
-    statusCode: number = 200,
-  ) => {
+  (groupAdminUser: string, token: string, log = true, statusCode = 200) => {
     logTestDescription(
       `${groupAdminUser} approves access to group`,
       { user: groupAdminUser },
@@ -288,18 +491,21 @@ Cypress.Commands.add(
     groupAdminUser: string,
     userName: string,
     groupName: string,
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: {
+      useRawGroupName?: boolean;
+      useRawUserName?: boolean;
+    } = {},
   ) => {
     let fullGroupName: string;
-    if (additionalChecks["useRawGroupName"] === true) {
+    if (additionalChecks.useRawGroupName === true) {
       fullGroupName = groupName;
     } else {
       fullGroupName = getTestName(groupName);
     }
 
     let email: string;
-    if (additionalChecks["useRawUserName"] === true) {
+    if (additionalChecks.useRawUserName === true) {
       email = userName;
     } else {
       email = getTestEmail(userName);
@@ -333,14 +539,14 @@ Cypress.Commands.add(
     groupName: string,
     expectedUsers: ApiGroupUserResponse[],
     excludeCheckOn: string[] = [],
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: { useRawGroupName?: boolean; doNotSort?: boolean } = {},
   ) => {
     let fullGroupName: string;
     let sortUsers: ApiGroupUserResponse[];
     let sortExpectedUsers: ApiGroupUserResponse[];
 
-    if (additionalChecks["useRawGroupName"] === true) {
+    if (additionalChecks.useRawGroupName === true) {
       fullGroupName = groupName;
     } else {
       fullGroupName = getTestName(groupName);
@@ -359,10 +565,10 @@ Cypress.Commands.add(
       { url: fullUrl },
       userName,
       statusCode,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ users: ApiGroupUserResponse[] }>) => {
       if (statusCode === 200) {
         //sort expected and actual events into same order (means dateTime is mandatory in expectedEvents)
-        if (additionalChecks["doNotSort"] === true) {
+        if (additionalChecks.doNotSort === true) {
           sortUsers = response.body.users;
           sortExpectedUsers = expectedUsers;
         } else {
@@ -385,12 +591,12 @@ Cypress.Commands.add(
     userName: string,
     groupName: string,
     log = true,
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: { useRawGroupName?: boolean } = {},
   ) => {
     let fullGroupName: string;
 
-    if (additionalChecks["useRawGroupName"] === true) {
+    if (additionalChecks.useRawGroupName === true) {
       fullGroupName = groupName;
     } else {
       fullGroupName = getTestName(groupName);
@@ -410,7 +616,7 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ groupId: GroupId }>) => {
       if (statusCode === 200) {
         saveIdOnly(groupName, response.body.groupId);
         cy.wrap(response.body.groupId);
@@ -419,22 +625,23 @@ Cypress.Commands.add(
   },
 );
 
+//FIXME(jon): This function has been broken forever, and actually doesn't check anything!
 Cypress.Commands.add(
   "apiGroupCheck",
   (
     userName: string,
     groupNameOrId: string,
-    expectedGroups: ApiGroupReturned[],
+    _expectedGroups: ApiGroupReturned[],
     excludeCheckOn: string[] = [],
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: { useRawGroupName?: boolean } = {},
   ) => {
     let sortGroups: ApiGroupReturned[];
     let sortExpectedGroups: ApiGroupReturned[];
     let fullGroupName: string;
 
     //Make group name unique unless we're asked not to
-    if (additionalChecks["useRawGroupName"] === true) {
+    if (additionalChecks.useRawGroupName === true) {
       fullGroupName = groupNameOrId;
     } else {
       fullGroupName = getTestName(groupNameOrId);
@@ -453,119 +660,8 @@ Cypress.Commands.add(
       { url: fullUrl },
       userName,
       statusCode,
-    ).then((response) => {
+    ).then((_response) => {
       if (statusCode === 200) {
-        //sort expected and actual events into same order (means groupName, deviceName, userName, userId is mandatory in expectedGroup)
-        if (additionalChecks["doNotSort"] === true) {
-          sortGroups = sortArrayOn(response.body.groups, "groupName");
-          sortExpectedGroups = sortArrayOn(expectedGroups, "groupName");
-          for (let count = 0; count < sortGroups.length; count++) {
-            sortGroups[count].Devices = sortArrayOn(
-              sortGroups[count].Devices,
-              "deviceName",
-            );
-            sortGroups[count].Users = sortArrayOn(
-              sortGroups[count].Users,
-              "userName",
-            );
-            sortGroups[count].GroupUsers = sortArrayOn(
-              sortGroups[count].GroupUsers,
-              "userId",
-            );
-          }
-          for (let count = 0; count < sortExpectedGroups.length; count++) {
-            sortExpectedGroups[count].Devices = sortArrayOn(
-              sortExpectedGroups[count].Devices,
-              "deviceName",
-            );
-            sortExpectedGroups[count].Users = sortArrayOn(
-              sortExpectedGroups[count].Users,
-              "userName",
-            );
-            sortExpectedGroups[count].GroupUsers = sortArrayOn(
-              sortExpectedGroups[count].GroupUsers,
-              "userId",
-            );
-          }
-        }
-        checkTreeStructuresAreEqualExcept(
-          sortExpectedGroups,
-          sortGroups,
-          excludeCheckOn,
-        );
-      }
-    });
-  },
-);
-
-Cypress.Commands.add(
-  "apiGroupsCheck",
-  (
-    userName: string,
-    where: any,
-    expectedGroups: ApiGroupReturned[],
-    excludeCheckOn: string[] = [],
-    statusCode: number = 200,
-    additionalChecks: any = {},
-  ) => {
-    let sortGroups: ApiGroupReturned[];
-    let sortExpectedGroups: ApiGroupReturned[];
-
-    logTestDescription(
-      `${userName} Check groups accessible for user`,
-      { user: userName },
-      true,
-    );
-    const params = {
-      where: JSON.stringify(where),
-    };
-
-    const fullUrl = v1ApiPath(`groups`, params);
-
-    //send the request
-    makeAuthorizedRequestWithStatus(
-      { url: fullUrl },
-      userName,
-      statusCode,
-    ).then((response) => {
-      if (statusCode === 200) {
-        //sort expected and actual events into same order (means groupName, deviceName, userName, userId is mandatory in expectedGroup)
-        if (additionalChecks["doNotSort"] === true) {
-          sortGroups = response.body.groups;
-          sortExpectedGroups = expectedGroups;
-        } else {
-          sortGroups = sortArrayOn(response.body.groups, "groupName");
-          sortExpectedGroups = sortArrayOn(expectedGroups, "groupName");
-          for (let count = 0; count < sortGroups.length; count++) {
-            sortGroups[count].Devices = sortArrayOn(
-              sortGroups[count].Devices,
-              "deviceName",
-            );
-            sortGroups[count].Users = sortArrayOn(
-              sortGroups[count].Users,
-              "userName",
-            );
-            sortGroups[count].GroupUsers = sortArrayOn(
-              sortGroups[count].GroupUsers,
-              "userId",
-            );
-          }
-          for (let count = 0; count < sortExpectedGroups.length; count++) {
-            sortExpectedGroups[count].Devices = sortArrayOn(
-              sortExpectedGroups[count].Devices,
-              "deviceName",
-            );
-            sortExpectedGroups[count].Users = sortArrayOn(
-              sortExpectedGroups[count].Users,
-              "userName",
-            );
-            sortExpectedGroups[count].GroupUsers = sortArrayOn(
-              sortExpectedGroups[count].GroupUsers,
-              "userId",
-            );
-          }
-        }
-
         checkTreeStructuresAreEqualExcept(
           sortExpectedGroups,
           sortGroups,
@@ -580,18 +676,18 @@ Cypress.Commands.add(
   "apiGroupDevicesCheck",
   (
     userName: string,
-    groupNameOrId: any,
-    expectedDevices: ApiGroupsDevice[],
+    groupNameOrId: string,
+    expectedDevices: ApiDeviceResponse[],
     excludeCheckOn: string[] = [],
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: { useRawGroupName?: boolean; doNotSort?: boolean } = {},
   ) => {
-    let sortDevices: ApiGroupsDevice[];
-    let sortExpectedDevices: ApiGroupsDevice[];
+    let sortDevices: ApiDeviceResponse[];
+    let sortExpectedDevices: ApiDeviceResponse[];
     let fullGroupName: string;
 
     //Make group name unique unless we're asked not to
-    if (additionalChecks["useRawGroupName"] === true) {
+    if (additionalChecks.useRawGroupName === true) {
       fullGroupName = groupNameOrId;
     } else {
       fullGroupName = getTestName(groupNameOrId);
@@ -610,10 +706,10 @@ Cypress.Commands.add(
       { url: fullUrl },
       userName,
       statusCode,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ devices: ApiDeviceResponse[] }>) => {
       if (statusCode === 200) {
         //sort expected and actual events into same order (means groupName, deviceName, userName, userId is mandatory in expectedGroup)
-        if (additionalChecks["doNotSort"] === true) {
+        if (additionalChecks.doNotSort === true) {
           sortDevices = response.body.devices;
           sortExpectedDevices = expectedDevices;
         } else {
@@ -638,7 +734,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "testGroupUserCheckAccess",
-  (userName: string, groupName: string, testForSuccess: boolean = true) => {
+  (userName: string, groupName: string, testForSuccess = true) => {
     const user = getCreds(userName);
     const fullGroupname = getTestName(groupName);
     const fullUrl = v1ApiPath("groups");

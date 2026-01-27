@@ -2,7 +2,7 @@ export const NO_LOG_MESSAGE = false;
 
 export function logTestDescription(
   message: string,
-  consoleObject: any,
+  consoleObject: Cypress.ObjectLike,
   log = true,
 ) {
   if (!log) {
@@ -19,12 +19,12 @@ export function logTestDescription(
   });
 }
 
-export function prettyLog(object: any) {
+export function prettyLog(object: object | string) {
   if (typeof object === "string") {
     return object;
   }
   if (!(object instanceof Array)) {
-    const objectCopy: any = Object.assign({}, object);
+    const objectCopy: object = Object.assign({}, object);
 
     Object.keys(objectCopy).forEach((key) => {
       if (objectCopy[key] instanceof Date) {
@@ -38,7 +38,7 @@ export function prettyLog(object: any) {
   }
 
   return JSON.stringify(object)
-    .replaceAll("\",", ", ")
-    .replaceAll("\"", "")
+    .replaceAll('",', ", ")
+    .replaceAll('"', "")
     .replaceAll("},", "} -  ");
 }

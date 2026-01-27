@@ -1,8 +1,4 @@
-import {
-  ApiRecordingSet,
-  ApiTrackSet,
-  ApiRecordingModel,
-} from "@commands/types";
+import { ApiRecordingSet, ApiRecordingModel } from "@commands/types";
 import {
   ApiTrackTagRequest,
   ApiHumanTrackTagResponse,
@@ -26,6 +22,7 @@ import {
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
 } from "@commands/dataTemplate";
 import { trackResponseFromSet } from "@commands/api/recording-tests";
+import { ApiTrackDataRequest } from "@shared/api/track";
 
 //ApiTrackAdd does not use full track structure
 const trackApiTrackTemplate = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
@@ -123,8 +120,7 @@ describe("Recording filtering", () => {
     const recording3: ApiRecordingSet = JSON.parse(
       JSON.stringify(TEMPLATE_THERMAL_RECORDING),
     );
-    recording3.metadata.tracks[0].predictions[0].tag =
-      "false-positive";
+    recording3.metadata.tracks[0].predictions[0].tag = "false-positive";
 
     let expectedRecording3: ApiThermalRecordingResponse;
     cy.apiRecordingAdd("rfCamera1", recording3, undefined, "rfRecording3").then(
@@ -191,7 +187,7 @@ describe("Recording filtering", () => {
     recording5.metadata.tracks = [];
 
     //Track with no predictions
-    const track5: ApiTrackSet = JSON.parse(
+    const track5: ApiTrackDataRequest = JSON.parse(
       JSON.stringify(trackApiTrackTemplate),
     );
 
@@ -238,7 +234,7 @@ describe("Recording filtering", () => {
       recording5b.metadata.tracks = [];
 
       //Track with no predictions
-      const track5b: ApiTrackSet = JSON.parse(
+      const track5b: ApiTrackDataRequest = JSON.parse(
         JSON.stringify(trackApiTrackTemplate),
       );
 
@@ -295,7 +291,7 @@ describe("Recording filtering", () => {
     );
     recording6.metadata.tracks = [];
 
-    const track6: ApiTrackSet = JSON.parse(
+    const track6: ApiTrackDataRequest = JSON.parse(
       JSON.stringify(trackApiTrackTemplate),
     );
     const tag6 = JSON.parse(JSON.stringify(tagSetTemplate));
@@ -351,7 +347,7 @@ describe("Recording filtering", () => {
     );
     recording7.metadata.tracks = [];
 
-    const track7: ApiTrackSet = JSON.parse(
+    const track7: ApiTrackDataRequest = JSON.parse(
       JSON.stringify(trackApiTrackTemplate),
     );
     const tag7 = JSON.parse(JSON.stringify(tagSetTemplate));
@@ -412,7 +408,7 @@ describe("Recording filtering", () => {
       );
       recording8.metadata.tracks = [];
       recording8.processingState = RecordingProcessingState.AnalyseThermal;
-      const track8: ApiTrackSet = JSON.parse(
+      const track8: ApiTrackDataRequest = JSON.parse(
         JSON.stringify(trackApiTrackTemplate),
       );
       const expectedTag8 = JSON.parse(
@@ -475,7 +471,7 @@ describe("Recording filtering", () => {
       );
       recording9.metadata.tracks = [];
       recording9.processingState = RecordingProcessingState.AnalyseThermal;
-      const track9: ApiTrackSet = JSON.parse(
+      const track9: ApiTrackDataRequest = JSON.parse(
         JSON.stringify(trackApiTrackTemplate),
       );
       const expectedTag9 = JSON.parse(
@@ -542,7 +538,7 @@ describe("Recording filtering", () => {
         JSON.stringify(TEMPLATE_THERMAL_RECORDING),
       );
       recording10.metadata.tracks = [];
-      const track10: ApiTrackSet = JSON.parse(
+      const track10: ApiTrackDataRequest = JSON.parse(
         JSON.stringify(trackApiTrackTemplate),
       );
       const expectedTag10 = JSON.parse(
@@ -631,7 +627,7 @@ describe("Recording filtering", () => {
         JSON.stringify(TEMPLATE_THERMAL_RECORDING),
       );
       recording11.metadata.tracks = [];
-      const track11: ApiTrackSet = JSON.parse(
+      const track11: ApiTrackDataRequest = JSON.parse(
         JSON.stringify(trackApiTrackTemplate),
       );
       const expectedTag11 = JSON.parse(
@@ -721,7 +717,7 @@ describe("Recording filtering", () => {
     recording18.metadata.tracks = [];
     let expectedRecording18: ApiThermalRecordingResponse;
 
-    const track18: ApiTrackSet = JSON.parse(
+    const track18: ApiTrackDataRequest = JSON.parse(
       JSON.stringify(trackApiTrackTemplate),
     );
     const tag18 = JSON.parse(JSON.stringify(tagSetTemplate));
@@ -886,7 +882,7 @@ describe("Recording filtering", () => {
       );
       recording20.metadata.tracks = [];
       recording20.processingState = RecordingProcessingState.AnalyseThermal;
-      const track20: ApiTrackSet = JSON.parse(
+      const track20: ApiTrackDataRequest = JSON.parse(
         JSON.stringify(trackApiTrackTemplate),
       );
       const expectedTag20_1 = JSON.parse(
@@ -974,7 +970,7 @@ describe("Recording filtering", () => {
       );
       recording21.metadata.tracks = [];
       recording21.processingState = RecordingProcessingState.AnalyseThermal;
-      const track21: ApiTrackSet = JSON.parse(
+      const track21: ApiTrackDataRequest = JSON.parse(
         JSON.stringify(trackApiTrackTemplate),
       );
       const expectedTag21_1 = JSON.parse(

@@ -74,9 +74,7 @@ export interface ApiAudioRecordingMetadataResponse {
 
 export interface ApiThermalRecordingResponse extends ApiRecordingResponse {
   additionalMetadata?: ApiThermalRecordingMetadataResponse;
-  type:
-    | RecordingType.ThermalRaw
-    | RecordingType.InfraredVideo
+  type: RecordingType.ThermalRaw | RecordingType.InfraredVideo;
 }
 
 export interface CacophonyIndex {
@@ -95,7 +93,7 @@ export interface ApiAudioRecordingResponse extends ApiRecordingResponse {
   cacophonyIndex?: CacophonyIndex[];
   type: RecordingType.Audio;
   fileMimeType?: string;
-  additionalMetadata?: ApiAudioRecordingMetadataResponse | any;
+  additionalMetadata?: ApiAudioRecordingMetadataResponse | unknown;
 }
 
 export interface ApiRecordingProcessingJob {
@@ -110,7 +108,7 @@ export interface ApiRecordingProcessingJob {
 
 export interface ApiRecordingUpdateRequest {
   comment?: string;
-  additionalMetadata?: Record<string, any>;
+  additionalMetadata?: Record<string, unknown>;
 }
 
 export type ApiGenericRecordingResponse = ApiThermalRecordingResponse &
@@ -123,5 +121,5 @@ export interface ApiRecordingUploadData {
   type?: RecordingType;
   recordingDateTime?: Date | IsoFormattedDateString;
   duration?: number;
-  additionalMetadata?: Record<string, any>;
+  additionalMetadata?: Record<string, unknown>;
 }

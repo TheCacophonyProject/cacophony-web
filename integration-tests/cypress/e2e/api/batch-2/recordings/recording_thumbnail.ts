@@ -493,6 +493,8 @@ describe("Recording thumbnails", () => {
       });
     });
   } else {
-    it.skip("NOTE: Thumbnail generation tests skipped superuser disabled in environment variables", () => {});
+    it.skip("NOTE: Thumbnail generation tests skipped superuser disabled in environment variables", () => {
+      return;
+    });
   }
 });

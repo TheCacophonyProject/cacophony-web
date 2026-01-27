@@ -16,7 +16,7 @@ declare namespace Cypress {
     addUserToGroup(
       userName: string,
       groupname: string,
-      admin?: boolean
+      admin?: boolean,
     ): Chainable<Element>;
 
     /**

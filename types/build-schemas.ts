@@ -1,16 +1,18 @@
 import {
-    BaseType,
-    SubNodeParser,
-    Context,
-    ReferenceType,
-    SubTypeFormatter,
-    FunctionType,
-    Definition,
-    createFormatter,
-    createProgram,
-    createParser,
-    SchemaGenerator,
-    ts, CompletedConfig, DEFAULT_CONFIG,
+  BaseType,
+  SubNodeParser,
+  Context,
+  ReferenceType,
+  SubTypeFormatter,
+  FunctionType,
+  Definition,
+  createFormatter,
+  createProgram,
+  createParser,
+  SchemaGenerator,
+  ts,
+  CompletedConfig,
+  DEFAULT_CONFIG,
 } from "ts-json-schema-generator";
 import fs from "fs/promises";
 import crypto from "crypto";
@@ -39,14 +41,14 @@ class IntegerFormatter implements SubTypeFormatter {
     return type instanceof IntegerType;
   }
 
-  public getDefinition(type: IntegerType): Definition {
+  public getDefinition(_type: IntegerType): Definition {
     // Return a custom schema for the function property.
     return {
       type: "integer",
     };
   }
 
-  public getChildren(type: IntegerType): BaseType[] {
+  public getChildren(_type: IntegerType): BaseType[] {
     return [];
   }
 }
@@ -56,7 +58,7 @@ class IsoFormattedDateStringFormatter implements SubTypeFormatter {
     return type instanceof IsoFormattedDateStringType;
   }
 
-  public getDefinition(type: IsoFormattedDateStringType): Definition {
+  public getDefinition(_type: IsoFormattedDateStringType): Definition {
     // Return a custom schema for the function property.
     return {
       type: "string",
@@ -65,7 +67,7 @@ class IsoFormattedDateStringFormatter implements SubTypeFormatter {
     };
   }
 
-  public getChildren(type: IsoFormattedDateStringType): BaseType[] {
+  public getChildren(_type: IsoFormattedDateStringType): BaseType[] {
     return [];
   }
 }
@@ -75,7 +77,7 @@ class FloatZeroOneFormatter implements SubTypeFormatter {
     return type instanceof FloatZeroOneType;
   }
 
-  public getDefinition(type: FloatZeroOneType): Definition {
+  public getDefinition(_type: FloatZeroOneType): Definition {
     // Return a custom schema for the function property.
     return {
       type: "number",
@@ -84,25 +86,22 @@ class FloatZeroOneFormatter implements SubTypeFormatter {
     };
   }
 
-  public getChildren(type: FloatZeroOneType): BaseType[] {
+  public getChildren(_type: FloatZeroOneType): BaseType[] {
     return [];
   }
 }
 
 class TypeAliasParser implements SubNodeParser {
   supportsNode(node: ts.Node): boolean {
-    if (
+    return (
       node.kind === ts.SyntaxKind.TypeAliasDeclaration &&
-      (node as any).name.escapedText === "integer"
-    ) {
-      return true;
-    }
-    return false;
+      node["name"].escapedText === "integer"
+    );
   }
   createType(
-    node: ts.Node,
-    context: Context,
-    reference?: ReferenceType,
+    _node: ts.Node,
+    _context: Context,
+    _reference?: ReferenceType,
   ): BaseType {
     return new IntegerType(); // Treat constructors as strings in this example
   }
@@ -110,18 +109,15 @@ class TypeAliasParser implements SubNodeParser {
 
 class FloatZeroOneParser implements SubNodeParser {
   supportsNode(node: ts.Node): boolean {
-    if (
+    return (
       node.kind === ts.SyntaxKind.TypeAliasDeclaration &&
-      (node as any).name.escapedText === "FloatZeroToOne"
-    ) {
-      return true;
-    }
-    return false;
+      node["name"].escapedText === "FloatZeroToOne"
+    );
   }
   createType(
-    node: ts.Node,
-    context: Context,
-    reference?: ReferenceType,
+    _node: ts.Node,
+    _context: Context,
+    _reference?: ReferenceType,
   ): BaseType {
     return new FloatZeroOneType(); // Treat constructors as strings in this example
   }
@@ -129,18 +125,15 @@ class FloatZeroOneParser implements SubNodeParser {
 
 class IsoFormattedDateStringParser implements SubNodeParser {
   supportsNode(node: ts.Node): boolean {
-    if (
+    return (
       node.kind === ts.SyntaxKind.TypeAliasDeclaration &&
-      (node as any).name.escapedText === "IsoFormattedDateString"
-    ) {
-      return true;
-    }
-    return false;
+      node["name"].escapedText === "IsoFormattedDateString"
+    );
   }
   createType(
-    node: ts.Node,
-    context: Context,
-    reference?: ReferenceType,
+    _node: ts.Node,
+    _context: Context,
+    _reference?: ReferenceType,
   ): BaseType {
     return new IsoFormattedDateStringType(); // Treat constructors as strings in this example
   }
@@ -156,7 +149,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
   let changes: Record<string, string> = {};
   try {
     changes = JSON.parse(await fs.readFile("../api/schema-cache.json", "utf8"));
-  } catch (e) {
+  } catch (_e) {
     console.log("Schema cache doesn't exist., recreating all schemas.");
   }
   const updatedSchemas = [];
@@ -229,7 +222,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
         const p = [];
         try {
           await fs.access(`../api/json-schemas`);
-        } catch (e) {
+        } catch (_e) {
           await fs.mkdir(`../api/json-schemas`);
         }
         if (subdirNames.length) {
@@ -237,7 +230,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
             p.push(subdirNames[p.length]);
             try {
               await fs.access(`../api/json-schemas/${p.join("/")}`);
-            } catch (e) {
+            } catch (_e) {
               await fs.mkdir(`../api/json-schemas/${p.join("/")}`);
             }
           }

@@ -5,7 +5,6 @@ import {
   IsoFormattedDateString,
   Seconds,
   StationId,
-  UserId,
 } from "./common.ts";
 
 export interface ApiAlertCondition {

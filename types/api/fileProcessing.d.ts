@@ -46,7 +46,6 @@ export interface TrackFramePosition {
   in_trap?: boolean;
 }
 
-
 interface RawTrack {
   id: integer;
   tracker_version: integer | string;
@@ -73,11 +72,10 @@ export interface ThumbnailInfo {
   score: number;
 }
 
-
 export interface TrackClassification {
   all_class_confidences?: null | Record<string, number>;
   confidence: number;
-  confident: boolean
+  confident: boolean;
   clarity?: number;
   classify_time?: Seconds;
   tag: string;
@@ -85,7 +83,7 @@ export interface TrackClassification {
   model_id?: integer;
   model_used?: string;
   rat_thresh_version?: string;
-  threshold_used?: FloatZeroToOne
+  threshold_used?: FloatZeroToOne;
 
   // Used in api when calculating good tags
   name?: string;
@@ -94,19 +92,18 @@ export interface TrackClassification {
   confident_tag?: string;
 }
 
-export type TrackClassifications  =  TrackClassification[];
+export type TrackClassifications = TrackClassification[];
 
+export interface MinimalTrack {
+  AlgorithmId: number;
+  startSeconds?: number;
+  endSeconds?: number;
+  minFreqHz?: number;
+  maxFreqHz?: number;
+  RecordingId: number;
+}
 
- export interface MinimalTrack{
-      AlgorithmId: number,
-      startSeconds?:number,
-      endSeconds?: number,
-      minFreqHz?: number,
-      maxFreqHz?: number,
-      RecordingId: number
-  }
-
-export type MinimalTracksRequestData  =  MinimalTrackRequestData[];
+export type MinimalTracksRequestData = MinimalTrackRequestData[];
 
 export interface MinimalTrackRequestData {
   tracker_version?: integer | string;

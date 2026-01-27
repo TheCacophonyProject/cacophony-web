@@ -4,13 +4,15 @@ import { TestCreateExpectedUser } from "@commands/api/user";
 
 import { getTestEmail, getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
-import { HttpStatusCode } from "@typedefs/api/consts";
+import { HttpStatusCode, UserGlobalPermission } from "@typedefs/api/consts";
 
 describe("User: add, get", () => {
   const superuser = getCreds("superuser")["email"];
   const suPassword = getCreds("superuser")["password"];
 
-  before(() => {});
+  before(() => {
+    return;
+  });
 
   it("Can register a new user, user can view themselves", () => {
     cy.apiUserAdd(
@@ -23,7 +25,7 @@ describe("User: add, get", () => {
         email: getTestEmail("uaguser1"),
         firstName: null,
         lastName: null,
-        globalPermission: "off",
+        globalPermission: UserGlobalPermission.Off,
         endUserAgreement: LATEST_END_USER_AGREEMENT,
       });
       cy.apiUserCheck("uagUser1", getTestEmail("uagUser1"), expectedUser);
@@ -73,7 +75,6 @@ describe("User: add, get", () => {
         expectedUser,
         [],
         HttpStatusCode.Ok,
-        { useRawUserName: true },
       );
     });
   });
@@ -90,7 +91,7 @@ describe("User: add, get", () => {
         email: getTestEmail("uaguser5-1"),
         firstName: null,
         lastName: null,
-        globalPermission: "off",
+        globalPermission: UserGlobalPermission.Off,
         endUserAgreement: LATEST_END_USER_AGREEMENT,
       });
       cy.apiUserCheck("uagUser5-1", getTestEmail("uagUser5-1"), expectedUser);
@@ -351,9 +352,6 @@ describe("User: add, get", () => {
         undefined,
         [],
         HttpStatusCode.Forbidden,
-        {
-          useRawUserId: true,
-        },
       );
       cy.log("Non existent username");
       cy.apiUserCheck(
@@ -362,7 +360,6 @@ describe("User: add, get", () => {
         undefined,
         [],
         HttpStatusCode.Forbidden,
-        { useRawUserId: true },
       );
     });
   });

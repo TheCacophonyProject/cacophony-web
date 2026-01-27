@@ -12,7 +12,7 @@ export const clearMailServerLog = () => {
     { log: false },
   );
 };
-export const waitForEmail = (type: string = "") => {
+export const waitForEmail = (type = "") => {
   let email: string;
   cy.log(`Wait for ${type} email`);
   return cy

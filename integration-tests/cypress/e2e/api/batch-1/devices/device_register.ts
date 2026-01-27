@@ -1,10 +1,10 @@
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
-import { DeviceHistoryEntry } from "@commands/types";
 import { TestCreateExpectedHistoryEntry } from "@commands/api/device";
 
 import { NOT_NULL_STRING } from "@commands/constants";
 import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
+import { ApiDeviceHistory } from "@shared/api/device";
 
 describe("Device register", () => {
   const camsGroup = "cams";
@@ -25,15 +25,14 @@ describe("Device register", () => {
 
   it("Adding device created valid deviceHistory entry", () => {
     cy.apiDeviceAdd("aNewDevice", camsGroup, 1234567).then(() => {
-      const expectedHistory: DeviceHistoryEntry =
-        TestCreateExpectedHistoryEntry(
-          "aNewDevice",
-          camsGroup,
-          NOT_NULL_STRING,
-          null,
-          "register",
-          null,
-        );
+      const expectedHistory: ApiDeviceHistory = TestCreateExpectedHistoryEntry(
+        "aNewDevice",
+        camsGroup,
+        NOT_NULL_STRING,
+        null,
+        "register",
+        null,
+      );
       expectedHistory.saltId = 1234567;
 
       cy.apiDeviceHistoryCheck(adminUser, "aNewDevice", [expectedHistory]);

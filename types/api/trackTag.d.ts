@@ -1,11 +1,16 @@
-import type { IsoFormattedDateString, TrackId, TrackTagId, UserId } from "./common.ts";
+import type {
+  IsoFormattedDateString,
+  TrackId,
+  TrackTagId,
+  UserId,
+} from "./common.ts";
 
 export interface ApiTrackTagRequest {
   what: string;
   confidence: number;
   automatic?: boolean;
   tagJWT?: string; // Allows tagging by someone without recording permissions.
-  data?: any; // FIXME - validation?
+  data?: unknown;
 }
 
 export interface ApiTrackTagAttributes {
@@ -21,7 +26,6 @@ export interface TrackTagData extends ApiTrackTagAttributes {
   model_used?: string;
   raw_tag?: string;
 }
-
 
 export interface ApiTrackTagResponse {
   what: string;
@@ -54,14 +58,14 @@ export type ApiTrackTag =
   | ApiHumanTrackTagResponse
   | ApiAutomaticTrackTagResponse;
 
-export type Classification = {
+export interface Classification {
   label: string;
   aliases?: string[];
   display?: string;
   displayAudio?: string;
   children?: Classification[];
   path?: string;
-};
+}
 export interface ApiClassificationResponse {
   label: "root";
   version: number;

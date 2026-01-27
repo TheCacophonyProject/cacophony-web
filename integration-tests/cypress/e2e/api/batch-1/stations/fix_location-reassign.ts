@@ -8,10 +8,12 @@ import { LatLng } from "@typedefs/api/common";
 import { getCreds } from "@commands/server";
 import { NOT_NULL, NOT_NULL_STRING } from "@commands/constants";
 import { TEMPLATE_THERMAL_RECORDING_RESPONSE } from "@commands/dataTemplate";
-import { TestNameAndId, DeviceHistoryEntry } from "@commands/types";
+import { TestNameAndId } from "@commands/types";
 import { getTestName } from "@commands/names";
 import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
 import { ApiStationResponse } from "@typedefs/api/station";
+import ApiRecordingResponse = Cypress.ApiRecordingResponse;
+import { ApiDeviceHistory } from "@shared/api/device";
 
 const templateExpectedCypressRecording: ApiThermalRecordingResponse =
   JSON.parse(JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE));
@@ -30,13 +32,27 @@ const templateExpectedStation = {
   groupName: NOT_NULL_STRING,
 };
 
-const beforeRecordings = new Date(new Date().setDate(new Date().getDate() - 10));
-const firstTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 1));
-const secondTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 2));
-const thirdTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 3));
-const fourthTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 4));
-const afterRecordings = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 5));
-const fifthTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 6));
+const beforeRecordings = new Date(
+  new Date().setDate(new Date().getDate() - 10),
+);
+const firstTime = new Date(
+  new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 1),
+);
+const secondTime = new Date(
+  new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 2),
+);
+const thirdTime = new Date(
+  new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 3),
+);
+const fourthTime = new Date(
+  new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 4),
+);
+const afterRecordings = new Date(
+  new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 5),
+);
+const fifthTime = new Date(
+  new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 6),
+);
 const firstName = "recording 1";
 const secondName = "recording 2";
 const thirdName = "recording 3";
@@ -48,10 +64,10 @@ const oldLocation = TestGetLocation(1);
 const intermediateLocation = TestGetLocation(1, 0.001);
 const newLocation = TestGetLocation(1, 0.002);
 const elsewhereLocation = TestGetLocation(2);
-let expectedHistory: DeviceHistoryEntry[] = [];
+let expectedHistory: ApiDeviceHistory[] = [];
 let count = 0;
 let group: string;
-const baseGroup: string = "fix_location_reassign_group";
+const baseGroup = "fix_location_reassign_group";
 const Josie = "Josie_reassign_stations";
 
 describe("Device: fix-location (reassign) recordings to correct station", () => {
@@ -1173,11 +1189,15 @@ function checkRecordingLocationAndStation(
   recordingName: string,
   expectedLocation: LatLng,
   stationName: string,
-): any {
-  checkRecording(userName, getCreds(recordingName).id, (recording: any) => {
-    expect(recording.location.lat).to.equal(expectedLocation.lat);
-    expect(recording.location.lng).to.equal(expectedLocation.lng);
-    expect(recording.stationId).to.equal(getCreds(stationName).id);
-    expect(recording.stationName).to.equal(stationName);
-  });
+): void {
+  checkRecording(
+    userName,
+    getCreds(recordingName).id,
+    (recording: ApiRecordingResponse) => {
+      expect(recording.location.lat).to.equal(expectedLocation.lat);
+      expect(recording.location.lng).to.equal(expectedLocation.lng);
+      expect(recording.stationId).to.equal(getCreds(stationName).id);
+      expect(recording.stationName).to.equal(stationName);
+    },
+  );
 }

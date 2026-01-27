@@ -7,7 +7,6 @@ import {
   HttpStatusCode,
   RecordingType,
 } from "@typedefs/api/consts";
-import { DeviceHistoryEntry } from "@commands/types";
 import { TestCreateExpectedHistoryEntry } from "@commands/api/device";
 
 describe("Device reregister", () => {
@@ -45,7 +44,7 @@ describe("Device reregister", () => {
     cy.log("Add a recording so that old device isn't deleted when renamed");
     cy.apiRecordingAdd(
       "RR_cam1",
-      { type: RecordingType.ThermalRaw },
+      { type: RecordingType.ThermalRaw, location: [-42, 170] },
       "oneframe.cptv",
       "raRecording1",
     );
@@ -75,15 +74,14 @@ describe("Device reregister", () => {
     cy.log("Register new device");
     cy.apiDeviceAdd("RR_history_cam", "RR_group1", 1234567).then(() => {
       cy.log("Check deviceHistory created correctly for new device");
-      const expectedHistory: DeviceHistoryEntry =
-        TestCreateExpectedHistoryEntry(
-          "RR_history_cam",
-          "RR_group1",
-          NOT_NULL_STRING,
-          null,
-          "register",
-          null,
-        );
+      const expectedHistory = TestCreateExpectedHistoryEntry(
+        "RR_history_cam",
+        "RR_group1",
+        NOT_NULL_STRING,
+        null,
+        "register",
+        null,
+      );
       expectedHistory.saltId = 1234567;
       cy.apiDeviceHistoryCheck("RR_user1", "RR_history_cam", [expectedHistory]);
 
@@ -93,15 +91,14 @@ describe("Device reregister", () => {
         "RR_group1",
       ).then(() => {
         cy.log("Check deviceHistory created correctly for new device");
-        const expectedNewHistory: DeviceHistoryEntry =
-          TestCreateExpectedHistoryEntry(
-            "RR_history_cam2",
-            "RR_group1",
-            NOT_NULL_STRING,
-            null,
-            "re-register",
-            null,
-          );
+        const expectedNewHistory = TestCreateExpectedHistoryEntry(
+          "RR_history_cam2",
+          "RR_group1",
+          NOT_NULL_STRING,
+          null,
+          "re-register",
+          null,
+        );
         expectedNewHistory.saltId = 1234567;
         cy.apiDeviceHistoryCheck("RR_user1", "RR_history_cam2", [
           expectedNewHistory,
@@ -143,7 +140,7 @@ describe("Device reregister", () => {
     cy.log("Add a recording so that old device isn't deleted when renamed");
     cy.apiRecordingAdd(
       "RR_cam2",
-      { type: RecordingType.ThermalRaw },
+      { type: RecordingType.ThermalRaw, location: [-42, 170] },
       "oneframe.cptv",
       "raRecording1",
     );
@@ -190,7 +187,7 @@ describe("Device reregister", () => {
     cy.log("Add a recording so that old device isn't deleted when renamed");
     cy.apiRecordingAdd(
       "RR_cam3",
-      { type: RecordingType.ThermalRaw },
+      { type: RecordingType.ThermalRaw, location: [-42, 170] },
       "oneframe.cptv",
       "raRecording1",
     );
@@ -412,5 +409,7 @@ describe("Device reregister", () => {
   });
 
   // TODO. Write this. helper does not currently handle missing parameters
-  it.skip("Correctly handles missing parameters in register device", () => {});
+  it.skip("Correctly handles missing parameters in register device", () => {
+    return;
+  });
 });

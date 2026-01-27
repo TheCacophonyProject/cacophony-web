@@ -1,10 +1,10 @@
 {
     "compilerOptions": {
-        "module": "es2020",
+        "module": "nodenext",
         "target": "es2020",
         "sourceMap": false,
         "esModuleInterop": true,
-        "moduleResolution": "node",
+        "moduleResolution": "nodenext",
         "baseUrl": ".",
         "lib": ["ESNext", "dom", "dom.iterable"],
         "paths": {
@@ -12,8 +12,7 @@
         }
     },
     "exclude": [
-        "node_modules",
-        "./client/*.ts"
+        "node_modules"
     ],
     "include": [
         "./**/*.ts",

@@ -1,5 +1,4 @@
 import { HttpStatusCode, RecordingType } from "@typedefs/api/consts";
-import { getCreds } from "@commands/server";
 
 // NOTE: When referring to "reassigning" a device, we mean moving a device into a group that already has an *inactive*
 //  device that shares the same name as the new name for the device we're moving.
@@ -28,7 +27,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
     cy.apiDeviceAdd(device, group);
     cy.apiRecordingAdd(
       device,
-      { type: RecordingType.ThermalRaw },
+      { type: RecordingType.ThermalRaw, location: [-42, 170] },
       "oneframe.cptv",
     ).then((recordingId) => {
       cy.log("Added recording for device", recordingId);
@@ -57,7 +56,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
       });
       cy.apiRecordingAdd(
         device,
-        { type: RecordingType.ThermalRaw },
+        { type: RecordingType.ThermalRaw, location: [-42, 170] },
         "oneframe.cptv",
       ).then((recordingId) => {
         cy.log("Added recording for device", recordingId);
@@ -70,7 +69,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
             // Now add another recording for the device
             cy.apiRecordingAdd(
               device,
-              { type: RecordingType.ThermalRaw },
+              { type: RecordingType.ThermalRaw, location: [-42, 170] },
               "oneframe.cptv",
             ).then((recordingId) => {
               cy.log("Added recording for inactive device", recordingId);
@@ -93,7 +92,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
       const device2 = "A003";
       cy.apiRecordingAdd(
         device,
-        { type: RecordingType.ThermalRaw },
+        { type: RecordingType.ThermalRaw, location: [-42, 170] },
         "oneframe.cptv",
       ).then((recordingId) => {
         cy.log("Added recording for device", recordingId);
@@ -114,7 +113,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
               // Now add another recording for the device
               cy.apiRecordingAdd(
                 device,
-                { type: RecordingType.ThermalRaw },
+                { type: RecordingType.ThermalRaw, location: [-42, 170] },
                 "oneframe.cptv",
               ).then((recordingId) => {
                 cy.log("Added recording for original device", recordingId);
@@ -140,7 +139,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
       cy.log("Created device", deviceId);
       cy.apiRecordingAdd(
         device,
-        { type: RecordingType.ThermalRaw },
+        { type: RecordingType.ThermalRaw, location: [-42, 170] },
         "oneframe.cptv",
       ).then((recordingId) => {
         cy.log("Added recording for device", recordingId);
@@ -154,7 +153,10 @@ describe("Devices deleted, inactive, and reassigned", () => {
             cy.apiRecordingAddOnBehalfUsingDevice(
               adminUser,
               device,
-              { type: RecordingType.ThermalRaw },
+              {
+                type: RecordingType.ThermalRaw,
+                location: { lat: -42, lng: 170 },
+              },
               "foo",
               "oneframe.cptv",
             ).then(() => {
@@ -185,7 +187,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
       });
       cy.apiRecordingAdd(
         device,
-        { type: RecordingType.ThermalRaw },
+        { type: RecordingType.ThermalRaw, location: [-42, 170] },
         "oneframe.cptv",
       ).then((recordingId) => {
         cy.log("Added recording for device", recordingId);
@@ -233,12 +235,12 @@ describe("Devices deleted, inactive, and reassigned", () => {
         originalDeviceId = deviceId;
         cy.apiRecordingAdd(
           deviceDest,
-          { type: RecordingType.ThermalRaw },
+          { type: RecordingType.ThermalRaw, location: [-42, 170] },
           "oneframe.cptv",
         ).then(() => {
           cy.apiRecordingAdd(
             deviceDest,
-            { type: RecordingType.ThermalRaw },
+            { type: RecordingType.ThermalRaw, location: [-42, 170] },
             "oneframe.cptv",
           ).then((recordingId) => {
             cy.log("Added recording to device", recordingId);
@@ -254,9 +256,9 @@ describe("Devices deleted, inactive, and reassigned", () => {
                   cy.log("Created device in source group", deviceId);
                   cy.apiRecordingAdd(
                     deviceSource,
-                    { type: RecordingType.ThermalRaw },
+                    { type: RecordingType.ThermalRaw, location: [-42, 170] },
                     "oneframe.cptv",
-                  ).then((recordingId) => {
+                  ).then((_recordingId) => {
                     // Now move this device from source group to destination
                     cy.apiDeviceReregisterAuthorized(
                       deviceSource,
@@ -308,7 +310,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
       cy.log("Created device in destination group", deviceId);
       cy.apiRecordingAdd(
         deviceDest,
-        { type: RecordingType.ThermalRaw },
+        { type: RecordingType.ThermalRaw, location: [-42, 170] },
         "oneframe.cptv",
       ).then((recordingId) => {
         cy.log("Added recording to device", recordingId);
@@ -320,7 +322,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
               cy.log("Created device in source group", deviceId);
               cy.apiRecordingAdd(
                 deviceSource,
-                { type: RecordingType.ThermalRaw },
+                { type: RecordingType.ThermalRaw, location: [-42, 170] },
                 "oneframe.cptv",
               ).then(() => {
                 cy.log(
@@ -354,7 +356,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
         originalDeviceId = deviceId;
         cy.apiRecordingAdd(
           deviceDest,
-          { type: RecordingType.ThermalRaw },
+          { type: RecordingType.ThermalRaw, location: [-42, 170] },
           "oneframe.cptv",
         ).then((recordingId) => {
           cy.log("Added recording to device", recordingId);
@@ -413,7 +415,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
       cy.log("Created device in destination group", deviceId);
       cy.apiRecordingAdd(
         deviceDest,
-        { type: RecordingType.ThermalRaw },
+        { type: RecordingType.ThermalRaw, location: [-42, 170] },
         "oneframe.cptv",
       ).then((recordingId) => {
         cy.log("Added recording to device", recordingId);

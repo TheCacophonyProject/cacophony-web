@@ -1,18 +1,37 @@
-import type { DeviceId, GroupId, SaltId, StationId as LocationId, UserId } from "@typedefs/api/common";
-import type { HttpStatusCode } from "@typedefs/api/consts";
-import type { ApiLoggedInUserResponse } from "../api/user";
-import { RecordingType, TagMode } from "../api/consts";
-import type { ApiRecordingResponse } from "../api/recording";
-import type { IsoFormattedString } from "../api/event";
-import {ProjectId} from "../api/common";
+import type {
+  DeviceId,
+  GroupId,
+  SaltId,
+  UserId,
+} from "@typedefs/api/common.js";
+import type { HttpStatusCode } from "@typedefs/api/consts.js";
+import type { ApiLoggedInUserResponse } from "../api/user.js";
+import type { IsoFormattedString } from "../api/event.js";
+import { ProjectId } from "../api/common.js";
 
 export type JwtToken<_T> = string;
 export type TestHandle = string;
 export const DEFAULT_AUTH_ID = "default";
-export type TestUserHandle = { id: UserId, testId: TestHandle, type: "user" };
-export type TestDeviceHandle = { id: DeviceId, testId: TestHandle, type: "device" };
-export type TestProjectHandle = { id: ProjectId, testId: TestHandle, type: "project" };
-export type TestEntityHandle = { id: number, testId: TestHandle, type: "user" | "device" | "project" };
+export interface TestUserHandle {
+  id: UserId;
+  testId: TestHandle;
+  type: "user";
+}
+export interface TestDeviceHandle {
+  id: DeviceId;
+  testId: TestHandle;
+  type: "device";
+}
+export interface TestProjectHandle {
+  id: ProjectId;
+  testId: TestHandle;
+  type: "project";
+}
+export interface TestEntityHandle {
+  id: number;
+  testId: TestHandle;
+  type: "user" | "device" | "project";
+}
 
 export interface LoggedInUserWithCredentials {
   userData: ApiLoggedInUserResponse;
@@ -25,17 +44,17 @@ export interface LoggedInUserAuth {
   apiToken: JwtToken<UserId>;
   refreshToken: string;
   refreshingToken?: Promise<boolean>;
-  decodedToken?: JwtUserAuthTokenPayload,
+  decodedToken?: JwtUserAuthTokenPayload;
 }
 
 export interface LoggedInUserAuthDeserialized extends LoggedInUserAuth {
-  decodedToken: JwtUserAuthTokenPayload,
+  decodedToken: JwtUserAuthTokenPayload;
 }
 
 export interface LoggedInDeviceCredentials {
-  id: DeviceId,
-  saltId: SaltId,
-  token: JwtToken<DeviceId>
+  id: DeviceId;
+  saltId: SaltId;
+  token: JwtToken<DeviceId>;
 }
 
 export interface FieldValidationError {
@@ -44,19 +63,24 @@ export interface FieldValidationError {
   param: string;
 }
 export interface BatteryInfo {
-    voltage: number;
-    battery: number;
+  voltage: number;
+  battery: number;
 
-    // Old format, but some cameras still haven't update to new as of 3/12/2025
-    batteryType?: "lime" | "lead-acid-12v" | "li-ion" | "unknown_battery_type" | "mains";
-    // New format
-    cellCount?: number;
-    chemistry?: "lead-acid" | "lifepo4" | "li-ion";
-    rtcVoltage?: number;
-    rail?: "lv" | "hv";
+  // Old format, but some cameras still haven't update to new as of 3/12/2025
+  batteryType?:
+    | "lime"
+    | "lead-acid-12v"
+    | "li-ion"
+    | "unknown_battery_type"
+    | "mains";
+  // New format
+  cellCount?: number;
+  chemistry?: "lead-acid" | "lifepo4" | "li-ion";
+  rtcVoltage?: number;
+  rail?: "lv" | "hv";
 
-    // NOTE: There is also a bunch of 'depletion_method' etc fields in newer events, but it's not clear
-    // yet how or if we'd use those in the front-end.
+  // NOTE: There is also a bunch of 'depletion_method' etc fields in newer events, but it's not clear
+  // yet how or if we'd use those in the front-end.
 }
 export interface BatteryInfoEvent extends BatteryInfo {
   dateTime: IsoFormattedString;
@@ -122,8 +146,9 @@ export interface JwtUserAuthTokenPayload extends JwtTokenPayload<"user"> {
   id: UserId;
 }
 
-export interface JwtAcceptInviteTokenPayload
-  extends JwtTokenPayload<"invite-new-user" | "invite-existing-user"> {
+export interface JwtAcceptInviteTokenPayload extends JwtTokenPayload<
+  "invite-new-user" | "invite-existing-user"
+> {
   id: UserId | number;
   group: GroupId;
 }

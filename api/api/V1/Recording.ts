@@ -1207,21 +1207,14 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1ResponseError
    */
   app.get(
-    `${apiUrl}/raw/:id{/:useArchival}`,
-    async (request, _response, next) => {
-      console.log("%%%%", Object.entries(request.query));
-      return next();
-    },
+    `${apiUrl}/raw/:id`,
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
-      param("useArchival").optional(),
       query("deleted").default(false).isBoolean().toBoolean(),
     ]),
-
     fetchAuthorizedRequiredFlatRecordingById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
-      const useArchival = request.params.useArchival === "archive";
       const recordingItem = response.locals.recording;
       const fileKey = recordingItem.rawFileKey;
       const fileMimeType = recordingItem.rawMimeType;

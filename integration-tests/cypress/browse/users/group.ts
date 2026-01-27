@@ -6,8 +6,8 @@ describe("Group Admin Pages", () => {
 
   let ffcreated = false;
 
-  const adminCol = "[aria-colindex=\"2\"]";
-  const usersTable = "table[data-cy=\"users-table\"]";
+  const adminCol = '[aria-colindex="2"]';
+  const usersTable = 'table[data-cy="users-table"]';
   const trashButton = ".trash-button";
 
   before(() => {
@@ -56,7 +56,7 @@ describe("Group Admin Pages", () => {
     cy.contains("Create group").should("be.visible");
 
     // test navigation to group page
-    cy.get("[data-cy=\"groups-list\"]")
+    cy.get('[data-cy="groups-list"]')
       .contains(getTestName(FriendsForever))
       .click();
 

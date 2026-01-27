@@ -193,7 +193,7 @@ export async function deleteFile(fileKey: string) {
   return s3.deleteObject(fileKey);
 }
 
-const geometrySetter = (
+export const geometrySetter = (
   val:
     | { coordinates: [number, number] }
     | [number, number]
@@ -201,8 +201,12 @@ const geometrySetter = (
     | string
     | undefined
     | null,
-): { type: "Point"; coordinates: [number, number] } | null => {
+): { type: "Point"; coordinates: [number, number] } | null | string => {
   if (val === undefined || val === null || typeof val === "string") {
+    if (typeof val === "string" && val.includes("case")) {
+      console.log(`Geometry setter received string with 'case': ${val}`);
+      return val;
+    }
     return null;
   }
   const location = canonicalLatLng(val);

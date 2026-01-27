@@ -409,6 +409,8 @@ describe("Stations: permissions", () => {
       });
     });
   } else {
-    it.skip("Super-user as user should see only their recordings", () => {});
+    it.skip("Super-user as user should see only their recordings", () => {
+      return;
+    });
   }
 });

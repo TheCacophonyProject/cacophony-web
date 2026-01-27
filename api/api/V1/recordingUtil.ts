@@ -25,12 +25,11 @@ import type { RecordingQueryOptions } from "@models/Recording.js";
 import { Recording } from "@models/Recording.js";
 import { Event } from "@models/Event.js";
 import { User } from "@models/User.js";
-import Sequelize, { Op, QueryTypes, Transaction } from "sequelize";
+import Sequelize, { Op, QueryTypes } from "sequelize";
 import { getCanonicalTrackTag, NON_ANIMAL_TAGS } from "./tagUtil.js";
 import { Station } from "@models/Station.js";
 import { Device } from "@models/Device.js";
 import type { PutObjectCommandOutput } from "@aws-sdk/client-s3";
-import type { DeviceHistorySetBy } from "@models/DeviceHistory.js";
 import { DeviceHistory } from "@models/DeviceHistory.js";
 import { Tag } from "@models/Tag.js";
 import { Track } from "@models/Track.js";
@@ -62,7 +61,10 @@ import { Writable } from "stream";
 import temp from "temp";
 import fs from "fs";
 import { sendAnimalAlertEmail } from "@/emails/transactionalEmails.js";
-import type { ApiDeviceHistorySettings } from "@typedefs/api/device.js";
+import type {
+  ApiDeviceHistorySettings,
+  DeviceHistorySetBy,
+} from "@typedefs/api/device.js";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
 import { Group } from "@models/Group.js";
 import { RecordingDataSuppliedMetadata } from "@api/fileUploaders/uploadGenericRecording.js";
@@ -605,6 +607,7 @@ export const maybeUpdateDeviceHistory = async (
     }
   | string
 > => {
+  // FIXME: Should this be moved further up?
   if (location.lat === 0 || location.lng === 0) {
     const existingHistory = await DeviceHistory.findOne({
       where: {
@@ -713,6 +716,7 @@ export const maybeUpdateDeviceHistory = async (
           } else if (!locationChanged) {
             if (laterLocation.setBy !== "user") {
               // Move the later location back to this time if it was an automatically created location.
+              // FIXME: This probably needs better disambigation?
               existingDeviceHistoryEntry = await laterLocation.update({
                 fromDateTime: dateTime,
                 setBy,
@@ -845,7 +849,7 @@ export const maybeUpdateDeviceHistory = async (
           [Op.eq]: point,
         };
       };
-      //
+      // FIXME: jon
       // const stationsInSameLocationForProject = await Station.findAll({
       //   attributes: {
       //     include: [
@@ -910,8 +914,7 @@ export const maybeUpdateDeviceHistory = async (
               },
             },
           );
-          let _created;
-          [stationToAssign, _created] = await Station.findOrCreate({
+          [stationToAssign] = await Station.findOrCreate({
             where: {
               GroupId: device.GroupId,
               location: locationExactlyMatches(location),
@@ -934,8 +937,32 @@ export const maybeUpdateDeviceHistory = async (
 
       newDeviceHistoryEntry.stationId = stationToAssign.id;
       // Insert this location.
-      const newDeviceHistory = await DeviceHistory.create(
-        newDeviceHistoryEntry,
+      const newDeviceHistory = await Station.sequelize.transaction(
+        async (transaction) => {
+          // lock on a derived key from group + deviceId + saltId + uuid + location to prevent duplicate inserts
+          await sequelize.query(
+            `SELECT pg_advisory_xact_lock(hashtext(:key))`,
+            {
+              transaction,
+              replacements: {
+                key: `${device.GroupId}:${device.id}:${device.saltId}:${device.uuid}:${location.lat},${location.lng}`,
+              },
+            },
+          );
+          const [newDeviceHistory] = await DeviceHistory.findOrCreate({
+            where: {
+              GroupId: device.GroupId,
+              DeviceId: device.id,
+              location: locationExactlyMatches(location),
+              saltId: device.saltId,
+              uuid: device.uuid,
+              setBy: "automatic",
+            },
+            defaults: newDeviceHistoryEntry,
+            transaction,
+          });
+          return newDeviceHistory;
+        },
       );
       return {
         stationToAssignToRecording: stationToAssign,

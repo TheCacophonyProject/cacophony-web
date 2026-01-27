@@ -1,22 +1,22 @@
-import apiClient from "./api";
-import usersInit from "./User";
-import projectsInit from "./Project";
-import alertsInit from "./Alert";
-import devicesInit from "./Device";
-import classificationsInit from "./Classifications";
-import recordingsInit from "./Recording";
-import locationsInit from "./Location";
-import monitoringInit from "./Monitoring";
+import apiClient from "./api.js";
+import usersInit from "./User.js";
+import projectsInit from "./Project.js";
+import alertsInit from "./Alert.js";
+import devicesInit from "./Device.js";
+import classificationsInit from "./Classifications.js";
+import recordingsInit from "./Recording.js";
+import locationsInit from "./Location.js";
+import monitoringInit from "./Monitoring.js";
 import {
   FetchResult,
   JwtToken,
   LoggedInDeviceCredentials,
   LoggedInUserAuth,
   TestHandle,
-} from "./types";
-import { decodeJWT } from "./utils";
-import type { DeviceId, UserId } from "../api/common";
-import {HttpStatusCode} from "../api/consts";
+} from "@typedefs/client/types.js";
+import { decodeJWT } from "@typedefs/client/utils.js";
+import type { DeviceId, UserId } from "@typedefs/api/common.js";
+import { HttpStatusCode } from "@typedefs/api/consts.js";
 
 const userCredentials = new Map<TestHandle, LoggedInUserAuth>();
 const deviceCredentials = new Map<TestHandle, LoggedInDeviceCredentials>();
@@ -25,7 +25,9 @@ const deviceCredentials = new Map<TestHandle, LoggedInDeviceCredentials>();
 
 // NOTE: Test specific resolvers here.  Browse would re-export with different resolvers.
 const credentialsResolvers = {
-  requestCredentialsResolver: async (authKey: TestHandle | null): Promise<JwtToken<(UserId | DeviceId)> | false> => {
+  requestCredentialsResolver: async (
+    authKey: TestHandle | null,
+  ): Promise<JwtToken<UserId | DeviceId> | false> => {
     if (!authKey) {
       return false;
     }
@@ -45,20 +47,29 @@ const credentialsResolvers = {
       }
       if ((apiToken.expiresAt as Date).getTime() < Date.now() + 5000) {
         // Token is about to expire, so refresh.
-        loggedInUserCredentials.refreshingToken = new Promise((resolve, reject) => {
-          Users.withAuth(authKey).refreshLogin(loggedInUserCredentials.refreshToken).then(newCredentialsResponse => {
-            delete loggedInUserCredentials.refreshingToken;
-            if (!newCredentialsResponse || !newCredentialsResponse.success) {
-              reject(false);
-              return;
-            }
-            if (newCredentialsResponse.success) {
-              loggedInUserCredentials.apiToken = newCredentialsResponse.result.token;
-              loggedInUserCredentials.refreshToken = newCredentialsResponse.result.refreshToken;
-            }
-            resolve(true);
-          });
-        });
+        loggedInUserCredentials.refreshingToken = new Promise(
+          (resolve, reject) => {
+            Users.withAuth(authKey)
+              .refreshLogin(loggedInUserCredentials.refreshToken)
+              .then((newCredentialsResponse) => {
+                delete loggedInUserCredentials.refreshingToken;
+                if (
+                  !newCredentialsResponse ||
+                  !newCredentialsResponse.success
+                ) {
+                  reject(false);
+                  return;
+                }
+                if (newCredentialsResponse.success) {
+                  loggedInUserCredentials.apiToken =
+                    newCredentialsResponse.result.token;
+                  loggedInUserCredentials.refreshToken =
+                    newCredentialsResponse.result.refreshToken;
+                }
+                resolve(true);
+              });
+          },
+        );
       }
       return loggedInUserCredentials.apiToken;
       // If not expiring in the next few seconds, use, otherwise refresh.
@@ -78,7 +89,10 @@ const credentialsResolvers = {
       deviceCredentials.delete(authKey);
     }
   },
-  registerCredentials: (authKey: TestHandle, credentials: LoggedInUserAuth | LoggedInDeviceCredentials) => {
+  registerCredentials: (
+    authKey: TestHandle,
+    credentials: LoggedInUserAuth | LoggedInDeviceCredentials,
+  ) => {
     if (authKey.startsWith("user-")) {
       userCredentials.set(authKey, credentials as LoggedInUserAuth);
     } else if (authKey.startsWith("device-")) {
@@ -87,11 +101,14 @@ const credentialsResolvers = {
   },
   isDevEnvironment: () => false,
   networkConnectionErrorHandler: {
-    // eslint-disable-next-line no-undef
-    retry: async (_authKey: TestHandle | null, _url: string, _request: RequestInit): Promise<FetchResult<unknown>> => {
+    retry: async (
+      _authKey: TestHandle | null,
+      _url: string,
+      _request: RequestInit,
+    ): Promise<FetchResult<unknown>> => {
       console.log("Would retry network connection in prod environment");
       return new Promise<FetchResult<unknown>>((resolve, _reject) => {
-          resolve({ success: true, result: null, status: HttpStatusCode.Ok });
+        resolve({ success: true, result: null, status: HttpStatusCode.Ok });
       });
       // FIXME:
     },
@@ -120,6 +137,9 @@ export const TestApi = {
   Projects,
   Users,
   Recordings,
-  registerCredentials: (authKey: TestHandle, creds: LoggedInDeviceCredentials | LoggedInUserAuth) => api.registerCredentials(authKey, creds),
+  registerCredentials: (
+    authKey: TestHandle,
+    creds: LoggedInDeviceCredentials | LoggedInUserAuth,
+  ) => api.registerCredentials(authKey, creds),
   //getCredentials: (authKey: TestHandle) => api.getCredentials(authKey),
 };

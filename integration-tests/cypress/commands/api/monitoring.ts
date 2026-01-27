@@ -3,6 +3,51 @@ import { logTestDescription, prettyLog } from "../descriptions";
 import { stripBackName } from "../names";
 import { TestComparableVisit, TestVisitSearchParams } from "../types";
 import { StationId } from "@typedefs/api/common";
+import { ApiVisitResponse } from "@shared/api/monitoring";
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Cypress {
+    interface Chainable {
+      /**
+       * check the visits returned match the listed visits specified. Only the specified information will be checked.
+       *
+       * Please note:  visits must be listed in order of oldest to newest start dates.
+       *
+       */
+      checkMonitoring(
+        userName: string,
+        stationId: number,
+        expectedVisits: TestComparableVisit[],
+        log?: boolean,
+      ): Chainable<void>;
+
+      /**
+       * check the visits returned match the listed visits specified. Only the specified information will be checked.
+       *
+       * Please note:  visits must be listed in order of oldest to newest start dates.
+       *
+       */
+      checkMonitoringWithFilter(
+        userName: string,
+        stationId: number | null,
+        searchParams: TestVisitSearchParams,
+        expectedVisits: TestComparableVisit[],
+      ): Chainable<void>;
+      /*
+       * check the visits returned match the listed visits specified. Only the specified information will be checked.
+       *
+       * Please note: visits must be listed in order of oldest to newest start dates.
+       *
+       */
+      checkMonitoringTags(
+        userName: string,
+        stationId: number,
+        expectedTags: string[],
+      ): Chainable<void>;
+    }
+  }
+}
 
 Cypress.Commands.add(
   "checkMonitoringTags",
@@ -96,13 +141,13 @@ function checkMonitoringMatches(
     method: "GET",
     url: v1ApiPath("monitoring/page", params),
     headers: getCreds(userName).headers,
-  }).then((response) => {
+  }).then((response: Cypress.Response<{ visits: ApiVisitResponse[] }>) => {
     checkResponseMatches(response, expectedVisits);
   });
 }
 
 function checkResponseMatches(
-  response: Cypress.Response<any>,
+  response: Cypress.Response<{ visits: ApiVisitResponse[] }>,
   expectedVisits: TestComparableVisit[],
 ) {
   const responseVisits = response.body.visits;

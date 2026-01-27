@@ -108,7 +108,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
       cy.apiGroupUserInvite(adminUser, normalUser, group);
       waitForEmail("invite").then((email) => {
         expect(getEmailSubject(email)).to.equal(
-        "You've been invited to join a group on Cacophony Monitoring",
+          "You've been invited to join a group on Cacophony Monitoring",
         );
 
         const { token } = extractTokenStartingWith(email, ACCEPT_INVITE_PREFIX);
@@ -311,7 +311,9 @@ describe("Transactional emails for different user lifecycle actions", () => {
       confirmEmailAddress(adminUser);
       cy.log("Add a new user but don't confirm their email");
       cy.apiUserAdd(normalUser).then(() => {
-        cy.log("Non-activated user attempts to request group membership - should fail");
+        cy.log(
+          "Non-activated user attempts to request group membership - should fail",
+        );
         cy.apiGroupUserRequestInvite(
           getTestEmail(adminUser),
           normalUser,
@@ -331,7 +333,9 @@ describe("Transactional emails for different user lifecycle actions", () => {
       cy.log("Add a new user and confirm their email");
       cy.apiUserAdd(normalUser).then(() => {
         confirmEmailAddress(normalUser);
-        cy.log("Activated user attempts to request membership from non-activated admin - should fail");
+        cy.log(
+          "Activated user attempts to request membership from non-activated admin - should fail",
+        );
         cy.apiGroupUserRequestInvite(
           getTestEmail(adminUser),
           normalUser,
@@ -395,7 +399,9 @@ describe("Transactional emails for different user lifecycle actions", () => {
         confirmEmailAddress(normalUser).then(() => {
           clearMailServerLog();
 
-          cy.log("User requests to join the group without specifying admin email (should go to owner)");
+          cy.log(
+            "User requests to join the group without specifying admin email (should go to owner)",
+          );
           cy.apiGroupUserRequestInvite(undefined, normalUser, group);
 
           waitForEmail("group join request to owner").then((email) => {
@@ -411,14 +417,16 @@ describe("Transactional emails for different user lifecycle actions", () => {
             );
             cy.log("Owner user accepts request");
             cy.apiGroupUserAcceptInviteRequest(ownerUser, token);
-            waitForEmail("join request approved for normal user").then((email) => {
-              expect(getEmailSubject(email)).to.equal(
-                `👌 You've been accepted to '${getTestName(group)}'`,
-              );
-              expect(getEmailToAddress(email)).to.equal(
-                getTestEmail(normalUser),
-              );
-            });
+            waitForEmail("join request approved for normal user").then(
+              (email) => {
+                expect(getEmailSubject(email)).to.equal(
+                  `👌 You've been accepted to '${getTestName(group)}'`,
+                );
+                expect(getEmailToAddress(email)).to.equal(
+                  getTestEmail(normalUser),
+                );
+              },
+            );
             cy.log("Check normalUser is now part of the group");
             cy.apiGroupUsersCheck(ownerUser, group, [
               {
@@ -452,7 +460,9 @@ describe("Transactional emails for different user lifecycle actions", () => {
 
       cy.log("Add a new user but don't confirm their email");
       cy.apiUserAdd(normalUser).then(() => {
-        cy.log("Non-activated user attempts to request device access - should fail");
+        cy.log(
+          "Non-activated user attempts to request device access - should fail",
+        );
         cy.apiDeviceUserRequestInvite(
           undefined,
           normalUser,
@@ -477,7 +487,9 @@ describe("Transactional emails for different user lifecycle actions", () => {
       cy.log("Add a new user and confirm their email");
       cy.apiUserAdd(normalUser).then(() => {
         confirmEmailAddress(normalUser);
-        cy.log("Activated user attempts device access from non-activated admin - should fail");
+        cy.log(
+          "Activated user attempts device access from non-activated admin - should fail",
+        );
         cy.apiDeviceUserRequestInvite(
           getTestEmail(adminUser),
           normalUser,
@@ -505,7 +517,9 @@ describe("Transactional emails for different user lifecycle actions", () => {
         confirmEmailAddress(normalUser);
         clearMailServerLog();
 
-        cy.log("User requests access to the group via device name (should go to owner)");
+        cy.log(
+          "User requests access to the group via device name (should go to owner)",
+        );
         cy.apiDeviceUserRequestInvite(undefined, normalUser, device, group);
 
         waitForEmail("device access request to owner").then((email) => {
@@ -525,9 +539,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
             expect(getEmailSubject(email)).to.equal(
               `👌 You've been accepted to '${getTestName(group)}'`,
             );
-            expect(getEmailToAddress(email)).to.equal(
-              getTestEmail(normalUser),
-            );
+            expect(getEmailToAddress(email)).to.equal(getTestEmail(normalUser));
           });
           cy.log("Check normalUser is now part of the group");
           cy.apiGroupUsersCheck(ownerUser, group, [
@@ -564,8 +576,15 @@ describe("Transactional emails for different user lifecycle actions", () => {
         confirmEmailAddress(normalUser);
         clearMailServerLog();
 
-        cy.log("User requests access to the group via device name with admin email");
-        cy.apiDeviceUserRequestInvite(getTestEmail(adminUser), normalUser, device, group);
+        cy.log(
+          "User requests access to the group via device name with admin email",
+        );
+        cy.apiDeviceUserRequestInvite(
+          getTestEmail(adminUser),
+          normalUser,
+          device,
+          group,
+        );
 
         waitForEmail("device access request to admin").then((email) => {
           expect(getEmailSubject(email)).to.equal(
@@ -580,14 +599,16 @@ describe("Transactional emails for different user lifecycle actions", () => {
           );
           cy.log("Admin user accepts request");
           cy.apiGroupUserAcceptInviteRequest(adminUser, token);
-          waitForEmail("device access request approved by admin").then((email) => {
-            expect(getEmailSubject(email)).to.equal(
-              `👌 You've been accepted to '${getTestName(group)}'`,
-            );
-            expect(getEmailToAddress(email)).to.equal(
-              getTestEmail(normalUser),
-            );
-          });
+          waitForEmail("device access request approved by admin").then(
+            (email) => {
+              expect(getEmailSubject(email)).to.equal(
+                `👌 You've been accepted to '${getTestName(group)}'`,
+              );
+              expect(getEmailToAddress(email)).to.equal(
+                getTestEmail(normalUser),
+              );
+            },
+          );
         });
       });
     });
@@ -605,7 +626,9 @@ describe("Transactional emails for different user lifecycle actions", () => {
 
       cy.log("Add a new user but don't confirm their email");
       cy.apiUserAdd(normalUser).then(() => {
-        cy.log("Non-activated user attempts to request device access by ID - should fail");
+        cy.log(
+          "Non-activated user attempts to request device access by ID - should fail",
+        );
         cy.apiDeviceUserRequestInviteById(
           undefined,
           normalUser,
@@ -632,7 +655,9 @@ describe("Transactional emails for different user lifecycle actions", () => {
         confirmEmailAddress(normalUser);
         clearMailServerLog();
 
-        cy.log("User requests access to the group via device ID (should go to owner)");
+        cy.log(
+          "User requests access to the group via device ID (should go to owner)",
+        );
         cy.apiDeviceUserRequestInviteById(undefined, normalUser, device);
 
         waitForEmail("device access request by ID to owner").then((email) => {
@@ -652,9 +677,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
             expect(getEmailSubject(email)).to.equal(
               `👌 You've been accepted to '${getTestName(group)}'`,
             );
-            expect(getEmailToAddress(email)).to.equal(
-              getTestEmail(normalUser),
-            );
+            expect(getEmailToAddress(email)).to.equal(getTestEmail(normalUser));
           });
         });
       });

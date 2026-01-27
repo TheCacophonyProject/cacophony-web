@@ -1,16 +1,16 @@
 import type {
   GroupId as ProjectId,
   StationId as LocationId,
-} from "@typedefs/api/common";
+} from "@typedefs/api/common.js";
 import type {
   ApiVisitResponse,
   MonitoringPageCriteria,
-} from "@typedefs/api/monitoring";
-import type { RecordingType } from "@typedefs/api/consts";
-import { RecordingType as ConcreteRecordingType } from "@typedefs/api/consts";
-import type { CacophonyApiClient } from "./api";
-import type {   FetchResult,  TestHandle } from "./types";
-import { DEFAULT_AUTH_ID } from "./types";
+} from "@typedefs/api/monitoring.js";
+import type { RecordingType } from "@typedefs/api/consts.js";
+import { RecordingType as ConcreteRecordingType } from "@typedefs/api/consts.js";
+import type { CacophonyApiClient } from "@typedefs/client/api.js";
+import type { FetchResult, TestHandle } from "@typedefs/client/types.js";
+import { DEFAULT_AUTH_ID } from "@typedefs/client/types.js";
 
 export interface VisitsQueryResult {
   statusCode: number;
@@ -24,228 +24,227 @@ export interface BulkVisitsResponse {
   success: boolean;
 }
 export type ProgressUpdater = (progress: number) => void;
-const getVisitsForProjectNew = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
-  projectId: ProjectId,
-  fromDate: Date,
-  untilDate: Date,
-  shouldViewAsSuperUser: boolean = false,
-  locations?: LocationId[],
-  types?: (
-    | RecordingType.ThermalRaw
-    | RecordingType.Audio
-  )[],
-) => {
-  const params = new URLSearchParams();
-  params.append("from", fromDate.toISOString());
-  params.append("until", untilDate.toISOString());
-  if (locations && locations.length) {
-    for (const location of locations) {
-      params.append("locations", location.toString());
+const getVisitsForProjectNew =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    projectId: ProjectId,
+    fromDate: Date,
+    untilDate: Date,
+    shouldViewAsSuperUser = false,
+    locations?: LocationId[],
+    types?: (RecordingType.ThermalRaw | RecordingType.Audio)[],
+  ) => {
+    const params = new URLSearchParams();
+    params.append("from", fromDate.toISOString());
+    params.append("until", untilDate.toISOString());
+    if (locations && locations.length) {
+      for (const location of locations) {
+        params.append("locations", location.toString());
+      }
     }
-  }
-  if (types && types.length) {
-    for (const type of types) {
-      params.append("types", type);
+    if (types && types.length) {
+      for (const type of types) {
+        params.append("types", type);
+      }
     }
-  }
-  //params.append("page", "1"); // NOTE - since we alter the date range, page num is always 1
-  //params.append("page-size", pageSize.toString()); // 100 recordings per page of visits, which is the max
-  if (!shouldViewAsSuperUser) {
-    params.append("view-mode", "user");
-  }
-  return api.get(
-    authKey,
-    `/api/v1/monitoring/for-project/${projectId}?${params}`,
-  ) as Promise<FetchResult<VisitsQueryResult>>;
-};
+    //params.append("page", "1"); // NOTE - since we alter the date range, page num is always 1
+    //params.append("page-size", pageSize.toString()); // 100 recordings per page of visits, which is the max
+    if (!shouldViewAsSuperUser) {
+      params.append("view-mode", "user");
+    }
+    return api.get(
+      authKey,
+      `/api/v1/monitoring/for-project/${projectId}?${params}`,
+    ) as Promise<FetchResult<VisitsQueryResult>>;
+  };
 
-const getVisitsForProject = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => (
-  projectId: ProjectId,
-  fromDate: Date,
-  untilDate: Date,
-  shouldViewAsSuperUser: boolean = false,
-  locations?: LocationId[],
-  types?: (
-    | RecordingType.ThermalRaw
-  )[],
-) => {
-  const params = new URLSearchParams();
-  params.append("groups", projectId.toString());
-  params.append("from", fromDate.toISOString());
-  params.append("until", untilDate.toISOString());
-  if (locations && locations.length) {
-    for (const location of locations) {
-      params.append("stations", location.toString());
+const getVisitsForProject =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    projectId: ProjectId,
+    fromDate: Date,
+    untilDate: Date,
+    shouldViewAsSuperUser = false,
+    locations?: LocationId[],
+    types?: RecordingType.ThermalRaw[],
+  ) => {
+    const params = new URLSearchParams();
+    params.append("groups", projectId.toString());
+    params.append("from", fromDate.toISOString());
+    params.append("until", untilDate.toISOString());
+    if (locations && locations.length) {
+      for (const location of locations) {
+        params.append("stations", location.toString());
+      }
     }
-  }
-  if (types && types.length) {
-    params.append("types", types.toString());
-  }
-  params.append("page", "1"); // NOTE - since we alter the date range, page num is always 1
-  params.append("page-size", "50"); // 100 recordings per page of visits, which is the max
-  if (!shouldViewAsSuperUser) {
-    params.append("view-mode", "user");
-  }
-  const ABORTABLE = true;
-  return api.get(
-    authKey,
-    `/api/v1/monitoring/page?${params}`,
-    ABORTABLE,
-  ) as Promise<FetchResult<VisitsQueryResult>>;
-};
+    if (types && types.length) {
+      params.append("types", types.toString());
+    }
+    params.append("page", "1"); // NOTE - since we alter the date range, page num is always 1
+    params.append("page-size", "50"); // 100 recordings per page of visits, which is the max
+    if (!shouldViewAsSuperUser) {
+      params.append("view-mode", "user");
+    }
+    const ABORTABLE = true;
+    return api.get(
+      authKey,
+      `/api/v1/monitoring/page?${params}`,
+      ABORTABLE,
+    ) as Promise<FetchResult<VisitsQueryResult>>;
+  };
 
 // Load *all* of a date range at once.
-const getAllVisitsForProject = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => async (
-  projectId: ProjectId,
-  numDays: number,
-  shouldViewAsSuperUser: boolean = false,
-  progressUpdaterFn?: ProgressUpdater, // progress updates caller with how far through the request it is[0, 1]
-): Promise<{
-  visits: ApiVisitResponse[];
-  all: boolean;
-}> => {
-  const returnVisits: ApiVisitResponse[] = [];
-  let morePagesExist = true;
-  let requestNumber = 0;
-  const now = new Date();
-  let untilDate = new Date(now);
-  const fromDate = new Date(
-    new Date(now).setDate(new Date(now).getDate() - numDays),
-  );
-
-  let numPagesEstimate = 0;
-  while (morePagesExist && requestNumber < 100) {
-    // We only allow up to 100 pages...
-    if (!(untilDate > fromDate)) {
-      console.warn("Until date is less than fromDate");
-    }
-
-    requestNumber++;
-    const response = await getVisitsForProject(api, authKey)(
-      projectId,
-      fromDate,
-      untilDate,
-      shouldViewAsSuperUser,
-      undefined,
-      [
-        ConcreteRecordingType.ThermalRaw,
-      ],
+const getAllVisitsForProject =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  async (
+    projectId: ProjectId,
+    numDays: number,
+    shouldViewAsSuperUser = false,
+    progressUpdaterFn?: ProgressUpdater, // progress updates caller with how far through the request it is[0, 1]
+  ): Promise<{
+    visits: ApiVisitResponse[];
+    all: boolean;
+  }> => {
+    const returnVisits: ApiVisitResponse[] = [];
+    let morePagesExist = true;
+    let requestNumber = 0;
+    const now = new Date();
+    let untilDate = new Date(now);
+    const fromDate = new Date(
+      new Date(now).setDate(new Date(now).getDate() - numDays),
     );
-    if (response && response.success) {
-      const {
-        result: {
-          visits,
-          params: { pagesEstimate, pageFrom },
-        },
-      } = response;
-      if (requestNumber === 1) {
-        numPagesEstimate = pagesEstimate;
+
+    let numPagesEstimate = 0;
+    while (morePagesExist && requestNumber < 100) {
+      // We only allow up to 100 pages...
+      if (!(untilDate > fromDate)) {
+        console.warn("Until date is less than fromDate");
       }
-      returnVisits.push(...visits);
-      morePagesExist = pagesEstimate > 1;
-      if (progressUpdaterFn) {
-        // Handle dividing by Infinity
-        progressUpdaterFn(Math.min(1, requestNumber / numPagesEstimate));
-      }
-      if (!pageFrom) {
+
+      requestNumber++;
+      const response = await getVisitsForProject(api, authKey)(
+        projectId,
+        fromDate,
+        untilDate,
+        shouldViewAsSuperUser,
+        undefined,
+        [ConcreteRecordingType.ThermalRaw],
+      );
+      if (response && response.success) {
+        const {
+          result: {
+            visits,
+            params: { pagesEstimate, pageFrom },
+          },
+        } = response;
+        if (requestNumber === 1) {
+          numPagesEstimate = pagesEstimate;
+        }
+        returnVisits.push(...visits);
+        morePagesExist = pagesEstimate > 1;
+        if (progressUpdaterFn) {
+          // Handle dividing by Infinity
+          progressUpdaterFn(Math.min(1, requestNumber / numPagesEstimate));
+        }
+        if (!pageFrom) {
+          break;
+        }
+        if (morePagesExist) {
+          untilDate = new Date(pageFrom);
+        }
+      } else if (response && !response.success) {
+        console.warn("Failure", response);
         break;
       }
-      if (morePagesExist) {
-        untilDate = new Date(pageFrom);
-      }
-    } else if (response && !response.success) {
-      console.warn("Failure", response);
-      break;
     }
-  }
 
-  // Make sure visits are in chronological order from oldest to newest
-  // returnVisits.sort((a, b) => {
-  //   return new Date(a.timeStart).getTime() - new Date(b.timeStart).getTime();
-  // });
+    // Make sure visits are in chronological order from oldest to newest
+    // returnVisits.sort((a, b) => {
+    //   return new Date(a.timeStart).getTime() - new Date(b.timeStart).getTime();
+    // });
 
-  return {
-    visits: returnVisits,
-    all: !morePagesExist,
+    return {
+      visits: returnVisits,
+      all: !morePagesExist,
+    };
   };
-};
 
-const getAllVisitsForProjectBetweenTimes = (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) => async (
-  projectId: ProjectId,
-  fromDate: Date,
-  untilDateTime: Date,
-  shouldViewAsSuperUser: boolean = false,
-  locations?: LocationId[],
-  types?: (
-    | RecordingType.ThermalRaw
-  )[],
-  progressUpdaterFn?: ProgressUpdater, // progress updates caller with how far through the request it is [0, 1]
-): Promise<BulkVisitsResponse> => {
-  const returnVisits: ApiVisitResponse[] = [];
-  let morePagesExist = true;
-  let requestNumber = 0;
-  let untilDate = new Date(untilDateTime);
-  let numPagesEstimate = 0;
-  // FIXME: This should really respect the fromDate/untilDate that we pass it - we'll lazily load more visits
-  //  as needed by page visibility etc.  All we really want to do is make sure we load up to the end of the last visit,
-  //  so there are no incomplete visits in the list.
-  while (morePagesExist && requestNumber < 100) {
-    // We only allow up to 100 pages...
-    requestNumber++;
-    const response = await getVisitsForProject(api, authKey)(
-      projectId,
-      fromDate,
-      untilDate,
-      shouldViewAsSuperUser,
-      locations,
-      types,
-    );
-    if (response && response.success) {
-      const {
-        result: {
-          visits,
-          params: { pagesEstimate, pageFrom },
-        },
-      } = response;
-      if (requestNumber === 1) {
-        numPagesEstimate = pagesEstimate;
-      }
-      if (
-        visits &&
-        visits.length &&
-        (visits[0].incomplete || visits[visits.length - 1].incomplete)
-      ) {
-        // FIXME
-        // debugger;
-      }
-      returnVisits.push(...visits);
-      morePagesExist = pagesEstimate > 1;
-      if (progressUpdaterFn) {
-        // Handle dividing by Infinity
-        progressUpdaterFn(Math.min(1, requestNumber / numPagesEstimate));
-      }
-      if (!pageFrom) {
+const getAllVisitsForProjectBetweenTimes =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  async (
+    projectId: ProjectId,
+    fromDate: Date,
+    untilDateTime: Date,
+    shouldViewAsSuperUser = false,
+    locations?: LocationId[],
+    types?: RecordingType.ThermalRaw[],
+    progressUpdaterFn?: ProgressUpdater, // progress updates caller with how far through the request it is [0, 1]
+  ): Promise<BulkVisitsResponse> => {
+    const returnVisits: ApiVisitResponse[] = [];
+    let morePagesExist = true;
+    let requestNumber = 0;
+    let untilDate = new Date(untilDateTime);
+    let numPagesEstimate = 0;
+    // FIXME: This should really respect the fromDate/untilDate that we pass it - we'll lazily load more visits
+    //  as needed by page visibility etc.  All we really want to do is make sure we load up to the end of the last visit,
+    //  so there are no incomplete visits in the list.
+    while (morePagesExist && requestNumber < 100) {
+      // We only allow up to 100 pages...
+      requestNumber++;
+      const response = await getVisitsForProject(api, authKey)(
+        projectId,
+        fromDate,
+        untilDate,
+        shouldViewAsSuperUser,
+        locations,
+        types,
+      );
+      if (response && response.success) {
+        const {
+          result: {
+            visits,
+            params: { pagesEstimate, pageFrom },
+          },
+        } = response;
+        if (requestNumber === 1) {
+          numPagesEstimate = pagesEstimate;
+        }
+        if (
+          visits &&
+          visits.length &&
+          (visits[0].incomplete || visits[visits.length - 1].incomplete)
+        ) {
+          // FIXME
+          // debugger;
+        }
+        returnVisits.push(...visits);
+        morePagesExist = pagesEstimate > 1;
+        if (progressUpdaterFn) {
+          // Handle dividing by Infinity
+          progressUpdaterFn(Math.min(1, requestNumber / numPagesEstimate));
+        }
+        if (!pageFrom) {
+          break;
+        }
+        if (morePagesExist) {
+          untilDate = new Date(pageFrom);
+        }
+      } else if (response && !response.success) {
         break;
       }
-      if (morePagesExist) {
-        untilDate = new Date(pageFrom);
-      }
-    } else if (response && !response.success) {
-      break;
     }
-  }
 
-  // Make sure visits are in chronological order from oldest to newest
-  // returnVisits.sort((a, b) => {
-  //   return new Date(a.timeStart).getTime() - new Date(b.timeStart).getTime();
-  // });
+    // Make sure visits are in chronological order from oldest to newest
+    // returnVisits.sort((a, b) => {
+    //   return new Date(a.timeStart).getTime() - new Date(b.timeStart).getTime();
+    // });
 
-  return {
-    success: true,
-    visits: returnVisits,
-    all: !morePagesExist,
+    return {
+      success: true,
+      visits: returnVisits,
+      all: !morePagesExist,
+    };
   };
-};
 
 export default (api: CacophonyApiClient) => {
   return {
@@ -257,7 +256,10 @@ export default (api: CacophonyApiClient) => {
       getVisitsForProjectNew: getVisitsForProjectNew(api, authKey),
       getVisitsForProject: getVisitsForProject(api, authKey),
       getAllVisitsForProject: getAllVisitsForProject(api, authKey),
-      getAllVisitsForProjectBetweenTimes: getAllVisitsForProjectBetweenTimes(api, authKey),
+      getAllVisitsForProjectBetweenTimes: getAllVisitsForProjectBetweenTimes(
+        api,
+        authKey,
+      ),
     }),
   };
 };

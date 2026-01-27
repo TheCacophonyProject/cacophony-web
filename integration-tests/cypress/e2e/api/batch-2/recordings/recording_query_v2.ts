@@ -17,7 +17,6 @@ import {
 } from "@commands/api/recording-tests";
 import {
   ApiAudioRecordingResponse,
-  ApiRecordingResponse,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
 import {
@@ -29,9 +28,6 @@ import { TestGetLocationArray } from "@commands/api/station";
 import { ApiTrackResponse } from "@typedefs/api/track";
 
 describe("Recordings query using improved query API", () => {
-  const superuser = getCreds("superuser")["email"];
-  const suPassword = getCreds("superuser")["password"];
-
   const groupAdmin = "rqGroupAdmin";
   const group1 = "rqGroup";
   const group1Device1 = "rqCamera1";
@@ -42,7 +38,6 @@ describe("Recordings query using improved query API", () => {
   const group2Device1 = "rqCamera2";
 
   const group1Recordings = [];
-  const group2Recordings = [];
 
   //Do not validate IDs or additionalMetadata
   //On test server, do not validate processingData, as recordings may be processed during test
@@ -398,9 +393,11 @@ describe("Recordings query using improved query API", () => {
       );
 
       // Recording with 2 tracks, both AI tagged, and then 1 confirmed by user
-      cy.apiRecordingAddWithTracks(group2Device1, [["cat"], ["cat"]]).then((id) => {
-        cy.testUserAddTagRecording(id, 0, group2Admin, "cat");
-      });
+      cy.apiRecordingAddWithTracks(group2Device1, [["cat"], ["cat"]]).then(
+        (id) => {
+          cy.testUserAddTagRecording(id, 0, group2Admin, "cat");
+        },
+      );
 
       // Recording with 1 non-false-positive track, corrected by user.
       cy.apiRecordingAddWithTracks(group2Device1, [["dog"]]).then((id) => {
@@ -1224,7 +1221,6 @@ describe("Recordings query using improved query API", () => {
         "num-results": 2,
       },
     );
-
   });
 
   it("Group member can view deleted recordings", () => {

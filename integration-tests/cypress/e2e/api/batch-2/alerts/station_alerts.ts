@@ -44,7 +44,7 @@ describe("Station alerts", () => {
           stationId,
           null,
           HttpStatusCode.Forbidden,
-        ).then((response: any) => {
+        ).then((response: Cypress.Response<unknown>) => {
           checkResponse(response, HttpStatusCode.Forbidden);
         });
       });
@@ -55,8 +55,8 @@ describe("Station alerts", () => {
     cy.testCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
     cy.apiGroupStationAdd(usera.name, usera.group, {
       name: "test-station",
-      lat: 1,
-      lng: 2,
+      lat: -42,
+      lng: 170,
     }).then((stationId) => {
       // create alert
       cy.apiStationAlertAdd(
@@ -73,8 +73,8 @@ describe("Station alerts", () => {
           {
             processingState: RecordingProcessingState.Finished,
             tags: ["possum"],
-            lat: 1,
-            lng: 2,
+            lat: -42,
+            lng: 170,
             time: new Date(),
           },
           "recording1",
