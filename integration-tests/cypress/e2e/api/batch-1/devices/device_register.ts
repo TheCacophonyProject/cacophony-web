@@ -145,7 +145,7 @@ describe("Device register", () => {
       camsGroup,
       null,
       expectedDevice,
-      null,
+      {},
       HttpStatusCode.Ok,
     );
   });
