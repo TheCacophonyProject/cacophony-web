@@ -539,7 +539,7 @@ Cypress.Commands.add(
     }
 
     const url = v1ApiPath(
-      `recordings/${recordingId}/tracks/${trackId}/replaceTag`,
+      `recordings/${recordingId}/tracks/${trackId}/replace-tag`,
     );
 
     makeAuthorizedRequestWithStatus(

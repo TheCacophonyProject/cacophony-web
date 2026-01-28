@@ -1836,6 +1836,7 @@ export default (app: Application, baseUrl: string) => {
     ...replaceTrackTagParams,
   );
 
+  // TODO: Do any external API consumers use this legacy endpoint, or can it be removed?
   app.post(
     `${apiUrl}/:id/tracks/:trackId/replaceTag`,
     ...replaceTrackTagParams,

@@ -475,7 +475,7 @@ function replaceTrackTag(
     automatic,
   };
   return CacophonyApi.post(
-    `${apiPath}/${recordingId}/tracks/${trackId}/replaceTag`,
+    `${apiPath}/${recordingId}/tracks/${trackId}/replace-tag`,
     body
   );
 }

@@ -523,7 +523,8 @@ describe("Activity bookkeeping", () => {
     await checkActivity(project, requestTime, "device", uploadedRecording);
   });
 
-  it("Can upload multiple recordings from device with same location, and with dates after the project creation date, ensuring correct book-keeping", async () => {
+  it(`Can upload multiple recordings from device with same location, 
+  and with dates after the project creation date, ensuring correct book-keeping`, async () => {
     const project = await createProjectWithUserAndDevice();
     const startDate = new Date("2026-01-10T20:07:06.292Z");
     const dates = spreadDays(startDate, 3);
@@ -577,7 +578,8 @@ describe("Activity bookkeeping", () => {
     ).to.deep.equal(expectedLocationIds);
   });
 
-  it("Ensure there are no race conditions for device kind when uploading multiple different recording types in quick succession", async () => {
+  it(`Ensure there are no race conditions for device kind when 
+  uploading multiple different recording types in quick succession`, async () => {
     const project = await createProjectWithUserAndDevice();
     const startDate = new Date("2026-01-10T20:07:06.292Z");
     const dates = spreadDays(startDate, 3);
@@ -630,7 +632,8 @@ describe("Activity bookkeeping", () => {
       device.location,
       "device location was updated correctly",
     ).to.deep.equal(uploadedRecordings[0].location);
-    // TODO: When doing this on behalf of device vs with device, make sure lastConnectionTime does the right thing (which is it get's nulled out if uploads are later than the latest recording time?)
+    // TODO: When doing this on behalf of device vs with device, make sure lastConnectionTime does the right thing
+    //  (which is it get's nulled out if uploads are later than the latest recording time?)
     // TODO: Also sanity check uploading events both as device and on behalf.
   });
 
@@ -679,7 +682,8 @@ describe("Activity bookkeeping", () => {
     ).to.deep.equal(location.location);
   });
 
-  it("Ensure that only one DeviceHistory entry is made when a series of recordings in the same location are uploaded for a device", async () => {
+  it(`Ensure that only one DeviceHistory entry is made when 
+  a series of recordings in the same location are uploaded for a device`, async () => {
     const project = await createProjectWithUserAndDevice();
     const startDate = new Date("2026-01-10T20:07:06.292Z");
     const dates = spreadDays(startDate, 3);
@@ -704,18 +708,37 @@ describe("Activity bookkeeping", () => {
     ).to.equal(1);
   });
 
-  it("Ensure that multiple device history entries are created for a series of recordings in different locations from a given device", async () => {
-    return;
+  it(`Ensure that multiple device history entries are created for a series of recordings in different
+   locations from a given device`, async () => {
+    const project = await createProjectWithUserAndDevice();
+    const startDate = new Date("2026-01-10T20:07:06.292Z");
+    const dates = spreadDays(startDate, 3);
+    const locations = spreadLocations({ lat: -42.0, lng: 172 }, 3);
+    const recordingUploads = arrayZip(dates, locations).map(
+      ({ left: date, right: location }) => {
+        return uploadThermalRecordingFromDeviceForProject({
+          project,
+          location,
+          recordingDateTime: date,
+        });
+      },
+    );
+    const _recordingIds = await Promise.all(recordingUploads);
+    const deviceHistory = await TestApi.Devices.withAuth(
+      project.getAdmin().testId,
+    ).getDeviceHistoryInTest(project.deviceHandles[0].id);
+    expect(deviceHistory, "got device history").to.not.equal(false);
+    const automaticallySetLocationHistory = (
+      deviceHistory as ApiDeviceHistory[]
+    ).filter((history) => history.setBy === "automatic");
+    expect(
+      automaticallySetLocationHistory.length,
+      "three DeviceHistory entries are made",
+    ).to.equal(3);
   });
 
-  it("Uploading a recording on behalf of a device with a later time than the lastConnectionTime should null out lastConnectionTime, implying that the device is not 'offline'", () => {
+  it(`Uploading a recording on behalf of a device with a later time than the lastConnectionTime should null out 
+  lastConnectionTime, implying that the device is not 'offline'`, () => {
     return;
   });
-
-  // TODO: DeviceHistory sanity checking
-
-  // Create a group
-  // Create a user
-  // Add a device
-  // Upload a recording of test length: Check latest recording time
 });
