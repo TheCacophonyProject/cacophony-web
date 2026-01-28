@@ -14,7 +14,13 @@ export function v1ApiPath(page: string, queryParams = {}): string {
   const urlpage = new URL(Cypress.env("cacophony-api-server"));
   urlpage.pathname = `/api/v1/${page}`;
   for (const [key, value] of Object.entries(queryParams)) {
-    urlpage.searchParams.append(key, String(value));
+    if (Array.isArray(value)) {
+      for (const val of value) {
+        urlpage.searchParams.append(key, val);
+      }
+    } else {
+      urlpage.searchParams.append(key, String(value));
+    }
   }
   return urlpage.toString();
 }

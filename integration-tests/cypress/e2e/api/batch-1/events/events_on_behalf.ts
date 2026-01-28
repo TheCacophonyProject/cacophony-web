@@ -1,8 +1,7 @@
 import { EventTypes } from "@commands/api/events";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
-import { HttpStatusCode } from "@typedefs/api/consts";
-import { EventEnv } from "@shared/api/event";
+import { EventEnv, HttpStatusCode } from "@typedefs/api/consts";
 
 const EXCL_ID_CREATED = ["[].id", "[].createdAt"]; // do not check claues of event id or createdAt time
 
