@@ -38,7 +38,7 @@ describe("Recordings - audio recording parameter tests", () => {
     cy.apiRecordingAdd(
       device,
       { type: RecordingType.Audio },
-      "embedded-metadata-tc2.aac",
+      "audio-test-recording-tc2.m4a",
       "rarRecording1",
     ).then(() => {
       expectedRecording1 = TestCreateExpectedRecordingData(

@@ -2545,7 +2545,6 @@ export default function (app: Application, baseUrl: string) {
   if (!config.productionEnv) {
     // NOTE: This api is currently for facilitating testing only, and is
     //  not available in production builds.
-
     /**
      * @api {post} /api/v1/devices/:deviceId/history Get device history
      * @apiName history

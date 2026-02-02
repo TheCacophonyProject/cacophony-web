@@ -128,7 +128,37 @@ const Recordings = recordingsInit(api);
 const Locations = locationsInit(api);
 const Monitoring = monitoringInit(api);
 
-export const TestApi = {
+const _Users = usersInit(api).withAuth("");
+const _Projects = projectsInit(api).withAuth("");
+const _Alerts = alertsInit(api).withAuth("");
+const _Devices = devicesInit(api).withAuth("");
+const _Recordings = recordingsInit(api).withAuth("");
+const _Locations = locationsInit(api).withAuth("");
+const _Monitoring = monitoringInit(api).withAuth("");
+
+export interface TestApi {
+  Alerts: typeof _Alerts;
+  Classifications: typeof Classifications;
+  Devices: typeof _Devices;
+  Locations: typeof _Locations;
+  Monitoring: typeof _Monitoring;
+  Projects: typeof _Projects;
+  Users: typeof _Users;
+  Recordings: typeof _Recordings;
+}
+
+const withAuth = (authKey: TestHandle): TestApi => ({
+  Alerts: Alerts.withAuth(authKey),
+  Classifications,
+  Devices: Devices.withAuth(authKey),
+  Locations: Locations.withAuth(authKey),
+  Monitoring: Monitoring.withAuth(authKey),
+  Projects: Projects.withAuth(authKey),
+  Users: Users.withAuth(authKey),
+  Recordings: Recordings.withAuth(authKey),
+});
+
+export const TestApiImpl = {
   Alerts,
   Classifications,
   Devices,
@@ -142,4 +172,5 @@ export const TestApi = {
     creds: LoggedInDeviceCredentials | LoggedInUserAuth,
   ) => api.registerCredentials(authKey, creds),
   //getCredentials: (authKey: TestHandle) => api.getCredentials(authKey),
+  withAuth: (authKey: TestHandle) => withAuth(authKey),
 };

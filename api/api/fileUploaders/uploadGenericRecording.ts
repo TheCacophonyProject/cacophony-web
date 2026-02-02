@@ -14,7 +14,7 @@ import {
 } from "@typedefs/api/consts.js";
 import { successResponse } from "@api/V1/responseUtil.js";
 import multiparty from "multiparty";
-import type { NextFunction, Request, Response } from "express";
+import e, { NextFunction, Request, Response } from "express";
 import Sequelize, { Op } from "sequelize";
 import { Recording } from "@models/Recording.js";
 import { openS3 } from "@models/util/util.js";
@@ -91,10 +91,29 @@ const mergeEmbeddedDataWithSuppliedRecordingData = (
       };
     }
 
+    // TODO: When tc2-agent is correctly adding test metadata,
+    //  we can also check for `"testRecording" in mergedData`
+    if (mergedData.type === RecordingType.Audio) {
+      // Add test status for audio recording.
+      if (!mergedData.additionalMetadata) {
+        mergedData.additionalMetadata = {};
+      }
+      if (mergedData.duration < 11.0) {
+        mergedData.additionalMetadata.status = "test";
+      } else if (mergedData.duration > 60 * 4) {
+        mergedData.additionalMetadata.status = "bird-count";
+      }
+    }
+
     if ("motionConfig" in mergedData) {
       // See if it's a low power test/startup/shutdown recording.
       try {
-        const motionConfig = JSON.parse(mergedData.motionConfig as string);
+        let mc = mergedData.motionConfig as string;
+        if (mc.startsWith("status:")) {
+          mc = `{ "status": "${mc.replace("status:", "").trim()}" }`;
+        }
+        const motionConfig = JSON.parse(mc);
+
         if (motionConfig.status) {
           if (!mergedData.additionalMetadata) {
             mergedData.additionalMetadata = {};
@@ -693,10 +712,6 @@ export const uploadGenericRecording =
         recordingTemplate.recordingDateTime = new Date();
       }
 
-      console.log(
-        "=============================================",
-        recordingTemplate.location,
-      );
       // Work out which group and station to assign based on recordingDateTime, device history etc.
       const groupAndStation = await assignGroupAndStationToRecording(
         recordingDevice,
@@ -1081,7 +1096,6 @@ const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
   const updateColumn = cameraTypes.includes(recording.type)
     ? "lastThermalRecordingTime"
     : "lastAudioRecordingTime";
-  console.log("---------------------------------", recording.location);
   if (!isLatLon(recording.location)) {
     // FIXME: Handle this, maybe further down the stack
     throw new Error("Invalid location");

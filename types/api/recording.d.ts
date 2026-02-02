@@ -34,7 +34,10 @@ export interface ApiRecordingResponse {
   redacted?: boolean;
 }
 
-export interface ApiThermalRecordingMetadataResponse {
+export interface ApiThermalRecordingMetadataResponse extends Record<
+  string,
+  unknown
+> {
   trackingTime?: Seconds;
   previewSecs?: Seconds;
   totalFrames?: number;

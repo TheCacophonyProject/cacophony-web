@@ -18,7 +18,7 @@ export interface DeviceEvent {
   Device: { deviceName: string };
   EventDetail: {
     type: string;
-    details: object;
+    details?: object;
   };
   env: EventEnv;
 }

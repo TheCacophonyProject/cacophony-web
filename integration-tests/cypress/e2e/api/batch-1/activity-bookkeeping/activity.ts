@@ -1,531 +1,60 @@
 // When we upload a recording, lastest thermal recording time etc should be adjusted.
 // If we delete a recording, it should also be adjusted.
 // If it's the last recording in a location, we should delete the location.
-import {
-  TestDeviceHandle,
-  TestEntityHandle,
-  TestProjectHandle,
-  TestUserHandle,
-} from "@shared/client/types";
-import { LatLng, RecordingId } from "@typedefs/api/common";
 import { DeviceType, RecordingType } from "@shared/api/consts";
-import { TestApi } from "@shared/client";
 import {
   ApiRecordingResponse,
-  ApiRecordingUploadData,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
 import { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import { ApiStationResponse as ApiLocationResponse } from "@shared/api/station";
 import { ApiDeviceHistory, ApiDeviceResponse } from "@shared/api/device";
-// Probably create this once for tests and re-export?
-
-// TODO: We need to init the credentials resolver per "session".
-
-// TODO: Need to work out the ergonomics of calling the same API with different user handles in sequence.
-// I guess we just need to have a different resolver per credential?
-interface ProjectBundle {
-  userHandles: TestUserHandle[];
-  projectHandle: TestProjectHandle;
-  deviceHandles: TestDeviceHandle[];
-  locationBase: LatLng;
-  testFixtures: Record<string, ArrayBuffer>;
-  getAdmin: () => TestUserHandle;
-  getOwner: () => TestUserHandle;
-  getNonAdmin: () => TestUserHandle | null;
-}
-
-const getTestName = (str: string) =>
-  `${str}-${Math.floor(Number.MAX_SAFE_INTEGER * Math.random()).toString(36)}`;
-
-const createUser = async (userName: string): Promise<TestUserHandle | null> => {
-  const userHandle = getTestName(`user-${userName}`);
-  const userResponse = await TestApi.Users.register(
-    userHandle,
-    "password",
-    `${userHandle}@api-test.cacophony.org.nz`,
-    3,
-  );
-  expect(userResponse.success, "create user").to.be.true;
-  if (userResponse.success) {
-    TestApi.registerCredentials(userHandle, {
-      userData: userResponse.result.userData,
-      refreshToken: userResponse.result.refreshToken,
-      apiToken: userResponse.result.token,
-    });
-    const userId = userResponse.result.userData.id;
-    cy.log(`Created user ${userHandle} with id ${userId}`);
-    return {
-      testId: userHandle,
-      id: userId,
-      type: "user",
-    };
-  }
-  return null;
-};
-
-const createProject = async (
-  projectName: string,
-  userHandle: TestUserHandle,
-): Promise<TestProjectHandle | null> => {
-  const projectHandle = getTestName(`project-${projectName}`);
-  const projectResponse = await TestApi.Projects.withAuth(
-    userHandle.testId,
-  ).addNewProject(projectHandle);
-  expect(projectResponse.success, "create project").to.be.true;
-  if (projectResponse.success) {
-    const projectId = projectResponse.result.groupId;
-    // Do we need some way of keeping track of the project id?
-    //projectCredentials.set(projectHandle, projectId);
-    cy.log(`Created project ${projectHandle} with id ${projectId}`);
-    return {
-      testId: projectHandle,
-      id: projectResponse.result.groupId,
-      type: "project",
-    };
-  }
-  return null;
-};
-
-const addDeviceToProject = async (
-  deviceName: string,
-  projectHandle: TestProjectHandle,
-): Promise<TestDeviceHandle | null> => {
-  const deviceHandle = getTestName(`device-${deviceName}`);
-  const deviceResponse = await TestApi.Devices.registerDevice(
-    projectHandle.testId,
-    deviceHandle,
-    "password",
-  );
-  expect(deviceResponse.success, "create device").to.be.true;
-  if (deviceResponse.success) {
-    TestApi.registerCredentials(deviceHandle, deviceResponse.result);
-    const deviceId = deviceResponse.result.id;
-    cy.log(`Created device ${deviceHandle} with id ${deviceId}`);
-    return {
-      id: deviceId,
-      testId: deviceHandle,
-      type: "device",
-    };
-  }
-  return null;
-};
-
-const extForUploadFileType = (type: RecordingType) => {
-  switch (type) {
-    case RecordingType.Audio:
-      return ".m4a";
-    case RecordingType.InfraredVideo:
-      return ".mp4";
-    case RecordingType.ThermalRaw:
-    default:
-      return ".cptv";
-  }
-};
-
-const getTestFixture = async (fileName: string): Promise<ArrayBuffer> => {
-  return new Promise((resolve) => {
-    cy.fixture(fileName, "binary").then(async (fileBinary: string) => {
-      // File in binary format gets converted to blob so it can be sent as Form data
-      const blob = Cypress.Blob.binaryStringToBlob(fileBinary);
-      const arrayBuffer = await blob.arrayBuffer();
-      resolve(arrayBuffer);
-    });
-  });
-};
-
-const uploadRecording = async (
-  uploaderHandle: TestEntityHandle,
-  recordingOptions: {
-    project: ProjectBundle;
-    location?: LatLng;
-    deviceHandle?: TestDeviceHandle;
-    recordingType?: "test" | "startup" | "shutdown";
-    type: RecordingType;
-    recordingDateTime: Date;
-  },
-): Promise<RecordingId | null> => {
-  expect(["user", "device"], "uploader must be device or user").to.include(
-    uploaderHandle.type,
-  );
-  const deviceId = uploaderHandle.id;
-  const rawFile =
-    recordingOptions.type === RecordingType.ThermalRaw
-      ? recordingOptions.project.testFixtures["oneframe.cptv"]
-      : recordingOptions.project.testFixtures["60sec-audio.m4a"];
-  const rawFileName = `filename.${extForUploadFileType(recordingOptions.type)}`;
-  // TODO: Maybe we could fuzz a location based on locationBase if there's no supplied location
-  const location =
-    recordingOptions.location ?? recordingOptions.project.locationBase;
-  let upload;
-  const data: ApiRecordingUploadData = {
-    location,
-    type: recordingOptions.type,
-    recordingDateTime: recordingOptions.recordingDateTime,
-  };
-  if (recordingOptions && recordingOptions.recordingType) {
-    data.status = recordingOptions.recordingType;
-    data.duration = 2;
-  }
-  if (uploaderHandle.type === "device") {
-    upload = TestApi.Recordings.withAuth(
-      uploaderHandle.testId,
-    ).uploadRecordingFromDevice(data, rawFile, rawFileName);
-  } else if (uploaderHandle.type === "user") {
-    upload = TestApi.Recordings.withAuth(
-      uploaderHandle.testId,
-    ).uploadRecordingOnBehalfOfDevice(deviceId, data, rawFile, rawFileName);
-  }
-  const response = await upload;
-  expect(response.success, "uploaded recording").to.be.true;
-  if (response.success) {
-    return response.result.recordingId;
-  } else {
-    console.error("Failed to upload recording", response);
-  }
-  return null;
-};
-
-const uploadRecordingFromDeviceForProject = async (options: {
-  project: ProjectBundle;
-  location?: LatLng;
-  deviceHandle?: TestDeviceHandle;
-  recordingType?: "test" | "startup" | "shutdown";
-  type: RecordingType;
-  recordingDateTime: Date;
-}): Promise<RecordingId | null> => {
-  // Use the first device in the project bundle, or the specified device.
-  const deviceToUploadFrom: TestDeviceHandle =
-    options.deviceHandle || options.project.deviceHandles[0];
-  return uploadRecording(deviceToUploadFrom, options);
-};
-
-const uploadThermalRecordingFromDeviceForProject = async (options: {
-  project: ProjectBundle;
-  location?: LatLng;
-  deviceHandle?: TestDeviceHandle;
-  recordingDateTime: Date;
-}): Promise<RecordingId> => {
-  return uploadRecordingFromDeviceForProject({
-    ...options,
-    type: RecordingType.ThermalRaw,
-  });
-};
-
-const uploadThermalTestRecordingFromDeviceForProject = async (options: {
-  project: ProjectBundle;
-  location?: LatLng;
-  deviceHandle?: TestDeviceHandle;
-  recordingDateTime: Date;
-}): Promise<RecordingId> => {
-  return uploadRecordingFromDeviceForProject({
-    ...options,
-    type: RecordingType.ThermalRaw,
-    recordingType: "test",
-  });
-};
-
-const uploadThermalStartupRecordingFromDeviceForProject = async (options: {
-  project: ProjectBundle;
-  location?: LatLng;
-  deviceHandle?: TestDeviceHandle;
-  recordingDateTime: Date;
-}): Promise<RecordingId> => {
-  return uploadRecordingFromDeviceForProject({
-    ...options,
-    type: RecordingType.ThermalRaw,
-    recordingType: "startup",
-  });
-};
-
-const uploadThermalShutdownRecordingFromDeviceForProject = async (options: {
-  project: ProjectBundle;
-  location?: LatLng;
-  deviceHandle?: TestDeviceHandle;
-  recordingDateTime: Date;
-}): Promise<RecordingId> => {
-  return uploadRecordingFromDeviceForProject({
-    ...options,
-    type: RecordingType.ThermalRaw,
-    recordingType: "shutdown",
-  });
-};
-
-const uploadAudioRecordingFromDeviceForProject = async (options: {
-  project: ProjectBundle;
-  location?: LatLng;
-  deviceHandle?: TestDeviceHandle;
-  isTestRecording?: true;
-  recordingDateTime: Date;
-}): Promise<RecordingId> => {
-  return uploadRecordingFromDeviceForProject({
-    ...options,
-    type: RecordingType.Audio,
-  });
-};
-
-const _uploadAudioTestRecordingFromDeviceForProject = async (options: {
-  project: ProjectBundle;
-  location?: LatLng;
-  deviceHandle?: TestDeviceHandle;
-  recordingDateTime: Date;
-}): Promise<RecordingId> => {
-  return uploadRecordingFromDeviceForProject({
-    ...options,
-    type: RecordingType.Audio,
-    recordingType: "test",
-  });
-};
-
-const testLocation = (lat: number, lng: number, fudgeFactor = 1.0): LatLng => {
-  return {
-    lat: lat + (Math.random() - 0.5) * fudgeFactor,
-    lng: lng + (Math.random() - 0.5) * fudgeFactor,
-  };
-};
-
-// Flipped Lat/long
-const _invalidTestLocation = () => testLocation(170, 45);
-const _validTestLocation = () => testLocation(-45, 170);
-const _nullTestLocation = () => testLocation(0, 0, 0);
-
-const createProjectWithUserAndDevice = async (options?: {
-  nameBase?: string;
-  locationBase?: LatLng;
-  testFixtures?: string[];
-}): Promise<ProjectBundle> => {
-  const testFixtures = await getTestFixtures([
-    "oneframe.cptv",
-    "60sec-audio.m4a",
-    "invalid.cptv",
-    "small.cptv",
-    "bird_1.cptv",
-    ...(options?.testFixtures ?? []),
-  ]);
-  const nameBase = (options && options.nameBase) || "Test";
-  const locationBase =
-    (options && options.locationBase) || testLocation(-42.0, 172.0, 5.0);
-
-  const userHandle = await createUser(nameBase);
-  const projectHandle = await createProject(nameBase, userHandle);
-  const deviceHandle = await addDeviceToProject(nameBase, projectHandle);
-  return {
-    userHandles: [userHandle],
-    projectHandle,
-    locationBase,
-    deviceHandles: [deviceHandle],
-    testFixtures,
-    getAdmin: (): TestUserHandle => {
-      return userHandle;
-    },
-    getOwner: (): TestUserHandle => {
-      return userHandle;
-    },
-    getNonAdmin: (): TestUserHandle | null => {
-      // There may not be non-admin users.
-      return null;
-    },
-  };
-};
-
-const getTestFixtures = async (
-  fixtures: string[],
-): Promise<Record<string, ArrayBuffer>> => {
-  const loadedFixtures = {};
-  for (const fixture of fixtures) {
-    loadedFixtures[fixture] = await getTestFixture(fixture);
-  }
-  return loadedFixtures;
-};
-
-const addDays = (startDate: Date, days: number) => {
-  const result = new Date(startDate);
-  result.setDate(result.getDate() + days);
-  return result;
-};
-
-const spreadDays = (startDate: Date, days: number): Date[] => {
-  if (addDays(startDate, days).getTime() > new Date().getTime()) {
-    // NOTE: We don't allow recordings with far future dates, so we always need to make sure our startDate
-    //  for generating these test dates is sufficiently far in the past.
-    throw new Error(
-      `Cannot generate dates in the future: ${startDate.toISOString()} + ${days} days`,
-    );
-  }
-  const dates = [];
-  for (let i = 0; i < days; i++) {
-    dates.push(addDays(startDate, i));
-  }
-  return dates;
-};
-
-const spreadLocations = (
-  startLocation: LatLng,
-  numLocations: number,
-  distance = 0.1,
-): LatLng[] => {
-  const locations = [];
-  for (let i = 0; i < numLocations; i++) {
-    locations.push({
-      lat: startLocation.lat - i * distance,
-      lng: startLocation.lng,
-    });
-  }
-  return locations;
-};
-
-const checkActivity = async (
-  projectBundle: ProjectBundle,
-  requestTime: Date,
-  uploader: "device" | "user",
-  recording: ApiRecordingResponse,
-): Promise<[ApiProjectResponse, ApiDeviceResponse, ApiLocationResponse]> => {
-  // Check that there is expected activity in project.
-  const [project, device, location] = (await Promise.all([
-    TestApi.Projects.withAuth(projectBundle.getAdmin().testId).getProjectById(
-      projectBundle.projectHandle.id,
-    ),
-    TestApi.Devices.withAuth(projectBundle.getAdmin().testId).getDeviceById(
-      recording.deviceId,
-    ),
-    TestApi.Locations.withAuth(projectBundle.getAdmin().testId).getLocationById(
-      recording.stationId,
-    ),
-  ])) as [ApiProjectResponse, ApiDeviceResponse, ApiLocationResponse];
-
-  expect(project, "project exists").to.not.be.false;
-  expect(device, "device exists").to.not.be.false;
-  expect(location, "location exists").to.not.be.false;
-
-  // Project activity checks
-  if (recording.type === RecordingType.ThermalRaw) {
-    expect(Object.keys(project)).to.include("lastThermalRecordingTime");
-    expect(
-      project.lastThermalRecordingTime,
-      "project last thermal recording time",
-    ).to.equal(recording.recordingDateTime);
-  } else if (recording.type === RecordingType.Audio) {
-    expect(Object.keys(project)).to.include("lastAudioRecordingTime");
-    expect(
-      project.lastAudioRecordingTime,
-      "project last audio recording time",
-    ).to.equal(recording.recordingDateTime);
-  }
-
-  // Device activity checks
-  expect(device.lastRecordingTime, "device last recording time").to.equal(
-    recording.recordingDateTime,
-  );
-  if (uploader === "device") {
-    expect(
-      new Date(device.lastConnectionTime),
-      "device last connection time > request time",
-    ).to.be.greaterThan(requestTime);
-    expect(
-      new Date(device.lastConnectionTime),
-      "device last connection time < now",
-    ).to.be.lessThan(new Date());
-  }
-
-  // Location activity checks
-  if (recording.type === RecordingType.ThermalRaw) {
-    expect(
-      location.lastThermalRecordingTime,
-      "location last thermal recording time",
-    ).to.equal(recording.recordingDateTime);
-  } else if (recording.type === RecordingType.Audio) {
-    expect(
-      location.lastAudioRecordingTime,
-      "location last audio recording time",
-    ).to.equal(recording.recordingDateTime);
-  }
-  if (uploader === "device") {
-    if (recording.type === RecordingType.ThermalRaw) {
-      expect(
-        new Date(location.lastActiveThermalTime),
-        "location last active thermal time > request time",
-      ).to.be.greaterThan(requestTime);
-      expect(
-        new Date(location.lastActiveThermalTime),
-        "location last active thermal time < now",
-      ).to.be.lessThan(new Date());
-    } else if (recording.type === RecordingType.Audio) {
-      expect(
-        new Date(location.lastActiveAudioTime),
-        "location last active audio time > request time",
-      ).to.be.greaterThan(requestTime);
-      expect(
-        new Date(location.lastActiveAudioTime),
-        "location last active audio time < now",
-      ).to.be.lessThan(new Date());
-    }
-  }
-  return [project, device, location];
-};
+import { createProjectWithUserAndDevice } from "@/helpers/create-test-entities";
+import {
+  uploadAudioRecordingFromDeviceForProject,
+  uploadThermalRecordingFromDeviceForProject,
+} from "@/helpers/recording-uploads";
+import { spreadDays } from "@/helpers/date-helpers";
+import { spreadLocations, testLocation } from "@/helpers/location-helpers";
+import { checkActivity } from "@/helpers/activity-book-keeping-checks";
 
 const arrayZip = <A, B>(a: A[], b: B[]) =>
   a.map((k, i) => ({ left: k, right: b[i] }));
 
 describe("Activity bookkeeping", () => {
-  // TODO: Create some tc2-fixtures for test recording, startup recording, shutdown recording.
+  // TODO: Create some tc2-fixtures for test recording.
 
-  it("Device is able to upload a test recording, and have it marked as such", async () => {
-    // Upload a test recording, and then check that the returned recording metadata has it marked as test.
-    const project = await createProjectWithUserAndDevice();
-    const requestTime = new Date();
-    const recordingId = await uploadThermalTestRecordingFromDeviceForProject({
-      project,
-      recordingDateTime: new Date(),
-    });
-    const uploadedRecording = (await TestApi.Recordings.withAuth(
-      project.getAdmin().testId,
-    ).getRecordingById(recordingId)) as ApiThermalRecordingResponse;
-    expect(
-      uploadedRecording.additionalMetadata.status,
-      "recording is a test recording",
-    ).to.equal("test");
+  // The purpose of this book-keeping is to narrow the search range for recording activity search in browse.
+  // To help search scope stay small, and to make search faster, keep track of the earliest and latest
+  // times for recordings of each type (thermal video, audio), for each Location, Device, and Project.
 
-    await checkActivity(project, requestTime, "device", uploadedRecording);
-  });
+  // At the `Project` level, it's possible to derive the earliest time by looking at the earliest `fromDateTime` in
+  // the `DeviceHistory` table for any device in the project.  This doesn't tell you the media type at that time, so
+  // it may be necessary to handle this differently, either with book-keeping on the Project entry itself,
+  // or by querying the `Recordings` table for the earliest recording of each type.
 
-  it("Device is able to upload a startup recording, and have it marked as such", async () => {
-    // Upload a test recording, and then check that the returned recording metadata has it marked as test.
-    const project = await createProjectWithUserAndDevice();
-    const requestTime = new Date();
-    const recordingId = await uploadThermalStartupRecordingFromDeviceForProject(
-      {
-        project,
-        recordingDateTime: new Date(),
-      },
-    );
-    const uploadedRecording = (await TestApi.Recordings.withAuth(
-      project.getAdmin().testId,
-    ).getRecordingById(recordingId)) as ApiThermalRecordingResponse;
-    expect(uploadedRecording.additionalMetadata.status).to.equal("startup");
+  // At the `Location` level, it's possible to derive the earliest time by looking at the `activeAt` field, but
+  // this may not be accurate if the location was manually created (does this actually ever happen?).
+  // It also doesn't tell us what the media type was for that earliest time, and again, we'd have to
+  // query the `Recordings` table.
 
-    await checkActivity(project, requestTime, "device", uploadedRecording);
-  });
+  // At the `Device` level, we can get the earliest recording time by looking at the `DeviceHistory` table, and
+  // checking for the earliest `fromDateTime` where the `setBy` field is 'automatic'.  But again, this doesn't
+  // tell us the media type, so we'd have to query the `Recordings` table for that information.
 
-  it("Device is able to upload a shutdown recording, and have it marked as such", async () => {
-    // Upload a test recording, and then check that the returned recording metadata has it marked as test.
-    const project = await createProjectWithUserAndDevice();
-    const requestTime = new Date();
-    const recordingId =
-      await uploadThermalShutdownRecordingFromDeviceForProject({
-        project,
-        recordingDateTime: new Date(),
-      });
-    const uploadedRecording = (await TestApi.Recordings.withAuth(
-      project.getAdmin().testId,
-    ).getRecordingById(recordingId)) as ApiThermalRecordingResponse;
-    expect(uploadedRecording.additionalMetadata.status).to.equal("shutdown");
+  // It might be better to have symmetry of the `lastThermalRecordingTime` and `lastAudioRecordingTime` with new
+  // `earliestThermalRecordingTime` and `earliestAudioRecordingTime` fields on `Project`, `Device` and `Location`.
+  // The reason for the current asymmetry is that a lot of this code predates the existence of a hybrid audio/thermal
+  // device, so we were sure that each device was either a thermal camera or a standalone bird-monitor.
 
-    await checkActivity(project, requestTime, "device", uploadedRecording);
-  });
+  // Then, the main purpose of the `DeviceHistory` table is to determine what `Project` a (physical) device
+  // belonged to at a given time, and what `Location` it had at a given time.  Also to track changes over time
+  // for `Device` settings.
 
   it(`Can upload multiple recordings from device with same location, 
   and with dates after the project creation date, ensuring correct book-keeping`, async () => {
     const project = await createProjectWithUserAndDevice();
+    const AdminUser = project.api();
     const startDate = new Date("2026-01-10T20:07:06.292Z");
     const dates = spreadDays(startDate, 3);
     const recordingUploads = [];
@@ -539,11 +68,10 @@ describe("Activity bookkeeping", () => {
         }),
       );
     }
-    // NOTE: Recording Ids that come back may not be in ascending sequence.  However, the last recordingId should correspond to the latest date.
+    // NOTE: Recording Ids that come back may not be in ascending sequence.
+    //  However, the last recordingId should correspond to the latest date.
     const recordingIds = await Promise.all(recordingUploads);
-    const uploadedRecording = (await TestApi.Recordings.withAuth(
-      project.getAdmin().testId,
-    ).getRecordingById(
+    const uploadedRecording = (await AdminUser.Recordings.getRecordingById(
       recordingIds[recordingIds.length - 1],
     )) as ApiThermalRecordingResponse;
     expect(
@@ -552,12 +80,10 @@ describe("Activity bookkeeping", () => {
     ).to.be.equal(dates[dates.length - 1].toISOString());
     await checkActivity(project, requestTime, "device", uploadedRecording);
 
-    const allRecordings = await Promise.all(
+    const uploadedRecordings = await Promise.all(
       recordingIds.map(
         (recordingId) =>
-          TestApi.Recordings.withAuth(
-            project.getAdmin().testId,
-          ).getRecordingById(
+          AdminUser.Recordings.getRecordingById(
             recordingId,
           ) as unknown as ApiThermalRecordingResponse,
       ),
@@ -569,11 +95,11 @@ describe("Activity bookkeeping", () => {
       (_) => uploadedRecording.location,
     );
     expect(
-      allRecordings.map((r) => r.location),
+      uploadedRecordings.map((r) => r.location),
       "recording locations match",
     ).to.deep.equal(expectedLocations);
     expect(
-      allRecordings.map((r) => r.stationId),
+      uploadedRecordings.map((r) => r.stationId),
       "recording stations match",
     ).to.deep.equal(expectedLocationIds);
   });
@@ -581,6 +107,7 @@ describe("Activity bookkeeping", () => {
   it(`Ensure there are no race conditions for device kind when 
   uploading multiple different recording types in quick succession`, async () => {
     const project = await createProjectWithUserAndDevice();
+    const AdminUser = project.api();
     const startDate = new Date("2026-01-10T20:07:06.292Z");
     const dates = spreadDays(startDate, 3);
     const recordingTypes = [
@@ -592,7 +119,6 @@ describe("Activity bookkeeping", () => {
     const recordingUploads = arrayZip(dates, recordingTypes).map(
       ({ left: date, right: recordingType }) => {
         if (recordingType === RecordingType.Audio) {
-          // FIXME: need small audio fixture.
           return uploadAudioRecordingFromDeviceForProject({
             project,
             recordingDateTime: date,
@@ -606,15 +132,10 @@ describe("Activity bookkeeping", () => {
       },
     );
     const recordingIds = await Promise.all(recordingUploads);
-    console.log(recordingIds);
-    // FIXME: Audio uploads should have a duration, if not supplied
     const uploadedRecordings = (await Promise.all(
-      recordingIds.map((id) =>
-        TestApi.Recordings.withAuth(project.getAdmin().testId).getRecordingById(
-          id,
-        ),
-      ),
+      recordingIds.map((id) => AdminUser.Recordings.getRecordingById(id)),
     )) as ApiRecordingResponse[];
+    console.log(uploadedRecordings);
     expect(
       uploadedRecordings.map((recording) => recording.type),
       "uploaded recording types are correct",
@@ -632,8 +153,6 @@ describe("Activity bookkeeping", () => {
       device.location,
       "device location was updated correctly",
     ).to.deep.equal(uploadedRecordings[0].location);
-    // TODO: When doing this on behalf of device vs with device, make sure lastConnectionTime does the right thing
-    //  (which is it get's nulled out if uploads are later than the latest recording time?)
     // TODO: Also sanity check uploading events both as device and on behalf.
   });
 
@@ -641,6 +160,7 @@ describe("Activity bookkeeping", () => {
     // Upload a bunch of recordings from the same device with different locations.
     // Make sure the device location is always updated to the location of the most recent recording.
     const project = await createProjectWithUserAndDevice();
+    const AdminUser = project.api();
     const startDate = new Date("2026-01-10T20:07:06.292Z");
     const dates = spreadDays(startDate, 3);
     const locations = spreadLocations({ lat: -42.0, lng: 172 }, 3);
@@ -656,11 +176,7 @@ describe("Activity bookkeeping", () => {
     );
     const recordingIds = await Promise.all(recordingUploads);
     const uploadedRecordings = (await Promise.all(
-      recordingIds.map((id) =>
-        TestApi.Recordings.withAuth(project.getAdmin().testId).getRecordingById(
-          id,
-        ),
-      ),
+      recordingIds.map((id) => AdminUser.Recordings.getRecordingById(id)),
     )) as ApiRecordingResponse[];
     expect(
       uploadedRecordings.map((recording) => recording.location),
@@ -685,6 +201,7 @@ describe("Activity bookkeeping", () => {
   it(`Ensure that only one DeviceHistory entry is made when 
   a series of recordings in the same location are uploaded for a device`, async () => {
     const project = await createProjectWithUserAndDevice();
+    const AdminUser = project.api();
     const startDate = new Date("2026-01-10T20:07:06.292Z");
     const dates = spreadDays(startDate, 3);
     const recordingUploads = dates.map((date) =>
@@ -694,14 +211,13 @@ describe("Activity bookkeeping", () => {
       }),
     );
     const _recordingIds = await Promise.all(recordingUploads);
-    const deviceHistory = await TestApi.Devices.withAuth(
-      project.getAdmin().testId,
-    ).getDeviceHistoryInTest(project.deviceHandles[0].id);
+    const deviceHistory = await AdminUser.Devices.getDeviceHistoryInTest(
+      project.deviceHandles[0].id,
+    );
     expect(deviceHistory, "got device history").to.not.equal(false);
     const automaticallySetLocationHistory = (
       deviceHistory as ApiDeviceHistory[]
     ).filter((history) => history.setBy === "automatic");
-    console.log(automaticallySetLocationHistory);
     expect(
       automaticallySetLocationHistory.length,
       "only one DeviceHistory entry is made",
@@ -711,6 +227,7 @@ describe("Activity bookkeeping", () => {
   it(`Ensure that multiple device history entries are created for a series of recordings in different
    locations from a given device`, async () => {
     const project = await createProjectWithUserAndDevice();
+    const AdminUser = project.api();
     const startDate = new Date("2026-01-10T20:07:06.292Z");
     const dates = spreadDays(startDate, 3);
     const locations = spreadLocations({ lat: -42.0, lng: 172 }, 3);
@@ -724,9 +241,9 @@ describe("Activity bookkeeping", () => {
       },
     );
     const _recordingIds = await Promise.all(recordingUploads);
-    const deviceHistory = await TestApi.Devices.withAuth(
-      project.getAdmin().testId,
-    ).getDeviceHistoryInTest(project.deviceHandles[0].id);
+    const deviceHistory = await AdminUser.Devices.getDeviceHistoryInTest(
+      project.deviceHandles[0].id,
+    );
     expect(deviceHistory, "got device history").to.not.equal(false);
     const automaticallySetLocationHistory = (
       deviceHistory as ApiDeviceHistory[]
@@ -738,7 +255,128 @@ describe("Activity bookkeeping", () => {
   });
 
   it(`Uploading a recording on behalf of a device with a later time than the lastConnectionTime should null out 
-  lastConnectionTime, implying that the device is not 'offline'`, () => {
+  lastConnectionTime, implying that the device is not unpowered, but instead is expected to be 'offline'`, async () => {
+    // TODO: When doing this on behalf of device vs with device, make sure lastConnectionTime does the right thing
+    //  (which is it get's nulled out if uploads are later than the latest recording time?)
     return;
   });
+
+  it(`Deleting a set of recordings for a device should adjust the last***RecordingTimes accordingly. 
+  Undeleting should restore the original times.`, async () => {
+    // FIXME: There's a rare race condition here.
+
+    // Upload a series of five thermal recordings spread over time from the same location, for a new device in a new project.
+    // Delete the last two recordings, and expect that the various lastRecordingTime values are adjusted accordingly for
+    // the device, the project, and the location.
+    const project = await createProjectWithUserAndDevice();
+    const AdminUser = project.api();
+
+    // Use a fixed location to ensure we stay on the same Station/Location.
+    const fixedLocation = testLocation(-42, 170, 0);
+
+    // Generate 5 recording times far enough in the past to avoid "future" rejects.
+    const startDate = new Date("2026-01-10T20:07:06.292Z");
+    const dates = spreadDays(startDate, 5);
+
+    const recordingIds = await Promise.all(
+      dates.map((recordingDateTime) =>
+        uploadThermalRecordingFromDeviceForProject({
+          project,
+          location: fixedLocation,
+          recordingDateTime,
+        }),
+      ),
+    );
+
+    // Last recording should have the latest date.
+    const lastUploaded = (await AdminUser.Recordings.getRecordingById(
+      recordingIds[recordingIds.length - 1],
+    )) as ApiThermalRecordingResponse;
+
+    expect(
+      lastUploaded.recordingDateTime,
+      "last uploaded recording is latest",
+    ).to.equal(dates[4].toISOString());
+
+    // Deleting the last two recordings should roll back "last***RecordingTime" times to the 3rd recording.
+    await Promise.all([
+      AdminUser.Recordings.deleteRecording(recordingIds[3]),
+      AdminUser.Recordings.deleteRecording(recordingIds[4]),
+    ]);
+
+    {
+      const [updatedProject, updatedDevice, updatedLocation] =
+        (await Promise.all([
+          AdminUser.Projects.getProjectById(project.projectHandle.id),
+          AdminUser.Devices.getDeviceById(project.deviceHandles[0].id),
+          AdminUser.Locations.getLocationById(lastUploaded.stationId),
+        ])) as [ApiProjectResponse, ApiDeviceResponse, ApiLocationResponse];
+
+      const expectedLast = dates[2].toISOString();
+
+      expect(
+        updatedDevice.lastRecordingTime,
+        "device lastRecordingTime rolled back",
+      ).to.equal(expectedLast);
+
+      expect(
+        updatedProject.lastThermalRecordingTime,
+        "project lastThermalRecordingTime rolled back",
+      ).to.equal(expectedLast);
+
+      expect(
+        updatedLocation.lastThermalRecordingTime,
+        "location lastThermalRecordingTime rolled back",
+      ).to.equal(expectedLast);
+    }
+
+    // NOTE: I don't think that we need to rollback device history when recordings are deleted or undeleted,
+    //  so long as we don't remove locations with no recordings left automatically.
+    // TODO: We could potentially automatically retire locations with no recordings left, so they don't appear in UI?
+    await Promise.all([
+      AdminUser.Recordings.undeleteRecording(recordingIds[3]),
+      AdminUser.Recordings.undeleteRecording(recordingIds[4]),
+    ]);
+    {
+      const [updatedProject, updatedDevice, updatedLocation] =
+        (await Promise.all([
+          AdminUser.Projects.getProjectById(project.projectHandle.id),
+          AdminUser.Devices.getDeviceById(project.deviceHandles[0].id),
+          AdminUser.Locations.getLocationById(lastUploaded.stationId),
+        ])) as [ApiProjectResponse, ApiDeviceResponse, ApiLocationResponse];
+
+      const expectedLast = dates[4].toISOString();
+
+      expect(
+        updatedDevice.lastRecordingTime,
+        "device lastRecordingTime rolled back",
+      ).to.equal(expectedLast);
+
+      expect(
+        updatedProject.lastThermalRecordingTime,
+        "project lastThermalRecordingTime rolled back",
+      ).to.equal(expectedLast);
+
+      expect(
+        updatedLocation.lastThermalRecordingTime,
+        "location lastThermalRecordingTime rolled back",
+      ).to.equal(expectedLast);
+    }
+  });
+
+  it(`Bulk deleting a set of recordings for a device should adjust the 
+  associated recording times, bulk undeleting should restore.`, async () => {
+    return;
+  });
+
+  it(`Bulk deleting a set of recordings for multiple devices across multiple locations should adjust the 
+  associated recording times, bulk undeleting should restore.`, async () => {
+    // TODO: Maybe disallow bulk deletion/undeletion of recordings *across* projects as a super-user.
+    return;
+  });
+
+  // TODO:
+  //  When a device gets moved to another project, can it ever retain the same device Id?
+  //  If it has been moved, and old recordings get uploaded to its old project after the fact, it should not
+  //  automatically "reactivate" the device.
 });

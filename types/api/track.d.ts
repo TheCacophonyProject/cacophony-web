@@ -1,4 +1,4 @@
-import type { Seconds, TrackId } from "./common.ts";
+import type { FloatZeroToOne, Seconds, TrackId } from "./common.ts";
 import type { ApiTrackTag } from "./trackTag.ts";
 import type { TrackFramePosition } from "./fileProcessing.ts";
 
@@ -52,6 +52,7 @@ export interface ApiTrackDataRequest {
   predictions?: {
     all_class_confidences?: unknown;
     confident_tag?: string;
+    clarity?: FloatZeroToOne;
     raw_tag?: string;
     label?: string;
     model_id: number;

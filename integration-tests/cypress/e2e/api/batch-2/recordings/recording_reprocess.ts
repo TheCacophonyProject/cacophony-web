@@ -746,7 +746,6 @@ describe("Recordings - reprocessing tests", () => {
               model_used: "Inc3",
               predictions: [],
               classify_time: 1.2,
-              prediction_frames: [],
               all_class_confidences: { possum: 1 },
             },
           ).then(() => {

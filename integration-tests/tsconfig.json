@@ -14,16 +14,13 @@
             "@/*": ["./cypress/*"],
         }
     },
-    "exclude": [
-        "node_modules"
-    ],
-    "references": [
-        { "path": "./support/" }
-    ],
     "include": [
         "**/*.ts",
         "**/*.d.ts",
         "../types/**/*.ts",
-        "cypress/support/index.d.ts"
-    ]
+        "./cypress/support/index.d.ts"
+    ],
+    "exclude": [
+        "./node_modules/**/*",
+    ],
 }

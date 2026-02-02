@@ -1,5 +1,41 @@
 import { getTestName } from "../names";
 
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Cypress {
+    interface Chainable {
+      /**
+       * Browser: create group with given name (plus prefix)
+       */
+      createGroup(group: string): Chainable<Element>;
+
+      /**
+       * Browser: Navigate to groups page
+       */
+      checkOnGroupPage(): Chainable<Element>;
+
+      /**
+       * Browser: Add user to group optionally as an admin
+       */
+      addUserToGroup(
+        userName: string,
+        groupname: string,
+        admin?: boolean,
+      ): Chainable<Element>;
+
+      /**
+       * Browser: Navigate to specific group page
+       */
+      goToGroupPage(group: string): Chainable<Element>;
+
+      /**
+       * Browser: Verify group contains specific device
+       */
+      checkDeviceInGroup(device: string, group: string): Chainable<Element>;
+    }
+  }
+}
+
 Cypress.Commands.add("createGroup", (group) => {
   const fullGroupName = getTestName(group);
 

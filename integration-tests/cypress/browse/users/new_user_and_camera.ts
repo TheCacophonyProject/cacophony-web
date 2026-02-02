@@ -1,4 +1,6 @@
-import { RecordingType } from "@typedefs/api/consts";
+import { EventEnv, RecordingType } from "@typedefs/api/consts";
+import { getCreds } from "@commands/server";
+import { getTestName } from "@commands/names";
 
 context("Users can see footage from their cameras", () => {
   const username = "integration";
@@ -21,10 +23,26 @@ context("Users can see footage from their cameras", () => {
     cy.apiSignInAs(username);
     cy.apiEventsAdd(camera, { type: "throttle" });
     // for event-uploader to upload
+
+    // TODO: This is probably incorrect.
+    const expectedEvent = {
+      id: null,
+      createdAt: null,
+      dateTime: new Date().toISOString(),
+      DeviceId: getCreds(camera).id,
+      Device: { deviceName: getTestName(camera) },
+      EventDetail: {
+        type: "throttle",
+        id: null,
+        createdAt: null,
+        dateTime: new Date().toISOString(),
+        DeviceId: null,
+      },
+      env: EventEnv.Unknown,
+    };
+
     cy.wait(3 * 1000);
-    cy.apiEventsCheck(username, camera, {}, [
-      { EventDetail: { type: "throttle" } },
-    ]);
+    cy.apiEventsCheck(username, camera, {}, [expectedEvent]);
   });
 
   it("A camera can trigger and upload a new recording", () => {

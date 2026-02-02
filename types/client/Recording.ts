@@ -157,6 +157,20 @@ const deleteRecording =
       FetchResult<void>
     >;
 
+const undeleteRecording =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (id: RecordingId) =>
+    api.patch(authKey, `/api/v1/recordings/${id}/undelete`) as Promise<
+      FetchResult<void>
+    >;
+
+const undeleteRecordings =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (ids: RecordingId[]) =>
+    api.patch(authKey, `/api/v1/recordings/undelete`, { ids }) as Promise<
+      FetchResult<void>
+    >;
+
 const queryRecordingsInProjectNew =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (
@@ -511,6 +525,8 @@ export default (api: CacophonyApiClient) => {
     addRecordingNoteLabel: addRecordingNoteLabel(api),
     removeRecordingLabel: removeRecordingLabel(api),
     deleteRecording: deleteRecording(api),
+    undeleteRecording: undeleteRecording(api),
+    undeleteRecordings: undeleteRecordings(api),
     queryRecordingsInProjectNew: queryRecordingsInProjectNew(api),
     getRecordingsForDeviceInProject: getRecordingsForDeviceInProject(api),
     getRecordingsForLocationsInProject: getRecordingsForLocationsInProject(api),
@@ -533,6 +549,8 @@ export default (api: CacophonyApiClient) => {
       addRecordingNoteLabel: addRecordingNoteLabel(api, authKey),
       removeRecordingLabel: removeRecordingLabel(api, authKey),
       deleteRecording: deleteRecording(api, authKey),
+      undeleteRecording: undeleteRecording(api, authKey),
+      undeleteRecordings: undeleteRecordings(api, authKey),
       queryRecordingsInProjectNew: queryRecordingsInProjectNew(api, authKey),
       getRecordingsForDeviceInProject: getRecordingsForDeviceInProject(
         api,

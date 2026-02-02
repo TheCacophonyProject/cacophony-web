@@ -68,6 +68,10 @@ import type {
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
 import { Group } from "@models/Group.js";
 import { RecordingDataSuppliedMetadata } from "@api/fileUploaders/uploadGenericRecording.js";
+import type {
+  ApiAudioRecordingMetadataResponse,
+  ApiThermalRecordingMetadataResponse,
+} from "@typedefs/api/recording.js";
 
 const sequelize = await initSequelize();
 
@@ -1054,7 +1058,7 @@ export async function bulkDelete(
   type: RecordingType,
   options: RecordingQueryOptions,
   _actuallyDelete = false, // FIXME - Make recordings actually be deleted?
-): Promise<number[]> {
+): Promise<RecordingId[]> {
   if (type && typeof options.where === "object") {
     options.where = { ...options.where, type };
   }
@@ -1071,6 +1075,8 @@ export async function bulkDelete(
     where: { id: ids },
     returning: ["id"],
   })) as unknown as Promise<[number, { id: number }[]]>;
+
+  // FIXME: Only need to fixup latest recordings of each type, per device, project and location
   for (const recording of recordings) {
     await fixupLatestRecordingTimesForDeletedRecording(recording);
   }
@@ -1402,10 +1408,6 @@ export const tracksFromMeta = async (
                   tag_data["classify_time"] = prediction["classify_time"];
                 }
                 //GP 2025 Dec dont think we are using this at all
-                // if (prediction.prediction_frames) {
-                //   tag_data["prediction_frames"] =
-                //     prediction["prediction_frames"];
-                // }
                 // if (prediction.predictions) {
                 //   tag_data["predictions"] = prediction["predictions"];
                 // }
@@ -1450,7 +1452,12 @@ export const tracksFromMeta = async (
   return true;
 };
 
-export async function updateMetadata(recording: Recording, metadata: unknown) {
+export async function updateMetadata(
+  recording: Recording,
+  metadata:
+    | ApiAudioRecordingMetadataResponse
+    | ApiThermalRecordingMetadataResponse,
+) {
   recording.additionalMetadata = metadata;
   await recording.save();
 }
@@ -1769,31 +1776,41 @@ export const fixupLatestRecordingTimesForDeletedRecording = async (
       order: [["recordingDateTime", "DESC"]],
     }),
   ]);
-  const [device, group] = await Promise.all([
+  const [device, group, station] = await Promise.all([
     Device.findByPk(recording.DeviceId),
     Group.findByPk(recording.GroupId),
+    Station.findByPk(recording.StationId),
   ]);
+  const updates = [];
   if (!latestDeviceRecording) {
-    await device.update({
-      lastRecordingTime: null,
-    });
+    updates.push(
+      device.update({
+        lastRecordingTime: null,
+      }),
+    );
   } else if (
     !device.lastRecordingTime ||
     latestDeviceRecording.recordingDateTime < device.lastRecordingTime
   ) {
-    await device.update({
-      lastRecordingTime: latestDeviceRecording.recordingDateTime,
-    });
+    updates.push(
+      device.update({
+        lastRecordingTime: latestDeviceRecording.recordingDateTime,
+      }),
+    );
   }
   if (!latestGroupRecordingOfSameType) {
     if (cameras.includes(recording.type)) {
-      await group.update({
-        lastThermalRecordingTime: null,
-      });
+      updates.push(
+        group.update({
+          lastThermalRecordingTime: null,
+        }),
+      );
     } else if (recording.type === RecordingType.Audio) {
-      await group.update({
-        lastAudioRecordingTime: null,
-      });
+      updates.push(
+        group.update({
+          lastAudioRecordingTime: null,
+        }),
+      );
     }
   } else {
     if (cameras.includes(recording.type)) {
@@ -1802,10 +1819,12 @@ export const fixupLatestRecordingTimesForDeletedRecording = async (
         latestGroupRecordingOfSameType.recordingDateTime <
           group.lastThermalRecordingTime
       ) {
-        await group.update({
-          lastThermalRecordingTime:
-            latestGroupRecordingOfSameType.recordingDateTime,
-        });
+        updates.push(
+          group.update({
+            lastThermalRecordingTime:
+              latestGroupRecordingOfSameType.recordingDateTime,
+          }),
+        );
       }
     } else if (recording.type === RecordingType.Audio) {
       if (
@@ -1813,118 +1832,107 @@ export const fixupLatestRecordingTimesForDeletedRecording = async (
         latestGroupRecordingOfSameType.recordingDateTime <
           group.lastAudioRecordingTime
       ) {
-        await group.update({
-          lastAudioRecordingTime:
-            latestGroupRecordingOfSameType.recordingDateTime,
-        });
+        updates.push(
+          group.update({
+            lastAudioRecordingTime:
+              latestGroupRecordingOfSameType.recordingDateTime,
+          }),
+        );
       }
     }
   }
-  if (recording.StationId) {
-    const station = await Station.findByPk(recording.StationId);
-    if (!latestStationRecordingOfSameType) {
-      if (cameras.includes(recording.type)) {
-        await station.update({
+
+  if (!latestStationRecordingOfSameType) {
+    if (cameras.includes(recording.type)) {
+      updates.push(
+        station.update({
           lastThermalRecordingTime: null,
           lastActiveThermalTime: null,
-        });
-      } else if (recording.type === RecordingType.Audio) {
-        await station.update({
+        }),
+      );
+    } else if (recording.type === RecordingType.Audio) {
+      updates.push(
+        station.update({
           lastAudioRecordingTime: null,
           lastActiveAudioTime: null,
-        });
-      }
-    } else {
-      if (cameras.includes(recording.type)) {
-        if (
-          !station.lastThermalRecordingTime ||
-          latestStationRecordingOfSameType.recordingDateTime <
-            station.lastThermalRecordingTime
-        ) {
-          await station.update({
+        }),
+      );
+    }
+  } else {
+    if (cameras.includes(recording.type)) {
+      if (
+        !station.lastThermalRecordingTime ||
+        latestStationRecordingOfSameType.recordingDateTime <
+          station.lastThermalRecordingTime
+      ) {
+        updates.push(
+          station.update({
             lastThermalRecordingTime:
               latestStationRecordingOfSameType.recordingDateTime,
-          });
-        }
-      } else if (recording.type === RecordingType.Audio) {
-        if (
-          !station.lastAudioRecordingTime ||
-          latestStationRecordingOfSameType.recordingDateTime <
-            station.lastAudioRecordingTime
-        ) {
-          await station.update({
+          }),
+        );
+      }
+    } else if (recording.type === RecordingType.Audio) {
+      if (
+        !station.lastAudioRecordingTime ||
+        latestStationRecordingOfSameType.recordingDateTime <
+          station.lastAudioRecordingTime
+      ) {
+        updates.push(
+          station.update({
             lastAudioRecordingTime:
               latestStationRecordingOfSameType.recordingDateTime,
-          });
-        }
+          }),
+        );
       }
     }
   }
+  await Promise.all(updates);
 };
 
 export const fixupLatestRecordingTimesForUndeletedRecording = async (
   recording: Recording,
 ) => {
-  const cameras = [RecordingType.ThermalRaw];
-  const [device, group] = await Promise.all([
+  const [device, group, station] = await Promise.all([
     Device.findByPk(recording.DeviceId),
     Group.findByPk(recording.GroupId),
+    Station.findByPk(recording.StationId),
   ]);
-  if (device) {
-    if (
-      device.lastRecordingTime === null ||
-      recording.recordingDateTime > device.lastRecordingTime
-    ) {
-      await device.update({ lastRecordingTime: recording.recordingDateTime });
-    }
+  const updates = [];
+  if (
+    device &&
+    (!device.lastRecordingTime ||
+      recording.recordingDateTime > device.lastRecordingTime)
+  ) {
+    updates.push(
+      device.update({ lastRecordingTime: recording.recordingDateTime }),
+    );
   }
-  if (group) {
-    if (
-      group.lastAudioRecordingTime === null ||
-      group.lastThermalRecordingTime === null ||
-      (group.lastAudioRecordingTime &&
-        recording.recordingDateTime > group.lastAudioRecordingTime) ||
-      (group.lastThermalRecordingTime &&
-        recording.recordingDateTime > group.lastThermalRecordingTime)
-    ) {
-      if (
-        (cameras.includes(recording.type) && !group.lastThermalRecordingTime) ||
-        recording.recordingDateTime > group.lastThermalRecordingTime
-      ) {
-        await group.update({
-          lastThermalRecordingTime: recording.recordingDateTime,
-        });
-      } else if (
-        (recording.type === RecordingType.Audio &&
-          !group.lastAudioRecordingTime) ||
-        recording.recordingDateTime > group.lastAudioRecordingTime
-      ) {
-        await group.update({
-          lastAudioRecordingTime: recording.recordingDateTime,
-        });
-      }
-    }
+  // FIXME: Make these updates look more atomic
+  const updateColumn =
+    recording.type === RecordingType.Audio
+      ? "lastAudioRecordingTime"
+      : "lastThermalRecordingTime";
+  if (
+    group &&
+    (!group[updateColumn] || recording.recordingDateTime > group[updateColumn])
+  ) {
+    updates.push(
+      group.update({
+        [updateColumn]: recording.recordingDateTime,
+      }),
+    );
   }
-  if (recording.StationId) {
-    const station = await Station.findByPk(recording.StationId);
-    if (station) {
-      if (
-        (cameras.includes(recording.type) &&
-          !station.lastThermalRecordingTime) ||
-        recording.recordingDateTime > station.lastThermalRecordingTime
-      ) {
-        await station.update({
-          lastThermalRecordingTime: recording.recordingDateTime,
-        });
-      } else if (
-        (recording.type === RecordingType.Audio &&
-          !station.lastAudioRecordingTime) ||
-        recording.recordingDateTime > station.lastAudioRecordingTime
-      ) {
-        await station.update({
-          lastAudioRecordingTime: recording.recordingDateTime,
-        });
-      }
-    }
+  if (
+    station &&
+    (!station[updateColumn] ||
+      recording.recordingDateTime > station[updateColumn])
+  ) {
+    updates.push(
+      station.update({
+        [updateColumn]: recording.recordingDateTime,
+      }),
+    );
   }
+  await Promise.all(updates);
 };

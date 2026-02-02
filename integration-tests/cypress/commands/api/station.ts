@@ -82,7 +82,7 @@ declare global {
         additionalChecks?: {
           useRawStationId?: boolean;
           useRawStationName?: boolean;
-          warnings?: string[];
+          warnings?: string[] | "none";
           messages?: string[];
         },
       ): Chainable<void>;

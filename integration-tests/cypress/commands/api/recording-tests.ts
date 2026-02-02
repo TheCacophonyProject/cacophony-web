@@ -796,7 +796,6 @@ export function predictionResponseFromSet(
       newTp["clarity"] = tp.clarity;
       newTp["raw_tag"] = tp.label;
       newTp["predictions"] = tp.predictions;
-      newTp["prediction_frames"] = tp.prediction_frames;
       newTp["all_class_confidences"] = tp.all_class_confidences;
       tps.push(newTp);
     });

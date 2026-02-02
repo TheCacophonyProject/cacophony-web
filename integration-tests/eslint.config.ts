@@ -51,6 +51,15 @@ const config = [
       "@typescript-eslint/no-unused-expressions": "off",
       "chai-friendly/no-unused-expressions": "error",
       "cypress/no-assigning-return-values": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          // Allow unused vars prefaced by an underscore
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
     },
   },
   {

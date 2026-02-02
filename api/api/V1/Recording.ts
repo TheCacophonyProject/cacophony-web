@@ -388,7 +388,6 @@ export default (app: Application, baseUrl: string) => {
    *      <li>(OPTIONAL) confidence - confidence between 0 - 1 of the prediction
    *      <li>(OPTIONAL) clarity - confidence between 0 - 1 of the prediction
    *      <li>(OPTIONAL) classify_time - time in seconds taken to classify
-   *      <li>(OPTIONAL) prediction_frames - frames used in the predictions
    *      <li>(OPTIONAL) predictions - array of prediction confidences for each prediction e.g. [[0,1,99,0,0,0]]
    *      <li>(OPTIONAL) label - the classified label (this may be different to the confident_tag)
    *      <li>(OPTIONAL) all_class_confidences - dictionary of confidence per class
@@ -410,12 +409,13 @@ export default (app: Application, baseUrl: string) => {
    *     "positions":[{"x":1, "y":10, "frame_number":20, "mass": 25, "blank": false}],
    *     "start_s": 10,
    *     "end_s": 22.2,
-   *     "predictions":[{"model_id":1, "confident_tag":"unidentified", "confidence": 0.6, "classify_time":0.3, "classify_time": 0.6, "prediction_frames": [[0,2,3,4,5,10,12]], "predictions": [[0.6,0.3,0.1]], "label":"cat", "all_class_confidences": {"cat":0.6, "rodent":0.3, "possum":0.1} }],
+   *     "predictions":[{"model_id":1, "confident_tag":"unidentified", "confidence": 0.6, "classify_time":0.3, "classify_time": 0.6, "predictions": [[0.6,0.3,0.1]], "label":"cat", "all_class_confidences": {"cat":0.6, "rodent":0.3, "possum":0.1} }],
    *    }],
    *    "models": [{ "id": 1, "name": "inc3" }]
    * }
    */
 
+  // FIXME: Replace with typed versions
   /**
    * @apiDefine RecordingParams
    *
@@ -826,11 +826,57 @@ export default (app: Application, baseUrl: string) => {
             ),
           );
         }
-
+        // TODO: Get the types of the undeleted recordings from the previous findAll call.
+        // TODO: In the likely case where it's not a super-user undeleting things,
+        //  We can just make a single call to update, and check affected row count.
         await Recording.update(
           { deletedAt: null, deletedBy: null },
           { where: { id: ids } },
         );
+        const [latestUndeletedThermal, latestUndeletedAudio] =
+          await Promise.all([
+            Recording.findOne({
+              where: {
+                id: { [Op.in]: ids },
+                deletedAt: null,
+                type: RecordingType.ThermalRaw,
+              },
+              order: [["recordingDateTime", "DESC"]],
+            }),
+            Recording.findOne({
+              where: {
+                id: { [Op.in]: ids },
+                deletedAt: null,
+                type: RecordingType.ThermalRaw,
+              },
+              order: [["recordingDateTime", "DESC"]],
+            }),
+          ]);
+        // FIXME: Can we even assume all recordings are from the same project or device?  Not really.
+        //  Within a project/device, we only need to check that the latest of each type of recording deleted
+        //  is not the latest in that category, otherwise we may not need to fixup.
+
+        // For each set of recordings to delete or undelete, we need to get the unique stations and devices,
+        // and then fixup the latest recording times for each device and station.
+
+        const fixups = [];
+        if (latestUndeletedThermal) {
+          fixups.push(
+            fixupLatestRecordingTimesForUndeletedRecording(
+              latestUndeletedThermal,
+            ),
+          );
+        }
+        if (latestUndeletedAudio) {
+          fixups.push(
+            fixupLatestRecordingTimesForUndeletedRecording(
+              latestUndeletedAudio,
+            ),
+          );
+        }
+        if (fixups.length) {
+          await Promise.all(fixups);
+        }
         return successResponse(response, `Recordings Restored: ${ids}`);
       } catch (e) {
         log.error(e);
@@ -1877,14 +1923,18 @@ export default (app: Application, baseUrl: string) => {
       if (response.locals.track.RecordingId === response.locals.recording.id) {
         try {
           const track: Track = response.locals.track;
-          const updatedData = { ...track.data, ...request.body.data };
-          await Track.saveTrackData(track.id, updatedData);
-          await track.update({
-            minFreqHz: updatedData.minFreq || null,
-            maxFreqHz: updatedData.maxFreq || null,
-            startSeconds: updatedData.start_s || null,
-            endSeconds: updatedData.end_s || null,
-          });
+          // FIXME: This should have tests, if it is being used by anyone.
+          const existingData = await Track.getTrackData(track.id);
+          const updatedData = { ...existingData, ...request.body.data };
+          await Promise.all([
+            Track.saveTrackData(track.id, updatedData),
+            track.update({
+              minFreqHz: updatedData.minFreq || null,
+              maxFreqHz: updatedData.maxFreq || null,
+              startSeconds: updatedData.start_s || null,
+              endSeconds: updatedData.end_s || null,
+            }),
+          ]);
           return successResponse(response, "Track data updated.");
         } catch (e) {
           return next(

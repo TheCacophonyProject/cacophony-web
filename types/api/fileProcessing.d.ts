@@ -46,7 +46,7 @@ export interface TrackFramePosition {
   in_trap?: boolean;
 }
 
-interface RawTrack {
+export interface RawTrack {
   id: integer;
   tracker_version: integer | string;
   start_s: Seconds;
