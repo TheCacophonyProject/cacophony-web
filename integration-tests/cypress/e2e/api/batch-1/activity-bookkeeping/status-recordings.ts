@@ -34,7 +34,7 @@ describe("Status and test recordings", () => {
     await checkActivity(project, requestTime, "device", uploadedRecording);
   });
 
-  it.only("Device is able to upload a startup thermal recording, and have it marked as such", async () => {
+  it("Device is able to upload a startup thermal recording, and have it marked as such", async () => {
     // Upload a test recording, and then check that the returned recording metadata has it marked as test.
     const project = await createProjectWithUserAndDevice();
     const AdminUser = project.api();
