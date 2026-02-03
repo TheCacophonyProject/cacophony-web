@@ -15,7 +15,7 @@ import {
 import { successResponse } from "@api/V1/responseUtil.js";
 import multiparty from "multiparty";
 import e, { NextFunction, Request, Response } from "express";
-import Sequelize, { Op } from "sequelize";
+import Sequelize, { Op, Transaction } from "sequelize";
 import { Recording } from "@models/Recording.js";
 import { openS3 } from "@models/util/util.js";
 import { Readable } from "stream";
@@ -781,15 +781,23 @@ export const uploadGenericRecording =
       if (stationToAssignToRecording) {
         recordingTemplate.StationId = stationToAssignToRecording.id;
       }
-      const recording = await recordingTemplate.save();
-      await Promise.all([
-        updateRecordingTimeBookkeeping(recordingTemplate, fromDevice),
-        maybeUpdateDeviceMetadata(
+      let recording;
+      await Recording.sequelize.transaction(async (transaction) => {
+        // These three calls must complete in blocking sequence.
+        recording = await recordingTemplate.save({ transaction });
+        await maybeUpdateDeviceMetadata(
           recordingTemplate,
           recordingDevice,
           fromDevice,
-        ),
-      ]);
+          transaction,
+        );
+        await updateRecordingTimeBookkeeping(
+          recording,
+          fromDevice,
+          transaction,
+        );
+      });
+
       if (wouldHaveSuppliedTracks) {
         // Now that we have a recording saved to the DB, we can create any associated track items
         await tracksFromMeta(recording, data.metadata);
@@ -972,6 +980,7 @@ const maybeUpdateDeviceMetadata = async (
   recording: Recording,
   uploadingDevice: Device,
   fromDevice: boolean,
+  transaction?: Transaction,
 ): Promise<unknown> => {
   // TODO: Streamline logic
   let uploadingDeviceUpdatePayload: UpdateDevicePayload = {};
@@ -1027,40 +1036,37 @@ const maybeUpdateDeviceMetadata = async (
       uploadingDeviceUpdatePayload.active = true;
     }
   }
-
   return Device.update(
     {
       ...uploadingDeviceUpdatePayload,
       location: Sequelize.literal(`
-            case
-              when (
-                "kind" = '${DeviceType.Thermal}' 
-                  and '${recording.recordingDateTime.toISOString()}' > "lastThermalRecordingTime" 
-                  or "lastThermalRecordingTime" is null
-              or 
-                "kind" = '${DeviceType.Audio}' 
-                and '${recording.recordingDateTime.toISOString()}' > "lastAudioRecordingTime" 
-                or "lastAudioRecordingTime" is null
-              ) 
-                then ST_GeomFromGeoJSON('{"type":"Point", "coordinates":[${recording.location.lng}, ${recording.location.lat}]}')
-              else "location"
-            end
-          `),
+        case
+          when (
+            '${recording.recordingDateTime.toISOString()}' > GREATEST(
+              COALESCE("lastAudioRecordingTime", TIMESTAMP '1970-01-01 00:00:00'),
+              COALESCE("lastThermalRecordingTime", TIMESTAMP '1970-01-01 00:00:00')
+            )          
+          ) 
+            then ST_GeomFromGeoJSON('{"type":"Point", "coordinates":[${recording.location.lng}, ${recording.location.lat}]}')
+          else "location"
+        end
+      `),
       kind: Sequelize.literal(`
-            case "kind"
-              when '${DeviceType.Unknown}' then '${mapRecordingTypeToDeviceKind(recording.type, DeviceType.Unknown)}'
-              when '${DeviceType.Thermal}' then '${mapRecordingTypeToDeviceKind(recording.type, DeviceType.Thermal)}'
-              when '${DeviceType.Audio}' then '${mapRecordingTypeToDeviceKind(recording.type, DeviceType.Audio)}'
-              else "kind"
-            end  
-          `),
+        case "kind"
+          when '${DeviceType.Unknown}' then '${mapRecordingTypeToDeviceKind(recording.type, DeviceType.Unknown)}'
+          when '${DeviceType.Thermal}' then '${mapRecordingTypeToDeviceKind(recording.type, DeviceType.Thermal)}'
+          when '${DeviceType.Audio}' then '${mapRecordingTypeToDeviceKind(recording.type, DeviceType.Audio)}'
+          else "kind"
+        end  
+      `),
     },
     {
       validate: false,
-      sideEffects: false,
+      sideEffects: false, // NOTE: Necessary to bypass location setter validation
       where: {
         id: uploadingDevice.id,
       },
+      transaction,
     },
   );
 };

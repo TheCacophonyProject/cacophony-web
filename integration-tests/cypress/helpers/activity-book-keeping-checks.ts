@@ -23,8 +23,6 @@ export const checkActivity = async (
   expect(device, "device exists").to.not.be.false;
   expect(location, "location exists").to.not.be.false;
 
-  console.log(project, device, location);
-
   // Project activity checks
   if (recording.type === RecordingType.ThermalRaw) {
     expect(Object.keys(project)).to.include("lastThermalRecordingTime");

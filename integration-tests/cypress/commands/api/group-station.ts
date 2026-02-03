@@ -202,7 +202,12 @@ Cypress.Commands.add(
     groupIdOrName: string,
     stationName: string,
     expectedStation: ApiStationResponse,
-    excludeCheckOn: string[] = [".lastActiveThermalTime"],
+    excludeCheckOn: string[] = [
+      ".lastActiveThermalTime",
+      ".earliestThermalRecordingTime",
+      ".earliestAudioRecordingTime",
+      ".lastActiveAudioTime",
+    ],
     statusCode = 200,
     additionalChecks: {
       useRawStationName?: boolean;
@@ -271,7 +276,12 @@ Cypress.Commands.add(
     expectedStations: ApiStationResponse[],
     excludeCheckOn: string[] = [
       ".lastActiveThermalTime",
+      ".lastActiveAudioTime",
       "[].lastActiveThermalTime",
+      ".earliestThermalRecordingTime",
+      ".earliestAudioRecordingTime",
+      "[].earliestThermalRecordingTime",
+      "[].earliestAudioRecordingTime",
     ],
     statusCode = 200,
     additionalChecks: {

@@ -25,7 +25,7 @@ import type { RecordingQueryOptions } from "@models/Recording.js";
 import { Recording } from "@models/Recording.js";
 import { Event } from "@models/Event.js";
 import { User } from "@models/User.js";
-import Sequelize, { Op, QueryTypes } from "sequelize";
+import Sequelize, { Op, QueryTypes, Transaction } from "sequelize";
 import { getCanonicalTrackTag, NON_ANIMAL_TAGS } from "./tagUtil.js";
 import { Station } from "@models/Station.js";
 import { Device } from "@models/Device.js";
@@ -1776,6 +1776,7 @@ export async function _sendEventAlerts(
 export const updateRecordingTimeBookkeeping = async (
   recording: Recording,
   isNewUploadFromDevice = false,
+  transaction?: Transaction,
 ) => {
   // Check if there are any more device/group/station recordings or if the latest recording of this type
   // is not different. If not, set lastRecordingTime to null so that the device will appear as deletable.
@@ -1820,6 +1821,7 @@ export const updateRecordingTimeBookkeeping = async (
       {
         replacements: { deviceId: recording.DeviceId, type: recording.type },
         type: QueryTypes.UPDATE,
+        transaction,
       },
     ), // Update group
     Recording.sequelize.query(
@@ -1848,6 +1850,7 @@ export const updateRecordingTimeBookkeeping = async (
       {
         replacements: { groupId: recording.GroupId, type: recording.type },
         type: QueryTypes.UPDATE,
+        transaction,
       },
     ),
   ];
@@ -1887,6 +1890,7 @@ export const updateRecordingTimeBookkeeping = async (
             isNewUploadFromDevice,
           },
           type: QueryTypes.UPDATE,
+          transaction,
         },
       ),
     );
@@ -1922,6 +1926,7 @@ export const updateRecordingTimeBookkeeping = async (
             type: recording.type,
           },
           type: QueryTypes.UPDATE,
+          transaction,
         },
       ),
     );

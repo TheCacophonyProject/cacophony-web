@@ -1830,7 +1830,8 @@ export default function (app: Application, baseUrl: string) {
         const [
           latestThermalRecording,
           latestAudioRecording,
-          earliestRecording,
+          earliestAudioRecording,
+          earliestThermalRecording,
         ] = await Promise.all([
           Recording.findOne({
             where: {
@@ -1851,17 +1852,44 @@ export default function (app: Application, baseUrl: string) {
           Recording.findOne({
             where: {
               StationId: station.id,
+              type: RecordingType.Audio,
+              recordingDateTime: { [Op.ne]: null },
+            },
+            order: [["recordingDateTime", "ASC"]],
+          }),
+          Recording.findOne({
+            where: {
+              StationId: station.id,
+              type: RecordingType.ThermalRaw,
               recordingDateTime: { [Op.ne]: null },
             },
             order: [["recordingDateTime", "ASC"]],
           }),
         ]);
+        let earliestRecording;
+        if (earliestThermalRecording && earliestAudioRecording) {
+          if (
+            earliestThermalRecording.recordingDateTime <
+            earliestAudioRecording.recordingDateTime
+          ) {
+            earliestRecording = earliestThermalRecording;
+          } else {
+            earliestRecording = earliestAudioRecording;
+          }
+        } else if (earliestThermalRecording) {
+          earliestRecording = earliestThermalRecording;
+        } else if (earliestAudioRecording) {
+          earliestRecording = earliestAudioRecording;
+        }
         let updates: {
           lastAudioRecordingTime?: Date | null;
           lastThermalRecordingTime?: Date | null;
+          earliestAudioRecordingTime?: Date | null;
+          earliestThermalRecordingTime?: Date | null;
           activeAt?: Date;
         } = {};
 
+        // FIXME: station bookkeeping...?
         if (
           latestAudioRecording &&
           (!station.lastAudioRecordingTime ||
@@ -1873,6 +1901,21 @@ export default function (app: Application, baseUrl: string) {
           ).recordingDateTime;
         } else if (!latestAudioRecording && station.lastAudioRecordingTime) {
           updates.lastAudioRecordingTime = null;
+        }
+        if (
+          earliestAudioRecording &&
+          (!station.earliestAudioRecordingTime ||
+            latestAudioRecording.recordingDateTime !==
+              station.earliestAudioRecordingTime)
+        ) {
+          updates.earliestAudioRecordingTime = (
+            earliestAudioRecording as Recording
+          ).recordingDateTime;
+        } else if (
+          !earliestAudioRecording &&
+          station.earliestAudioRecordingTime
+        ) {
+          updates.earliestAudioRecordingTime = null;
         }
         if (
           latestThermalRecording &&
@@ -1889,6 +1932,23 @@ export default function (app: Application, baseUrl: string) {
         ) {
           updates.lastThermalRecordingTime = null;
         }
+
+        if (
+          earliestThermalRecording &&
+          (!station.earliestThermalRecordingTime ||
+            earliestThermalRecording.recordingDateTime !==
+              station.earliestThermalRecordingTime)
+        ) {
+          updates.earliestThermalRecordingTime = (
+            earliestThermalRecording as Recording
+          ).recordingDateTime;
+        } else if (
+          !earliestThermalRecording &&
+          station.earliestThermalRecordingTime
+        ) {
+          updates.earliestThermalRecordingTime = null;
+        }
+
         if (station.automatic && station.id !== stationId) {
           if (
             earliestRecording &&

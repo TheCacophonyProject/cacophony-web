@@ -32,8 +32,9 @@ describe("Recordings - audio recording parameter tests", () => {
   it("Can upload an audio recording and use embedded metadata", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecording1: ApiAudioRecordingResponse;
-    recording1.duration = 20.000912;
-    recording1.location = [-43.601032, 172.71317];
+    recording1.duration = 10.08;
+    recording1.location = [-43.5339, 172.64731];
+    recording1.recordingDateTime = "2026-02-01T20:23:09.103Z";
     cy.log("Add recording as device");
     cy.apiRecordingAdd(
       device,

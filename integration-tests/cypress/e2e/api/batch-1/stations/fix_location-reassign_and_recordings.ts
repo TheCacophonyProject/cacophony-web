@@ -330,8 +330,8 @@ describe("Fix location: subsequent recordings", () => {
     const deviceName = "update-device-13";
     const manualStationName = "Josie-station-13";
 
-    //create device and station at dayZero, recording at dayTwo.
-    //reassign recording from auto station to manual station
+    // create device and station at dayZero, recording at dayTwo.
+    // reassign recording from auto station to manual station
     cy.createDeviceStationRecordingAndFix(
       Josie,
       deviceName,
@@ -361,7 +361,7 @@ describe("Fix location: subsequent recordings", () => {
           );
 
           cy.log(
-            "Check deviceHistory has new entry for new recording locvation",
+            "Check deviceHistory has new entry for new recording location",
           );
           expectedHistory[2] = TestCreateExpectedHistoryEntry(
             deviceName,

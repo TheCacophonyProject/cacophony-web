@@ -1063,7 +1063,18 @@ export function TestCreateExpectedDevice(
   };
   if (hasDeviceConnected == true) {
     expectedDevice.lastConnectionTime = NOT_NULL_STRING;
-    expectedDevice.lastRecordingTime = NOT_NULL_STRING;
+    if (type === DeviceType.Thermal) {
+      expectedDevice.lastThermalRecordingTime = NOT_NULL_STRING;
+      expectedDevice.earliestThermalRecordingTime = NOT_NULL_STRING;
+    } else if (type === DeviceType.Audio) {
+      expectedDevice.lastAudioRecordingTime = NOT_NULL_STRING;
+      expectedDevice.earliestAudioRecordingTime = NOT_NULL_STRING;
+    } else if (type === DeviceType.Hybrid) {
+      expectedDevice.lastThermalRecordingTime = NOT_NULL_STRING;
+      expectedDevice.lastAudioRecordingTime = NOT_NULL_STRING;
+      expectedDevice.earliestThermalRecordingTime = NOT_NULL_STRING;
+      expectedDevice.earliestAudioRecordingTime = NOT_NULL_STRING;
+    }
     expectedDevice.location = {
       lat: NOT_NULL,
       lng: NOT_NULL,

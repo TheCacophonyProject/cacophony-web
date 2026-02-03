@@ -135,7 +135,6 @@ describe("Activity bookkeeping", () => {
     const uploadedRecordings = (await Promise.all(
       recordingIds.map((id) => AdminUser.Recordings.getRecordingById(id)),
     )) as ApiRecordingResponse[];
-    console.log(uploadedRecordings);
     expect(
       uploadedRecordings.map((recording) => recording.type),
       "uploaded recording types are correct",

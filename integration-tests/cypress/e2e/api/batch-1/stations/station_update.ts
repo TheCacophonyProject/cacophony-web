@@ -639,6 +639,7 @@ describe("Stations: updating", () => {
               ".updatedAt",
               ".activeAt",
               ".lastActiveThermalTime",
+              ".earliestThermalRecordingTime",
             ],
           );
         });
