@@ -85,6 +85,7 @@ const isBusy = ref<boolean>(false);
       no-header
       :no-fade="noFadeInternal"
       ref="modal"
+      size="xl"
       @hide="show = false"
       @hidden="closedModal"
       @shown="onShown"
@@ -119,22 +120,20 @@ const isBusy = ref<boolean>(false);
 </template>
 
 <style lang="less">
+@import "../assets/less/breakpoints";
 .inline-view-dialog {
   pointer-events: none;
   user-select: none;
+  @media (min-width: @breakpoint-md) and (max-width: @breakpoint-lg-max) {
+    max-width: 98vw;
+  }
 }
 .inline-view-modal {
-  border-radius: 2px;
-  box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.2);
-
+  overflow: hidden;
   // TODO What's the best way to set the width of this at different breakpoints?
   &.disabled {
     pointer-events: none;
     user-select: none;
   }
-}
-.inline-view-dialog {
-  max-width: 1080px;
-  overflow: hidden;
 }
 </style>

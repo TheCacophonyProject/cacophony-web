@@ -7,6 +7,7 @@ const isTruncated = computed<boolean>(() => {
   if (spanItem.value) {
     const truncated = spanItem.value.offsetWidth < spanItem.value.scrollWidth;
     /*console.log(
+      spanItem.value,
       spanItem.value.innerText,
       spanItem.value.offsetWidth,
       spanItem.value.scrollWidth,
@@ -23,9 +24,9 @@ const fullText = computed(() => {
 });
 </script>
 <template>
-  <span class="text-truncate" ref="spanItem">
-    <slot></slot>
-    <b-tooltip hover v-if="isTruncated" :target="spanItem">{{
+  <span class="text-truncate" ref="spanItem"
+    ><slot></slot
+    ><b-tooltip hover v-if="isTruncated" :target="spanItem">{{
       fullText
     }}</b-tooltip>
   </span>

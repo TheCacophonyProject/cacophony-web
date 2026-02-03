@@ -12,10 +12,13 @@ import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
 import type { LoadedResource } from "@apiClient/types.ts";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import {
+  BButton,
   BDropdown,
   BDropdownDivider,
   BDropdownItemButton,
+  BTooltip,
 } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const props = withDefaults(
   defineProps<{
@@ -150,49 +153,58 @@ const notImplemented = () => {
 </script>
 <template>
   <div
-    class="recording-icons d-flex justify-content-between px-sm-2 align-items-center"
+    class="recording-icons d-flex align-items-center gap-2"
     :class="props.classes || []"
   >
     <button
       type="button"
-      class="btn btn-square btn-hi"
+      class="btn btn-icon btn-lg d-flex align-items-center"
+      id="flag"
+      aria-label="Flag record"
       :disabled="
         !recordingReady || addingLabelInProgress || removingLabelInProgress
       "
       @click.prevent="() => flagRecording()"
     >
-      <font-awesome-icon
-        :icon="recordingIsFlagged ? ['fas', 'flag'] : ['far', 'flag']"
-        :color="recordingIsFlagged ? '#ad0707' : '#666'"
+      <material-symbol
+        name="flag"
+        size="1.25rem"
+        :style="recordingIsFlagged ? `color:#ad0707` : ''"
+        :filled="recordingIsFlagged"
       />
     </button>
+    <b-tooltip target="flag"> Flag </b-tooltip>
     <button
       type="button"
-      class="btn btn-square btn-hi"
+      class="btn btn-icon d-flex align-items-center"
+      id="star"
+      aria-label="Star record"
       :disabled="
         !recordingReady || addingLabelInProgress || removingLabelInProgress
       "
       @click.prevent="() => starRecording()"
     >
-      <font-awesome-icon
-        :icon="recordingIsStarred ? ['fas', 'star'] : ['far', 'star']"
-        :color="recordingIsStarred ? 'goldenrod' : '#666'"
+      <material-symbol
+        name="star"
+        size="1.25rem"
+        :style="recordingIsStarred ? `color:goldenrod` : ''"
+        :filled="recordingIsStarred"
       />
     </button>
+    <b-tooltip target="star"> Star </b-tooltip>
     <b-dropdown
-      no-flip
       dropup
       auto-close
       no-caret
-      :center="true"
-      offset="7"
-      variant="link"
-      toggle-class="dropdown-btn btn-square btn-hi"
-      menu-class="dropdown-indicator"
+      center
+      variant="light"
+      id="export"
+      aria-label="Download record"
+      toggle-class="dropdown-btn btn-icon"
       v-if="currentRecordingType === 'cptv'"
     >
       <template #button-content>
-        <font-awesome-icon icon="download" color="#666" />
+        <material-symbol name="download" size="1.25rem" />
       </template>
       <b-dropdown-item-button @click="() => emit('requested-export')">
         <font-awesome-icon :icon="['far', 'file-video']" />
@@ -211,15 +223,19 @@ const notImplemented = () => {
     <button
       v-else-if="currentRecordingType === 'audio'"
       type="button"
-      class="btn btn-square btn-hi"
+      class="btn btn-icon d-flex align-items-center"
+      id="export"
+      aria-label="Download record"
       :disabled="!recordingReady"
       @click="() => emit('requested-download')"
     >
-      <font-awesome-icon icon="download" color="#666" />
+      <material-symbol name="download" size="1.25rem" />
     </button>
+    <b-tooltip target="export"> Download </b-tooltip>
     <two-step-action-button
       icon="delete"
-      tooltip-label="Delete recording"
+      tooltip-label="Delete"
+      aria-label="Delete record"
       confirmation-label="Delete recording"
       :action="() => emit('delete-recording')"
       placement="top"
@@ -236,40 +252,7 @@ const notImplemented = () => {
     <!--    </button>-->
   </div>
 </template>
-<style lang="less">
-.dropdown-indicator {
-  position: relative;
-  &::after {
-    content: "";
-    position: absolute;
-    width: 0;
-    height: 0;
-    display: block;
-    bottom: -9px;
-    border-left: 10px solid transparent;
-    border-right: 10px solid transparent;
-    border-top: 10px solid white;
-    left: calc(50% - 10px);
-  }
-  &::before {
-    content: "";
-    position: absolute;
-    width: 0;
-    height: 0;
-    display: block;
-    bottom: -10.5px;
-    border-left: 10.5px solid transparent;
-    border-right: 10.5px solid transparent;
-    border-top: 10.5px solid var(--bs-dropdown-border-color);
-    left: calc(50% - 10.25px);
-  }
-}
-</style>
 <style scoped lang="less">
-.recording-icons {
-  color: #666;
-}
-
 @media screen and (max-width: 320px) {
   .optional-button {
     display: none;

@@ -40,7 +40,7 @@
   --bs-btn-font-weight: 500;
   //--bs-btn-color: var(--bs-primary);
   --bs-btn-bg: transparent;
-  --bs-btn-border-color: var(--bd-violet-bg);
+  --bs-btn-border-color: transparent;
   //--bs-btn-hover-color: var(--bs-white);
   --bs-btn-hover-bg: var(--bs-gray-100);
   --bs-btn-hover-border-color: transparent;
@@ -60,7 +60,7 @@
   --bs-btn-font-weight: 400;
   --bs-btn-color: var(--bs-gray-700);
   --bs-btn-bg: transparent;
-  --bs-btn-border-color: var(--bd-violet-bg);
+  --bs-btn-border-color: transparent;
   //--bs-btn-hover-color: var(--bs-gray-800); see below, setting it this way doesn't work
   //--bs-btn-hover-bg: red !important;
   --bs-btn-hover-border-color: transparent;
@@ -159,4 +159,15 @@
 b,
 strong {
   font-weight: var(--cp-font-weight-semilbold);
+}
+
+.nav-underline {
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.nav-underline .nav-link.active,
+.nav-underline .show > .nav-link {
+  font-weight: var(--cp-font-weight-medium);
+  border-bottom-color: var(--cp-color-primary);
+  color: var(--cp-color-green-800);
 }

@@ -365,7 +365,7 @@ const isStillProcessing = computed<boolean>(() => {
           :class="[classification, ...path.split('.')]"
           :key="index"
         >
-          <span class="count text-capitalize">
+          <span class="count text-capitalize d-inline-flex justify-content-center align-items-center">
             <b-spinner
               v-if="classification === 'unclassified'"
               small

@@ -25,7 +25,13 @@ import {
 import type { LoadedResource } from "@apiClient/types";
 import SectionCard from "@/components/SectionCard.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
-import {BBadge, BForm, BFormCheckboxGroup, BModal, BSpinner} from "bootstrap-vue-next";
+import {
+  BBadge,
+  BForm,
+  BFormCheckboxGroup,
+  BModal,
+  BSpinner,
+} from "bootstrap-vue-next";
 const projectUsers = ref<LoadedResource<ApiProjectUserResponse[]>>(null);
 const loadingUsers = ref(false);
 const fallibleCurrentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
