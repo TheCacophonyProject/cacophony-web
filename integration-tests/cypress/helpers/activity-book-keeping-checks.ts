@@ -75,6 +75,11 @@ export const checkActivity = async (
     ).to.equal(recording.recordingDateTime);
   }
   if (uploader === "device") {
+    // 'Last active times' for locations are designed to track which locations
+    // had active cameras, and *could* have had activity but may not have made
+    // recordings during the active period.
+    // This is less useful now that all cameras make startup and shutdown status recordings,
+    // and we may want to consider removing this.
     if (recording.type === RecordingType.ThermalRaw) {
       expect(
         new Date(location.lastActiveThermalTime),

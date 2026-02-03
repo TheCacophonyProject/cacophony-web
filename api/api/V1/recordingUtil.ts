@@ -73,8 +73,6 @@ import type {
   ApiThermalRecordingMetadataResponse,
 } from "@typedefs/api/recording.js";
 
-const sequelize = await initSequelize();
-
 const ffmpegPath = "/usr/bin/ffmpeg";
 ffmpeg.setFfmpegPath(ffmpegPath);
 temp.track();
@@ -915,8 +913,8 @@ export const maybeUpdateDeviceHistory = async (
         // Create a new automatic station.  With concurrent recording uploads from the same device/location,
         // we're in danger of creating duplicate stations, so we take a lock on the group/lat/lng to
         // prevent duplicate inserts.
-
-        await Station.sequelize.transaction(async (transaction) => {
+        const sequelize = await initSequelize();
+        await sequelize.transaction(async (transaction) => {
           // lock on a derived key from group + location to prevent duplicate inserts
           await sequelize.query(
             `SELECT pg_advisory_xact_lock(hashtext(:key))`,
@@ -953,6 +951,7 @@ export const maybeUpdateDeviceHistory = async (
       const newDeviceHistory = await Station.sequelize.transaction(
         async (transaction) => {
           // lock on a derived key from group + deviceId + saltId + uuid + location to prevent duplicate inserts
+          const sequelize = await initSequelize();
           await sequelize.query(
             `SELECT pg_advisory_xact_lock(hashtext(:key))`,
             {
@@ -1062,28 +1061,10 @@ export async function queryRecordings(
   return { count: rows.length, rows: rows };
 }
 
-export async function bulkDelete(
-  requestUserId: UserId,
-  type: RecordingType,
-  options: RecordingQueryOptions,
-  _actuallyDelete = false, // FIXME - Make recordings actually be deleted?
-): Promise<RecordingId[]> {
-  if (type && typeof options.where === "object") {
-    options.where = { ...options.where, type };
-  }
-
-  const builder = new Recording.queryBuilder().init(requestUserId, options);
-  const recordings = (await Recording.findAll(builder.get())) as Recording[];
-  if (recordings.length === 0) {
-    throw new Error("No recordings found to delete");
-  }
-  const deletion = { deletedAt: new Date(), deletedBy: requestUserId };
-  const ids = recordings.map((value) => value.id);
-  const deletedValues = (await Recording.update(deletion, {
-    where: { id: ids, deletedAt: { [Op.eq]: null } },
-    returning: ["id"],
-  })) as unknown as Promise<[number, { id: number }[]]>;
-
+export async function updateRecordingTimeBookkeepingForBulkDeletedRecordings(
+  recordings: Recording[],
+  transaction?: Transaction,
+): Promise<void> {
   // For each set of recordings to delete or undelete, we need to get the unique stations and devices,
   // and then fixup the latest recording times for each device and station and group.
   const uniqueByStation = new Map();
@@ -1105,19 +1086,56 @@ export async function bulkDelete(
   }
   const fixups = [];
   for (const recording of uniqueByStation.values()) {
-    fixups.push(updateRecordingTimeBookkeeping(recording));
+    fixups.push(updateRecordingTimeBookkeeping(recording, false, transaction));
   }
   for (const recording of uniqueByDevice.values()) {
-    fixups.push(updateRecordingTimeBookkeeping(recording));
+    fixups.push(updateRecordingTimeBookkeeping(recording, false, transaction));
   }
   for (const recording of uniqueByGroup.values()) {
-    fixups.push(updateRecordingTimeBookkeeping(recording));
+    fixups.push(updateRecordingTimeBookkeeping(recording, false, transaction));
   }
   if (fixups.length) {
     await Promise.all(fixups);
   }
-  if (deletedValues[1]) {
-    return deletedValues[1].map((value: { id: RecordingId }) => value.id);
+}
+
+export async function bulkDelete(
+  requestUserId: UserId,
+  type: RecordingType,
+  options: RecordingQueryOptions,
+  _actuallyDelete = false, // FIXME - Make recordings actually be deleted?
+): Promise<RecordingId[]> {
+  if (type && typeof options.where === "object") {
+    options.where = { ...options.where, type };
+  }
+
+  const builder = new Recording.queryBuilder().init(requestUserId, options);
+  const recordings = (await Recording.findAll(builder.get())) as Recording[];
+  if (recordings.length === 0) {
+    throw new Error("No recordings found to delete");
+  }
+  const deletion = { deletedAt: new Date(), deletedBy: requestUserId };
+  const ids = recordings.map((value) => value.id);
+  const deletedRecordings = (await Recording.update(deletion, {
+    where: { id: ids, deletedAt: { [Op.eq]: null } },
+    returning: ["id", "DeviceId", "StationId", "GroupId", "type"],
+  })) as unknown as Promise<
+    [
+      number,
+      {
+        id: number;
+        GroupId: GroupId;
+        StationId: StationId;
+        DeviceId: DeviceId;
+        type: RecordingType;
+      }[],
+    ]
+  >;
+  if (deletedRecordings[0] !== 0) {
+    await updateRecordingTimeBookkeepingForBulkDeletedRecordings(
+      deletedRecordings[1],
+    );
+    return deletedRecordings[1].map((value: { id: RecordingId }) => value.id);
   }
   return [];
 }
@@ -1322,6 +1340,7 @@ export async function getTrackTagsCount(options: TrackTagsCountOptions) {
     userId: options.userId,
     groupId: options.groupId,
   };
+  const sequelize = await initSequelize();
   return await sequelize.query(sql, {
     replacements,
     type: QueryTypes.SELECT,

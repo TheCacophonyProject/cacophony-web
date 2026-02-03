@@ -154,7 +154,7 @@ describe("Recordings: bulk delete, undelete", () => {
       });
   });
 
-  it("Check bulk deleted recordings not returned by default, for supported endpoitns", () => {
+  it("Check bulk deleted recordings not returned by default, for supported endpoints", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
 
     cy.log("Add recording as device");

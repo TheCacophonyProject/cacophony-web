@@ -45,6 +45,7 @@ import { Event } from "@models/Event.js";
 import { Schedule } from "@models/Schedule.js";
 import { Alert } from "@models/Alert.js";
 import { DeviceHistorySetBy } from "@typedefs/api/device.js";
+import { updateRecordingTimeBookkeepingForBulkDeletedRecordings } from "@api/V1/recordingUtil.js";
 
 const Op = Sequelize.Op;
 export class Device extends ModelStaticCommon<Device> {
@@ -688,11 +689,22 @@ order by hour;
             transaction,
           });
           if (group && group.groupName === "new") {
+            // FIXME: We may want to change this behaviour soon.
             // Delete every recording properly
-            await Recording.update(
+            const deletedRecordings = await Recording.update(
               { deletedAt: new Date() },
-              { where: { DeviceId: this.id }, transaction },
+              {
+                where: { DeviceId: this.id, deletedAt: { [Op.ne]: null } },
+                transaction,
+                returning: ["id", "DeviceId", "StationId", "GroupId", "type"],
+              },
             );
+            if (deletedRecordings[0] !== 0) {
+              await updateRecordingTimeBookkeepingForBulkDeletedRecordings(
+                deletedRecordings[1],
+                transaction,
+              );
+            }
             await this.destroy({ transaction });
           } else if (shouldDeleteExistingDevice) {
             await this.destroy({ transaction });

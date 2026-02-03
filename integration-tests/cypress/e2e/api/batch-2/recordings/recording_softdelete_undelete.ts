@@ -303,7 +303,7 @@ describe("Recordings: soft delete, undelete", () => {
     });
   });
 
-  it("Check soft-deleted recordings not returned by default, for supported endpoitns", () => {
+  it("Check soft-deleted recordings not returned by default, for supported endpoints", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
 
     cy.log("Add recording as device");
