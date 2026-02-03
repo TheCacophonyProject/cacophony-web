@@ -34,7 +34,10 @@ export interface ApiRecordingResponse {
   redacted?: boolean;
 }
 
-export interface ApiThermalRecordingMetadataResponse {
+export interface ApiThermalRecordingMetadataResponse extends Record<
+  string,
+  unknown
+> {
   trackingTime?: Seconds;
   previewSecs?: Seconds;
   totalFrames?: number;
@@ -47,6 +50,7 @@ export interface ApiThermalRecordingMetadataResponse {
     frameNumber: number;
   };
   metadataSource?: string;
+  status?: "test" | "startup" | "shutdown";
 }
 
 export interface ApiAudioRecordingMetadataResponse {
@@ -68,13 +72,12 @@ export interface ApiAudioRecordingMetadataResponse {
   "Android API Level": number;
   "Phone manufacturer": string;
   "App has root access": boolean;
+  status?: "test";
 }
 
 export interface ApiThermalRecordingResponse extends ApiRecordingResponse {
   additionalMetadata?: ApiThermalRecordingMetadataResponse;
-  type:
-    | RecordingType.ThermalRaw
-    | RecordingType.InfraredVideo
+  type: RecordingType.ThermalRaw | RecordingType.InfraredVideo;
 }
 
 export interface CacophonyIndex {
@@ -93,7 +96,7 @@ export interface ApiAudioRecordingResponse extends ApiRecordingResponse {
   cacophonyIndex?: CacophonyIndex[];
   type: RecordingType.Audio;
   fileMimeType?: string;
-  additionalMetadata?: ApiAudioRecordingMetadataResponse | any;
+  additionalMetadata?: ApiAudioRecordingMetadataResponse | unknown;
 }
 
 export interface ApiRecordingProcessingJob {
@@ -108,8 +111,18 @@ export interface ApiRecordingProcessingJob {
 
 export interface ApiRecordingUpdateRequest {
   comment?: string;
-  additionalMetadata?: Record<string, any>;
+  additionalMetadata?: Record<string, unknown>;
 }
 
 export type ApiGenericRecordingResponse = ApiThermalRecordingResponse &
   ApiAudioRecordingResponse;
+
+export interface ApiRecordingUploadData {
+  fileHash?: string;
+  status?: "test" | "startup" | "shutdown";
+  location?: LatLng;
+  type?: RecordingType;
+  recordingDateTime?: Date | IsoFormattedDateString;
+  duration?: number;
+  additionalMetadata?: Record<string, unknown>;
+}

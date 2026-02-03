@@ -71,7 +71,6 @@ export const initSequelize = async () => {
     //         },
     //       }
     //     : {};
-
     sequelize = new Sequelize.Sequelize(
       dbConfig.database,
       dbConfig.username,
@@ -130,11 +129,13 @@ export const initSequelize = async () => {
                   log.info(
                     "QUERY %dms\n\t\t %s",
                     timeMs,
-                    msg
-                      .replace("Executed (default): ", "")
-                      .replace(/\n/g, "")
-                      .replace(/\t/, " ")
-                      .replace(/\s+/g, " "),
+                    msg.replace("Executed (default): ", ""),
+                    // sqlFormat(msg.replace("Executed (default): ", ""), {
+                    //   language: "postgresql",
+                    // }),
+                    // .replace(/\n/g, "")
+                    // .replace(/\t/, " ")
+                    // .replace(/\s+/g, " "),
                   );
                 }
               }

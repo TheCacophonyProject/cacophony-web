@@ -116,8 +116,21 @@ export const mapDeviceResponse = (
     if (device.lastConnectionTime) {
       mapped.lastConnectionTime = device.lastConnectionTime.toISOString();
     }
-    if (device.lastRecordingTime) {
-      mapped.lastRecordingTime = device.lastRecordingTime.toISOString();
+    if (device.lastThermalRecordingTime) {
+      mapped.lastThermalRecordingTime =
+        device.lastThermalRecordingTime.toISOString();
+    }
+    if (device.lastAudioRecordingTime) {
+      mapped.lastAudioRecordingTime =
+        device.lastAudioRecordingTime.toISOString();
+    }
+    if (device.earliestAudioRecordingTime) {
+      mapped.earliestAudioRecordingTime =
+        device.earliestAudioRecordingTime.toISOString();
+    }
+    if (device.earliestThermalRecordingTime) {
+      mapped.earliestThermalRecordingTime =
+        device.earliestThermalRecordingTime.toISOString();
     }
     if (device.active) {
       const twentyFiveHoursAgo = new Date();
@@ -492,7 +505,10 @@ export default function (app: Application, baseUrl: string) {
    *  "type": "thermal",
    *  "public": "false",
    *  "lastConnectionTime": "2021-11-09T01:38:22.079Z",
-   *  "lastRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "lastThermalRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "lastAudioRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "earliestThermalRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "earliestAudioRecordingTime": "2021-11-07T01:38:48.400Z",
    *  "location": {
    *   "lat": -43.5338812,
    *    "lng": 172.6451473
@@ -1814,7 +1830,8 @@ export default function (app: Application, baseUrl: string) {
         const [
           latestThermalRecording,
           latestAudioRecording,
-          earliestRecording,
+          earliestAudioRecording,
+          earliestThermalRecording,
         ] = await Promise.all([
           Recording.findOne({
             where: {
@@ -1835,17 +1852,44 @@ export default function (app: Application, baseUrl: string) {
           Recording.findOne({
             where: {
               StationId: station.id,
+              type: RecordingType.Audio,
+              recordingDateTime: { [Op.ne]: null },
+            },
+            order: [["recordingDateTime", "ASC"]],
+          }),
+          Recording.findOne({
+            where: {
+              StationId: station.id,
+              type: RecordingType.ThermalRaw,
               recordingDateTime: { [Op.ne]: null },
             },
             order: [["recordingDateTime", "ASC"]],
           }),
         ]);
+        let earliestRecording;
+        if (earliestThermalRecording && earliestAudioRecording) {
+          if (
+            earliestThermalRecording.recordingDateTime <
+            earliestAudioRecording.recordingDateTime
+          ) {
+            earliestRecording = earliestThermalRecording;
+          } else {
+            earliestRecording = earliestAudioRecording;
+          }
+        } else if (earliestThermalRecording) {
+          earliestRecording = earliestThermalRecording;
+        } else if (earliestAudioRecording) {
+          earliestRecording = earliestAudioRecording;
+        }
         let updates: {
           lastAudioRecordingTime?: Date | null;
           lastThermalRecordingTime?: Date | null;
+          earliestAudioRecordingTime?: Date | null;
+          earliestThermalRecordingTime?: Date | null;
           activeAt?: Date;
         } = {};
 
+        // FIXME: station bookkeeping...?
         if (
           latestAudioRecording &&
           (!station.lastAudioRecordingTime ||
@@ -1857,6 +1901,21 @@ export default function (app: Application, baseUrl: string) {
           ).recordingDateTime;
         } else if (!latestAudioRecording && station.lastAudioRecordingTime) {
           updates.lastAudioRecordingTime = null;
+        }
+        if (
+          earliestAudioRecording &&
+          (!station.earliestAudioRecordingTime ||
+            latestAudioRecording.recordingDateTime !==
+              station.earliestAudioRecordingTime)
+        ) {
+          updates.earliestAudioRecordingTime = (
+            earliestAudioRecording as Recording
+          ).recordingDateTime;
+        } else if (
+          !earliestAudioRecording &&
+          station.earliestAudioRecordingTime
+        ) {
+          updates.earliestAudioRecordingTime = null;
         }
         if (
           latestThermalRecording &&
@@ -1873,6 +1932,23 @@ export default function (app: Application, baseUrl: string) {
         ) {
           updates.lastThermalRecordingTime = null;
         }
+
+        if (
+          earliestThermalRecording &&
+          (!station.earliestThermalRecordingTime ||
+            earliestThermalRecording.recordingDateTime !==
+              station.earliestThermalRecordingTime)
+        ) {
+          updates.earliestThermalRecordingTime = (
+            earliestThermalRecording as Recording
+          ).recordingDateTime;
+        } else if (
+          !earliestThermalRecording &&
+          station.earliestThermalRecordingTime
+        ) {
+          updates.earliestThermalRecordingTime = null;
+        }
+
         if (station.automatic && station.id !== stationId) {
           if (
             earliestRecording &&
@@ -1934,7 +2010,10 @@ export default function (app: Application, baseUrl: string) {
    *  "type": "thermal",
    *  "public": "false",
    *  "lastConnectionTime": "2021-11-09T01:38:22.079Z",
-   *  "lastRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "lastThermalRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "lastAudioRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "earliestThermalRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "earliestAudioRecordingTime": "2021-11-07T01:38:48.400Z",
    *  "location": {
    *   "lat": -43.5338812,
    *    "lng": 172.6451473
@@ -2545,7 +2624,6 @@ export default function (app: Application, baseUrl: string) {
   if (!config.productionEnv) {
     // NOTE: This api is currently for facilitating testing only, and is
     //  not available in production builds.
-
     /**
      * @api {post} /api/v1/devices/:deviceId/history Get device history
      * @apiName history

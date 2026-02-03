@@ -22,7 +22,7 @@ import logger from "@log";
 import { canonicalLatLng } from "@models/util/locationUtils.js";
 
 export function isLatLon(
-  point: { coordinates: [number, number] } | [number, number] | LatLng,
+  point: { coordinates: [number, number] } | [number, number] | LatLng | string,
   shouldThrow = true,
 ) {
   let valid = true;
@@ -65,18 +65,23 @@ export function isLatLon(
       // Okay
     }
   }
-  const location = canonicalLatLng(point);
+  if (!valid && shouldThrow) {
+    throw new Error(`Location ${JSON.stringify(point, null, 2)} is not valid.`);
+  }
+  const location = canonicalLatLng(
+    point as LatLng | { coordinates: [number, number] } | [number, number],
+  );
   if (
     location.lat < -90 ||
     90 < location.lat ||
     location.lng < -180 ||
     180 <= location.lng
   ) {
-    logger.warning("Invalid 6 %s", location);
+    logger.warning("Invalid 6 %s", point);
     valid = false;
   }
   if (!valid && shouldThrow) {
-    throw new Error("Location is not valid G.");
+    throw new Error(`Location ${JSON.stringify(point, null, 2)} is not valid.`);
   }
   return valid;
 }

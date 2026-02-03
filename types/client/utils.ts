@@ -1,4 +1,4 @@
-import type { JwtTokenPayload } from "./types";
+import type { JwtTokenPayload } from "./types.js";
 
 export const decodeJWT = (jwtString: string): JwtTokenPayload | null => {
   const parts = jwtString.split(".");
@@ -12,7 +12,7 @@ export const decodeJWT = (jwtString: string): JwtTokenPayload | null => {
       expiresAt: new Date(decodedToken.exp * 1000),
       createdAt: new Date(decodedToken.iat * 1000),
     };
-  } catch (e) {
+  } catch (_e) {
     return null;
   }
 };

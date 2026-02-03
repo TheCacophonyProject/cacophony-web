@@ -124,7 +124,7 @@ describe("Recording thumbnails", () => {
             "rtTrack01",
             "rtRecording01",
             "possum",
-            0.9,
+            90,
             { name: "Master" },
           ).then(() => {
             expectedRecording01.tracks = [
@@ -135,7 +135,7 @@ describe("Recording thumbnails", () => {
                     path: "all",
                     automatic: true,
                     trackId: getCreds("rtTrack01").id,
-                    confidence: 0.9,
+                    confidence: 90,
                     model: "Master",
                     id: -1,
                   },
@@ -271,7 +271,7 @@ describe("Recording thumbnails", () => {
             "rtTrack01",
             "rtRecording01",
             "possum",
-            0.9,
+            90,
             { name: "Master" },
           ).then(() => {
             expectedRecording01.tracks = [
@@ -282,7 +282,7 @@ describe("Recording thumbnails", () => {
                     path: "all",
                     automatic: true,
                     trackId: getCreds("rtTrack01").id,
-                    confidence: 0.9,
+                    confidence: 90,
                     model: "Master",
                     id: -1,
                   },
@@ -439,7 +439,7 @@ describe("Recording thumbnails", () => {
             "rtTrack02",
             "rtRecording02",
             "possum",
-            0.9,
+            90,
             { name: "Master" },
           ).then(() => {
             expectedRecording02.tracks = [
@@ -450,7 +450,7 @@ describe("Recording thumbnails", () => {
                     path: "all",
                     automatic: true,
                     trackId: getCreds("rtTrack02").id,
-                    confidence: 0.9,
+                    confidence: 90,
                     model: "Master",
                     id: -1,
                   },
@@ -493,6 +493,8 @@ describe("Recording thumbnails", () => {
       });
     });
   } else {
-    it.skip("NOTE: Thumbnail generation tests skipped superuser disabled in environment variables", () => {});
+    it.skip("NOTE: Thumbnail generation tests skipped superuser disabled in environment variables", () => {
+      return;
+    });
   }
 });

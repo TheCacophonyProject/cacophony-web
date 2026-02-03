@@ -1,4 +1,9 @@
-import type { IsoFormattedDateString, RecordingId, TagId, UserId } from "./common.ts";
+import type {
+  IsoFormattedDateString,
+  RecordingId,
+  TagId,
+  UserId,
+} from "./common.ts";
 
 export interface ApiRecordingTagRequest {
   detail: string;

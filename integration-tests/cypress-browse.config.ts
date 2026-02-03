@@ -1,4 +1,5 @@
 import { defineConfig } from "cypress";
+import registerPlugins from "./cypress/plugins/index.js";
 
 export default defineConfig({
   projectId: "dyez6t",
@@ -13,7 +14,7 @@ export default defineConfig({
     // We've imported your old cypress plugins here.
     // You may want to clean this up later by importing these.
     setupNodeEvents(on, config) {
-      return require("./cypress/plugins/index.js")(on, config);
+      return registerPlugins(on, config);
     },
     specPattern: "cypress/e2e/browse-next/**/*.{js,jsx,ts,tsx}",
     baseUrl: "http://localhost:5173",

@@ -104,11 +104,7 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
           " ",
           "&nbsp;",
         ),
-        confidence: tag.automatic
-          ? Math.round(
-              (props.isAudioRecording ? 1 : 100) * tag.confidence,
-            ).toString() + "%"
-          : "",
+        confidence: tag.automatic ? tag.confidence.toString() + "%" : "",
       };
       if (userIsGroupAdmin.value) {
         item._deleteAction = {

@@ -1,8 +1,11 @@
 import { getCreds, makeAuthorizedRequest, v1ApiPath } from "@commands/server";
 import { TestGetLocation } from "@commands/api/station";
-import { ApiMaskRegionsData } from "@typedefs/api/device";
+import {
+  ApiDeviceHistorySettings,
+  ApiMaskRegionsData,
+} from "@typedefs/api/device";
 import { uploadFile } from "@commands/fileUpload";
-import { ApiTrackDataRequest, ApiTrackPosition } from "@typedefs/api/track";
+import { ApiTrackDataRequest } from "@typedefs/api/track";
 
 const testRegions1: ApiMaskRegionsData = {
   maskRegions: {
@@ -65,21 +68,6 @@ const testRegions2: ApiMaskRegionsData = {
     },
   },
 };
-
-const positions1: ApiTrackPosition[] = [
-  {
-    x: 1,
-    y: 2,
-    width: 10,
-    height: 20,
-  },
-  {
-    x: 2,
-    y: 3,
-    width: 11,
-    height: 21,
-  },
-];
 
 // NOTE: This data comes from https://browse.cacophony.org.nz/recording/1717593/3774282
 //  Aviemore dam, with the water masked off, as it is a common source of false triggers
@@ -300,7 +288,7 @@ describe("Device mask regions", () => {
       params.append("at-time", new Date().toISOString());
       params.append("type", "pov");
       let queryString = params.toString();
-      // eslint-disable-next-line no-undef
+
       const apiUrl = v1ApiPath(
         `devices/${getCreds(camera).id}/reference-image`,
       );
@@ -331,19 +319,17 @@ describe("Device mask regions", () => {
           url: `${deviceSettingsApiUrl}?${queryString}`,
         },
         user,
-      ).then((response) => {
-        const settings = response.body.settings;
-        expect(settings).to.exist;
-        const maskRegionsExist = settings.hasOwnProperty("maskRegions");
-        const referenceImagePOVExist =
-          settings.hasOwnProperty("referenceImagePOV");
-        const referenceImagePOVFileSizeExist = settings.hasOwnProperty(
-          "referenceImagePOVFileSize",
-        );
-        expect(maskRegionsExist).to.be.true;
-        expect(referenceImagePOVExist).to.be.true;
-        expect(referenceImagePOVFileSizeExist).to.be.true;
-      });
+      ).then(
+        (
+          response: Cypress.Response<{ settings: ApiDeviceHistorySettings }>,
+        ) => {
+          const settings = response.body.settings;
+          expect(settings).to.exist;
+          expect(settings.maskRegions).to.exist;
+          expect(settings.referenceImagePOV).to.exist;
+          expect(settings.referenceImagePOVFileSize).to.exist;
+        },
+      );
     });
   });
 
@@ -397,11 +383,13 @@ describe("Device mask regions", () => {
     // Now adding tag to non-existent track should not fail.
     cy.apiTrackTagAdd(user, recording, maskedTrack, "1", {
       what: "possum",
-      confidence: 0.9,
+      confidence: 90,
       automatic: true,
     });
     cy.apiTracksCheck(user, recording, []);
   });
 
-  it.skip("A track that enters a mask region marked 'alertOnEnter' should trigger an email alert to the project member(s)", () => {});
+  it.skip("A track that enters a mask region marked 'alertOnEnter' should trigger an email alert to the project member(s)", () => {
+    return;
+  });
 });

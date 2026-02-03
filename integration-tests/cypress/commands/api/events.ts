@@ -1,30 +1,141 @@
 import {
-  v1ApiPath,
-  getCreds,
-  makeAuthorizedRequest,
-  makeAuthorizedRequestWithStatus,
-  sortArrayOn,
-  checkTreeStructuresAreEqualExcept,
   checkFlatStructuresAreEqualExcept,
+  checkTreeStructuresAreEqualExcept,
+  getCreds,
+  makeAuthorizedRequestWithStatus,
   removeUndefinedParams,
+  sortArrayOn,
+  v1ApiPath,
 } from "../server";
-import { logTestDescription, prettyLog } from "../descriptions";
+import { logTestDescription } from "../descriptions";
 import { getTestName } from "../names";
 import { NOT_NULL, NOT_NULL_STRING } from "../constants";
 import {
-  TestComparableEvent,
-  TestComparablePowerEvent,
   ApiEventDetail,
-  ApiEventSet,
-  ApiEventReturned,
   ApiEventErrorCategory,
-  ApiPowerEventReturned,
+  ApiEventSet,
+  TestComparableEvent,
 } from "../types";
+import { DeviceEvent } from "@typedefs/api/event";
+import {
+  DeviceEventType,
+  EventEnv,
+  HttpStatusCode,
+} from "@typedefs/api/consts";
+import { DeviceId, IsoFormattedDateString } from "@typedefs/api/common";
+
 export const EventTypes = {
   POWERED_ON: "rpi-power-on",
   POWERED_OFF: "daytime-power-off",
   STOP_REPORTED: "stop-reported",
 };
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Cypress {
+    interface Chainable {
+      /**
+       * Record an event for this device using device's credentials
+       * optionally, check for a non-200 status code returned
+       */
+      apiEventsAdd(
+        deviceName: string,
+        description?: ApiEventDetail,
+        dates?: string[],
+        eventDetailId?: number,
+        log?: boolean,
+        statusCode?: HttpStatusCode,
+      ): Chainable<number>;
+
+      /**
+       * Record an event for this device using user's credentials
+       * optionally, check for a non-200 status code returned
+       */
+      apiEventsDeviceAddOnBehalf(
+        userName: string,
+        deviceIdOrName: string,
+        description?: ApiEventDetail,
+        dates?: string[],
+        eventDetailId?: number,
+        log?: boolean,
+        statusCode?: HttpStatusCode,
+      ): Chainable<number>;
+
+      /**
+       * Query events and check against expected
+       * Optionally check for a non 200 returned statusCode
+       * optionally exclude checks on values of specific keys (excludeCheckOn)
+       * by default both returned events and expected events are sorted by date before comparison to ensure same order
+       * Optionally: disable sorting with additionalChecks.doNotSort=true
+       * Optionally: specify an additionalChecks.offset as a value to verify against the offset parameter in the returned results
+       *   (defaults to 0)
+       * Optionally: specify an additionalChecks.count as a value to verify against the count parameter in the returned results
+       *   (defaults to the number of entries in ExpectedEvents)
+       */
+      apiEventsCheck(
+        userName: string,
+        deviceName: string,
+        queryParams: {
+          deviceId?: DeviceId;
+          startTime?: IsoFormattedDateString;
+          endTime?: IsoFormattedDateString;
+          limit?: number;
+          offset?: number;
+          type?: string;
+          latest?: boolean;
+        },
+        expectedEvents: DeviceEvent[],
+        excludeCheckOn?: string[],
+        statusCode?: HttpStatusCode,
+        additionalChecks?: {
+          doNotSort?: boolean;
+          offset?: number;
+          count?: number;
+        },
+      ): Chainable<void>;
+
+      /**
+       * Query errors and check against expected
+       * Optionally check for a non 200 returned statusCode
+       * optionally exclude checks on values of specific keys (excludeCheckOn)
+       */
+      apiEventsErrorsCheck(
+        userName: string,
+        deviceName: string,
+        queryParams: { deviceId?: DeviceId },
+        expectedErrors: ApiEventErrorCategory[],
+        excludeCheckOn?: string[],
+        statusCode?: HttpStatusCode,
+        additionalChecks?: { count?: number },
+      ): Chainable<void>;
+
+      // *************************************************************************************************************************************
+      // Remaining functions are legacy code from old tests and may one day be removed once these tests are migrated to use the above functions
+      // *************************************************************************************************************************************
+      /**
+       * Legacy test function to check that this device is reported as stopped or not
+       *
+       */
+      testPowerEventsCheckAgainstExpected(
+        userName: string,
+        deviceName: string,
+        expectedEvent: TestComparablePowerEvent,
+      ): Chainable<void>;
+
+      /**
+       * Legacy test function to check that this device has a matching event.
+       * if supplied then Nth event will be checked where N is taken from eventNumber
+       */
+      testEventsCheckAgainstExpected(
+        userName: string,
+        deviceName: string,
+        expectedEvent: DeviceEvent,
+        eventNumber?: number,
+        statusCode?: HttpStatusCode,
+      ): Chainable<void>;
+    }
+  }
+}
 
 Cypress.Commands.add(
   "apiEventsAdd",
@@ -33,8 +144,8 @@ Cypress.Commands.add(
     description: ApiEventDetail,
     dates: string[] = [new Date().toISOString()],
     eventDetailId: number,
-    log: boolean = true,
-    statusCode: number = 200,
+    log = true,
+    statusCode = 200,
   ) => {
     const data: ApiEventSet = {
       dateTimes: dates,
@@ -54,7 +165,7 @@ Cypress.Commands.add(
       },
       deviceName,
       statusCode,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ eventDetailId: number }>) => {
       cy.wrap(response.body.eventDetailId);
     });
   },
@@ -68,8 +179,8 @@ Cypress.Commands.add(
     description?: ApiEventDetail,
     dates: string[] = [new Date().toISOString()],
     eventDetailId?: number,
-    log: boolean = true,
-    statusCode: number = 200,
+    log = true,
+    statusCode = 200,
   ) => {
     let deviceId: string;
     const data: ApiEventSet = {
@@ -97,7 +208,7 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ eventDetailId: number }>) => {
       cy.wrap(response.body.eventDetailId);
     });
   },
@@ -108,12 +219,12 @@ Cypress.Commands.add(
   (
     userName: string,
     deviceName: string,
-    queryParams: any,
+    queryParams: { deviceId?: DeviceId },
     expectedErrors: ApiEventErrorCategory[],
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     excludeCheckOn: string[] = [],
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: { count?: number } = {},
   ) => {
     logTestDescription(`Check for expected errors for ${deviceName} `, {
       userName,
@@ -121,7 +232,7 @@ Cypress.Commands.add(
     });
 
     // by default count=expected event count, but can specify manually
-    let count = additionalChecks["count"];
+    let count = additionalChecks.count;
     if (count == undefined) {
       count = expectedErrors.length;
     }
@@ -139,7 +250,7 @@ Cypress.Commands.add(
       { url: v1ApiPath("events/errors/", filteredParams) },
       userName,
       statusCode,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ rows: ApiEventErrorCategory[] }>) => {
       if (statusCode === 200) {
         const errors = response.body.rows;
         const errorCategories = Object.keys(errors);
@@ -232,23 +343,27 @@ Cypress.Commands.add(
   (
     userName: string,
     deviceName: string,
-    queryParams: any,
-    expectedEvents: ApiEventReturned[],
+    queryParams: { deviceId?: DeviceId },
+    expectedEvents: DeviceEvent[],
     excludeCheckOn: string[] = [],
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: {
+      doNotSort?: boolean;
+      offset?: number;
+      count?: number;
+    } = {},
   ) => {
     logTestDescription(`Check for expected events for ${deviceName} `, {
       userName,
       deviceName,
     });
-    const doNotSort = additionalChecks["doNotSort"];
-    const offset = additionalChecks["offset"] | 0;
-    let sortEvents: ApiEventReturned[];
-    let sortExpectedEvents: ApiEventReturned[];
+    const doNotSort = additionalChecks.doNotSort;
+    const offset = additionalChecks.offset | 0;
+    let sortEvents: DeviceEvent[];
+    let sortExpectedEvents: DeviceEvent[];
 
     // by default count=expected event count, but can specify manually
-    let count = additionalChecks["count"];
+    let count = additionalChecks.count;
     if (count == undefined) {
       count = expectedEvents.length;
     }
@@ -266,87 +381,34 @@ Cypress.Commands.add(
       { url: v1ApiPath("events/", filteredParams) },
       userName,
       statusCode,
-    ).then((response) => {
-      if (statusCode === 200) {
-        //sort expected and actual events into same order (means dateTime is mandatory in expectedEvents)
-        if (doNotSort === true) {
-          sortEvents = response.body.rows;
-          sortExpectedEvents = expectedEvents;
-        } else {
-          sortEvents = sortArrayOn(response.body.rows, "dateTime");
-          sortExpectedEvents = sortArrayOn(expectedEvents, "dateTime");
+    ).then(
+      (
+        response: Cypress.Response<{
+          rows: DeviceEvent[];
+          count?: number;
+          offset: number;
+          limit: number;
+        }>,
+      ) => {
+        if (statusCode === 200) {
+          //sort expected and actual events into same order (means dateTime is mandatory in expectedEvents)
+          if (doNotSort === true) {
+            sortEvents = response.body.rows;
+            sortExpectedEvents = expectedEvents;
+          } else {
+            sortEvents = sortArrayOn(response.body.rows, "dateTime");
+            sortExpectedEvents = sortArrayOn(expectedEvents, "dateTime");
+          }
+          expect(response.body.offset, "Expect offset to be:").to.equal(offset);
+          expect(response.body.count, "Expect count to be:").to.equal(count);
+          checkTreeStructuresAreEqualExcept(
+            sortExpectedEvents,
+            sortEvents,
+            excludeCheckOn,
+          );
         }
-        expect(response.body.offset, "Expect offset to be:").to.equal(offset);
-        expect(response.body.count, "Expect count to be:").to.equal(count);
-        checkTreeStructuresAreEqualExcept(
-          sortExpectedEvents,
-          sortEvents,
-          excludeCheckOn,
-        );
-      }
-    });
-  },
-);
-
-Cypress.Commands.add(
-  "apiPowerEventsCheck",
-  (
-    userName: string,
-    deviceName: string,
-    queryParams: any,
-    expectedEvents: ApiPowerEventReturned[],
-    excludeCheckOn: string[] = [],
-    statusCode: number = 200,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    additionalChecks: any = {},
-  ) => {
-    logTestDescription(`Check for expected power events for ${deviceName} `, {
-      userName,
-      deviceName,
-    });
-
-    // add deviceId to params unless already defined
-    if (queryParams.deviceId === undefined && deviceName !== undefined) {
-      queryParams.deviceId = getCreds(deviceName).id;
-    }
-
-    //drop any undefined parameters
-    const filteredParams = removeUndefinedParams(queryParams);
-
-    //send the request
-    makeAuthorizedRequestWithStatus(
-      { url: v1ApiPath("events/powerEvents", filteredParams) },
-      userName,
-      statusCode,
-    ).then((response) => {
-      if (statusCode === 200) {
-        checkTreeStructuresAreEqualExcept(
-          expectedEvents,
-          response.body.events,
-          excludeCheckOn,
-        );
-      }
-    });
-  },
-);
-
-Cypress.Commands.add(
-  "testPowerEventsCheckAgainstExpected",
-  (
-    userName: string,
-    deviceName: string,
-    expectedEvent: TestComparablePowerEvent,
-  ) => {
-    logTestDescription(
-      `Check power events for ${deviceName} is ${prettyLog(expectedEvent)}}`,
-      {
-        userName,
-        deviceName,
-        expectedEvent,
       },
     );
-
-    checkPowerEvents(userName, deviceName, expectedEvent);
   },
 );
 
@@ -355,9 +417,9 @@ Cypress.Commands.add(
   (
     userName: string,
     deviceName: string,
-    expectedEvent: any,
-    eventNumber: number = 1,
-    statusCode: number = 200,
+    expectedEvent: DeviceEvent,
+    eventNumber = 1,
+    statusCode = 200,
   ) => {
     logTestDescription(`Check for expected event for ${deviceName} `, {
       userName,
@@ -380,8 +442,8 @@ export function createExpectedEvent(
   deviceName: string,
   recording: string,
   alertName: string,
-): any {
-  const expectedEvent = {
+) {
+  const expectedEvent: DeviceEvent = {
     id: 1,
     dateTime: "2021-05-19T01:39:41.376Z",
     createdAt: "2021-05-19T01:39:41.771Z",
@@ -395,32 +457,16 @@ export function createExpectedEvent(
         trackId: 1,
       },
     },
+    env: EventEnv.Unknown,
     Device: { deviceName: getTestName(getCreds(deviceName).name) },
   };
   return expectedEvent;
 }
 
-function checkPowerEvents(
-  userName: string,
-  deviceName: string,
-  expectedEvent: TestComparablePowerEvent,
-) {
-  const params = {
-    deviceId: getCreds(deviceName).id,
-  };
-
-  makeAuthorizedRequest(
-    { url: v1ApiPath("events/powerEvents", params) },
-    userName,
-  ).then((response) => {
-    checkPowerEventMatches(response, expectedEvent);
-  });
-}
-
 function checkEvents(
   userName: string,
   deviceName: string,
-  expectedEvent: any,
+  expectedEvent: TestComparableEvent,
   eventNumber: number,
   ignoreParams: string[],
   statusCode: number,
@@ -433,7 +479,7 @@ function checkEvents(
     { url: v1ApiPath("events", params) },
     userName,
     statusCode,
-  ).then((response) => {
+  ).then((response: Cypress.Response<{ rows: DeviceEvent[] }>) => {
     if (statusCode === 200) {
       expect(response.body.rows.length).to.equal(eventNumber);
       if (eventNumber > 0) {
@@ -450,10 +496,10 @@ function checkEvents(
 }
 
 function checkEventMatchesExpected(
-  events: any[],
+  events: DeviceEvent[],
   expectedEvent: TestComparableEvent,
   eventNumber: number,
-  ignoreParams: any,
+  ignoreParams: string[],
 ) {
   const event = events[eventNumber];
 
@@ -486,33 +532,21 @@ function checkEventMatchesExpected(
   }
 }
 
-function checkPowerEventMatches(
-  response: Cypress.Response<any>,
-  expectedEvent: TestComparablePowerEvent,
+export function testCreateExpectedEvent(
+  deviceName: string,
+  eventDetail: {
+    type: DeviceEventType;
+    details: object;
+  },
 ) {
-  expect(response.body.events.length, `Expected 1 event`).to.eq(1);
-  const powerEvent = response.body.events[0];
-
-  expect(
-    powerEvent.hasStopped,
-    `Device should be ${expectedEvent.hasStopped ? "stopped" : "running"}`,
-  ).to.eq(expectedEvent.hasStopped);
-  expect(
-    powerEvent.hasAlerted,
-    `Device should have been ${
-      expectedEvent.hasAlerted ? "alerted" : "not alerted"
-    }`,
-  ).to.eq(expectedEvent.hasAlerted);
-}
-
-export function testCreateExpectedEvent(deviceName: string, eventDetail: any) {
-  const expectedEvent = {
+  const expectedEvent: DeviceEvent = {
     id: NOT_NULL,
     dateTime: NOT_NULL_STRING,
     createdAt: NOT_NULL_STRING,
     DeviceId: getCreds(deviceName).id,
     EventDetail: eventDetail,
     Device: { deviceName: getTestName(deviceName) },
+    env: EventEnv.Unknown,
   };
   return expectedEvent;
 }

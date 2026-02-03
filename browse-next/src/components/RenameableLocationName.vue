@@ -69,6 +69,7 @@ const saveLocationName = async () => {
     if (!response.success) {
       // Else show error
       errorMessage.value = response.result.messages[0];
+      locationName.value = "";
     } else {
       emit("changed-location-name", {
         newName: locationName.value,
@@ -80,7 +81,13 @@ const saveLocationName = async () => {
   editingLocationName.value = false;
 };
 const hasError = computed<boolean>(() => errorMessage.value !== "");
-const exitEditMode = () => {
+const exitEditMode = (event: MouseEvent) => {
+  if (
+    event.relatedTarget &&
+    (event.relatedTarget as HTMLElement).tagName === "BUTTON"
+  ) {
+    return;
+  }
   locationName.value = "";
   editingLocationName.value = false;
 };
@@ -150,7 +157,7 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
       <b-button
         variant="outline-secondary"
         size="sm"
-        @click="exitEditMode"
+        @click.stop.prevent="exitEditMode"
         class="d-flex"
       >
         <material-symbol name="close" size="1.25rem" class="d-sm-none" />
@@ -158,7 +165,7 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
       </b-button>
       <b-button
         variant="outline-secondary"
-        @click="saveLocationName"
+        @click.stop.prevent="saveLocationName"
         size="sm"
         class="d-flex"
       >

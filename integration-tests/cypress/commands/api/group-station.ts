@@ -10,7 +10,92 @@ import {
   sortArrayOnHash,
   checkTreeStructuresAreEqualExcept,
 } from "../server";
-import { RecordingId } from "@typedefs/api/common";
+import { RecordingId, StationId } from "@typedefs/api/common";
+import { HttpStatusCode } from "@shared/api/consts";
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Cypress {
+    interface Chainable {
+      /**
+       * POST to api/v1/groups/<groupidorname>/station to add a single station
+       * Optionally check for fail response (statusCode!=200)
+       * By default userName and groupName are converted into unique (for this test run) names.
+       * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
+       */
+
+      apiGroupStationAdd(
+        userName: string,
+        groupIdOrName: string,
+        station: ApiStationData,
+        fromDate?: string,
+        untilDate?: string,
+        statusCode?: HttpStatusCode,
+        additionalChecks?: {
+          useRawGroupName?: boolean;
+          useRawStationName?: boolean;
+          messages?: string[];
+          warnings?: string[] | string;
+        },
+      ): Cypress.Chainable<StationId>;
+
+      /**
+       * Call api/v1/groups/<groupidorname>/station and check that returned values match expectedS  tation
+       * Optionally check for fail response (statusCode!=200)
+       * By default stationName and groupName are converted into unique (for this test run) names.
+       * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
+       * Optionally: use the raw stationName provided (additionalChecks["useRawStationName"]=true)
+       */
+      apiGroupStationCheck(
+        userName: string,
+        groupIdOrName: string,
+        stationName: string,
+        expectedStation: ApiStationResponse,
+        excludeCheckOn?: string[],
+        statusCode?: HttpStatusCode,
+        additionalChecks?: {
+          useRawStationName?: boolean;
+          useRawGroupName?: boolean;
+          additionalParams?: object;
+        },
+      ): Chainable<StationId>;
+
+      /**
+       * Call api/v1/groups/<groupidorname>/stations and check that returned values match expectedS  tations
+       * Optionally check for fail response (statusCode!=200)
+       * By default userName and groupName are converted into unique (for this test run) names.
+       * Optionally: use the raw groupName provided (additionalChecks["useRawGroupName"]=true)
+       * By default stations and expectedStations are sorted on userName before comparison
+       * Optionally: disable sorting of arrays before comparing (additionalChecks["doNotSort"]=true  )
+       */
+      apiGroupStationsCheck(
+        userName: string,
+        groupIdOrName: string,
+        expectedStations: ApiStationResponse[],
+        excludeCheckOn?: string[],
+        statusCode?: HttpStatusCode,
+        additionalChecks?: {
+          useRawGroupName?: boolean;
+          additionalParams?: object;
+        },
+      ): Chainable<void>;
+
+      // to be run straight after an apiRecordingAdd
+      // check that the recording has been assigned the right station name. sS
+      thenCheckStationNameIs(
+        userName: string,
+        station: string,
+      ): Chainable<void>;
+      thenCheckStationIdIs(
+        userName: string,
+        stationId: number,
+      ): Chainable<{ name: string; id: StationId }>;
+      thenCheckStationIsNew(
+        userName: string,
+      ): Chainable<{ name: string; id: StationId }>;
+    }
+  }
+}
+
 Cypress.Commands.add(
   "apiGroupStationAdd",
   (
@@ -19,21 +104,26 @@ Cypress.Commands.add(
     station: ApiStationData,
     fromDate?: string,
     untilDate?: string,
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: {
+      useRawGroupName?: boolean;
+      useRawStationName?: boolean;
+      messages?: string[];
+      warnings?: string[] | string;
+    } = {},
   ) => {
     let fullGroupName: string;
     const thisStation = JSON.parse(JSON.stringify(station));
 
     //Make group name unique unless we're asked not to
-    if (additionalChecks["useRawGroupName"] === true) {
+    if (additionalChecks.useRawGroupName === true) {
       fullGroupName = groupIdOrName;
     } else {
       fullGroupName = getTestName(groupIdOrName);
     }
 
     //Make station name unique unless we're asked not to
-    if (additionalChecks["useRawStationName"] !== true) {
+    if (additionalChecks.useRawStationName !== true) {
       thisStation.name = getTestName(thisStation.name);
     }
 
@@ -42,7 +132,7 @@ Cypress.Commands.add(
       { userName, groupIdOrName, thisStation, fromDate, untilDate },
     );
 
-    const body: { [key: string]: string } = {
+    const body: Record<string, string> = {
       station: JSON.stringify(thisStation),
     };
     if (fromDate !== undefined) {
@@ -60,38 +150,48 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (additionalChecks["warnings"]) {
-        if (additionalChecks["warnings"] == "none") {
-          expect(response.body.warnings).to.be.undefined;
-        } else {
-          const warnings = response.body.warnings;
-          const expectedWarnings = additionalChecks["warnings"];
-          expect(warnings).to.exist;
-          expectedWarnings.forEach(function (warning: string) {
-            expect(warnings, "Expect warning to be present").to.contain(
-              warning,
+    ).then(
+      (
+        response: Cypress.Response<{
+          warnings: string[];
+          messages: string[];
+          stationId: StationId;
+        }>,
+      ) => {
+        if (additionalChecks.warnings) {
+          if (additionalChecks.warnings === "none") {
+            expect(response.body.warnings).to.be.undefined;
+          } else {
+            const warnings = response.body.warnings;
+            const expectedWarnings = additionalChecks.warnings as string[];
+            expect(warnings).to.exist;
+            expectedWarnings.forEach(function (warning: string) {
+              expect(warnings, "Expect warning to be present").to.contain(
+                warning,
+              );
+            });
+          }
+        }
+        if (additionalChecks.messages) {
+          const messages = response.body.messages;
+          const expectedMessages = additionalChecks.messages;
+          expect(messages).to.exist;
+          expectedMessages.forEach(function (message: string) {
+            expect(messages, "Expect message to be present").to.contain(
+              message,
             );
           });
         }
-      }
-      if (additionalChecks["messages"]) {
-        const messages = response.body.messages;
-        const expectedMessages = additionalChecks["messages"];
-        expect(messages).to.exist;
-        expectedMessages.forEach(function (message: string) {
-          expect(messages, "Expect message to be present").to.contain(message);
-        });
-      }
 
-      if (statusCode == 200) {
-        //store station Id against name
-        const stationName = thisStation.name;
-        const stationId = response.body.stationId;
-        saveIdOnly(stationName, stationId);
-        cy.wrap(stationId);
-      }
-    });
+        if (statusCode == 200) {
+          //store station Id against name
+          const stationName = thisStation.name;
+          const stationId = response.body.stationId;
+          saveIdOnly(stationName, stationId);
+          cy.wrap(stationId);
+        }
+      },
+    );
   },
 );
 
@@ -102,9 +202,18 @@ Cypress.Commands.add(
     groupIdOrName: string,
     stationName: string,
     expectedStation: ApiStationResponse,
-    excludeCheckOn: any = [".lastActiveThermalTime"],
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    excludeCheckOn: string[] = [
+      ".lastActiveThermalTime",
+      ".earliestThermalRecordingTime",
+      ".earliestAudioRecordingTime",
+      ".lastActiveAudioTime",
+    ],
+    statusCode = 200,
+    additionalChecks: {
+      useRawStationName?: boolean;
+      useRawGroupName?: boolean;
+      additionalParams?: object;
+    } = {},
   ) => {
     logTestDescription(
       `Check station ${stationName} for group ${groupIdOrName}`,
@@ -117,21 +226,21 @@ Cypress.Commands.add(
     let fullStationName: string;
 
     //Make station name unique unless we're asked not to
-    if (additionalChecks["useRawStationName"] === true) {
+    if (additionalChecks.useRawStationName === true) {
       fullStationName = stationName;
     } else {
       fullStationName = getTestName(stationName);
     }
 
     //Make group name unique unless we're asked not to
-    if (additionalChecks["useRawGroupName"] === true) {
+    if (additionalChecks.useRawGroupName === true) {
       fullGroupName = groupIdOrName;
     } else {
       fullGroupName = getTestName(groupIdOrName);
     }
     let params = {};
-    if (additionalChecks["additionalParams"] !== undefined) {
-      params = { ...params, ...additionalChecks["additionalParams"] };
+    if (additionalChecks.additionalParams !== undefined) {
+      params = { ...params, ...additionalChecks.additionalParams };
     }
 
     makeAuthorizedRequestWithStatus(
@@ -144,7 +253,7 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ station: ApiStationResponse }>) => {
       if (statusCode === 200) {
         checkTreeStructuresAreEqualExcept(
           expectedStation,
@@ -165,12 +274,20 @@ Cypress.Commands.add(
     userName: string,
     groupIdOrName: string,
     expectedStations: ApiStationResponse[],
-    excludeCheckOn: any = [
+    excludeCheckOn: string[] = [
       ".lastActiveThermalTime",
+      ".lastActiveAudioTime",
       "[].lastActiveThermalTime",
+      ".earliestThermalRecordingTime",
+      ".earliestAudioRecordingTime",
+      "[].earliestThermalRecordingTime",
+      "[].earliestAudioRecordingTime",
     ],
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: {
+      useRawGroupName?: boolean;
+      additionalParams?: object;
+    } = {},
   ) => {
     logTestDescription(`Check stations for group ${groupIdOrName}`, {
       userName,
@@ -181,15 +298,15 @@ Cypress.Commands.add(
     let sortExpectedStations: ApiStationResponse[];
 
     //Make group name unique unless we're asked not to
-    if (additionalChecks["useRawGroupName"] === true) {
+    if (additionalChecks.useRawGroupName === true) {
       fullGroupName = groupIdOrName;
     } else {
       fullGroupName = getTestName(groupIdOrName);
     }
 
     let params = {};
-    if (additionalChecks["additionalParams"] !== undefined) {
-      params = { ...params, ...additionalChecks["additionalParams"] };
+    if (additionalChecks.additionalParams !== undefined) {
+      params = { ...params, ...additionalChecks.additionalParams };
     }
 
     makeAuthorizedRequestWithStatus(
@@ -199,7 +316,7 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ stations: ApiStationResponse[] }>) => {
       if (statusCode === 200) {
         //sort expected and actual events into same order (means groupName, deviceName, userName, userId is mandatory in expectedGroup)
         if (additionalChecks["doNotSort"] === true) {
@@ -243,30 +360,9 @@ Cypress.Commands.add(
   { prevSubject: true },
   (subject: RecordingId, userName: string) => {
     checkRecording(userName, subject, (recording) => {
-      expect(recording.stationName).contains("New station for ");
+      expect(recording.stationName).contains("New location for ");
       expect(recording.stationName).contains(recording.recordingDateTime);
       saveIdOnly(recording.stationName, recording.stationId);
-      return { id: recording.stationId, name: recording.stationName };
-    });
-  },
-);
-
-Cypress.Commands.add(
-  "checkRecordingsStationNameIs",
-  (userName: string, station: string) => {
-    const returnedStation = checkStationNameIs(userName, 0, station);
-    cy.wrap(returnedStation);
-  },
-);
-
-Cypress.Commands.add(
-  "checkRecordingsStationIsNew",
-  (userName: string, recId: number) => {
-    checkRecording(userName, recId, (recording) => {
-      expect(recording.stationName).contains("New station for ");
-      expect(recording.stationName).contains(recording.recordingDateTime);
-      saveIdOnly(recording.stationName, recording.stationId);
-
       return { id: recording.stationId, name: recording.stationName };
     });
   },

@@ -2,8 +2,12 @@ import { TestCreateExpectedUser } from "@commands/api/user";
 
 import { getTestEmail, getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
+import {
+  DeviceType,
+  HttpStatusCode,
+  UserGlobalPermission,
+} from "@typedefs/api/consts";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
-import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
 
 describe("User: manage global access permissions", () => {
   const superuser = getCreds("superuser")["email"];
@@ -41,7 +45,7 @@ describe("User: manage global access permissions", () => {
     it("Super-user can set global read access", () => {
       cy.apiAdminUpdate(superuser, "gapUser1", "read").then(() => {
         const expectedUser = TestCreateExpectedUser("gapUser1", {
-          globalPermission: "read",
+          globalPermission: UserGlobalPermission.Read,
         });
 
         cy.log("Check correct permissions reported");
@@ -99,7 +103,7 @@ describe("User: manage global access permissions", () => {
     it("Super-user can set global write access", () => {
       cy.apiAdminUpdate(superuser, "gapUser1", "write").then(() => {
         const expectedUser = TestCreateExpectedUser("gapUser1", {
-          globalPermission: "write",
+          globalPermission: UserGlobalPermission.Write,
         });
 
         cy.log("Check correct permissions reported");
@@ -230,7 +234,7 @@ describe("User: manage global access permissions", () => {
       "gapGroup2",
       null,
       undefined,
-      null,
+      {},
       HttpStatusCode.Forbidden,
     );
   });

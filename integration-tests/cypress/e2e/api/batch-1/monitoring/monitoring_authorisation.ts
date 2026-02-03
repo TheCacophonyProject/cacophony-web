@@ -21,13 +21,15 @@ describe("Recording authorizations", () => {
 
   beforeEach(() => {
     if (!recordingUploaded) {
-      cy.testUploadRecording(camera, { tags: ["possum"] }).then(
-        (recordingId) => {
-          checkRecording(member, recordingId, (recording) => {
-            stationId = recording.stationId;
-          });
-        },
-      );
+      cy.testUploadRecording(camera, {
+        tags: ["possum"],
+        lat: -42,
+        lng: 170,
+      }).then((recordingId) => {
+        checkRecording(member, recordingId, (recording) => {
+          stationId = recording.stationId;
+        });
+      });
       recordingUploaded = true;
     }
   });

@@ -30,15 +30,9 @@ import { DetailSnapshot } from "./DetailSnapshot.js";
 import type { DeviceId, EventId, UserId } from "@typedefs/api/common.js";
 import { User } from "@models/User.js";
 import { Group } from "@models/Group.js";
+import { EventEnv } from "@typedefs/api/consts.js";
 
 const Op = Sequelize.Op;
-
-enum EventEnv {
-  Tc2Dev = "tc2-dev",
-  Tc2Test = "tc2-test",
-  Tc2Prod = "tc2-prod",
-  Unknown = "unknown",
-}
 
 export class Event extends ModelStaticCommon<Event> {
   declare id: CreationOptional<EventId>;

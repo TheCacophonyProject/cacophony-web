@@ -72,7 +72,7 @@ describe("Devices list", () => {
     cy.log("Add a recording so that old device isn't deleted when renamed");
     cy.apiRecordingAdd(
       camera3,
-      { type: RecordingType.ThermalRaw },
+      { type: RecordingType.ThermalRaw, location: [-42, 170] },
       "oneframe.cptv",
     );
     cy.apiDeviceReregister(camera3, camera4, group3).then(() => {
@@ -121,7 +121,9 @@ describe("Devices list", () => {
       ]);
     });
   } else {
-    it.skip("Super-user should see all devices including User details", () => {});
+    it.skip("Super-user should see all devices including User details", () => {
+      return;
+    });
   }
 
   //Do not run against a live server as we don't have superuser login
@@ -161,7 +163,9 @@ describe("Devices list", () => {
       );
     });
   } else {
-    it.skip("Super-user 'as user' should see only their devices and users only where they are device admin", () => {});
+    it.skip("Super-user 'as user' should see only their devices and users only where they are device admin", () => {
+      return;
+    });
   }
 
   it("Group admin should see everything, and be listed as admin", () => {

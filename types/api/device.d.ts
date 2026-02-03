@@ -7,7 +7,7 @@ import type {
   ScheduleId,
   StationId,
 } from "./common.ts";
-import {AudioRecordingMode, type DeviceType} from "./consts.ts";
+import { AudioRecordingMode, type DeviceType } from "./consts.ts";
 import { type ApiGroupUserResponse } from "./group.ts";
 
 export type DeviceBatteryChargeState =
@@ -29,7 +29,10 @@ export interface ApiDeviceResponse {
   isHealthy?: boolean;
   public?: boolean; // Assumed to be private unless otherwise specified.
   lastConnectionTime?: IsoFormattedDateString;
-  lastRecordingTime?: IsoFormattedDateString;
+  earliestThermalRecordingTime?: IsoFormattedDateString;
+  lastThermalRecordingTime?: IsoFormattedDateString;
+  earliestAudioRecordingTime?: IsoFormattedDateString;
+  lastAudioRecordingTime?: IsoFormattedDateString;
   location?: LatLng;
   scheduleId?: ScheduleId;
   users?: ApiGroupUserResponse[];
@@ -51,9 +54,9 @@ export interface ApiDeviceLocationFixup {
   location?: LatLng; // Supply a location to map to the station
 }
 
-type SettingsBase = {
+interface SettingsBase {
   updated: IsoFormattedDateString;
-};
+}
 
 export type ThermalRecordingSettings = {
   useLowPowerMode: boolean;
@@ -96,10 +99,31 @@ export interface ApiDeviceHistorySettings {
     bottomRight: [number, number];
   };
   maskRegions?: MaskRegions;
-  ratThresh?: any;
+  ratThresh?: { version?: number; gridSize?: number; thresholds?: unknown[][] };
   thermalRecording?: ThermalRecordingSettings;
   audioRecording?: AudioRecordingSettings;
   windows?: WindowsSettings;
   battery?: BatterySettings;
   synced?: boolean;
+}
+
+export type DeviceHistorySetBy =
+  | "automatic"
+  | "user"
+  | "config"
+  | "register"
+  | "re-register";
+
+// Only seen in a test environment
+export interface ApiDeviceHistory {
+  location: LatLng | null;
+  fromDateTime: IsoFormattedDateString;
+  setBy: DeviceHistorySetBy;
+  deviceName: string;
+  saltId: SaltId;
+  stationId: StationId | null;
+  uuid: number;
+  settings: ApiDeviceHistorySettings | null;
+  DeviceId: DeviceId;
+  GroupId: GroupId;
 }

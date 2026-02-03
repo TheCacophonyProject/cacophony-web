@@ -254,7 +254,7 @@ describe("Monitoring : tracks and tags", () => {
             {
               confident_tag: "hedgehog",
               model_id: 1,
-              confidence: 0.9,
+              confidence: 90,
             },
           ],
         },
@@ -265,7 +265,7 @@ describe("Monitoring : tracks and tags", () => {
             {
               confident_tag: "false-positive",
               model_id: 1,
-              confidence: 0.9,
+              confidence: 90,
             },
           ],
         },
@@ -283,7 +283,7 @@ describe("Monitoring : tracks and tags", () => {
             {
               confident_tag: "unidentified",
               model_id: 1,
-              confidence: 0.9,
+              confidence: 90,
             },
           ],
         },
@@ -294,7 +294,7 @@ describe("Monitoring : tracks and tags", () => {
             {
               confident_tag: "false-positive",
               model_id: 1,
-              confidence: 0.9,
+              confidence: 90,
             },
           ],
         },
@@ -305,7 +305,7 @@ describe("Monitoring : tracks and tags", () => {
             {
               confident_tag: "false-positive",
               model_id: 1,
-              confidence: 0.9,
+              confidence: 90,
             },
           ],
         },
@@ -332,7 +332,7 @@ describe("Monitoring : tracks and tags", () => {
             {
               confident_tag: "hedgehog",
               model_id: 1,
-              confidence: 0.9,
+              confidence: 90,
             },
           ],
         },
@@ -343,7 +343,7 @@ describe("Monitoring : tracks and tags", () => {
             {
               confident_tag: "false-positive",
               model_id: 1,
-              confidence: 0.9,
+              confidence: 90,
             },
           ],
         },
@@ -364,7 +364,7 @@ describe("Monitoring : tracks and tags", () => {
             {
               confident_tag: "unidentified",
               model_id: 1,
-              confidence: 0.9,
+              confidence: 90,
             },
           ],
         },
@@ -375,7 +375,7 @@ describe("Monitoring : tracks and tags", () => {
             {
               confident_tag: "false-positive",
               model_id: 1,
-              confidence: 0.9,
+              confidence: 90,
             },
           ],
         },
@@ -386,7 +386,7 @@ describe("Monitoring : tracks and tags", () => {
             {
               confident_tag: "false-positive",
               model_id: 1,
-              confidence: 0.9,
+              confidence: 90,
             },
           ],
         },

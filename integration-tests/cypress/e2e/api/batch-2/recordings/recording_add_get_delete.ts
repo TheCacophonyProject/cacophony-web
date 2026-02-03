@@ -624,13 +624,6 @@ describe("Recordings (thermal): add, get, delete", () => {
     cy.log("Delete recording");
     cy.apiRecordingDelete("raGroupAdmin", "raRecording1");
 
-    // cy.log("Check /recordings/report ignores deleted recording");
-    // cy.apiRecordingsReportCheck(
-    //   "raGroupAdmin",
-    //   { where: {}, order: "[[\"id\", \"ASC\"]]" },
-    //   [],
-    // );
-
     cy.log("Check /recordings/id: ignores deleted recording");
     cy.apiRecordingCheck(
       "raGroupAdmin",
@@ -652,7 +645,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raGroupAdmin",
       {
         where: {},
-        order: "[[\"id\", \"ASC\"]]",
+        order: '[["id", "ASC"]]',
       },
       0,
     );
@@ -662,7 +655,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raGroupAdmin",
       {
         where: {},
-        order: "[[\"id\", \"ASC\"]]",
+        order: '[["id", "ASC"]]',
       },
       [],
       EXCLUDE_IDS,
@@ -703,56 +696,55 @@ describe("Recordings (thermal): add, get, delete", () => {
   });
 
   it("Recordings with invalid recordingDateTimes are rejected", () => {
-      const recording1 = TestCreateRecordingData(templateRecording);
-      recording1.recordingDateTime = "Not a date";
-      delete recording1.processingState;
+    const recording1 = TestCreateRecordingData(templateRecording);
+    recording1.recordingDateTime = "Not a date";
+    delete recording1.processingState;
 
-      cy.log("Add invalid recording as device");
-      cy.apiRecordingAdd(
-          "raCamera1",
-          recording1,
-          "invalid.cptv",
-          "invalidDate",
-          422,
-      );
+    cy.log("Add invalid recording as device");
+    cy.apiRecordingAdd(
+      "raCamera1",
+      recording1,
+      "invalid.cptv",
+      "invalidDate",
+      422,
+    );
   });
 
   it("Recordings with future recordingDateTimes are allowed, but have their recordingDateTime set to now", () => {
-      const recording1 = TestCreateRecordingData(templateRecording);
-      recording1.recordingDateTime = "2160-01-01T07:22:56.000Z";
-      delete recording1.processingState;
-      const now = new Date();
-      cy.log("Add far future recording as device");
-      cy.apiRecordingAdd(
-          "raCamera1",
-          recording1,
-          "invalid.cptv",
-          "futureDate",
-          200,
-      ).then(id => {
-        cy.apiRecordingGet(
-          "raGroupAdmin",
-          id,
-        ).then((response) => {
-          const recDateTime = new Date(response.body.recording.recordingDateTime);
-          expect(recDateTime.getTime()).to.be.closeTo(now.getTime(), 5000);
-        });
+    const recording1 = TestCreateRecordingData(templateRecording);
+    recording1.recordingDateTime = "2160-01-01T07:22:56.000Z";
+    delete recording1.processingState;
+    const now = new Date();
+    cy.log("Add far future recording as device");
+    cy.apiRecordingAdd(
+      "raCamera1",
+      recording1,
+      "invalid.cptv",
+      "futureDate",
+      200,
+    ).then((id) => {
+      cy.apiRecordingGet("raGroupAdmin", id).then((response) => {
+        const recDateTime = new Date(response.body.recording.recordingDateTime);
+        expect(recDateTime.getTime()).to.be.closeTo(now.getTime(), 5000);
       });
+    });
   });
 
-    it("Recordings with *minor* future recordingDateTimes are allowed", () => {
-        const recording1 = TestCreateRecordingData(templateRecording);
-        // Five minutes in the future
-        recording1.recordingDateTime = new Date(Date.now() + 1000 * 5 * 60).toISOString();
-        delete recording1.processingState;
+  it("Recordings with *minor* future recordingDateTimes are allowed", () => {
+    const recording1 = TestCreateRecordingData(templateRecording);
+    // Five minutes in the future
+    recording1.recordingDateTime = new Date(
+      Date.now() + 1000 * 5 * 60,
+    ).toISOString();
+    delete recording1.processingState;
 
-        cy.log("Add slight future recording as device");
-        cy.apiRecordingAdd(
-            "raCamera1",
-            recording1,
-            "invalid.cptv",
-            "slightFutureDate",
-            200,
-        );
-    });
+    cy.log("Add slight future recording as device");
+    cy.apiRecordingAdd(
+      "raCamera1",
+      recording1,
+      "invalid.cptv",
+      "slightFutureDate",
+      200,
+    );
+  });
 });

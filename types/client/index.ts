@@ -1,20 +1,22 @@
-import apiClient from "./api";
-import usersInit from "./User";
-import projectsInit from "./Project";
-import alertsInit from "./Alert";
-import devicesInit from "./Device";
-import classificationsInit from "./Classifications";
-import recordingsInit from "./Recording";
-import locationsInit from "./Location";
-import monitoringInit from "./Monitoring";
+import apiClient from "./api.js";
+import usersInit from "./User.js";
+import projectsInit from "./Project.js";
+import alertsInit from "./Alert.js";
+import devicesInit from "./Device.js";
+import classificationsInit from "./Classifications.js";
+import recordingsInit from "./Recording.js";
+import locationsInit from "./Location.js";
+import monitoringInit from "./Monitoring.js";
 import {
+  FetchResult,
   JwtToken,
   LoggedInDeviceCredentials,
   LoggedInUserAuth,
   TestHandle,
-} from "./types";
-import { decodeJWT } from "./utils";
-import type { DeviceId, UserId } from "../api/common";
+} from "@typedefs/client/types.js";
+import { decodeJWT } from "@typedefs/client/utils.js";
+import type { DeviceId, UserId } from "@typedefs/api/common.js";
+import { HttpStatusCode } from "@typedefs/api/consts.js";
 
 const userCredentials = new Map<TestHandle, LoggedInUserAuth>();
 const deviceCredentials = new Map<TestHandle, LoggedInDeviceCredentials>();
@@ -23,7 +25,9 @@ const deviceCredentials = new Map<TestHandle, LoggedInDeviceCredentials>();
 
 // NOTE: Test specific resolvers here.  Browse would re-export with different resolvers.
 const credentialsResolvers = {
-  requestCredentialsResolver: async (authKey: TestHandle | null): Promise<JwtToken<(UserId | DeviceId)> | false> => {
+  requestCredentialsResolver: async (
+    authKey: TestHandle | null,
+  ): Promise<JwtToken<UserId | DeviceId> | false> => {
     if (!authKey) {
       return false;
     }
@@ -43,20 +47,29 @@ const credentialsResolvers = {
       }
       if ((apiToken.expiresAt as Date).getTime() < Date.now() + 5000) {
         // Token is about to expire, so refresh.
-        loggedInUserCredentials.refreshingToken = new Promise((resolve, reject) => {
-          Users.withAuth(authKey).refreshLogin(loggedInUserCredentials.refreshToken).then(newCredentialsResponse => {
-            delete loggedInUserCredentials.refreshingToken;
-            if (!newCredentialsResponse || !newCredentialsResponse.success) {
-              reject(false);
-              return;
-            }
-            if (newCredentialsResponse.success) {
-              loggedInUserCredentials.apiToken = newCredentialsResponse.result.token;
-              loggedInUserCredentials.refreshToken = newCredentialsResponse.result.refreshToken;
-            }
-            resolve(true);
-          });
-        });
+        loggedInUserCredentials.refreshingToken = new Promise(
+          (resolve, reject) => {
+            Users.withAuth(authKey)
+              .refreshLogin(loggedInUserCredentials.refreshToken)
+              .then((newCredentialsResponse) => {
+                delete loggedInUserCredentials.refreshingToken;
+                if (
+                  !newCredentialsResponse ||
+                  !newCredentialsResponse.success
+                ) {
+                  reject(false);
+                  return;
+                }
+                if (newCredentialsResponse.success) {
+                  loggedInUserCredentials.apiToken =
+                    newCredentialsResponse.result.token;
+                  loggedInUserCredentials.refreshToken =
+                    newCredentialsResponse.result.refreshToken;
+                }
+                resolve(true);
+              });
+          },
+        );
       }
       return loggedInUserCredentials.apiToken;
       // If not expiring in the next few seconds, use, otherwise refresh.
@@ -76,7 +89,10 @@ const credentialsResolvers = {
       deviceCredentials.delete(authKey);
     }
   },
-  registerCredentials: (authKey: TestHandle, credentials: LoggedInUserAuth | LoggedInDeviceCredentials) => {
+  registerCredentials: (
+    authKey: TestHandle,
+    credentials: LoggedInUserAuth | LoggedInDeviceCredentials,
+  ) => {
     if (authKey.startsWith("user-")) {
       userCredentials.set(authKey, credentials as LoggedInUserAuth);
     } else if (authKey.startsWith("device-")) {
@@ -84,13 +100,19 @@ const credentialsResolvers = {
     }
   },
   isDevEnvironment: () => false,
-  // networkConnectionErrorHandler: {
-  //   // eslint-disable-next-line no-undef
-  //   retry: async (authKey: TestHandle | null, url: string, request: RequestInit) => {
-  //     console.log("Would retry network connection in prod environment");
-  //     // FIXME:
-  //   },
-  // },
+  networkConnectionErrorHandler: {
+    retry: async (
+      _authKey: TestHandle | null,
+      _url: string,
+      _request: RequestInit,
+    ): Promise<FetchResult<unknown>> => {
+      console.log("Would retry network connection in prod environment");
+      return new Promise<FetchResult<unknown>>((resolve, _reject) => {
+        resolve({ success: true, result: null, status: HttpStatusCode.Ok });
+      });
+      // FIXME:
+    },
+  },
   getApiRoot: () => {
     return "http://localhost:1080";
   },
@@ -106,7 +128,37 @@ const Recordings = recordingsInit(api);
 const Locations = locationsInit(api);
 const Monitoring = monitoringInit(api);
 
-export const TestApi = {
+const _Users = usersInit(api).withAuth("");
+const _Projects = projectsInit(api).withAuth("");
+const _Alerts = alertsInit(api).withAuth("");
+const _Devices = devicesInit(api).withAuth("");
+const _Recordings = recordingsInit(api).withAuth("");
+const _Locations = locationsInit(api).withAuth("");
+const _Monitoring = monitoringInit(api).withAuth("");
+
+export interface TestApi {
+  Alerts: typeof _Alerts;
+  Classifications: typeof Classifications;
+  Devices: typeof _Devices;
+  Locations: typeof _Locations;
+  Monitoring: typeof _Monitoring;
+  Projects: typeof _Projects;
+  Users: typeof _Users;
+  Recordings: typeof _Recordings;
+}
+
+const withAuth = (authKey: TestHandle): TestApi => ({
+  Alerts: Alerts.withAuth(authKey),
+  Classifications,
+  Devices: Devices.withAuth(authKey),
+  Locations: Locations.withAuth(authKey),
+  Monitoring: Monitoring.withAuth(authKey),
+  Projects: Projects.withAuth(authKey),
+  Users: Users.withAuth(authKey),
+  Recordings: Recordings.withAuth(authKey),
+});
+
+export const TestApiImpl = {
   Alerts,
   Classifications,
   Devices,
@@ -115,5 +167,10 @@ export const TestApi = {
   Projects,
   Users,
   Recordings,
-  registerCredentials: (authKey: TestHandle, creds: LoggedInDeviceCredentials | LoggedInUserAuth) => api.registerCredentials(authKey, creds),
+  registerCredentials: (
+    authKey: TestHandle,
+    creds: LoggedInDeviceCredentials | LoggedInUserAuth,
+  ) => api.registerCredentials(authKey, creds),
+  //getCredentials: (authKey: TestHandle) => api.getCredentials(authKey),
+  withAuth: (authKey: TestHandle) => withAuth(authKey),
 };

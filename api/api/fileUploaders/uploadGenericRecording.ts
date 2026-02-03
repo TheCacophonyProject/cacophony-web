@@ -14,8 +14,8 @@ import {
 } from "@typedefs/api/consts.js";
 import { successResponse } from "@api/V1/responseUtil.js";
 import multiparty from "multiparty";
-import type { NextFunction, Request, Response } from "express";
-import { Op } from "sequelize";
+import e, { NextFunction, Request, Response } from "express";
+import Sequelize, { Op, Transaction } from "sequelize";
 import { Recording } from "@models/Recording.js";
 import { openS3 } from "@models/util/util.js";
 import { Readable } from "stream";
@@ -27,19 +27,27 @@ import type { User } from "@models/User.js";
 import crypto from "crypto";
 import moment from "moment";
 import { v4 as uuidv4 } from "uuid";
-import type { DeviceId, GroupId, LatLng } from "@typedefs/api/common.js";
+import type {
+  DeviceId,
+  GroupId,
+  IsoFormattedDateString,
+  LatLng,
+} from "@typedefs/api/common.js";
 import {
   getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime,
   guessMimeType,
   maybeUpdateDeviceHistory,
   sendAlerts,
   tracksFromMeta,
+  updateRecordingTimeBookkeeping,
 } from "@api/V1/recordingUtil.js";
-import type { Station } from "@models/Station.js";
+import { Station } from "@models/Station.js";
 import { Group } from "@models/Group.js";
 import { isLatLon } from "@models/util/validation.js";
 import { tryReadingM4aMetadata } from "@api/m4a-metadata-reader/m4a-metadata-reader.js";
 import { RawTrack } from "@typedefs/api/fileProcessing.js";
+import { Fn } from "sequelize/lib/utils";
+import station from "@api/V1/Station.js";
 
 const cameraTypes = [RecordingType.ThermalRaw, RecordingType.InfraredVideo];
 
@@ -52,6 +60,7 @@ export interface RecordingDataSuppliedMetadata {
 
 interface RecordingData {
   duration?: number;
+  status?: "test" | "startup" | "shutdown";
   type: RecordingType;
   location?: LatLng;
   recordingDateTime?: Date;
@@ -84,6 +93,40 @@ const mergeEmbeddedDataWithSuppliedRecordingData = (
       };
     }
 
+    // TODO: When tc2-agent is correctly adding test metadata,
+    //  we can also check for `"testRecording" in mergedData`
+    if (mergedData.type === RecordingType.Audio) {
+      // Add test status for audio recording.
+      if (!mergedData.additionalMetadata) {
+        mergedData.additionalMetadata = {};
+      }
+      if (mergedData.duration < 11.0) {
+        mergedData.additionalMetadata.status = "test";
+      } else if (mergedData.duration > 60 * 4) {
+        mergedData.additionalMetadata.status = "bird-count";
+      }
+    }
+
+    if ("motionConfig" in mergedData) {
+      // See if it's a low power test/startup/shutdown recording.
+      try {
+        let mc = mergedData.motionConfig as string;
+        if (mc.startsWith("status:")) {
+          mc = `{ "status": "${mc.replace("status:", "").trim()}" }`;
+        }
+        const motionConfig = JSON.parse(mc);
+
+        if (motionConfig.status) {
+          if (!mergedData.additionalMetadata) {
+            mergedData.additionalMetadata = {};
+          }
+          mergedData.additionalMetadata.status = motionConfig.status;
+        }
+      } catch (_e) {
+        // Failed to parse motion config JSON.
+      }
+    }
+
     if (
       (!("duration" in data) && metadata.duration) ||
       (Number(data.duration) === 321 && metadata.duration)
@@ -114,6 +157,12 @@ const mergeEmbeddedDataWithSuppliedRecordingData = (
     }
   } else if (!("recordingDateTime" in mergedData)) {
     throw new UnprocessableError("recordingDateTime not supplied");
+  }
+  if (mergedData.status) {
+    if (!mergedData.additionalMetadata) {
+      mergedData.additionalMetadata = {};
+    }
+    mergedData.additionalMetadata.status = mergedData.status;
   }
   return mergedData;
 };
@@ -305,6 +354,7 @@ const processFilePart = async (
           //  test this case.
           const header = await decoder.getHeader();
           if (header) {
+            console.log("Header found in corrupt CPTV file", header);
             embeddedMetadata = header;
           }
         }
@@ -554,7 +604,10 @@ export const uploadGenericRecording =
       }
 
       // Reject recordings with invalid locations
-      if (data.location && !isLatLon(data.location, false)) {
+      if (
+        !data.location ||
+        (data.location && !isLatLon(data.location, false))
+      ) {
         if (!canceledRequest.canceled) {
           canceledRequest.canceled = true;
           await deleteUploads(uploadResults);
@@ -662,16 +715,22 @@ export const uploadGenericRecording =
       }
 
       // Work out which group and station to assign based on recordingDateTime, device history etc.
-      const {
-        deviceId,
-        groupId,
-        station: stationToAssignToRecording,
-      } = await assignGroupAndStationToRecording(
+      const groupAndStation = await assignGroupAndStationToRecording(
         recordingDevice,
         recordingTemplate.recordingDateTime,
         recordingTemplate.location,
       );
+      if (typeof groupAndStation === "string") {
+        await deleteUploads(uploadResults);
+        return next(new UnprocessableError(groupAndStation));
+      }
+      const {
+        deviceId,
+        groupId,
+        station: stationToAssignToRecording,
+      } = groupAndStation;
 
+      // FIXME: Can we ever get to here?  Shouldn't we always have a group and device?
       if (!deviceId || !groupId) {
         // We can throw a 422 or similar
         await deleteUploads(uploadResults);
@@ -684,73 +743,23 @@ export const uploadGenericRecording =
 
       recordingTemplate.DeviceId = deviceId;
       recordingTemplate.GroupId = groupId;
-
-      // TODO: Decide what we're doing about thumbnails etc.
-      let recordingGroup: Group = recordingDevice.Group;
-      console.assert(!!recordingDevice.Group, "NO DEVICE GROUP");
+      const recordingGroup: Group = recordingDevice.Group;
+      if (!recordingGroup) {
+        await deleteUploads(uploadResults);
+        log.error(
+          `Uploading device (${deviceId}) is not assigned to any group.`,
+        );
+        return next(
+          new UnprocessableError(
+            `Device (${deviceId}) is not assigned to any group.`,
+          ),
+        );
+      }
       if (deviceId !== recordingDevice.id) {
         // Get the actual device at the recording time.
         recordingDevice = await Device.findByPk(deviceId, {
           include: [Group],
         });
-      }
-      if (groupId !== recordingDevice.GroupId) {
-        // We are uploading old recordings from a device that has since been reassigned to another group.
-        // TODO: Rename s3 objects to start with the correct group name.
-        // Get the actual group at the recording time.
-        recordingGroup = await Group.findByPk(groupId);
-      }
-      let recordingDeviceUpdatePayload: UpdateDevicePayload = {};
-      if (fromDevice) {
-        let shouldSetActive = false;
-        if (!recordingDevice.active) {
-          // Check if the device has been re-assigned to another group:
-          const activeDevice = await Device.findOne({
-            where: {
-              saltId: recordingDevice.saltId,
-              active: true,
-            },
-          });
-          if (!activeDevice) {
-            shouldSetActive = true;
-          }
-        }
-        // Set the device active and update its connection time.
-        recordingDeviceUpdatePayload = {
-          lastConnectionTime: new Date(),
-        };
-        if (shouldSetActive) {
-          recordingDeviceUpdatePayload.active = true;
-        }
-      } else if (
-        !fromDevice &&
-        (recordingTemplate.recordingDateTime >
-          recordingDevice.lastConnectionTime ||
-          !recordingDevice.lastConnectionTime)
-      ) {
-        let shouldSetActive = false;
-        if (!recordingDevice.active) {
-          // Check if the device has been re-assigned to another group:
-          const activeDevice = await Device.findOne({
-            where: {
-              saltId: recordingDevice.saltId,
-              active: true,
-            },
-          });
-          if (!activeDevice) {
-            shouldSetActive = true;
-          }
-        }
-        // If we're getting a recording via sidekick that's later than a previous lastConnectionTime,
-        // or there is no previous lastConnectionTime, we can null out the lastConnectionTime,
-        // which indicates that this device is now "offline".
-        // As such, it will no longer be targeted by stopped device emails, and can show up as offline in browse.
-        recordingDeviceUpdatePayload = {
-          lastConnectionTime: null,
-        };
-        if (shouldSetActive) {
-          recordingDeviceUpdatePayload.active = true;
-        }
       }
 
       const wouldHaveSuppliedTracks = dataHasSuppliedTracks(data);
@@ -760,31 +769,37 @@ export const uploadGenericRecording =
         wouldHaveSuppliedTracks;
       setInitialProcessingState(recordingTemplate, data, metadataSupplied);
 
-      const [recording, _station] = await Promise.all([
-        recordingTemplate.save(),
-        maybeUpdateLastRecordingTimesForStation(
-          recordingTemplate,
-          fromDevice,
-          stationToAssignToRecording,
-        ),
-        maybeUpdateLastRecordingTimesForDeviceAndGroup(
-          recordingTemplate,
-          recordingDevice,
-          recordingDeviceUpdatePayload,
-          recordingGroup,
-        ),
-      ]);
-
       if (metadataSupplied && data.type === RecordingType.ThermalRaw) {
-        recording.additionalMetadata = {
-          ...recording.additionalMetadata,
+        recordingTemplate.additionalMetadata = {
+          ...recordingTemplate.additionalMetadata,
           metadataSource: data.metadata.metadata_source,
         };
-        await recording.save();
       }
+      if (!isLatLon(recordingTemplate.location)) {
+        throw new Error("Invalid location");
+      }
+      if (stationToAssignToRecording) {
+        recordingTemplate.StationId = stationToAssignToRecording.id;
+      }
+      let recording;
+      await Recording.sequelize.transaction(async (transaction) => {
+        // These three calls must complete in blocking sequence.
+        recording = await recordingTemplate.save({ transaction });
+        await maybeUpdateDeviceMetadata(
+          recordingTemplate,
+          recordingDevice,
+          fromDevice,
+          transaction,
+        );
+        await updateRecordingTimeBookkeeping(
+          recording,
+          fromDevice,
+          transaction,
+        );
+      });
 
       if (wouldHaveSuppliedTracks) {
-        // Now that we have a recording saved to the DB, we can creat./e any associated track items
+        // Now that we have a recording saved to the DB, we can create any associated track items
         await tracksFromMeta(recording, data.metadata);
       }
 
@@ -797,6 +812,9 @@ export const uploadGenericRecording =
           new Date().getTime() - recording.recordingDateTime.getTime();
         if (uploader === "device" && recordingAgeMs < twentyFourHoursMs) {
           // Alerts should only be sent for uploading devices.
+
+          // FIXME: Alerts should really be added to a queue table, and processed out of band, rather than
+          //  blocking the upload request.
           await sendAlerts(recording.id);
         }
       }
@@ -885,17 +903,27 @@ const assignGroupAndStationToRecording = async (
   deviceForRecording: Device,
   recordingDateTime: Date,
   recordingLocation?: LatLng,
-): Promise<{ groupId: GroupId; deviceId: DeviceId; station: Station }> => {
+): Promise<
+  | {
+      groupId: GroupId;
+      deviceId: DeviceId;
+      station: Station;
+    }
+  | string
+> => {
   let groupId: GroupId;
   let deviceId: DeviceId;
   let station: Station;
   if (recordingLocation) {
-    const { stationToAssignToRecording, deviceHistoryEntry } =
-      await maybeUpdateDeviceHistory(
-        deviceForRecording,
-        recordingLocation,
-        recordingDateTime,
-      );
+    const result = await maybeUpdateDeviceHistory(
+      deviceForRecording,
+      recordingLocation,
+      recordingDateTime,
+    );
+    if (typeof result === "string") {
+      return result;
+    }
+    const { stationToAssignToRecording, deviceHistoryEntry } = result;
     station = stationToAssignToRecording;
     deviceId = deviceHistoryEntry.DeviceId;
     groupId = deviceHistoryEntry.GroupId;
@@ -918,130 +946,127 @@ const assignGroupAndStationToRecording = async (
   };
 };
 
-const maybeUpdateLastRecordingTimesForStation = async (
-  recordingData: Recording,
-  isDeviceUpload: boolean,
-  station?: Station,
-): Promise<void | Station> => {
-  let stationUpdatePromise = new Promise<void | Station>((resolve, _reject) => {
-    resolve();
-  });
-
-  if (station) {
-    recordingData.StationId = station.id;
-
-    // Update lastActiveTimes
-
-    // Only update our times for non-status recordings
-    if (recordingData.duration >= 3) {
-      // Update station lastRecordingTimes if needed.
-      if (
-        recordingData.type === RecordingType.Audio &&
-        (!station.lastAudioRecordingTime ||
-          recordingData.recordingDateTime > station.lastAudioRecordingTime)
-      ) {
-        station.lastAudioRecordingTime = recordingData.recordingDateTime;
-        if (isDeviceUpload) {
-          station.lastActiveThermalTime = new Date();
-        }
-        stationUpdatePromise = station.save();
-      } else if (
-        cameraTypes.includes(recordingData.type) &&
-        (!station.lastThermalRecordingTime ||
-          recordingData.recordingDateTime > station.lastThermalRecordingTime)
-      ) {
-        station.lastThermalRecordingTime = recordingData.recordingDateTime;
-        if (isDeviceUpload) {
-          station.lastActiveThermalTime = new Date();
-        }
-        stationUpdatePromise = station.save();
-      }
-    }
-  }
-  return stationUpdatePromise;
-};
-
 interface UpdateDevicePayload {
   kind?: DeviceType;
   location?: LatLng;
-  lastRecordingTime?: Date;
-  lastConnectionTime?: Date;
+  lastConnectionTime?: Fn;
   active?: boolean;
 }
 
-const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
+const greaterDate = (date: Date | IsoFormattedDateString, column: string) => {
+  return Sequelize.fn("GREATEST", Sequelize.col(column), date);
+};
+const mapRecordingTypeToDeviceKind = (
+  recordingType: RecordingType,
+  existingType: DeviceType,
+): DeviceType => {
+  switch (recordingType) {
+    case RecordingType.Audio: {
+      if (existingType === DeviceType.Thermal) {
+        return DeviceType.Hybrid;
+      }
+      return DeviceType.Audio;
+    }
+    case RecordingType.ThermalRaw:
+    default: {
+      if (existingType === DeviceType.Audio) {
+        return DeviceType.Hybrid;
+      }
+      return DeviceType.Thermal;
+    }
+  }
+};
+const maybeUpdateDeviceMetadata = async (
   recording: Recording,
   uploadingDevice: Device,
-  updateDevicePayload: UpdateDevicePayload,
-  uploadingGroup: Group,
-): Promise<void> => {
-  if (uploadingDevice.kind === DeviceType.Unknown) {
-    // If this is the first recording we've got from a device, we can set its type.
-    const typeMappings = {
-      [RecordingType.Audio]: DeviceType.Audio,
-      [RecordingType.ThermalRaw]: DeviceType.Thermal,
-      [RecordingType.InfraredVideo]: DeviceType.TrapIrCam,
+  fromDevice: boolean,
+  transaction?: Transaction,
+): Promise<unknown> => {
+  // TODO: Streamline logic
+  let uploadingDeviceUpdatePayload: UpdateDevicePayload = {};
+  if (fromDevice) {
+    let shouldSetActive = false;
+    if (!uploadingDevice.active) {
+      // Check if the device has been re-assigned to another group:
+      const activeDevice = await Device.findOne({
+        where: {
+          saltId: uploadingDevice.saltId,
+          active: true,
+        },
+      });
+      if (!activeDevice) {
+        shouldSetActive = true;
+      }
+    }
+    // Set the device active and update its connection time.
+    uploadingDeviceUpdatePayload = {
+      lastConnectionTime: greaterDate(new Date(), "lastConnectionTime"),
     };
-    updateDevicePayload.kind = typeMappings[recording.type];
-  }
-  if (
-    (uploadingDevice.kind === DeviceType.Thermal &&
-      recording.type === RecordingType.Audio) ||
-    (uploadingDevice.kind === DeviceType.Audio &&
-      recording.type === RecordingType.ThermalRaw)
-  ) {
-    // If we have a hybrid bird monitor/thermal camera device, we can update its type when we know it's used for both things.
-    updateDevicePayload.kind = DeviceType.Hybrid;
-  }
-  // Update the device location and lastRecordingTime from the recording data,
-  // if the recording time is *later* than the last recording time, or there
-  // is no last recording time
-  const updateGroupPayload: {
-    lastThermalRecordingTime?: Date;
-    lastAudioRecordingTime?: Date;
-  } = {};
-  if (
-    !uploadingDevice.lastRecordingTime ||
-    uploadingDevice.lastRecordingTime < recording.recordingDateTime
-  ) {
-    updateDevicePayload.location = recording.location;
-    updateDevicePayload.lastRecordingTime = recording.recordingDateTime;
-  }
-
-  if (
-    cameraTypes.includes(recording.type) &&
-    (!uploadingGroup.lastThermalRecordingTime ||
-      uploadingGroup.lastThermalRecordingTime < recording.recordingDateTime)
-  ) {
-    updateGroupPayload.lastThermalRecordingTime = recording.recordingDateTime;
+    if (shouldSetActive) {
+      uploadingDeviceUpdatePayload.active = true;
+    }
   } else if (
-    recording.type === RecordingType.Audio &&
-    (!uploadingGroup.lastAudioRecordingTime ||
-      uploadingGroup.lastAudioRecordingTime < recording.recordingDateTime)
+    !fromDevice &&
+    (recording.recordingDateTime > uploadingDevice.lastConnectionTime ||
+      !uploadingDevice.lastConnectionTime)
   ) {
-    updateGroupPayload.lastAudioRecordingTime = recording.recordingDateTime;
+    let shouldSetActive = false;
+    if (!uploadingDevice.active) {
+      // Check if the device has been re-assigned to another group:
+      const activeDevice = await Device.findOne({
+        where: {
+          saltId: uploadingDevice.saltId,
+          active: true,
+        },
+      });
+      if (!activeDevice) {
+        shouldSetActive = true;
+      }
+    }
+    // If we're getting a recording via sidekick that's later than a previous lastConnectionTime,
+    // or there is no previous lastConnectionTime, we can null out the lastConnectionTime,
+    // which indicates that this device is now "offline".
+    // As such, it will no longer be targeted by stopped device emails, and can show up as offline in browse.
+
+    // FIXME: Test NULLING out lastConnectionTime
+    uploadingDeviceUpdatePayload = {
+      lastConnectionTime: null,
+    };
+    if (shouldSetActive) {
+      uploadingDeviceUpdatePayload.active = true;
+    }
   }
-  const hasGroupUpdate = Object.keys(updateGroupPayload).length !== 0;
-  const hasDeviceUpdate = Object.keys(updateDevicePayload).length !== 0;
-  if (hasDeviceUpdate && hasGroupUpdate) {
-    return new Promise((resolve, _reject) => {
-      Promise.all([
-        uploadingDevice.update(updateDevicePayload),
-        uploadingGroup.update(updateGroupPayload),
-      ]).then(() => resolve());
-    });
-  } else if (hasDeviceUpdate) {
-    return new Promise((resolve, _reject) => {
-      uploadingDevice.update(updateDevicePayload).then(() => resolve());
-    });
-  } else if (hasGroupUpdate) {
-    // Is it possible to have a group update without a device update?
-    return new Promise((resolve, _reject) => {
-      uploadingGroup.update(updateGroupPayload).then(() => resolve());
-    });
-  } else {
-    return new Promise((resolve, _reject) => {
-      resolve();
-    }) as Promise<void>;
-  }
+  return Device.update(
+    {
+      ...uploadingDeviceUpdatePayload,
+      location: Sequelize.literal(`
+        case
+          when (
+            '${recording.recordingDateTime.toISOString()}' > GREATEST(
+              COALESCE("lastAudioRecordingTime", TIMESTAMP '1970-01-01 00:00:00'),
+              COALESCE("lastThermalRecordingTime", TIMESTAMP '1970-01-01 00:00:00')
+            )          
+          ) 
+            then ST_GeomFromGeoJSON('{"type":"Point", "coordinates":[${recording.location.lng}, ${recording.location.lat}]}')
+          else "location"
+        end
+      `),
+      kind: Sequelize.literal(`
+        case "kind"
+          when '${DeviceType.Unknown}' then '${mapRecordingTypeToDeviceKind(recording.type, DeviceType.Unknown)}'
+          when '${DeviceType.Thermal}' then '${mapRecordingTypeToDeviceKind(recording.type, DeviceType.Thermal)}'
+          when '${DeviceType.Audio}' then '${mapRecordingTypeToDeviceKind(recording.type, DeviceType.Audio)}'
+          else "kind"
+        end  
+      `),
+    },
+    {
+      validate: false,
+      sideEffects: false, // NOTE: Necessary to bypass location setter validation
+      where: {
+        id: uploadingDevice.id,
+      },
+      transaction,
+    },
+  );
 };

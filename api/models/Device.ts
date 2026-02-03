@@ -40,10 +40,12 @@ import { tryToMatchLocationToStationInGroup } from "@models/util/locationUtils.j
 import { locationField } from "@models/util/util.js";
 import { ClientError } from "@api/customErrors.js";
 import { Recording } from "@models/Recording.js";
-import { DeviceHistory, DeviceHistorySetBy } from "@models/DeviceHistory.js";
+import { DeviceHistory } from "@models/DeviceHistory.js";
 import { Event } from "@models/Event.js";
 import { Schedule } from "@models/Schedule.js";
 import { Alert } from "@models/Alert.js";
+import { DeviceHistorySetBy } from "@typedefs/api/device.js";
+import { updateRecordingTimeBookkeepingForBulkDeletedRecordings } from "@api/V1/recordingUtil.js";
 
 const Op = Sequelize.Op;
 export class Device extends ModelStaticCommon<Device> {
@@ -62,7 +64,10 @@ export class Device extends ModelStaticCommon<Device> {
   // since we now only have one device type?
   declare kind: CreationOptional<DeviceType>; // Default DeviceType.Unknown
   declare lastConnectionTime: CreationOptional<Date>;
-  declare lastRecordingTime: CreationOptional<Date>;
+  declare lastThermalRecordingTime: CreationOptional<Date>;
+  declare lastAudioRecordingTime: CreationOptional<Date>;
+  declare earliestThermalRecordingTime: CreationOptional<Date>;
+  declare earliestAudioRecordingTime: CreationOptional<Date>;
   declare password: CreationOptional<string>;
   declare location: CreationOptional<LatLng>;
   declare heartbeat: CreationOptional<Date>;
@@ -661,7 +666,7 @@ order by hour;
             // Create new automatic station
             stationToAssign = await Station.create(
               {
-                name: `New station for ${newName}_${now.toISOString()}`,
+                name: `New location for ${newName}_${now.toISOString()}`,
                 location: this.location,
                 activeAt: now,
                 automatic: true,
@@ -684,11 +689,22 @@ order by hour;
             transaction,
           });
           if (group && group.groupName === "new") {
+            // FIXME: We may want to change this behaviour soon.
             // Delete every recording properly
-            await Recording.update(
+            const deletedRecordings = await Recording.update(
               { deletedAt: new Date() },
-              { where: { DeviceId: this.id }, transaction },
+              {
+                where: { DeviceId: this.id, deletedAt: { [Op.ne]: null } },
+                transaction,
+                returning: ["id", "DeviceId", "StationId", "GroupId", "type"],
+              },
             );
+            if (deletedRecordings[0] !== 0) {
+              await updateRecordingTimeBookkeepingForBulkDeletedRecordings(
+                deletedRecordings[1],
+                transaction,
+              );
+            }
             await this.destroy({ transaction });
           } else if (shouldDeleteExistingDevice) {
             await this.destroy({ transaction });
@@ -725,8 +741,21 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
     lastConnectionTime: {
       type: DataTypes.DATE,
     },
-    lastRecordingTime: {
+    lastThermalRecordingTime: {
       type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastAudioRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    earliestThermalRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    earliestAudioRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     public: {
       type: DataTypes.BOOLEAN,

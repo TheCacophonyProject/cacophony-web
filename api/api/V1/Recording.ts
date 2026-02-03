@@ -96,8 +96,7 @@ import {
 import {
   addTag,
   bulkDelete,
-  fixupLatestRecordingTimesForDeletedRecording,
-  fixupLatestRecordingTimesForUndeletedRecording,
+  updateRecordingTimeBookkeeping,
   getThumbnail,
   getTrackTags,
   getTrackTagsCount,
@@ -111,7 +110,7 @@ import {
   uploadGenericRecordingOnBehalfOfDevice,
 } from "@api/fileUploaders/uploadGenericRecording.js";
 import { trackIsMasked } from "@api/V1/trackMasking.js";
-import type { TrackId } from "@typedefs/api/common.js";
+import type { RecordingId, TrackId } from "@typedefs/api/common.js";
 import { format } from "util";
 import { asyncLocalStorage } from "@/Globals.js";
 import {
@@ -388,7 +387,6 @@ export default (app: Application, baseUrl: string) => {
    *      <li>(OPTIONAL) confidence - confidence between 0 - 1 of the prediction
    *      <li>(OPTIONAL) clarity - confidence between 0 - 1 of the prediction
    *      <li>(OPTIONAL) classify_time - time in seconds taken to classify
-   *      <li>(OPTIONAL) prediction_frames - frames used in the predictions
    *      <li>(OPTIONAL) predictions - array of prediction confidences for each prediction e.g. [[0,1,99,0,0,0]]
    *      <li>(OPTIONAL) label - the classified label (this may be different to the confident_tag)
    *      <li>(OPTIONAL) all_class_confidences - dictionary of confidence per class
@@ -410,12 +408,13 @@ export default (app: Application, baseUrl: string) => {
    *     "positions":[{"x":1, "y":10, "frame_number":20, "mass": 25, "blank": false}],
    *     "start_s": 10,
    *     "end_s": 22.2,
-   *     "predictions":[{"model_id":1, "confident_tag":"unidentified", "confidence": 0.6, "classify_time":0.3, "classify_time": 0.6, "prediction_frames": [[0,2,3,4,5,10,12]], "predictions": [[0.6,0.3,0.1]], "label":"cat", "all_class_confidences": {"cat":0.6, "rodent":0.3, "possum":0.1} }],
+   *     "predictions":[{"model_id":1, "confident_tag":"unidentified", "confidence": 0.6, "classify_time":0.3, "classify_time": 0.6, "predictions": [[0.6,0.3,0.1]], "label":"cat", "all_class_confidences": {"cat":0.6, "rodent":0.3, "possum":0.1} }],
    *    }],
    *    "models": [{ "id": 1, "name": "inc3" }]
    * }
    */
 
+  // FIXME: Replace with typed versions
   /**
    * @apiDefine RecordingParams
    *
@@ -785,7 +784,7 @@ export default (app: Application, baseUrl: string) => {
     validateFields([body("ids").isArray()]),
     parseJSONField(query("ids")),
     async (request: Request, response: Response, next: NextFunction) => {
-      let { ids } = request.body;
+      const { ids } = request.body;
       const { viewAsSuperUser } = response.locals;
       const userId = response.locals.requestUser.id;
       try {
@@ -800,25 +799,23 @@ export default (app: Application, baseUrl: string) => {
                 through: { where: { admin: true } },
               },
             ];
-
-        ids = (
-          await Recording.findAll({
-            where: {
-              id: ids,
-              deletedAt: { [Op.ne]: null },
+        const recordingsToUndelete = await Recording.findAll({
+          where: {
+            id: ids,
+            deletedAt: { [Op.ne]: null },
+          },
+          include: [
+            {
+              model: Group,
+              attributes: [],
+              required: !viewAsSuperUser,
+              include: requireGroupMembership,
             },
-            include: [
-              {
-                model: Group,
-                attributes: [],
-                required: !viewAsSuperUser,
-                include: requireGroupMembership,
-              },
-            ],
-            attributes: ["id"],
-          })
-        ).map((r) => r.id);
-        if (ids.length === 0) {
+          ],
+          attributes: ["id", "type", "DeviceId", "GroupId", "StationId"],
+        });
+        const idsToUndelete = recordingsToUndelete.map(({ id }) => id);
+        if (idsToUndelete.length === 0) {
           return next(
             new ClientError(
               "No recordings to undelete",
@@ -826,11 +823,42 @@ export default (app: Application, baseUrl: string) => {
             ),
           );
         }
-
         await Recording.update(
           { deletedAt: null, deletedBy: null },
-          { where: { id: ids } },
+          { where: { id: idsToUndelete } },
         );
+        // For each set of recordings to delete or undelete, we need to get the unique stations and devices,
+        // and then fixup the latest recording times for each device and station and group.
+        const uniqueByStation = new Map();
+        const uniqueByDevice = new Map();
+        const uniqueByGroup = new Map();
+        for (const recording of recordingsToUndelete) {
+          const stationKey = `${recording.StationId}_${recording.type}`;
+          const deviceKey = `${recording.DeviceId}_${recording.type}`;
+          const groupKey = `${recording.GroupId}_${recording.type}`;
+          if (!uniqueByStation.has(stationKey)) {
+            uniqueByStation.set(stationKey, recording);
+          }
+          if (!uniqueByDevice.has(deviceKey)) {
+            uniqueByDevice.set(deviceKey, recording);
+          }
+          if (!uniqueByGroup.has(groupKey)) {
+            uniqueByGroup.set(groupKey, recording);
+          }
+        }
+        const fixups = [];
+        for (const recording of uniqueByStation.values()) {
+          fixups.push(updateRecordingTimeBookkeeping(recording));
+        }
+        for (const recording of uniqueByDevice.values()) {
+          fixups.push(updateRecordingTimeBookkeeping(recording));
+        }
+        for (const recording of uniqueByGroup.values()) {
+          fixups.push(updateRecordingTimeBookkeeping(recording));
+        }
+        if (fixups.length) {
+          await Promise.all(fixups);
+        }
         return successResponse(response, `Recordings Restored: ${ids}`);
       } catch (e) {
         log.error(e);
@@ -1207,21 +1235,14 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1ResponseError
    */
   app.get(
-    `${apiUrl}/raw/:id{/:useArchival}`,
-    async (request, _response, next) => {
-      console.log("%%%%", Object.entries(request.query));
-      return next();
-    },
+    `${apiUrl}/raw/:id`,
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("id")),
-      param("useArchival").optional(),
       query("deleted").default(false).isBoolean().toBoolean(),
     ]),
-
     fetchAuthorizedRequiredFlatRecordingById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
-      const useArchival = request.params.useArchival === "archive";
       const recordingItem = response.locals.recording;
       const fileKey = recordingItem.rawFileKey;
       const fileMimeType = recordingItem.rawMimeType;
@@ -1448,7 +1469,7 @@ export default (app: Application, baseUrl: string) => {
           });
         }
       }
-      await fixupLatestRecordingTimesForDeletedRecording(recording);
+      await updateRecordingTimeBookkeeping(recording);
       if (softDelete) {
         return successResponse(response, "Deleted recording.");
       } else {
@@ -1521,7 +1542,7 @@ export default (app: Application, baseUrl: string) => {
         deletedAt: null,
         deletedBy: null,
       });
-      await fixupLatestRecordingTimesForUndeletedRecording(recording);
+      await updateRecordingTimeBookkeeping(recording);
       return successResponse(response, "Undeleted recording.");
     },
   );
@@ -1843,6 +1864,7 @@ export default (app: Application, baseUrl: string) => {
     ...replaceTrackTagParams,
   );
 
+  // TODO: Do any external API consumers use this legacy endpoint, or can it be removed?
   app.post(
     `${apiUrl}/:id/tracks/:trackId/replaceTag`,
     ...replaceTrackTagParams,
@@ -1883,14 +1905,18 @@ export default (app: Application, baseUrl: string) => {
       if (response.locals.track.RecordingId === response.locals.recording.id) {
         try {
           const track: Track = response.locals.track;
-          const updatedData = { ...track.data, ...request.body.data };
-          await Track.saveTrackData(track.id, updatedData);
-          await track.update({
-            minFreqHz: updatedData.minFreq || null,
-            maxFreqHz: updatedData.maxFreq || null,
-            startSeconds: updatedData.start_s || null,
-            endSeconds: updatedData.end_s || null,
-          });
+          // FIXME: This should have tests, if it is being used by anyone.
+          const existingData = await Track.getTrackData(track.id);
+          const updatedData = { ...existingData, ...request.body.data };
+          await Promise.all([
+            Track.saveTrackData(track.id, updatedData),
+            track.update({
+              minFreqHz: updatedData.minFreq || null,
+              maxFreqHz: updatedData.maxFreq || null,
+              startSeconds: updatedData.start_s || null,
+              endSeconds: updatedData.end_s || null,
+            }),
+          ]);
           return successResponse(response, "Track data updated.");
         } catch (e) {
           return next(

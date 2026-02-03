@@ -1,27 +1,35 @@
-import { HttpStatusCode } from "../api/consts";
+import { HttpStatusCode } from "@typedefs/api/consts.js";
 import type {
-  FetchResult, JwtToken,
-  LoadedResource, LoggedInDeviceCredentials, LoggedInUserAuth,
+  FetchResult,
+  JwtToken,
+  LoadedResource,
+  LoggedInDeviceCredentials,
+  LoggedInUserAuth,
   TestHandle,
   WrappedFetchResult,
-} from "./types";
+} from "@typedefs/client/types.js";
+import type { UserId, DeviceId } from "@typedefs/api/common.js";
+
 const CurrentViewAbortController = {
   newView() {
-    this.controller && this.controller.abort();
+    if (this.controller) {
+      this.controller.abort();
+    }
     this.controller = new AbortController();
   },
   controller: new AbortController(),
 };
-
-import type { UserId, DeviceId } from "@typedefs/api/common";
 
 // TODO - Handle getting all the revision information like the current version of browse does.
 
 type HttpMethod = "POST" | "PATCH" | "DELETE" | "GET";
 
 interface NetworkConnectionErrorHandler {
-  // eslint-disable-next-line no-undef
-  retry: <T>(authKey: TestHandle | null, url: string, request: RequestInit) => Promise<FetchResult<T>>;
+  retry: (
+    authKey: TestHandle | null,
+    url: string,
+    request: RequestInit,
+  ) => Promise<FetchResult<unknown>>;
 }
 
 /*
@@ -54,23 +62,27 @@ interface NetworkConnectionErrorHandler {
 }
  */
 
-
 interface RequestStateResolvers {
   // networkConnectionError: NetworkConnectionErrorSignal;
-  ///networkConnectionErrorHandler: NetworkConnectionErrorHandler;
-  requestCredentialsResolver: (authKey: TestHandle | null) => Promise<JwtToken<(UserId | DeviceId)> | false>;
+  networkConnectionErrorHandler: NetworkConnectionErrorHandler;
+  requestCredentialsResolver: (
+    authKey: TestHandle | null,
+  ) => Promise<JwtToken<UserId | DeviceId> | false>;
   forgetCredentials: (authKey?: TestHandle | null) => void;
   isDevEnvironment: () => boolean;
   getApiRoot: () => string;
-  registerCredentials: (authKey: TestHandle, credentials: LoggedInUserAuth | LoggedInDeviceCredentials) => void;
+  registerCredentials: (
+    authKey: TestHandle,
+    credentials: LoggedInUserAuth | LoggedInDeviceCredentials,
+  ) => void;
   //getCredentials: (authKey?: TestHandle | null) => Promise<JwtToken<UserId> | false>;
 }
 
 const getScreenOrientation = (): string => {
   if (window !== undefined && window.screen.orientation) {
     return window.screen.orientation?.type;
-  } else if (window && typeof (window as any).orientation !== "undefined") {
-    if (Math.abs((window as any).orientation) == 90) {
+  } else if (window && typeof (window as Window).orientation !== "undefined") {
+    if (Math.abs((window as Window).orientation) == 90) {
       return "landscape";
     } else {
       return "portrait";
@@ -102,7 +114,7 @@ const getScreenOrientation = (): string => {
 const cacophonyFetchWrapper = async <T>(
   authKey: TestHandle | null,
   url: string,
-  // eslint-disable-next-line no-undef
+
   request: RequestInit = {},
   abortable = true,
   stateResolvers: RequestStateResolvers,
@@ -126,7 +138,8 @@ const cacophonyFetchWrapper = async <T>(
   // Check if the credentials are stale?
   // If so, attempt to refresh them
   // Then use them
-  if (credentials) { // Could this be derived from whether we have a valid token?
+  if (credentials) {
+    // Could this be derived from whether we have a valid token?
     (request.headers as Record<string, string>).Authorization = credentials;
   } else if (window !== undefined) {
     // Are we logging in?  Maybe check the route before adding these headers
@@ -150,13 +163,14 @@ const cacophonyFetchWrapper = async <T>(
     stateResolvers.networkConnectionError.hasConnectionError = false;
      */
     // There should really be one of these per request, right?
-// TODO: Check where we have authorization errors.  Is it only when jwt creds fail?
+    // TODO: Check where we have authorization errors.  Is it only when jwt creds fail?
     // If we have an authorization error,
 
     // !NON_AUTH_API_ENDPOINTS.some((route) => response.url.endsWith(route))
 
-    if (response.status === HttpStatusCode.AuthorizationError &&
-        !response.url.endsWith("/api/v1/users/authenticate")
+    if (
+      response.status === HttpStatusCode.AuthorizationError &&
+      !response.url.endsWith("/api/v1/users/authenticate")
     ) {
       stateResolvers.forgetCredentials(authKey);
       return {
@@ -243,30 +257,57 @@ const cacophonyFetchWrapper = async <T>(
         status: HttpStatusCode.BadRequest,
         success: false,
       };
+    } else {
+      return {
+        result: {
+          errors: ["Network error, please try again later"],
+          messages: ["Network error, please try again later"],
+          errorType: "Client",
+        },
+        status: HttpStatusCode.BadRequest,
+        success: false,
+      };
+
+      // Fetch failed, probably network error.
+      // return retryHandler && retryHandler.retry(url, request);
     }
     // TODO: Work out what kind of error fetch throws on no connection, or server not responding etc.
     // Some other kind of connection error?
     // return retryHandler.retry(url, request);
   }
-
-  return {
-    result: {
-      errors: ["Unreachable code"],
-      messages: ["Unreachable code"],
-      errorType: "Client",
-    },
-    status: HttpStatusCode.BadRequest,
-    success: false,
-  };
 };
 
 export interface CacophonyApiClient {
-  get: (authKey: TestHandle | null, endpoint: string, abortable?: boolean) => Promise<FetchResult<unknown>>;
-  post: (authKey: TestHandle | null, endpoint: string, body?: object, abortable?: boolean) => Promise<FetchResult<unknown>>;
-  patch: (authKey: TestHandle | null, endpoint: string, body?: object, abortable?: boolean) => Promise<FetchResult<unknown>>;
-  delete: (authKey: TestHandle | null, endpoint: string, body?: object, abortable?: boolean) => Promise<FetchResult<unknown>>;
-  registerCredentials: (authKey: TestHandle, credentials: LoggedInUserAuth | LoggedInDeviceCredentials) => void;
-  getCredentials: (authKey: TestHandle | null) => Promise<JwtToken<UserId | DeviceId> | false>;
+  get: (
+    authKey: TestHandle | null,
+    endpoint: string,
+    abortable?: boolean,
+  ) => Promise<FetchResult<unknown>>;
+  post: (
+    authKey: TestHandle | null,
+    endpoint: string,
+    body?: object,
+    abortable?: boolean,
+  ) => Promise<FetchResult<unknown>>;
+  patch: (
+    authKey: TestHandle | null,
+    endpoint: string,
+    body?: object,
+    abortable?: boolean,
+  ) => Promise<FetchResult<unknown>>;
+  delete: (
+    authKey: TestHandle | null,
+    endpoint: string,
+    body?: object,
+    abortable?: boolean,
+  ) => Promise<FetchResult<unknown>>;
+  registerCredentials: (
+    authKey: TestHandle,
+    credentials: LoggedInUserAuth | LoggedInDeviceCredentials,
+  ) => void;
+  getCredentials: (
+    authKey: TestHandle | null,
+  ) => Promise<JwtToken<UserId | DeviceId> | false>;
   getApiRoot: () => string;
 }
 
@@ -282,30 +323,87 @@ class CacophonyApi {
     return `${this.getApiRoot()}${separator}${endpoint}`;
   }
 
-  async get(authKey: TestHandle | null, endpoint: string, abortable: boolean = false) {
-    return cacophonyFetchWrapper(authKey, this.url(endpoint), { method: "GET" }, abortable, this.credentialsResolver);
+  async get(authKey: TestHandle | null, endpoint: string, abortable = false) {
+    return cacophonyFetchWrapper(
+      authKey,
+      this.url(endpoint),
+      { method: "GET" },
+      abortable,
+      this.credentialsResolver,
+    );
   }
 
-  async post(authKey: TestHandle | null, endpoint: string, body?: object, abortable: boolean = false) {
-    if (body && typeof body === "object" && (body instanceof ArrayBuffer || body instanceof FormData)) {
-      return cacophonyFetchWrapper(authKey, this.url(endpoint), { method: "POST", body }, abortable, this.credentialsResolver);
+  async post(
+    authKey: TestHandle | null,
+    endpoint: string,
+    body?: object,
+    abortable = false,
+  ) {
+    if (
+      body &&
+      typeof body === "object" &&
+      (body instanceof ArrayBuffer || body instanceof FormData)
+    ) {
+      return cacophonyFetchWrapper(
+        authKey,
+        this.url(endpoint),
+        { method: "POST", body },
+        abortable,
+        this.credentialsResolver,
+      );
     }
-    return fetchCacophonyJsonWithMethod(authKey, this.url(endpoint), "POST", this.credentialsResolver, body, abortable);
+    return fetchCacophonyJsonWithMethod(
+      authKey,
+      this.url(endpoint),
+      "POST",
+      this.credentialsResolver,
+      body,
+      abortable,
+    );
   }
 
-  async patch(authKey: TestHandle | null, endpoint: string, body?: object, abortable: boolean = false) {
-    return fetchCacophonyJsonWithMethod(authKey, this.url(endpoint), "PATCH", this.credentialsResolver, body, abortable);
+  async patch(
+    authKey: TestHandle | null,
+    endpoint: string,
+    body?: object,
+    abortable = false,
+  ) {
+    return fetchCacophonyJsonWithMethod(
+      authKey,
+      this.url(endpoint),
+      "PATCH",
+      this.credentialsResolver,
+      body,
+      abortable,
+    );
   }
 
-  async delete(authKey: TestHandle | null, endpoint: string, body?: object, abortable: boolean = false) {
-    return fetchCacophonyJsonWithMethod(authKey, this.url(endpoint), "DELETE", this.credentialsResolver, body, abortable );
+  async delete(
+    authKey: TestHandle | null,
+    endpoint: string,
+    body?: object,
+    abortable = false,
+  ) {
+    return fetchCacophonyJsonWithMethod(
+      authKey,
+      this.url(endpoint),
+      "DELETE",
+      this.credentialsResolver,
+      body,
+      abortable,
+    );
   }
 
-  registerCredentials(authKey: TestHandle, credentials: LoggedInUserAuth | LoggedInDeviceCredentials): void {
+  registerCredentials(
+    authKey: TestHandle,
+    credentials: LoggedInUserAuth | LoggedInDeviceCredentials,
+  ): void {
     this.credentialsResolver.registerCredentials(authKey, credentials);
   }
 
-  getCredentials(authKey: TestHandle | null): Promise<JwtToken<UserId> | false> {
+  getCredentials(
+    authKey: TestHandle | null,
+  ): Promise<JwtToken<UserId> | false> {
     return this.credentialsResolver.requestCredentialsResolver(authKey);
   }
 
@@ -327,12 +425,17 @@ const fetchCacophonyJsonWithMethod = async (
     headers: {
       "Content-Type": "application/json; charset=utf-8",
     },
-    // eslint-disable-next-line no-undef
   } as RequestInit;
   if (body) {
     payload.body = JSON.stringify(body);
   }
-  return cacophonyFetchWrapper(authKey, endpoint, payload, abortable, stateResolvers);
+  return cacophonyFetchWrapper(
+    authKey,
+    endpoint,
+    payload,
+    abortable,
+    stateResolvers,
+  );
 };
 
 export const optionalQueryString = (params: URLSearchParams) => {
@@ -357,6 +460,8 @@ export const unwrapLoadedResource = <T>(
   });
 };
 
-export default (credentialsResolvers: RequestStateResolvers): CacophonyApiClient => {
+export default (
+  credentialsResolvers: RequestStateResolvers,
+): CacophonyApiClient => {
   return new CacophonyApi(credentialsResolvers);
 };

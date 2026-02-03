@@ -60,6 +60,8 @@ export class Station extends ModelStaticCommon<Station> {
   declare automatic: CreationOptional<boolean>;
   declare needsRename: CreationOptional<boolean>;
   declare settings?: CreationOptional<ApiStationSettings>;
+  declare earliestThermalRecordingTime: CreationOptional<Date>;
+  declare earliestAudioRecordingTime: CreationOptional<Date>;
   declare lastThermalRecordingTime: CreationOptional<Date>;
   declare lastAudioRecordingTime: CreationOptional<Date>;
 
@@ -361,6 +363,14 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
     createdAt: DataTypes.DATE,
     updatedAt: DataTypes.DATE,
     retiredAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    earliestThermalRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    earliestAudioRecordingTime: {
       type: DataTypes.DATE,
       allowNull: true,
     },

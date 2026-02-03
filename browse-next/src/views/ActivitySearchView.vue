@@ -13,9 +13,9 @@ import {
   watch,
   type WatchStopHandle,
 } from "vue";
-import type { NamedPoint } from "@models/mapUtils";
+import type {NamedPoint} from "@models/mapUtils";
 import MapWithPoints from "@/components/MapWithPoints.vue";
-import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
+import type {ApiStationResponse as ApiLocationResponse} from "@typedefs/api/station";
 import {
   activeLocations,
   allHistoricLocations,
@@ -29,50 +29,25 @@ import {
   type SelectedProject,
   shouldViewAsSuperUser,
 } from "@models/LoggedInUser";
-import type {
-  FetchResult,
-  LoadedResource,
-  SuccessFetchResult,
-} from "@apiClient/types";
+import type {FetchResult, LoadedResource, SuccessFetchResult,} from "@apiClient/types";
 import type {
   ApiAudioRecordingResponse,
   ApiRecordingResponse,
+  ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
-import {
-  type RecordingType,
-  RecordingType as ConcreteRecordingType,
-  TagMode,
-} from "@typedefs/api/consts.ts";
-import type {
-  DeviceId,
-  RecordingId,
-  StationId as LocationId,
-} from "@typedefs/api/common";
+import {type RecordingType, RecordingType as ConcreteRecordingType, TagMode,} from "@typedefs/api/consts.ts";
+import type {DeviceId, RecordingId, StationId as LocationId,} from "@typedefs/api/common";
 import InlineViewModal from "@/components/InlineViewModal.vue";
-import type { MaybeElement } from "@vueuse/core";
-import {
-  useElementBounding,
-  useIntersectionObserver,
-  useWindowSize,
-} from "@vueuse/core";
-import { DateTime } from "luxon";
-import {
-  dayAndTimeAtLocation,
-  formatDuration,
-  timezoneForLatLng,
-  visitDuration,
-} from "@models/visitsUtils";
-import { canonicalLatLngForLocations } from "@/helpers/Location";
+import type {MaybeElement} from "@vueuse/core";
+import {useIntersectionObserver, useWindowSize,} from "@vueuse/core";
+import {DateTime} from "luxon";
+import {dayAndTimeAtLocation, formatDuration, timezoneForLatLng, visitDuration,} from "@models/visitsUtils";
+import {canonicalLatLngForLocations} from "@/helpers/Location";
 import * as sunCalc from "suncalc";
-import {
-  type LocationQuery,
-  type LocationQueryValue,
-  useRoute,
-  useRouter,
-} from "vue-router";
+import {type LocationQuery, type LocationQueryValue, useRoute, useRouter,} from "vue-router";
 import RecordingsList from "@/components/RecordingsList.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
-import type { ApiVisitResponse } from "@typedefs/api/monitoring";
+import type {ApiVisitResponse} from "@typedefs/api/monitoring";
 import ActivitySearchParameters from "@/components/ActivitySearchParameters.vue";
 import {
   ActivitySearchDisplayMode,
@@ -82,34 +57,17 @@ import {
   queryValueIsDate,
   validateLocations,
 } from "@/components/activitySearchUtils.ts";
-import {
-  displayLabelForClassificationLabel,
-  flatClassifications,
-  getClassifications,
-} from "@api/classificationsUtils";
+import {displayLabelForClassificationLabel, flatClassifications, getClassifications,} from "@api/classificationsUtils";
 import ActivitySearchDescription from "@/components/ActivitySearchDescription.vue";
-import { delayMs } from "@/utils.ts";
-import {
-  aiTagsForRecording,
-  canonicalTagsForRecording,
-  humanTagsForRecording,
-} from "@models/recordingUtils.ts";
-import type { ApiDeviceResponse } from "@typedefs/api/device";
-import type {
-  BulkRecordingsResponse,
-  QueryRecordingsOptions,
-} from "@apiClient/Recording.ts";
-import { ClientApi, CurrentViewAbortController } from "@/api";
-import type { VisitsQueryResult } from "@apiClient/Monitoring.ts";
-import type { NonEmptyArray } from "@/helpers/utils.ts";
-import {
-  BButton,
-  BModal,
-  BOffcanvas,
-  BProgress,
-  BSpinner,
-} from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import {delayMs} from "@/utils.ts";
+import {aiTagsForRecording, canonicalTagsForRecording, humanTagsForRecording,} from "@models/recordingUtils.ts";
+import type {ApiDeviceResponse} from "@typedefs/api/device";
+import type {BulkRecordingsResponse, QueryRecordingsOptions,} from "@apiClient/Recording.ts";
+import {ClientApi, CurrentViewAbortController} from "@/api";
+import type {VisitsQueryResult} from "@apiClient/Monitoring.ts";
+import type {NonEmptyArray} from "@/helpers/utils.ts";
+import {BButton, BModal, BOffcanvas, BProgress, BSpinner,} from "bootstrap-vue-next";
+import {MaterialSymbol} from "@dbetka/vue-material-symbols";
 
 const mapBuffer = ref<HTMLDivElement>();
 const mapContainer = ref<HTMLDivElement>();
@@ -1134,17 +1092,21 @@ const appendRecordingsChunkedByDay = (recordings: ApiRecordingResponse[]) => {
       }
     }
     if (
-      (recording.type === "thermalRaw" &&
-        recording.duration < 2.5 &&
-        recording.duration > 1.8) ||
-      (recording.type === "audio" &&
-        recording.duration < 11 &&
-        recording.duration > 9.8)
+      (recording.type === ConcreteRecordingType.ThermalRaw &&
+          (recording.duration < 2.5 &&
+        recording.duration > 1.8) || "status" in ((recording as ApiThermalRecordingResponse).additionalMetadata || {})) ||
+      (recording.type === ConcreteRecordingType.Audio &&
+          (recording.duration < 11 &&
+        recording.duration > 9.8)) || "status" in ((recording as ApiAudioRecordingResponse).additionalMetadata || {})
     ) {
+      let detail = "test recording";
+      if ("status" in ((recording as ApiAudioRecordingResponse | ApiThermalRecordingResponse).additionalMetadata || {})) {
+        detail = `${((recording as ApiAudioRecordingResponse).additionalMetadata as any).status} recording`;
+      }
       recording.tags.push({
         id: -1,
         confidence: 1,
-        detail: "test recording",
+        detail,
         createdAt: recording.recordingDateTime,
       });
     }

@@ -13,13 +13,14 @@ import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_THERMAL_RECORDING_RESPONSE,
 } from "@commands/dataTemplate";
-import { DeviceHistoryEntry, TestNameAndId } from "@commands/types";
+import { TestNameAndId } from "@commands/types";
 import { getTestName } from "@commands/names";
 import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
+import { ApiDeviceHistory } from "@shared/api/device";
 
 let count = 0;
 let group: string;
-const baseGroup: string = "station_use_case_group";
+const baseGroup = "station_use_case_group";
 
 const templateExpectedStation = {
   location,
@@ -82,7 +83,7 @@ describe("Stations: use cases", () => {
     const now = new Date(new Date().setDate(new Date().getDate() - 20));
     const oneWeekFromNow = new Date(new Date(now).setDate(now.getDate() + 7));
     const twoWeeksFromNow = new Date(new Date(now).setDate(now.getDate() + 14));
-    const expectedHistory: DeviceHistoryEntry[] = [];
+    const expectedHistory: ApiDeviceHistory[] = [];
 
     const oldRecording = TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
     oldRecording.recordingDateTime = oneWeekFromNow.toISOString();
@@ -143,7 +144,6 @@ describe("Stations: use cases", () => {
         group,
         null,
         expectedInitialDevice,
-        DeviceType.Unknown,
       );
 
       cy.log("Add a recording and check new station created for it");
@@ -354,11 +354,19 @@ describe("Stations: use cases", () => {
     const oldLocation = TestGetLocation(5);
     const newLocation = TestGetLocation(6);
 
-    const beforeRecordings = new Date(new Date().setDate(new Date().getDate() - 30));
-    const firstRecordingTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 7));
-    const secondRecordingTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 14));
-    const thirdRecordingTime = new Date(new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 21));
-    const expectedHistory: DeviceHistoryEntry[] = [];
+    const beforeRecordings = new Date(
+      new Date().setDate(new Date().getDate() - 30),
+    );
+    const firstRecordingTime = new Date(
+      new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 7),
+    );
+    const secondRecordingTime = new Date(
+      new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 14),
+    );
+    const thirdRecordingTime = new Date(
+      new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 21),
+    );
+    const expectedHistory: ApiDeviceHistory[] = [];
 
     const firstRecording = TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
     firstRecording.recordingDateTime = firstRecordingTime.toISOString();
@@ -418,7 +426,6 @@ describe("Stations: use cases", () => {
         group,
         null,
         expectedInitialDevice,
-        DeviceType.Unknown,
       );
 
       // First recording
@@ -739,7 +746,9 @@ describe("Stations: use cases", () => {
     const stationLocation = TestGetLocation(6);
     const firstRecordingLocation = TestGetLocation(6, 0.001); //~100m off-target location
     const thirdRecordingLocation = TestGetLocation(6, -0.001); //~100m in the oppsite direction
-    const beforeRecordings = new Date(new Date().setDate(new Date().getDate() - 30));
+    const beforeRecordings = new Date(
+      new Date().setDate(new Date().getDate() - 30),
+    );
     const thirdRecordingTime = new Date(
       new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 21),
     );
@@ -750,7 +759,7 @@ describe("Stations: use cases", () => {
       new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 7),
     );
     const createStationTime = beforeRecordings;
-    const expectedHistory: DeviceHistoryEntry[] = [];
+    const expectedHistory: ApiDeviceHistory[] = [];
 
     const firstRecording = TestCreateRecordingData(TEMPLATE_THERMAL_RECORDING);
     firstRecording.recordingDateTime = firstRecordingTime.toISOString();
@@ -815,7 +824,6 @@ describe("Stations: use cases", () => {
         group,
         null,
         expectedInitialDevice,
-        DeviceType.Unknown,
       );
 
       cy.log("Create a new station");

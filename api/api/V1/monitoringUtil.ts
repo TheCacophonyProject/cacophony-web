@@ -17,6 +17,7 @@ import { Track } from "@models/Track.js";
 import { User } from "@models/User.js";
 import { Station } from "@models/Station.js";
 import { TrackTagUserData } from "@models/TrackTagUserData.js";
+import { ApiTrackPosition } from "@typedefs/api/track.js";
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;
@@ -630,7 +631,10 @@ const calculateTrackTags2 = (recording: Recording): VisitRecording => {
         mass:
           (track.data &&
             track.data.positions &&
-            track.data.positions.reduce((a, { mass }) => a + (mass || 0), 0)) ||
+            (track.data.positions as ApiTrackPosition[]).reduce(
+              (a, { mass }) => a + (mass || 0),
+              0,
+            )) ||
           0,
         ...(isConflictingTag(bestTag) ? { userTagsConflict: true } : {}),
       };

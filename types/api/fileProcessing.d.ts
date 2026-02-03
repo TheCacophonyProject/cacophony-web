@@ -8,20 +8,20 @@ import type {
   IsoFormattedDateString,
 } from "./common.ts";
 
-type ClassificationClass =
-  | "bird"
-  | "cat"
-  | "false-positive"
-  | "hedgehog"
-  | "human"
-  | "leporidae"
-  | "mustelid"
-  | "possum"
-  | "rodent"
-  | "vehicle"
-  | "wallaby"
-  | "not";
-// NOTE "not" is ignored..
+// type ClassificationClass =
+//   | "bird"
+//   | "cat"
+//   | "false-positive"
+//   | "hedgehog"
+//   | "human"
+//   | "leporidae"
+//   | "mustelid"
+//   | "possum"
+//   | "rodent"
+//   | "vehicle"
+//   | "wallaby"
+//   | "not";
+// // NOTE "not" is ignored..
 
 interface CameraThresholdConfig {
   camera_model: string;
@@ -46,26 +46,7 @@ export interface TrackFramePosition {
   in_trap?: boolean;
 }
 
-interface TrackClassification {
-  classify_time: Seconds;
-  label: ClassificationClass;
-  confidence: FloatZeroToOne;
-  clarity: FloatZeroToOne;
-  average_novelty: float;
-  max_novelty: float;
-  all_class_confidences: Record<ClassificationClass, FloatZeroToOne>;
-  confident_tag: string;
-  prediction_frames: number[];
-  predictions: integer[][];
-  model_id: integer;
-  //prediction_frames:
-
-  // Used in api when calculating good tags
-  tag: string;
-  message: string;
-}
-
-interface RawTrack {
+export interface RawTrack {
   id: integer;
   tracker_version: integer | string;
   start_s: Seconds;
@@ -90,6 +71,40 @@ export interface ThumbnailInfo {
   median_diff: number;
   score: number;
 }
+
+export interface TrackClassification {
+  all_class_confidences?: null | Record<string, number>;
+  confidence: number;
+  confident: boolean;
+  clarity?: number;
+  classify_time?: Seconds;
+  tag: string;
+  message?: string;
+  model_id?: integer;
+  model_used?: string;
+  rat_thresh_version?: string;
+  threshold_used?: FloatZeroToOne;
+
+  // Used in api when calculating good tags
+  name?: string;
+  // just used for metadata uploaded in the field will become deprecated once all pi classifiers are updated
+  label?: string;
+  confident_tag?: string;
+}
+
+export type TrackClassifications = TrackClassification[];
+
+export interface MinimalTrack {
+  AlgorithmId: number;
+  startSeconds?: number;
+  endSeconds?: number;
+  minFreqHz?: number;
+  maxFreqHz?: number;
+  RecordingId: number;
+}
+
+export type MinimalTracksRequestData = MinimalTrackRequestData[];
+
 export interface MinimalTrackRequestData {
   tracker_version?: integer | string;
   start_s: Seconds;
@@ -105,7 +120,7 @@ export interface MinimalTrackRequestData {
   predictions?: TrackClassification[];
 
   // Fields used in api when calculating good tracks/tags
-  confidence?: FloatZeroToOne;
+  confidence?: number;
   message?: string;
   thumbnail?: ThumbnailInfo | null;
 

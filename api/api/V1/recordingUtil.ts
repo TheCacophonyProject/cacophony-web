@@ -25,12 +25,11 @@ import type { RecordingQueryOptions } from "@models/Recording.js";
 import { Recording } from "@models/Recording.js";
 import { Event } from "@models/Event.js";
 import { User } from "@models/User.js";
-import { Op, QueryTypes } from "sequelize";
+import Sequelize, { Op, QueryTypes, Transaction } from "sequelize";
 import { getCanonicalTrackTag, NON_ANIMAL_TAGS } from "./tagUtil.js";
 import { Station } from "@models/Station.js";
 import { Device } from "@models/Device.js";
 import type { PutObjectCommandOutput } from "@aws-sdk/client-s3";
-import type { DeviceHistorySetBy } from "@models/DeviceHistory.js";
 import { DeviceHistory } from "@models/DeviceHistory.js";
 import { Tag } from "@models/Tag.js";
 import { Track } from "@models/Track.js";
@@ -62,12 +61,17 @@ import { Writable } from "stream";
 import temp from "temp";
 import fs from "fs";
 import { sendAnimalAlertEmail } from "@/emails/transactionalEmails.js";
-import type { ApiDeviceHistorySettings } from "@typedefs/api/device.js";
+import type {
+  ApiDeviceHistorySettings,
+  DeviceHistorySetBy,
+} from "@typedefs/api/device.js";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
 import { Group } from "@models/Group.js";
 import { RecordingDataSuppliedMetadata } from "@api/fileUploaders/uploadGenericRecording.js";
-
-const sequelize = await initSequelize();
+import type {
+  ApiAudioRecordingMetadataResponse,
+  ApiThermalRecordingMetadataResponse,
+} from "@typedefs/api/recording.js";
 
 const ffmpegPath = "/usr/bin/ffmpeg";
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -598,10 +602,14 @@ export const maybeUpdateDeviceHistory = async (
   location: LatLng,
   dateTime: Date,
   setBy: DeviceHistorySetBy = "automatic",
-): Promise<{
-  stationToAssignToRecording: Station;
-  deviceHistoryEntry: DeviceHistory;
-}> => {
+): Promise<
+  | {
+      stationToAssignToRecording: Station;
+      deviceHistoryEntry: DeviceHistory;
+    }
+  | string
+> => {
+  // FIXME: Should this be moved further up?
   if (location.lat === 0 || location.lng === 0) {
     const existingHistory = await DeviceHistory.findOne({
       where: {
@@ -620,21 +628,41 @@ export const maybeUpdateDeviceHistory = async (
         deviceHistoryEntry: existingHistory,
       };
     }
-    throw new Error(
-      "Invalid location provided (lat or lng is 0) and no device history exists.",
-    );
+    return "Invalid location provided (lat or lng is 0) and no device history exists.";
   }
   {
     // Update the device location on config change. (It gets updated elsewhere if a newer recording comes in)
     const lastLocation = device.location;
     if (
       setBy === "config" &&
-      (!device.lastRecordingTime || dateTime > device.lastRecordingTime) &&
       (!lastLocation ||
         (lastLocation && !locationsAreEqual(lastLocation, location)))
     ) {
-      await device.update({
-        location,
+      // FIXME: Do we have any test coverage for this?
+      await device.sequelize.transaction(async (transaction) => {
+        await Device.update(
+          {
+            location,
+          },
+          {
+            where: {
+              id: device.id,
+              [Op.or]: [
+                {
+                  lastThermalRecordingTime: {
+                    [Op.or]: [{ [Op.lt]: dateTime }, { [Op.eq]: null }],
+                  },
+                },
+                {
+                  lastAudioRecordingTime: {
+                    [Op.or]: [{ [Op.lt]: dateTime }, { [Op.eq]: null }],
+                  },
+                },
+              ],
+            },
+            transaction,
+          },
+        );
       });
     }
   }
@@ -655,6 +683,7 @@ export const maybeUpdateDeviceHistory = async (
         : [setBy];
     let shouldInsertLocation = false;
     let existingDeviceHistoryEntry: DeviceHistory;
+
     const priorLocation = await DeviceHistory.findOne({
       where: {
         uuid: device.uuid,
@@ -698,6 +727,7 @@ export const maybeUpdateDeviceHistory = async (
           } else if (!locationChanged) {
             if (laterLocation.setBy !== "user") {
               // Move the later location back to this time if it was an automatically created location.
+              // FIXME: This probably needs better disambigation?
               existingDeviceHistoryEntry = await laterLocation.update({
                 fromDateTime: dateTime,
                 setBy,
@@ -787,6 +817,75 @@ export const maybeUpdateDeviceHistory = async (
         delete settings.warp;
         newDeviceHistoryEntry.settings = settings;
       }
+      // FIXME: We probably do want to look forwards for stations if later recordings were processed first in a set of recordings?
+      const point = (location: LatLng) => {
+        return Sequelize.cast(
+          Sequelize.fn(
+            "ST_SetSRID",
+            Sequelize.fn("ST_MakePoint", location.lng, location.lat),
+            4326, // SRID 4326 (WGS 84)
+          ),
+          "geography",
+        );
+      };
+      const distance = (location: LatLng) => {
+        return Sequelize.fn(
+          "ST_Distance",
+          Sequelize.cast(Sequelize.col("location"), "geography"),
+          point(location),
+        );
+      };
+      const fuzzyMatchLocation = (
+        column: string,
+        location: LatLng,
+        toleranceMeters = 5,
+      ) => {
+        return Sequelize.where(
+          Sequelize.fn(
+            "ST_DWithin",
+            Sequelize.cast(Sequelize.col(column), "geography"),
+            point(location),
+            toleranceMeters,
+          ),
+          true,
+        );
+      };
+
+      const locationExactlyMatches = (location: LatLng) => {
+        const point = {
+          type: "Point",
+          coordinates: [location.lng, location.lat],
+        };
+        return {
+          [Op.eq]: point,
+        };
+      };
+      // FIXME: jon
+      // const stationsInSameLocationForProject = await Station.findAll({
+      //   attributes: {
+      //     include: [
+      //       "id",
+      //       "location",
+      //       "GroupId",
+      //       "activeAt",
+      //       [distance(location), "distance"],
+      //     ],
+      //   },
+      //   where: [
+      //     {
+      //       GroupId: device.GroupId,
+      //       // activeAt: { [Op.lte]: dateTime },
+      //       location: locationExactlyMatches(location),
+      //     },
+      //   ],
+      //   order: [[distance(location), "ASC"]],
+      //   raw: true,
+      // });
+      // console.log(
+      //   "#### Stations in same location for project",
+      //   stationsInSameLocationForProject,
+      // );
+
       let stationToAssign = await tryToMatchLocationToStationInGroup(
         location,
         device.GroupId,
@@ -796,26 +895,86 @@ export const maybeUpdateDeviceHistory = async (
       if (stationToAssign && stationToAssign.activeAt > dateTime) {
         // We matched a future station in this location, so it's likely this is an older recording coming in out
         // of order.  We want to back-date the existing station to this time.
-        await stationToAssign.update({ activeAt: dateTime });
+        await Station.update(
+          {
+            activeAt: dateTime,
+          },
+          {
+            where: {
+              id: stationToAssign.id,
+              activeAt: {
+                [Op.gt]: dateTime,
+              },
+            },
+          },
+        );
       }
       if (!stationToAssign) {
-        // Create a new automatic station
-        stationToAssign = await Station.create({
-          name: `New station for ${
-            device.deviceName
-          }_${dateTime.toISOString()}`,
-          location,
-          activeAt: dateTime,
-          automatic: true,
-          needsRename: true,
-          GroupId: device.GroupId,
+        // Create a new automatic station.  With concurrent recording uploads from the same device/location,
+        // we're in danger of creating duplicate stations, so we take a lock on the group/lat/lng to
+        // prevent duplicate inserts.
+        const sequelize = await initSequelize();
+        await sequelize.transaction(async (transaction) => {
+          // lock on a derived key from group + location to prevent duplicate inserts
+          await sequelize.query(
+            `SELECT pg_advisory_xact_lock(hashtext(:key))`,
+            {
+              transaction,
+              replacements: {
+                key: `${device.GroupId}:${location.lat},${location.lng}`,
+              },
+            },
+          );
+          [stationToAssign] = await Station.findOrCreate({
+            where: {
+              GroupId: device.GroupId,
+              location: locationExactlyMatches(location),
+              automatic: true,
+            },
+            defaults: {
+              name: `New location for ${
+                device.deviceName
+              }_${dateTime.toISOString()}`,
+              location,
+              activeAt: dateTime,
+              automatic: true,
+              needsRename: true,
+              GroupId: device.GroupId,
+            },
+            transaction,
+          });
         });
       }
 
       newDeviceHistoryEntry.stationId = stationToAssign.id;
       // Insert this location.
-      const newDeviceHistory = await DeviceHistory.create(
-        newDeviceHistoryEntry,
+      const newDeviceHistory = await Station.sequelize.transaction(
+        async (transaction) => {
+          // lock on a derived key from group + deviceId + saltId + uuid + location to prevent duplicate inserts
+          const sequelize = await initSequelize();
+          await sequelize.query(
+            `SELECT pg_advisory_xact_lock(hashtext(:key))`,
+            {
+              transaction,
+              replacements: {
+                key: `${device.GroupId}:${device.id}:${device.saltId}:${device.uuid}:${location.lat},${location.lng}`,
+              },
+            },
+          );
+          const [newDeviceHistory] = await DeviceHistory.findOrCreate({
+            where: {
+              GroupId: device.GroupId,
+              DeviceId: device.id,
+              location: locationExactlyMatches(location),
+              saltId: device.saltId,
+              uuid: device.uuid,
+              setBy: "automatic",
+            },
+            defaults: newDeviceHistoryEntry,
+            transaction,
+          });
+          return newDeviceHistory;
+        },
       );
       return {
         stationToAssignToRecording: stationToAssign,
@@ -829,11 +988,20 @@ export const maybeUpdateDeviceHistory = async (
         // Now, if the device history table has updated, that can mean that the activeAt date of an automatically
         // created station may need to move back too.
         // There shouldn't be recordings that need their station id updated in this instance.
-        await stationToAssign.update({
-          activeAt: existingDeviceHistoryEntry.fromDateTime,
-        });
+        await Station.update(
+          {
+            activeAt: existingDeviceHistoryEntry.fromDateTime,
+          },
+          {
+            where: {
+              id: stationToAssign.id,
+              activeAt: {
+                [Op.gt]: existingDeviceHistoryEntry.fromDateTime,
+              },
+            },
+          },
+        );
       }
-
       return {
         stationToAssignToRecording: stationToAssign,
         deviceHistoryEntry: existingDeviceHistoryEntry,
@@ -893,33 +1061,81 @@ export async function queryRecordings(
   return { count: rows.length, rows: rows };
 }
 
+export async function updateRecordingTimeBookkeepingForBulkDeletedRecordings(
+  recordings: Recording[],
+  transaction?: Transaction,
+): Promise<void> {
+  // For each set of recordings to delete or undelete, we need to get the unique stations and devices,
+  // and then fixup the latest recording times for each device and station and group.
+  const uniqueByStation = new Map();
+  const uniqueByDevice = new Map();
+  const uniqueByGroup = new Map();
+  for (const recording of recordings) {
+    const stationKey = `${recording.StationId}_${recording.type}`;
+    const deviceKey = `${recording.DeviceId}_${recording.type}`;
+    const groupKey = `${recording.GroupId}_${recording.type}`;
+    if (!uniqueByStation.has(stationKey)) {
+      uniqueByStation.set(stationKey, recording);
+    }
+    if (!uniqueByDevice.has(deviceKey)) {
+      uniqueByDevice.set(deviceKey, recording);
+    }
+    if (!uniqueByGroup.has(groupKey)) {
+      uniqueByGroup.set(groupKey, recording);
+    }
+  }
+  const fixups = [];
+  for (const recording of uniqueByStation.values()) {
+    fixups.push(updateRecordingTimeBookkeeping(recording, false, transaction));
+  }
+  for (const recording of uniqueByDevice.values()) {
+    fixups.push(updateRecordingTimeBookkeeping(recording, false, transaction));
+  }
+  for (const recording of uniqueByGroup.values()) {
+    fixups.push(updateRecordingTimeBookkeeping(recording, false, transaction));
+  }
+  if (fixups.length) {
+    await Promise.all(fixups);
+  }
+}
+
 export async function bulkDelete(
   requestUserId: UserId,
   type: RecordingType,
   options: RecordingQueryOptions,
   _actuallyDelete = false, // FIXME - Make recordings actually be deleted?
-): Promise<number[]> {
+): Promise<RecordingId[]> {
   if (type && typeof options.where === "object") {
     options.where = { ...options.where, type };
   }
 
   const builder = new Recording.queryBuilder().init(requestUserId, options);
-
   const recordings = (await Recording.findAll(builder.get())) as Recording[];
   if (recordings.length === 0) {
     throw new Error("No recordings found to delete");
   }
   const deletion = { deletedAt: new Date(), deletedBy: requestUserId };
   const ids = recordings.map((value) => value.id);
-  const deletedValues = (await Recording.update(deletion, {
-    where: { id: ids },
-    returning: ["id"],
-  })) as unknown as Promise<[number, { id: number }[]]>;
-  for (const recording of recordings) {
-    await fixupLatestRecordingTimesForDeletedRecording(recording);
-  }
-  if (deletedValues[1]) {
-    return deletedValues[1].map((value: { id: RecordingId }) => value.id);
+  const deletedRecordings = (await Recording.update(deletion, {
+    where: { id: ids, deletedAt: { [Op.eq]: null } },
+    returning: ["id", "DeviceId", "StationId", "GroupId", "type"],
+  })) as unknown as Promise<
+    [
+      number,
+      {
+        id: number;
+        GroupId: GroupId;
+        StationId: StationId;
+        DeviceId: DeviceId;
+        type: RecordingType;
+      }[],
+    ]
+  >;
+  if (deletedRecordings[0] !== 0) {
+    await updateRecordingTimeBookkeepingForBulkDeletedRecordings(
+      deletedRecordings[1],
+    );
+    return deletedRecordings[1].map((value: { id: RecordingId }) => value.id);
   }
   return [];
 }
@@ -1124,6 +1340,7 @@ export async function getTrackTagsCount(options: TrackTagsCountOptions) {
     userId: options.userId,
     groupId: options.groupId,
   };
+  const sequelize = await initSequelize();
   return await sequelize.query(sql, {
     replacements,
     type: QueryTypes.SELECT,
@@ -1245,16 +1462,11 @@ export const tracksFromMeta = async (
                 if (prediction.classify_time) {
                   tag_data["classify_time"] = prediction["classify_time"];
                 }
-                if (prediction.prediction_frames) {
-                  tag_data["prediction_frames"] =
-                    prediction["prediction_frames"];
-                }
-                if (prediction.predictions) {
-                  tag_data["predictions"] = prediction["predictions"];
-                }
-                if (prediction.label) {
-                  tag_data["raw_tag"] = prediction["label"];
-                }
+                //GP 2025 Dec dont think we are using this at all
+                // if (prediction.predictions) {
+                //   tag_data["predictions"] = prediction["predictions"];
+                // }
+
                 if (prediction.all_class_confidences) {
                   tag_data["all_class_confidences"] =
                     prediction.all_class_confidences;
@@ -1263,6 +1475,15 @@ export const tracksFromMeta = async (
                 if (prediction.confident_tag) {
                   tag = prediction.confident_tag;
                 }
+                if (prediction.label) {
+                  tag_data["raw_tag"] = prediction["label"];
+                }
+
+                tag_data["raw_tag"] = prediction["tag"];
+                if (prediction.confident) {
+                  tag = prediction["tag"];
+                }
+
                 trackPromises.push(
                   track.addTag(tag, prediction["confidence"], true, tag_data),
                 );
@@ -1286,7 +1507,12 @@ export const tracksFromMeta = async (
   return true;
 };
 
-export async function updateMetadata(recording: Recording, metadata: unknown) {
+export async function updateMetadata(
+  recording: Recording,
+  metadata:
+    | ApiAudioRecordingMetadataResponse
+    | ApiThermalRecordingMetadataResponse,
+) {
   recording.additionalMetadata = metadata;
   await recording.save();
 }
@@ -1566,201 +1792,164 @@ export async function _sendEventAlerts(
   return alerts;
 }
 
-export const fixupLatestRecordingTimesForDeletedRecording = async (
+export const updateRecordingTimeBookkeeping = async (
   recording: Recording,
+  isNewUploadFromDevice = false,
+  transaction?: Transaction,
 ) => {
   // Check if there are any more device/group/station recordings or if the latest recording of this type
   // is not different. If not, set lastRecordingTime to null so that the device will appear as deletable.
-  const cameras = [RecordingType.ThermalRaw];
-  let types = [RecordingType.Audio];
-  if ([RecordingType.ThermalRaw].includes(recording.type)) {
-    types = cameras;
-  }
-  const [
-    latestDeviceRecording,
-    latestGroupRecordingOfSameType,
-    latestStationRecordingOfSameType,
-  ] = await Promise.all([
-    Recording.findOne({
-      where: {
-        DeviceId: recording.DeviceId,
-        deletedAt: null,
-      },
-      order: [["recordingDateTime", "DESC"]],
-    }),
-    Recording.findOne({
-      where: {
-        GroupId: recording.GroupId,
-        deletedAt: null,
-        type: { [Op.in]: types },
-      },
-      order: [["recordingDateTime", "DESC"]],
-    }),
-    Recording.findOne({
-      where: {
-        StationId: recording.StationId,
-        deletedAt: null,
-        type: { [Op.in]: types },
-      },
-      order: [["recordingDateTime", "DESC"]],
-    }),
-  ]);
-  const [device, group] = await Promise.all([
-    Device.findByPk(recording.DeviceId),
-    Group.findByPk(recording.GroupId),
-  ]);
-  if (!latestDeviceRecording) {
-    await device.update({
-      lastRecordingTime: null,
-    });
-  } else if (
-    !device.lastRecordingTime ||
-    latestDeviceRecording.recordingDateTime < device.lastRecordingTime
-  ) {
-    await device.update({
-      lastRecordingTime: latestDeviceRecording.recordingDateTime,
-    });
-  }
-  if (!latestGroupRecordingOfSameType) {
-    if (cameras.includes(recording.type)) {
-      await group.update({
-        lastThermalRecordingTime: null,
-      });
-    } else if (recording.type === RecordingType.Audio) {
-      await group.update({
-        lastAudioRecordingTime: null,
-      });
-    }
-  } else {
-    if (cameras.includes(recording.type)) {
-      if (
-        !group.lastThermalRecordingTime ||
-        latestGroupRecordingOfSameType.recordingDateTime <
-          group.lastThermalRecordingTime
-      ) {
-        await group.update({
-          lastThermalRecordingTime:
-            latestGroupRecordingOfSameType.recordingDateTime,
-        });
-      }
-    } else if (recording.type === RecordingType.Audio) {
-      if (
-        !group.lastAudioRecordingTime ||
-        latestGroupRecordingOfSameType.recordingDateTime <
-          group.lastAudioRecordingTime
-      ) {
-        await group.update({
-          lastAudioRecordingTime:
-            latestGroupRecordingOfSameType.recordingDateTime,
-        });
-      }
-    }
-  }
-  if (recording.StationId) {
-    const station = await Station.findByPk(recording.StationId);
-    if (!latestStationRecordingOfSameType) {
-      if (cameras.includes(recording.type)) {
-        await station.update({
-          lastThermalRecordingTime: null,
-          lastActiveThermalTime: null,
-        });
-      } else if (recording.type === RecordingType.Audio) {
-        await station.update({
-          lastAudioRecordingTime: null,
-          lastActiveAudioTime: null,
-        });
-      }
-    } else {
-      if (cameras.includes(recording.type)) {
-        if (
-          !station.lastThermalRecordingTime ||
-          latestStationRecordingOfSameType.recordingDateTime <
-            station.lastThermalRecordingTime
-        ) {
-          await station.update({
-            lastThermalRecordingTime:
-              latestStationRecordingOfSameType.recordingDateTime,
-          });
-        }
-      } else if (recording.type === RecordingType.Audio) {
-        if (
-          !station.lastAudioRecordingTime ||
-          latestStationRecordingOfSameType.recordingDateTime <
-            station.lastAudioRecordingTime
-        ) {
-          await station.update({
-            lastAudioRecordingTime:
-              latestStationRecordingOfSameType.recordingDateTime,
-          });
-        }
-      }
-    }
-  }
-};
+  const earliestColName =
+    recording.type === RecordingType.ThermalRaw
+      ? "earliestThermalRecordingTime"
+      : "earliestAudioRecordingTime";
+  const lastColName =
+    recording.type === RecordingType.ThermalRaw
+      ? "lastThermalRecordingTime"
+      : "lastAudioRecordingTime";
+  const lastActiveColName =
+    recording.type === RecordingType.ThermalRaw
+      ? "lastActiveThermalTime"
+      : "lastActiveAudioTime";
 
-export const fixupLatestRecordingTimesForUndeletedRecording = async (
-  recording: Recording,
-) => {
-  const cameras = [RecordingType.ThermalRaw];
-  const [device, group] = await Promise.all([
-    Device.findByPk(recording.DeviceId),
-    Group.findByPk(recording.GroupId),
-  ]);
-  if (device) {
-    if (
-      device.lastRecordingTime === null ||
-      recording.recordingDateTime > device.lastRecordingTime
-    ) {
-      await device.update({ lastRecordingTime: recording.recordingDateTime });
-    }
+  const updates = [
+    // Update device
+    Recording.sequelize.query(
+      `
+    UPDATE "Devices" d
+    SET
+      "${earliestColName}"   = agg."${earliestColName}",
+      "${lastColName}"       = agg."${lastColName}"
+    FROM (
+     SELECT
+       r."DeviceId" AS "DeviceId",
+       MIN(r."recordingDateTime") FILTER (
+         WHERE r."type" = :type
+         ) AS "${earliestColName}",
+       MAX(r."recordingDateTime") FILTER (
+         WHERE r."type" = :type
+         ) AS "${lastColName}"
+     FROM "Recordings" r
+     WHERE
+       r."deletedAt" IS NULL
+       AND r."DeviceId" = :deviceId
+     GROUP BY r."DeviceId"
+   ) agg
+    WHERE d."id" = agg."DeviceId";
+  `,
+      {
+        replacements: { deviceId: recording.DeviceId, type: recording.type },
+        type: QueryTypes.UPDATE,
+        transaction,
+      },
+    ), // Update group
+    Recording.sequelize.query(
+      `
+    UPDATE "Groups" g
+    SET
+      "${earliestColName}"   = agg."${earliestColName}",
+      "${lastColName}"       = agg."${lastColName}"   
+    FROM (
+     SELECT
+       r."GroupId" AS "GroupId",
+       MIN(r."recordingDateTime") FILTER (
+         WHERE r."type" = :type
+         ) AS "${earliestColName}",
+       MAX(r."recordingDateTime") FILTER (
+         WHERE r."type" = :type
+         ) AS "${lastColName}"
+     FROM "Recordings" r
+     WHERE
+       r."deletedAt" IS NULL
+       AND r."GroupId" = :groupId
+     GROUP BY r."GroupId"
+   ) agg
+    WHERE g."id" = agg."GroupId";
+  `,
+      {
+        replacements: { groupId: recording.GroupId, type: recording.type },
+        type: QueryTypes.UPDATE,
+        transaction,
+      },
+    ),
+  ];
+
+  if (isNewUploadFromDevice) {
+    // Update station
+    updates.push(
+      Recording.sequelize.query(
+        `
+    UPDATE "Stations" s
+    SET
+      "${earliestColName}"   = agg."${earliestColName}",
+      "${lastColName}"       = agg."${lastColName}",
+      "${lastActiveColName}" = NOW()
+    FROM (
+     SELECT
+       r."StationId" AS "StationId",
+       MIN(r."recordingDateTime") FILTER (
+         WHERE r."type" = :type
+         ) AS "${earliestColName}",
+       MAX(r."recordingDateTime") FILTER (
+         WHERE r."type" = :type
+         ) AS "${lastColName}"
+     FROM "Recordings" r
+     WHERE
+       r."deletedAt" IS NULL
+       AND r."StationId" = :stationId
+     GROUP BY r."StationId"
+   ) agg
+    WHERE s."id" = agg."StationId"
+    AND :isNewUploadFromDevice = true;
+  `,
+        {
+          replacements: {
+            stationId: recording.StationId,
+            type: recording.type,
+            isNewUploadFromDevice,
+          },
+          type: QueryTypes.UPDATE,
+          transaction,
+        },
+      ),
+    );
+  } else {
+    // Update station
+    updates.push(
+      Recording.sequelize.query(
+        `
+    UPDATE "Stations" s
+    SET
+      "${earliestColName}"   = agg."${earliestColName}",
+      "${lastColName}"       = agg."${lastColName}"
+    FROM (
+     SELECT
+       r."StationId" AS "StationId",
+       MIN(r."recordingDateTime") FILTER (
+         WHERE r."type" = :type
+         ) AS "${earliestColName}",
+       MAX(r."recordingDateTime") FILTER (
+         WHERE r."type" = :type
+         ) AS "${lastColName}"
+     FROM "Recordings" r
+     WHERE
+       r."deletedAt" IS NULL
+       AND r."StationId" = :stationId
+     GROUP BY r."StationId"
+   ) agg
+    WHERE s."id" = agg."StationId";
+  `,
+        {
+          replacements: {
+            stationId: recording.StationId,
+            type: recording.type,
+          },
+          type: QueryTypes.UPDATE,
+          transaction,
+        },
+      ),
+    );
   }
-  if (group) {
-    if (
-      group.lastAudioRecordingTime === null ||
-      group.lastThermalRecordingTime === null ||
-      (group.lastAudioRecordingTime &&
-        recording.recordingDateTime > group.lastAudioRecordingTime) ||
-      (group.lastThermalRecordingTime &&
-        recording.recordingDateTime > group.lastThermalRecordingTime)
-    ) {
-      if (
-        (cameras.includes(recording.type) && !group.lastThermalRecordingTime) ||
-        recording.recordingDateTime > group.lastThermalRecordingTime
-      ) {
-        await group.update({
-          lastThermalRecordingTime: recording.recordingDateTime,
-        });
-      } else if (
-        (recording.type === RecordingType.Audio &&
-          !group.lastAudioRecordingTime) ||
-        recording.recordingDateTime > group.lastAudioRecordingTime
-      ) {
-        await group.update({
-          lastAudioRecordingTime: recording.recordingDateTime,
-        });
-      }
-    }
-  }
-  if (recording.StationId) {
-    const station = await Station.findByPk(recording.StationId);
-    if (station) {
-      if (
-        (cameras.includes(recording.type) &&
-          !station.lastThermalRecordingTime) ||
-        recording.recordingDateTime > station.lastThermalRecordingTime
-      ) {
-        await station.update({
-          lastThermalRecordingTime: recording.recordingDateTime,
-        });
-      } else if (
-        (recording.type === RecordingType.Audio &&
-          !station.lastAudioRecordingTime) ||
-        recording.recordingDateTime > station.lastAudioRecordingTime
-      ) {
-        await station.update({
-          lastAudioRecordingTime: recording.recordingDateTime,
-        });
-      }
-    }
-  }
+  // TODO: Check if this will correctly NULL out times if there are no recordings.
+  return Promise.all(updates);
 };

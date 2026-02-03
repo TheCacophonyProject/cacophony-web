@@ -11,19 +11,17 @@ import { logTestDescription, prettyLog } from "../descriptions";
 import {
   ApiDeviceIdAndName,
   ApiRecordingColumns,
-  ApiRecordingNeedsTagReturned,
   ApiRecordingSet,
   ApiRecordingStation,
-  ApiTrackSet,
   TestThermalRecordingInfo,
   ApiRecordingForProcessing,
   ApiRecordingModel,
 } from "../types";
 
-import { NOT_NULL, NOT_NULL_STRING, filtered_tags } from "../constants";
+import { filtered_tags } from "../constants";
 import { ApiRecordingResponse } from "@typedefs/api/recording";
 import { ApiRecordingTagResponse } from "@typedefs/api/tag";
-import { ApiTrackResponse } from "@typedefs/api/track";
+import { ApiTrackDataRequest, ApiTrackResponse } from "@typedefs/api/track";
 import {
   HttpStatusCode,
   RecordingProcessingState,
@@ -34,6 +32,140 @@ import { LatLng, RecordingId } from "@typedefs/api/common";
 const BASE_URL = Cypress.env("base-url-returned-in-links");
 
 let lastUsedTime = DEFAULT_DATE;
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Cypress {
+    interface Chainable {
+      /**
+       * Upload a single recording to for a particular camera using pre-rolled test metadata
+       * using api/v1/recordings (POST)
+       * Optionally check for a non-200 statusCode
+       * Optionally, save the id against provided recordingName
+       * Optionally specify the filename to upload (from fixtures directory)
+       */
+      testUploadRecording(
+        deviceName: string,
+        details: TestThermalRecordingInfoAlias,
+        recordingName?: string,
+        fileName?: string,
+        statusCode?: HttpStatusCode,
+        additionalChecks?: object,
+      ): Cypress.Chainable<RecordingId>;
+
+      /**
+       * Upload a single recording to for a particular camera using pre-rolled test metadata
+       * using api/v1/recordings/device/{name}/device{name} (POST)
+       * Add un behalf using user's credentials and specifying group and device
+       * Optionally, save the id against provided recordingName
+       * Optionally check for a non-200 statusCode
+       * Optionally specify the filename to upload (from fixtures directory)
+       */
+      testUploadRecordingOnBehalfUsingGroup(
+        userName: string,
+        deviceName: string,
+        groupName: string,
+        details: TestThermalRecordingInfo,
+        recordingName?: string,
+        fileName?: string,
+        statusCode?: number,
+        additionalChecks?: {
+          useRawDeviceName?: boolean;
+          useRawGroupName?: boolean;
+          message?: string;
+        },
+      ): Cypress.Chainable<RecordingId>;
+
+      /**
+       * Upload a single recording to for a particular camera using pre-rolled test metadata
+       * using api/v1/recordings/device/{idOrName} (POST)
+       * Add on behalf using user's credentials and specifying device id or name
+       * Optionally, save the id against provided recordingName
+       * Optionally check for a non-200 statusCode
+       * Optionally specify the filename to upload (from fixtures directory)
+       */
+      testUploadRecordingOnBehalfUsingDevice(
+        userName: string,
+        deviceName: string,
+        details: TestThermalRecordingInfo,
+        recordingName?: string,
+        fileName?: string,
+        statusCode?: number,
+        additionalChecks?: {
+          useRawDeviceName?: boolean;
+          useRawGroupName?: boolean;
+          message?: string;
+        },
+      ): Cypress.Chainable<RecordingId>;
+
+      testAddRecordingThenUserTag(
+        deviceName: string,
+        details: TestThermalRecordingInfo,
+        tagger: string,
+        tag: string,
+      ): Cypress.Chainable<RecordingId>;
+
+      /**
+       * Replaces an existing track tag for a recording.
+       */
+      testUserTagRecording(
+        recordingId: number,
+        trackIndex: number,
+        tagger: string,
+        tag: string,
+      ): Chainable<void>;
+
+      /**
+       * Adds a new user track tag to a recording.
+       */
+      testUserAddTagRecording(
+        recordingId: number,
+        trackIndex: number,
+        tagger: string,
+        tag: string,
+      ): Chainable<void>;
+
+      testAddRecordingsAtTimes(
+        deviceName: string,
+        times: string[],
+        location: { lat: number; lng: number },
+      ): Cypress.Chainable<RecordingId[]>;
+
+      // to be run straight after an apiRecordingAdd
+      thenUserTagAs(tagger: string, tag: string): Chainable<void>;
+
+      /**
+       * Check recording count for device matches expected value
+       */
+      testCheckDeviceHasRecordings(
+        userName: string,
+        deviceName: string,
+        count: number,
+      ): Chainable<void>;
+      /**
+       * Return a list of recording ids that match a query
+       */
+
+      testGetRecordingIdsForQuery(
+        userName: string,
+        where: {
+          type: RecordingType;
+          processingState: RecordingProcessingState;
+        },
+      ): Cypress.Chainable<RecordingId[]>;
+
+      /**
+       * Delete all recordings matching state and type
+       * (requires a superuser to be signed in prior using apiSignInAs ...)
+       */
+      testDeleteRecordingsInState(
+        superuser: string,
+        type: RecordingType,
+        state: RecordingProcessingState,
+      ): Chainable<void>;
+    }
+  }
+}
 
 Cypress.Commands.add(
   "testDeleteRecordingsInState",
@@ -75,10 +207,10 @@ Cypress.Commands.add(
   (
     deviceName: string,
     details: TestThermalRecordingInfo,
-    recordingName: string = "recording1",
-    fileName: string = "invalid.cptv",
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    recordingName = "recording1",
+    fileName = "invalid.cptv",
+    statusCode = 200,
+    additionalChecks: object = {},
   ) => {
     const data = makeRecordingDataFromDetails(details);
     cy.apiRecordingAdd(
@@ -99,10 +231,14 @@ Cypress.Commands.add(
     deviceName: string,
     groupName: string,
     details: TestThermalRecordingInfo,
-    recordingName: string = "recording1",
-    fileName: string = "invalid.cptv",
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    recordingName = "recording1",
+    fileName = "invalid.cptv",
+    statusCode = 200,
+    additionalChecks: {
+      useRawDeviceName?: boolean;
+      useRawGroupName?: boolean;
+      message?: string;
+    } = {},
   ) => {
     const data = makeRecordingDataFromDetails(details);
     cy.apiRecordingAddOnBehalfUsingGroup(
@@ -124,10 +260,14 @@ Cypress.Commands.add(
     userName: string,
     deviceName: string,
     details: TestThermalRecordingInfo,
-    recordingName: string = "recording1",
-    fileName: string = "invalid.cptv",
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    recordingName = "recording1",
+    fileName = "invalid.cptv",
+    statusCode = 200,
+    additionalChecks: {
+      useRawDeviceName?: boolean;
+      useRawGroupName?: boolean;
+      message?: string;
+    } = {},
   ) => {
     const data = makeRecordingDataFromDetails(details);
     cy.apiRecordingAddOnBehalfUsingDevice(
@@ -176,14 +316,14 @@ Cypress.Commands.add(
         url: v1ApiPath(`recordings/${recordingId}/tracks`),
       },
       tagger,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ tracks: ApiTrackResponse[] }>) => {
       makeAuthorizedRequest(
         {
           method: "POST",
           url: v1ApiPath(
             `recordings/${recordingId}/tracks/${response.body.tracks[trackIndex].id}/replace-tag`,
           ),
-          body: { what: tag, confidence: 0.7, automatic: false },
+          body: { what: tag, confidence: 70, automatic: false },
         },
         tagger,
       );
@@ -207,14 +347,14 @@ Cypress.Commands.add(
         url: v1ApiPath(`recordings/${recordingId}/tracks`),
       },
       tagger,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ tracks: ApiTrackResponse[] }>) => {
       makeAuthorizedRequest(
         {
           method: "POST",
           url: v1ApiPath(
             `recordings/${recordingId}/tracks/${response.body.tracks[trackIndex].id}/tags`,
           ),
-          body: { what: tag, confidence: 0.7, automatic: false },
+          body: { what: tag, confidence: 70, automatic: false },
         },
         tagger,
       );
@@ -301,7 +441,7 @@ function getDateForRecordings(details: TestThermalRecordingInfo): Date {
 function addTracksToRecording(
   data: ApiRecordingSet,
   model: string,
-  trackDetails?: ApiTrackSet[],
+  trackDetails?: ApiTrackDataRequest[],
   tags?: string[],
 ): void {
   data.metadata = {
@@ -320,12 +460,13 @@ function addTracksToRecording(
       predictions: [
         {
           confident_tag: confident_tag,
-          confidence: 0.9,
+          confidence: 90,
+          confident: true,
           model_id: 1,
         },
       ],
-      start_s: undefined,
-      end_s: undefined,
+      start_s: 0,
+      end_s: 0,
     }));
   }
 
@@ -342,7 +483,7 @@ function addTracksToRecording(
           {
             model_id: 1,
             confident_tag: tag,
-            confidence: 0.9,
+            confidence: 90,
           },
         ],
       };
@@ -356,7 +497,7 @@ function addTracksToRecording(
         {
           model_id: 1,
           confident_tag: "possum",
-          confidence: 0.5,
+          confidence: 50,
         },
       ],
     });
@@ -365,7 +506,7 @@ function addTracksToRecording(
 
 Cypress.Commands.add(
   "testGetRecordingIdsForQuery",
-  (userName: string, where: any) => {
+  (userName: string, where: object) => {
     const user = getCreds(userName);
     const params = {
       where: JSON.stringify(removeUndefinedParams(where)),
@@ -374,10 +515,10 @@ Cypress.Commands.add(
     cy.request({
       url: fullUrl,
       headers: user.headers,
-    }).then((response) => {
+    }).then((response: Cypress.Response<{ rows: ApiRecordingResponse[] }>) => {
       let recordingIds = [];
       const recordings = response.body.rows;
-      recordingIds = recordings.map((recording: any) => recording.id);
+      recordingIds = recordings.map((recording) => recording.id);
       cy.wrap(recordingIds);
     });
   },
@@ -405,7 +546,7 @@ Cypress.Commands.add(
 export function checkRecording(
   userName: string,
   recordingId: number,
-  checkFunction: any,
+  checkFunction: (recording: ApiRecordingResponse) => unknown,
 ) {
   cy.log(`recording id is ${recordingId}`);
   makeAuthorizedRequest(
@@ -413,8 +554,8 @@ export function checkRecording(
       url: v1ApiPath(`recordings/${recordingId}`),
     },
     userName,
-  ).then((response) => {
-    let rtrn: any = undefined;
+  ).then((response: Cypress.Response<{ recording: ApiRecordingResponse }>) => {
+    let rtrn: unknown;
     const recording = response.body.recording;
     if (recording !== undefined) {
       rtrn = checkFunction(recording);
@@ -450,36 +591,6 @@ export function TestCreateExpectedProcessingData(
     type: "Point",
   };
   expected.recordingDateTime = recording.recordingDateTime;
-  return expected;
-}
-
-export function TestCreateExpectedNeedsTagData(
-  template: ApiRecordingNeedsTagReturned,
-  recordingName: string,
-  deviceName: string,
-  inputRecording: any,
-): ApiRecordingNeedsTagReturned {
-  const expected = JSON.parse(JSON.stringify(template));
-  const deviceId = getCreds(deviceName).id;
-
-  expected.DeviceId = deviceId;
-  expected.RecordingId = getCreds(recordingName).id;
-  expected.duration = inputRecording.duration;
-  expected.recordingJWT = NOT_NULL_STRING;
-  expected.tagJWT = NOT_NULL_STRING;
-  expected.tracks = [];
-  inputRecording.metadata.tracks.forEach((track: any) => {
-    expected.tracks.push({
-      trackId: NOT_NULL,
-      id: NOT_NULL,
-      start: track.start_s,
-      end: track.end_s,
-      needsTagging: true,
-      positions: positionResponseFromSet(track.positions),
-      numFrames: track.num_frames,
-    });
-  });
-
   return expected;
 }
 
@@ -530,7 +641,7 @@ export function TestCreateExpectedRecordingColumns(
     BASE_URL + "/recording/" + getCreds(recordingName).id.toString();
   if (inputRecording && inputRecording.cacophonyIndex) {
     expected["Cacophony Index"] = inputRecording.cacophonyIndex
-      .map((ci: any) => ci.index_percent)
+      .map((ci) => ci.index_percent)
       .join(";");
   } else {
     expected["Cacophony Index"] = "";
@@ -546,9 +657,9 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   deviceName: string,
   groupName: string,
   stationName: string,
-  inputRecording: any,
-  includePositions: boolean = true,
-  minimal: boolean = false,
+  inputRecording: ApiRecordingSet,
+  includePositions = true,
+  minimal = false,
 ): T {
   const inputTrackData = inputRecording.metadata;
   const expected = JSON.parse(JSON.stringify(template));
@@ -685,7 +796,6 @@ export function predictionResponseFromSet(
       newTp["clarity"] = tp.clarity;
       newTp["raw_tag"] = tp.label;
       newTp["predictions"] = tp.predictions;
-      newTp["prediction_frames"] = tp.prediction_frames;
       newTp["all_class_confidences"] = tp.all_class_confidences;
       tps.push(newTp);
     });
@@ -694,16 +804,15 @@ export function predictionResponseFromSet(
 }
 
 export function trackResponseFromSet(
-  tracks: ApiTrackSet[],
+  tracks: ApiTrackDataRequest[],
   models: ApiRecordingModel[],
-  includePositions: boolean = true,
+  includePositions = true,
 ) {
   const expected: ApiTrackResponse[] = [];
   if (tracks) {
-    tracks.forEach((track: any) => {
+    tracks.forEach((track) => {
       let filtered = true;
       const tpos = positionResponseFromSet(track.positions);
-      const tpreddata = predictionResponseFromSet(track.predictions, models);
 
       const newTrack: ApiTrackResponse = {
         id: -99,
@@ -719,14 +828,14 @@ export function trackResponseFromSet(
       if (
         track.predictions &&
         track.predictions.length &&
-        track.predictions[0].confident_tag !== undefined
+        track.predictions[0].confident
       ) {
-        if (filtered_tags.indexOf(track.predictions[0].confident_tag) === -1) {
+        if (filtered_tags.indexOf(track.predictions[0].tag) === -1) {
           filtered = false;
         }
         newTrack.tags = [
           {
-            what: track.predictions[0].confident_tag,
+            what: track.predictions[0].tag,
             automatic: true,
             trackId: -99,
             model: "Master",

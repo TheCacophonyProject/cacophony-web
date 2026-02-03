@@ -26,18 +26,26 @@ describe("Monitoring : filters", () => {
       cy.testUploadRecording(cameraRabbits, {
         time: date1,
         tags: ["rabbit"],
+        lat: -42,
+        lng: 170,
       });
       cy.testUploadRecording(cameraHedgehogs, {
         time: date2,
         tags: ["hedgehog"],
+        lat: -42,
+        lng: 170,
       });
       cy.testUploadRecording(cameraHedgehogs, {
         time: date3,
         tags: ["hedgehog"],
+        lat: -42,
+        lng: 170,
       });
       cy.testUploadRecording(cameraRabbits, {
         time: date4,
         tags: ["rabbit"],
+        lat: -42,
+        lng: 170,
       });
     }
   });

@@ -95,13 +95,13 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
   const tag1: ApiTrackTagRequest = {
     what: "possum",
-    confidence: 0.95,
+    confidence: 95,
     automatic: false,
   };
 
   const tag2: ApiTrackTagRequest = {
     what: "cat",
-    confidence: 0.54,
+    confidence: 54,
     automatic: false,
   };
 
@@ -112,7 +112,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
   };
 
   const expectedTag1: ApiHumanTrackTagResponse = {
-    confidence: 0.95,
+    confidence: 95,
     createdAt: NOT_NULL_STRING,
     model: null,
     path: "all",
@@ -126,7 +126,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
   };
 
   const expectedTag2: ApiHumanTrackTagResponse = {
-    confidence: 0.54,
+    confidence: 54,
     createdAt: NOT_NULL_STRING,
     model: null,
     path: "all",
@@ -685,8 +685,8 @@ describe("Track Tags: replaceTag, check, delete", () => {
     const expectedTrackWithTags = JSON.parse(JSON.stringify(expectedTrack1));
     const tag1a = JSON.parse(JSON.stringify(tag1));
     const tag1b = JSON.parse(JSON.stringify(tag1));
-    tag1a.confidence = 0.9;
-    tag1b.confidence = 0.901;
+    tag1a.confidence = 90;
+    tag1b.confidence = 91;
 
     expectedTrackWithTags.tags = [
       JSON.parse(JSON.stringify(expectedTag1)),
@@ -694,10 +694,10 @@ describe("Track Tags: replaceTag, check, delete", () => {
     ];
     expectedTrackWithTags.filtered = false;
     expectedTrackWithTags.tags[0].userName = getTestName("ttgGroupMember");
-    expectedTrackWithTags.tags[0].confidence = 0.9;
+    expectedTrackWithTags.tags[0].confidence = 90;
     //expectedTrackWithTags.tags[0].userId=getCreds("ttgGroup1Member2").id;
     expectedTrackWithTags.tags[1].userName = getTestName("ttgGroup1Member2");
-    expectedTrackWithTags.tags[1].confidence = 0.901;
+    expectedTrackWithTags.tags[1].confidence = 91;
     //expectedTrackWithTags.tags[1].userId=getCreds("ttgGroupMember").id;
 
     cy.log("Add recording, track and tag");
@@ -1036,7 +1036,7 @@ describe("Track Tags: replaceTag, check, delete", () => {
 
     const tag1 = {
       what: "possum",
-      confidence: 0.95,
+      confidence: 95,
       automatic: false,
       //data: {fieldName: "fieldValue"}
     };

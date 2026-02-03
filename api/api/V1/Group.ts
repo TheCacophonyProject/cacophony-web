@@ -128,12 +128,22 @@ const mapGroup = (
     groupData.lastAudioRecordingTime =
       group.lastAudioRecordingTime.toISOString();
   }
+  if (group.earliestThermalRecordingTime) {
+    groupData.earliestThermalRecordingTime =
+      group.earliestThermalRecordingTime.toISOString();
+  }
+  if (group.earliestAudioRecordingTime) {
+    groupData.earliestAudioRecordingTime =
+      group.earliestAudioRecordingTime.toISOString();
+  }
   const pending = !viewAsSuperAdmin && group.Users[0].GroupUsers.pending;
   if (pending) {
     groupData.pending = pending;
     // If the user is only pending, they shouldn't see these fields.
     delete groupData.lastAudioRecordingTime;
     delete groupData.lastThermalRecordingTime;
+    delete groupData.earliestAudioRecordingTime;
+    delete groupData.earliestThermalRecordingTime;
     delete groupData.userSettings;
     delete groupData.settings;
   }
@@ -890,7 +900,7 @@ export default function (app: Application, baseUrl: string) {
           MIN_STATION_SEPARATION_METERS
         ) {
           proximityWarnings.push(
-            `New station is too close to ${existingStation.name} (#${existingStation.id}) - recordings may be incorrectly matched`,
+            `New location is too close to ${existingStation.name} (#${existingStation.id}) - recordings may be incorrectly matched`,
           );
         }
       }
@@ -901,7 +911,7 @@ export default function (app: Application, baseUrl: string) {
       if (nameCollision) {
         return next(
           new ClientError(
-            `An active station with that name already exists in the time window ${fromTime.toISOString()} - ${
+            `An active location with that name already exists in the time window ${fromTime.toISOString()} - ${
               (untilTime && untilTime.toISOString()) || "now"
             }.`,
           ),

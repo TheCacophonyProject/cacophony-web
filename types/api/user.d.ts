@@ -7,6 +7,13 @@ export interface ApiUserResponse {
   email?: string; // Email address of user (if superadmin)
 }
 
+export interface ApiUserUpdateRequest {
+  userName?: string;
+  email?: string;
+  password?: string;
+  endUserAgreement?: number;
+}
+
 export interface ApiLoggedInUserResponse extends ApiUserResponse {
   email: string;
   globalPermission: UserGlobalPermission;

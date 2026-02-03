@@ -1,11 +1,11 @@
-import { NOT_NULL_STRING, EXCLUDE_IDS } from "@commands/constants";
+import { EXCLUDE_IDS, NOT_NULL_STRING } from "@commands/constants";
 
 import { getCreds } from "@commands/server";
 
 import {
   ApiAlertConditions,
-  ApiRecordingSet,
   ApiRecordingForProcessing,
+  ApiRecordingSet,
 } from "@commands/types";
 
 import {
@@ -111,12 +111,12 @@ describe("Recordings - reprocessing tests", () => {
       cy.testDeleteRecordingsInState(
         superuser,
         RecordingType.ThermalRaw,
-        "analyse.test",
+        RecordingProcessingState.AnalyseTest,
       );
       cy.testDeleteRecordingsInState(
         superuser,
         RecordingType.Audio,
-        "analyse.test",
+        RecordingProcessingState.AnalyseTest,
       );
       //TODO: API nees to implemnt a .test stream so we can avoid trashing (and picking up) analyse and reprocess files
       //from other users
@@ -624,7 +624,7 @@ describe("Recordings - reprocessing tests", () => {
                     path: "all",
                     automatic: true,
                     trackId: getCreds("rrpTrack18").id,
-                    confidence: 0.9,
+                    confidence: 90,
                     model: "Master",
                     id: -1,
                   },
@@ -643,7 +643,7 @@ describe("Recordings - reprocessing tests", () => {
               "rrpTrack18",
               "rrpRecording18",
               "possum",
-              0.9,
+              90,
               { name: "Master" },
             );
             cy.apiRecordingCheck(
@@ -738,7 +738,7 @@ describe("Recordings - reprocessing tests", () => {
             "rrpTrack20",
             "rrpRecording20",
             "possum",
-            0.9,
+            90,
             {
               name: "Master",
               clarity: 1,
@@ -746,7 +746,6 @@ describe("Recordings - reprocessing tests", () => {
               model_used: "Inc3",
               predictions: [],
               classify_time: 1.2,
-              prediction_frames: [],
               all_class_confidences: { possum: 1 },
             },
           ).then(() => {
@@ -775,8 +774,6 @@ describe("Recordings - reprocessing tests", () => {
       });
     });
 
-
-
     it("Reprocess only tries to reprocess supplied recording if you request as a super user", () => {
       const recording22 = TestCreateRecordingData(templateRecording);
       const recording21 = TestCreateRecordingData(templateRecording);
@@ -792,12 +789,12 @@ describe("Recordings - reprocessing tests", () => {
         "oneframe.cptv",
         "rrpRecording21",
       ).then(() => {
-              cy.apiRecordingAdd(
-        "rrpCamera1",
-        recording22,
-        "oneframe.cptv",
-        "rrpRecording22",
-      );
+        cy.apiRecordingAdd(
+          "rrpCamera1",
+          recording22,
+          "oneframe.cptv",
+          "rrpRecording22",
+        );
         expectedRecording1 = TestCreateExpectedRecordingData(
           templateExpectedRecording,
           "rrpRecording21",
@@ -842,11 +839,9 @@ describe("Recordings - reprocessing tests", () => {
         );
       });
     });
-
   } else {
     it.skip(
       "NOTE: reprocess tests disables as environment variables have superuser access disabled",
     );
   }
 });
-

@@ -1,4 +1,9 @@
-import type { GroupId, IsoFormattedDateString, StationId, TrackId } from "./common.ts";
+import type {
+  GroupId,
+  IsoFormattedDateString,
+  StationId,
+  TrackId,
+} from "./common.ts";
 import { RecordingProcessingState, RecordingType } from "./consts.ts";
 
 export interface MonitoringRequest {
@@ -36,10 +41,10 @@ interface VisitRecordingTag {
 }
 
 export interface ApiVisitResponseRecording {
-    recId: number;
-    start: string;
-    tracks: VisitRecordingTag[];
-    processingState: RecordingProcessingState;
+  recId: number;
+  start: string;
+  tracks: VisitRecordingTag[];
+  processingState: RecordingProcessingState;
 }
 
 export interface ApiVisitResponse {
