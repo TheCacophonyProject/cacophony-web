@@ -637,10 +637,10 @@ export const maybeUpdateDeviceHistory = async (
     const lastLocation = device.location;
     if (
       setBy === "config" &&
-      (!device.lastRecordingTime || dateTime > device.lastRecordingTime) &&
       (!lastLocation ||
         (lastLocation && !locationsAreEqual(lastLocation, location)))
     ) {
+      // FIXME: Do we have any test coverage for this?
       await device.sequelize.transaction(async (transaction) => {
         await Device.update(
           {
@@ -649,9 +649,18 @@ export const maybeUpdateDeviceHistory = async (
           {
             where: {
               id: device.id,
-              lastRecordingTime: {
-                [Op.or]: [{ [Op.lt]: dateTime }, { [Op.eq]: null }],
-              },
+              [Op.or]: [
+                {
+                  lastThermalRecordingTime: {
+                    [Op.or]: [{ [Op.lt]: dateTime }, { [Op.eq]: null }],
+                  },
+                },
+                {
+                  lastAudioRecordingTime: {
+                    [Op.or]: [{ [Op.lt]: dateTime }, { [Op.eq]: null }],
+                  },
+                },
+              ],
             },
             transaction,
           },
@@ -1064,7 +1073,6 @@ export async function bulkDelete(
   }
 
   const builder = new Recording.queryBuilder().init(requestUserId, options);
-
   const recordings = (await Recording.findAll(builder.get())) as Recording[];
   if (recordings.length === 0) {
     throw new Error("No recordings found to delete");
@@ -1072,13 +1080,41 @@ export async function bulkDelete(
   const deletion = { deletedAt: new Date(), deletedBy: requestUserId };
   const ids = recordings.map((value) => value.id);
   const deletedValues = (await Recording.update(deletion, {
-    where: { id: ids },
+    where: { id: ids, deletedAt: { [Op.eq]: null } },
     returning: ["id"],
   })) as unknown as Promise<[number, { id: number }[]]>;
 
-  // FIXME: Only need to fixup latest recordings of each type, per device, project and location
+  // For each set of recordings to delete or undelete, we need to get the unique stations and devices,
+  // and then fixup the latest recording times for each device and station and group.
+  const uniqueByStation = new Map();
+  const uniqueByDevice = new Map();
+  const uniqueByGroup = new Map();
   for (const recording of recordings) {
-    await fixupLatestRecordingTimesForDeletedRecording(recording);
+    const stationKey = `${recording.StationId}_${recording.type}`;
+    const deviceKey = `${recording.DeviceId}_${recording.type}`;
+    const groupKey = `${recording.GroupId}_${recording.type}`;
+    if (!uniqueByStation.has(stationKey)) {
+      uniqueByStation.set(stationKey, recording);
+    }
+    if (!uniqueByDevice.has(deviceKey)) {
+      uniqueByDevice.set(deviceKey, recording);
+    }
+    if (!uniqueByGroup.has(groupKey)) {
+      uniqueByGroup.set(groupKey, recording);
+    }
+  }
+  const fixups = [];
+  for (const recording of uniqueByStation.values()) {
+    fixups.push(updateRecordingTimeBookkeeping(recording));
+  }
+  for (const recording of uniqueByDevice.values()) {
+    fixups.push(updateRecordingTimeBookkeeping(recording));
+  }
+  for (const recording of uniqueByGroup.values()) {
+    fixups.push(updateRecordingTimeBookkeeping(recording));
+  }
+  if (fixups.length) {
+    await Promise.all(fixups);
   }
   if (deletedValues[1]) {
     return deletedValues[1].map((value: { id: RecordingId }) => value.id);
@@ -1737,202 +1773,159 @@ export async function _sendEventAlerts(
   return alerts;
 }
 
-export const fixupLatestRecordingTimesForDeletedRecording = async (
+export const updateRecordingTimeBookkeeping = async (
   recording: Recording,
+  isNewUploadFromDevice = false,
 ) => {
   // Check if there are any more device/group/station recordings or if the latest recording of this type
   // is not different. If not, set lastRecordingTime to null so that the device will appear as deletable.
-  const cameras = [RecordingType.ThermalRaw];
-  let types = [RecordingType.Audio];
-  if ([RecordingType.ThermalRaw].includes(recording.type)) {
-    types = cameras;
-  }
-  const [
-    latestDeviceRecording,
-    latestGroupRecordingOfSameType,
-    latestStationRecordingOfSameType,
-  ] = await Promise.all([
-    Recording.findOne({
-      where: {
-        DeviceId: recording.DeviceId,
-        deletedAt: null,
-      },
-      order: [["recordingDateTime", "DESC"]],
-    }),
-    Recording.findOne({
-      where: {
-        GroupId: recording.GroupId,
-        deletedAt: null,
-        type: { [Op.in]: types },
-      },
-      order: [["recordingDateTime", "DESC"]],
-    }),
-    Recording.findOne({
-      where: {
-        StationId: recording.StationId,
-        deletedAt: null,
-        type: { [Op.in]: types },
-      },
-      order: [["recordingDateTime", "DESC"]],
-    }),
-  ]);
-  const [device, group, station] = await Promise.all([
-    Device.findByPk(recording.DeviceId),
-    Group.findByPk(recording.GroupId),
-    Station.findByPk(recording.StationId),
-  ]);
-  const updates = [];
-  if (!latestDeviceRecording) {
-    updates.push(
-      device.update({
-        lastRecordingTime: null,
-      }),
-    );
-  } else if (
-    !device.lastRecordingTime ||
-    latestDeviceRecording.recordingDateTime < device.lastRecordingTime
-  ) {
-    updates.push(
-      device.update({
-        lastRecordingTime: latestDeviceRecording.recordingDateTime,
-      }),
-    );
-  }
-  if (!latestGroupRecordingOfSameType) {
-    if (cameras.includes(recording.type)) {
-      updates.push(
-        group.update({
-          lastThermalRecordingTime: null,
-        }),
-      );
-    } else if (recording.type === RecordingType.Audio) {
-      updates.push(
-        group.update({
-          lastAudioRecordingTime: null,
-        }),
-      );
-    }
-  } else {
-    if (cameras.includes(recording.type)) {
-      if (
-        !group.lastThermalRecordingTime ||
-        latestGroupRecordingOfSameType.recordingDateTime <
-          group.lastThermalRecordingTime
-      ) {
-        updates.push(
-          group.update({
-            lastThermalRecordingTime:
-              latestGroupRecordingOfSameType.recordingDateTime,
-          }),
-        );
-      }
-    } else if (recording.type === RecordingType.Audio) {
-      if (
-        !group.lastAudioRecordingTime ||
-        latestGroupRecordingOfSameType.recordingDateTime <
-          group.lastAudioRecordingTime
-      ) {
-        updates.push(
-          group.update({
-            lastAudioRecordingTime:
-              latestGroupRecordingOfSameType.recordingDateTime,
-          }),
-        );
-      }
-    }
-  }
+  const earliestColName =
+    recording.type === RecordingType.ThermalRaw
+      ? "earliestThermalRecordingTime"
+      : "earliestAudioRecordingTime";
+  const lastColName =
+    recording.type === RecordingType.ThermalRaw
+      ? "lastThermalRecordingTime"
+      : "lastAudioRecordingTime";
+  const lastActiveColName =
+    recording.type === RecordingType.ThermalRaw
+      ? "lastActiveThermalTime"
+      : "lastActiveAudioTime";
 
-  if (!latestStationRecordingOfSameType) {
-    if (cameras.includes(recording.type)) {
-      updates.push(
-        station.update({
-          lastThermalRecordingTime: null,
-          lastActiveThermalTime: null,
-        }),
-      );
-    } else if (recording.type === RecordingType.Audio) {
-      updates.push(
-        station.update({
-          lastAudioRecordingTime: null,
-          lastActiveAudioTime: null,
-        }),
-      );
-    }
-  } else {
-    if (cameras.includes(recording.type)) {
-      if (
-        !station.lastThermalRecordingTime ||
-        latestStationRecordingOfSameType.recordingDateTime <
-          station.lastThermalRecordingTime
-      ) {
-        updates.push(
-          station.update({
-            lastThermalRecordingTime:
-              latestStationRecordingOfSameType.recordingDateTime,
-          }),
-        );
-      }
-    } else if (recording.type === RecordingType.Audio) {
-      if (
-        !station.lastAudioRecordingTime ||
-        latestStationRecordingOfSameType.recordingDateTime <
-          station.lastAudioRecordingTime
-      ) {
-        updates.push(
-          station.update({
-            lastAudioRecordingTime:
-              latestStationRecordingOfSameType.recordingDateTime,
-          }),
-        );
-      }
-    }
-  }
-  await Promise.all(updates);
-};
+  const updates = [
+    // Update device
+    Recording.sequelize.query(
+      `
+    UPDATE "Devices" d
+    SET
+      "${earliestColName}"   = agg."${earliestColName}",
+      "${lastColName}"       = agg."${lastColName}"
+    FROM (
+     SELECT
+       r."DeviceId" AS "DeviceId",
+       MIN(r."recordingDateTime") FILTER (
+         WHERE r."type" = :type
+         ) AS "${earliestColName}",
+       MAX(r."recordingDateTime") FILTER (
+         WHERE r."type" = :type
+         ) AS "${lastColName}"
+     FROM "Recordings" r
+     WHERE
+       r."deletedAt" IS NULL
+       AND r."DeviceId" = :deviceId
+     GROUP BY r."DeviceId"
+   ) agg
+    WHERE d."id" = agg."DeviceId";
+  `,
+      {
+        replacements: { deviceId: recording.DeviceId, type: recording.type },
+        type: QueryTypes.UPDATE,
+      },
+    ), // Update group
+    Recording.sequelize.query(
+      `
+    UPDATE "Groups" g
+    SET
+      "${earliestColName}"   = agg."${earliestColName}",
+      "${lastColName}"       = agg."${lastColName}"   
+    FROM (
+     SELECT
+       r."GroupId" AS "GroupId",
+       MIN(r."recordingDateTime") FILTER (
+         WHERE r."type" = :type
+         ) AS "${earliestColName}",
+       MAX(r."recordingDateTime") FILTER (
+         WHERE r."type" = :type
+         ) AS "${lastColName}"
+     FROM "Recordings" r
+     WHERE
+       r."deletedAt" IS NULL
+       AND r."GroupId" = :groupId
+     GROUP BY r."GroupId"
+   ) agg
+    WHERE g."id" = agg."GroupId";
+  `,
+      {
+        replacements: { groupId: recording.GroupId, type: recording.type },
+        type: QueryTypes.UPDATE,
+      },
+    ),
+  ];
 
-export const fixupLatestRecordingTimesForUndeletedRecording = async (
-  recording: Recording,
-) => {
-  const [device, group, station] = await Promise.all([
-    Device.findByPk(recording.DeviceId),
-    Group.findByPk(recording.GroupId),
-    Station.findByPk(recording.StationId),
-  ]);
-  const updates = [];
-  if (
-    device &&
-    (!device.lastRecordingTime ||
-      recording.recordingDateTime > device.lastRecordingTime)
-  ) {
+  if (isNewUploadFromDevice) {
+    // Update station
     updates.push(
-      device.update({ lastRecordingTime: recording.recordingDateTime }),
+      Recording.sequelize.query(
+        `
+    UPDATE "Stations" s
+    SET
+      "${earliestColName}"   = agg."${earliestColName}",
+      "${lastColName}"       = agg."${lastColName}",
+      "${lastActiveColName}" = NOW()
+    FROM (
+     SELECT
+       r."StationId" AS "StationId",
+       MIN(r."recordingDateTime") FILTER (
+         WHERE r."type" = :type
+         ) AS "${earliestColName}",
+       MAX(r."recordingDateTime") FILTER (
+         WHERE r."type" = :type
+         ) AS "${lastColName}"
+     FROM "Recordings" r
+     WHERE
+       r."deletedAt" IS NULL
+       AND r."StationId" = :stationId
+     GROUP BY r."StationId"
+   ) agg
+    WHERE s."id" = agg."StationId"
+    AND :isNewUploadFromDevice = true;
+  `,
+        {
+          replacements: {
+            stationId: recording.StationId,
+            type: recording.type,
+            isNewUploadFromDevice,
+          },
+          type: QueryTypes.UPDATE,
+        },
+      ),
+    );
+  } else {
+    // Update station
+    updates.push(
+      Recording.sequelize.query(
+        `
+    UPDATE "Stations" s
+    SET
+      "${earliestColName}"   = agg."${earliestColName}",
+      "${lastColName}"       = agg."${lastColName}"
+    FROM (
+     SELECT
+       r."StationId" AS "StationId",
+       MIN(r."recordingDateTime") FILTER (
+         WHERE r."type" = :type
+         ) AS "${earliestColName}",
+       MAX(r."recordingDateTime") FILTER (
+         WHERE r."type" = :type
+         ) AS "${lastColName}"
+     FROM "Recordings" r
+     WHERE
+       r."deletedAt" IS NULL
+       AND r."StationId" = :stationId
+     GROUP BY r."StationId"
+   ) agg
+    WHERE s."id" = agg."StationId";
+  `,
+        {
+          replacements: {
+            stationId: recording.StationId,
+            type: recording.type,
+          },
+          type: QueryTypes.UPDATE,
+        },
+      ),
     );
   }
-  // FIXME: Make these updates look more atomic
-  const updateColumn =
-    recording.type === RecordingType.Audio
-      ? "lastAudioRecordingTime"
-      : "lastThermalRecordingTime";
-  if (
-    group &&
-    (!group[updateColumn] || recording.recordingDateTime > group[updateColumn])
-  ) {
-    updates.push(
-      group.update({
-        [updateColumn]: recording.recordingDateTime,
-      }),
-    );
-  }
-  if (
-    station &&
-    (!station[updateColumn] ||
-      recording.recordingDateTime > station[updateColumn])
-  ) {
-    updates.push(
-      station.update({
-        [updateColumn]: recording.recordingDateTime,
-      }),
-    );
-  }
-  await Promise.all(updates);
+  // TODO: Check if this will correctly NULL out times if there are no recordings.
+  return Promise.all(updates);
 };

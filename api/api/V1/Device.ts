@@ -116,8 +116,21 @@ export const mapDeviceResponse = (
     if (device.lastConnectionTime) {
       mapped.lastConnectionTime = device.lastConnectionTime.toISOString();
     }
-    if (device.lastRecordingTime) {
-      mapped.lastRecordingTime = device.lastRecordingTime.toISOString();
+    if (device.lastThermalRecordingTime) {
+      mapped.lastThermalRecordingTime =
+        device.lastThermalRecordingTime.toISOString();
+    }
+    if (device.lastAudioRecordingTime) {
+      mapped.lastAudioRecordingTime =
+        device.lastAudioRecordingTime.toISOString();
+    }
+    if (device.earliestAudioRecordingTime) {
+      mapped.earliestAudioRecordingTime =
+        device.earliestAudioRecordingTime.toISOString();
+    }
+    if (device.earliestThermalRecordingTime) {
+      mapped.earliestThermalRecordingTime =
+        device.earliestThermalRecordingTime.toISOString();
     }
     if (device.active) {
       const twentyFiveHoursAgo = new Date();
@@ -492,7 +505,10 @@ export default function (app: Application, baseUrl: string) {
    *  "type": "thermal",
    *  "public": "false",
    *  "lastConnectionTime": "2021-11-09T01:38:22.079Z",
-   *  "lastRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "lastThermalRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "lastAudioRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "earliestThermalRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "earliestAudioRecordingTime": "2021-11-07T01:38:48.400Z",
    *  "location": {
    *   "lat": -43.5338812,
    *    "lng": 172.6451473
@@ -1934,7 +1950,10 @@ export default function (app: Application, baseUrl: string) {
    *  "type": "thermal",
    *  "public": "false",
    *  "lastConnectionTime": "2021-11-09T01:38:22.079Z",
-   *  "lastRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "lastThermalRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "lastAudioRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "earliestThermalRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "earliestAudioRecordingTime": "2021-11-07T01:38:48.400Z",
    *  "location": {
    *   "lat": -43.5338812,
    *    "lng": 172.6451473

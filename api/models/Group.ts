@@ -58,6 +58,8 @@ export class Group extends ModelStaticCommon<Group> {
   // FIXME: Maybe this shouldn't actually be CreationOptional, but the field is NULLable
   declare groupName: CreationOptional<string>;
   declare settings: CreationOptional<ApiGroupSettings>;
+  declare earliestThermalRecordingTime: CreationOptional<Date>;
+  declare earliestAudioRecordingTime: CreationOptional<Date>;
   declare lastThermalRecordingTime: CreationOptional<Date>;
   declare lastAudioRecordingTime: CreationOptional<Date>;
   declare addUser: BelongsToManyAddAssociationMixin<User, UserId>;
@@ -266,6 +268,14 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
     groupName: {
       type: DataTypes.STRING,
       unique: true,
+    },
+    earliestThermalRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    earliestAudioRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     lastThermalRecordingTime: {
       type: DataTypes.DATE,

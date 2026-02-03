@@ -63,7 +63,10 @@ export class Device extends ModelStaticCommon<Device> {
   // since we now only have one device type?
   declare kind: CreationOptional<DeviceType>; // Default DeviceType.Unknown
   declare lastConnectionTime: CreationOptional<Date>;
-  declare lastRecordingTime: CreationOptional<Date>;
+  declare lastThermalRecordingTime: CreationOptional<Date>;
+  declare lastAudioRecordingTime: CreationOptional<Date>;
+  declare earliestThermalRecordingTime: CreationOptional<Date>;
+  declare earliestAudioRecordingTime: CreationOptional<Date>;
   declare password: CreationOptional<string>;
   declare location: CreationOptional<LatLng>;
   declare heartbeat: CreationOptional<Date>;
@@ -726,8 +729,21 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
     lastConnectionTime: {
       type: DataTypes.DATE,
     },
-    lastRecordingTime: {
+    lastThermalRecordingTime: {
       type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastAudioRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    earliestThermalRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    earliestAudioRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     public: {
       type: DataTypes.BOOLEAN,

@@ -96,8 +96,7 @@ import {
 import {
   addTag,
   bulkDelete,
-  fixupLatestRecordingTimesForDeletedRecording,
-  fixupLatestRecordingTimesForUndeletedRecording,
+  updateRecordingTimeBookkeeping,
   getThumbnail,
   getTrackTags,
   getTrackTagsCount,
@@ -111,7 +110,7 @@ import {
   uploadGenericRecordingOnBehalfOfDevice,
 } from "@api/fileUploaders/uploadGenericRecording.js";
 import { trackIsMasked } from "@api/V1/trackMasking.js";
-import type { TrackId } from "@typedefs/api/common.js";
+import type { RecordingId, TrackId } from "@typedefs/api/common.js";
 import { format } from "util";
 import { asyncLocalStorage } from "@/Globals.js";
 import {
@@ -785,7 +784,7 @@ export default (app: Application, baseUrl: string) => {
     validateFields([body("ids").isArray()]),
     parseJSONField(query("ids")),
     async (request: Request, response: Response, next: NextFunction) => {
-      let { ids } = request.body;
+      const { ids } = request.body;
       const { viewAsSuperUser } = response.locals;
       const userId = response.locals.requestUser.id;
       try {
@@ -800,25 +799,23 @@ export default (app: Application, baseUrl: string) => {
                 through: { where: { admin: true } },
               },
             ];
-
-        ids = (
-          await Recording.findAll({
-            where: {
-              id: ids,
-              deletedAt: { [Op.ne]: null },
+        const recordingsToUndelete = await Recording.findAll({
+          where: {
+            id: ids,
+            deletedAt: { [Op.ne]: null },
+          },
+          include: [
+            {
+              model: Group,
+              attributes: [],
+              required: !viewAsSuperUser,
+              include: requireGroupMembership,
             },
-            include: [
-              {
-                model: Group,
-                attributes: [],
-                required: !viewAsSuperUser,
-                include: requireGroupMembership,
-              },
-            ],
-            attributes: ["id"],
-          })
-        ).map((r) => r.id);
-        if (ids.length === 0) {
+          ],
+          attributes: ["id", "type", "DeviceId", "GroupId", "StationId"],
+        });
+        const idsToUndelete = recordingsToUndelete.map(({ id }) => id);
+        if (idsToUndelete.length === 0) {
           return next(
             new ClientError(
               "No recordings to undelete",
@@ -826,53 +823,38 @@ export default (app: Application, baseUrl: string) => {
             ),
           );
         }
-        // TODO: Get the types of the undeleted recordings from the previous findAll call.
-        // TODO: In the likely case where it's not a super-user undeleting things,
-        //  We can just make a single call to update, and check affected row count.
         await Recording.update(
           { deletedAt: null, deletedBy: null },
-          { where: { id: ids } },
+          { where: { id: idsToUndelete } },
         );
-        const [latestUndeletedThermal, latestUndeletedAudio] =
-          await Promise.all([
-            Recording.findOne({
-              where: {
-                id: { [Op.in]: ids },
-                deletedAt: null,
-                type: RecordingType.ThermalRaw,
-              },
-              order: [["recordingDateTime", "DESC"]],
-            }),
-            Recording.findOne({
-              where: {
-                id: { [Op.in]: ids },
-                deletedAt: null,
-                type: RecordingType.ThermalRaw,
-              },
-              order: [["recordingDateTime", "DESC"]],
-            }),
-          ]);
-        // FIXME: Can we even assume all recordings are from the same project or device?  Not really.
-        //  Within a project/device, we only need to check that the latest of each type of recording deleted
-        //  is not the latest in that category, otherwise we may not need to fixup.
-
         // For each set of recordings to delete or undelete, we need to get the unique stations and devices,
-        // and then fixup the latest recording times for each device and station.
-
-        const fixups = [];
-        if (latestUndeletedThermal) {
-          fixups.push(
-            fixupLatestRecordingTimesForUndeletedRecording(
-              latestUndeletedThermal,
-            ),
-          );
+        // and then fixup the latest recording times for each device and station and group.
+        const uniqueByStation = new Map();
+        const uniqueByDevice = new Map();
+        const uniqueByGroup = new Map();
+        for (const recording of recordingsToUndelete) {
+          const stationKey = `${recording.StationId}_${recording.type}`;
+          const deviceKey = `${recording.DeviceId}_${recording.type}`;
+          const groupKey = `${recording.GroupId}_${recording.type}`;
+          if (!uniqueByStation.has(stationKey)) {
+            uniqueByStation.set(stationKey, recording);
+          }
+          if (!uniqueByDevice.has(deviceKey)) {
+            uniqueByDevice.set(deviceKey, recording);
+          }
+          if (!uniqueByGroup.has(groupKey)) {
+            uniqueByGroup.set(groupKey, recording);
+          }
         }
-        if (latestUndeletedAudio) {
-          fixups.push(
-            fixupLatestRecordingTimesForUndeletedRecording(
-              latestUndeletedAudio,
-            ),
-          );
+        const fixups = [];
+        for (const recording of uniqueByStation.values()) {
+          fixups.push(updateRecordingTimeBookkeeping(recording));
+        }
+        for (const recording of uniqueByDevice.values()) {
+          fixups.push(updateRecordingTimeBookkeeping(recording));
+        }
+        for (const recording of uniqueByGroup.values()) {
+          fixups.push(updateRecordingTimeBookkeeping(recording));
         }
         if (fixups.length) {
           await Promise.all(fixups);
@@ -1487,7 +1469,7 @@ export default (app: Application, baseUrl: string) => {
           });
         }
       }
-      await fixupLatestRecordingTimesForDeletedRecording(recording);
+      await updateRecordingTimeBookkeeping(recording);
       if (softDelete) {
         return successResponse(response, "Deleted recording.");
       } else {
@@ -1560,7 +1542,7 @@ export default (app: Application, baseUrl: string) => {
         deletedAt: null,
         deletedBy: null,
       });
-      await fixupLatestRecordingTimesForUndeletedRecording(recording);
+      await updateRecordingTimeBookkeeping(recording);
       return successResponse(response, "Undeleted recording.");
     },
   );

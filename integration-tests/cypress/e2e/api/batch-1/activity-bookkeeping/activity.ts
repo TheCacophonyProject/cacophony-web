@@ -315,7 +315,7 @@ describe("Activity bookkeeping", () => {
       const expectedLast = dates[2].toISOString();
 
       expect(
-        updatedDevice.lastRecordingTime,
+        updatedDevice.lastThermalRecordingTime,
         "device lastRecordingTime rolled back",
       ).to.equal(expectedLast);
 
@@ -348,7 +348,7 @@ describe("Activity bookkeeping", () => {
       const expectedLast = dates[4].toISOString();
 
       expect(
-        updatedDevice.lastRecordingTime,
+        updatedDevice.lastThermalRecordingTime,
         "device lastRecordingTime rolled back",
       ).to.equal(expectedLast);
 

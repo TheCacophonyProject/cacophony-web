@@ -23,6 +23,8 @@ export const checkActivity = async (
   expect(device, "device exists").to.not.be.false;
   expect(location, "location exists").to.not.be.false;
 
+  console.log(project, device, location);
+
   // Project activity checks
   if (recording.type === RecordingType.ThermalRaw) {
     expect(Object.keys(project)).to.include("lastThermalRecordingTime");
@@ -39,9 +41,18 @@ export const checkActivity = async (
   }
 
   // Device activity checks
-  expect(device.lastRecordingTime, "device last recording time").to.equal(
-    recording.recordingDateTime,
-  );
+  if (recording.type === RecordingType.ThermalRaw) {
+    expect(
+      device.lastThermalRecordingTime,
+      "device last recording time",
+    ).to.equal(recording.recordingDateTime);
+  } else if (recording.type === RecordingType.Audio) {
+    expect(
+      device.lastAudioRecordingTime,
+      "device last recording time",
+    ).to.equal(recording.recordingDateTime);
+  }
+
   if (uploader === "device") {
     expect(
       new Date(device.lastConnectionTime),

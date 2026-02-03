@@ -78,6 +78,14 @@ export const mapStation = (station: Station): ApiStationResponse => {
     stationResponse.lastThermalRecordingTime =
       station.lastThermalRecordingTime.toISOString();
   }
+  if (station.earliestAudioRecordingTime) {
+    stationResponse.earliestAudioRecordingTime =
+      station.earliestAudioRecordingTime.toISOString();
+  }
+  if (station.earliestThermalRecordingTime) {
+    stationResponse.earliestThermalRecordingTime =
+      station.earliestThermalRecordingTime.toISOString();
+  }
   if (station.lastActiveAudioTime) {
     stationResponse.lastActiveAudioTime =
       station.lastActiveAudioTime.toISOString();

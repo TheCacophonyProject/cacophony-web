@@ -39,6 +39,7 @@ import {
   maybeUpdateDeviceHistory,
   sendAlerts,
   tracksFromMeta,
+  updateRecordingTimeBookkeeping,
 } from "@api/V1/recordingUtil.js";
 import { Station } from "@models/Station.js";
 import { Group } from "@models/Group.js";
@@ -46,6 +47,7 @@ import { isLatLon } from "@models/util/validation.js";
 import { tryReadingM4aMetadata } from "@api/m4a-metadata-reader/m4a-metadata-reader.js";
 import { RawTrack } from "@typedefs/api/fileProcessing.js";
 import { Fn } from "sequelize/lib/utils";
+import station from "@api/V1/Station.js";
 
 const cameraTypes = [RecordingType.ThermalRaw, RecordingType.InfraredVideo];
 
@@ -728,6 +730,7 @@ export const uploadGenericRecording =
         station: stationToAssignToRecording,
       } = groupAndStation;
 
+      // FIXME: Can we ever get to here?  Shouldn't we always have a group and device?
       if (!deviceId || !groupId) {
         // We can throw a 422 or similar
         await deleteUploads(uploadResults);
@@ -740,7 +743,7 @@ export const uploadGenericRecording =
 
       recordingTemplate.DeviceId = deviceId;
       recordingTemplate.GroupId = groupId;
-      let recordingGroup: Group = recordingDevice.Group;
+      const recordingGroup: Group = recordingDevice.Group;
       if (!recordingGroup) {
         await deleteUploads(uploadResults);
         log.error(
@@ -758,66 +761,6 @@ export const uploadGenericRecording =
           include: [Group],
         });
       }
-      if (groupId !== recordingDevice.GroupId) {
-        // We are uploading old recordings from a device that has since been reassigned to another group.
-        // TODO: Rename s3 objects to start with the correct group name.
-        // Get the actual group at the recording time.
-        recordingGroup = await Group.findByPk(groupId);
-      }
-      let recordingDeviceUpdatePayload: UpdateDevicePayload = {};
-      if (fromDevice) {
-        let shouldSetActive = false;
-        if (!recordingDevice.active) {
-          // Check if the device has been re-assigned to another group:
-          const activeDevice = await Device.findOne({
-            where: {
-              saltId: recordingDevice.saltId,
-              active: true,
-            },
-          });
-          if (!activeDevice) {
-            shouldSetActive = true;
-          }
-        }
-        // Set the device active and update its connection time.
-        recordingDeviceUpdatePayload = {
-          lastConnectionTime: greaterDate(new Date(), "lastConnectionTime"),
-        };
-        if (shouldSetActive) {
-          recordingDeviceUpdatePayload.active = true;
-        }
-      } else if (
-        !fromDevice &&
-        (recordingTemplate.recordingDateTime >
-          recordingDevice.lastConnectionTime ||
-          !recordingDevice.lastConnectionTime)
-      ) {
-        let shouldSetActive = false;
-        if (!recordingDevice.active) {
-          // Check if the device has been re-assigned to another group:
-          const activeDevice = await Device.findOne({
-            where: {
-              saltId: recordingDevice.saltId,
-              active: true,
-            },
-          });
-          if (!activeDevice) {
-            shouldSetActive = true;
-          }
-        }
-        // If we're getting a recording via sidekick that's later than a previous lastConnectionTime,
-        // or there is no previous lastConnectionTime, we can null out the lastConnectionTime,
-        // which indicates that this device is now "offline".
-        // As such, it will no longer be targeted by stopped device emails, and can show up as offline in browse.
-
-        // FIXME: Test NULLING out lastConnectionTime
-        recordingDeviceUpdatePayload = {
-          lastConnectionTime: null,
-        };
-        if (shouldSetActive) {
-          recordingDeviceUpdatePayload.active = true;
-        }
-      }
 
       const wouldHaveSuppliedTracks = dataHasSuppliedTracks(data);
       // or with supplied tracks to support existing devices
@@ -832,23 +775,21 @@ export const uploadGenericRecording =
           metadataSource: data.metadata.metadata_source,
         };
       }
-
-      // We need transactions for these updates.
-      const [recording, _station] = await Promise.all([
-        recordingTemplate.save(),
-        maybeUpdateLastRecordingTimesForStation(
-          recordingTemplate,
-          fromDevice,
-          stationToAssignToRecording,
-        ),
-        maybeUpdateLastRecordingTimesForDeviceAndGroup(
+      if (!isLatLon(recordingTemplate.location)) {
+        throw new Error("Invalid location");
+      }
+      if (stationToAssignToRecording) {
+        recordingTemplate.StationId = stationToAssignToRecording.id;
+      }
+      const recording = await recordingTemplate.save();
+      await Promise.all([
+        updateRecordingTimeBookkeeping(recordingTemplate, fromDevice),
+        maybeUpdateDeviceMetadata(
           recordingTemplate,
           recordingDevice,
-          recordingDeviceUpdatePayload,
-          recordingGroup,
+          fromDevice,
         ),
       ]);
-
       if (wouldHaveSuppliedTracks) {
         // Now that we have a recording saved to the DB, we can create any associated track items
         await tracksFromMeta(recording, data.metadata);
@@ -997,69 +938,9 @@ const assignGroupAndStationToRecording = async (
   };
 };
 
-const maybeUpdateLastRecordingTimesForStation = async (
-  recordingData: Recording,
-  isDeviceUpload: boolean,
-  station?: Station,
-): Promise<void | [number]> => {
-  // FIXME: Probably simplify this like I did for device/group
-  if (!station) {
-    return new Promise<void | [number]>((resolve, _reject) => {
-      resolve();
-    });
-  }
-
-  const updatePayload: {
-    lastAudioRecordingTime?: Date;
-    lastThermalRecordingTime?: Date;
-    lastActiveAudioTime?: Date;
-    lastActiveThermalTime?: Date;
-  } = {};
-  const updateField = cameraTypes.includes(recordingData.type)
-    ? "lastThermalRecordingTime"
-    : "lastAudioRecordingTime";
-  recordingData.StationId = station.id;
-  if (
-    recordingData.type === RecordingType.Audio &&
-    (!station.lastAudioRecordingTime ||
-      recordingData.recordingDateTime > station.lastAudioRecordingTime)
-  ) {
-    updatePayload.lastAudioRecordingTime = recordingData.recordingDateTime;
-    if (isDeviceUpload) {
-      updatePayload.lastActiveAudioTime = new Date();
-    }
-  } else if (
-    cameraTypes.includes(recordingData.type) &&
-    (!station.lastThermalRecordingTime ||
-      recordingData.recordingDateTime > station.lastThermalRecordingTime)
-  ) {
-    updatePayload.lastThermalRecordingTime = recordingData.recordingDateTime;
-    if (isDeviceUpload) {
-      updatePayload.lastActiveThermalTime = new Date();
-    }
-  }
-  if (Object.keys(updatePayload).length !== 0) {
-    return station.sequelize.transaction(async (transaction) => {
-      return await Station.update(updatePayload, {
-        where: {
-          id: station.id,
-          [updateField]: {
-            [Op.or]: [
-              { [Op.lt]: recordingData.recordingDateTime },
-              { [Op.eq]: null },
-            ],
-          },
-        },
-        transaction,
-      });
-    });
-  }
-};
-
 interface UpdateDevicePayload {
   kind?: DeviceType;
   location?: LatLng;
-  lastRecordingTime?: Fn;
   lastConnectionTime?: Fn;
   active?: boolean;
 }
@@ -1087,39 +968,85 @@ const mapRecordingTypeToDeviceKind = (
     }
   }
 };
-const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
+const maybeUpdateDeviceMetadata = async (
   recording: Recording,
   uploadingDevice: Device,
-  updateDevicePayload: UpdateDevicePayload,
-  uploadingGroup: Group,
-): Promise<void> => {
-  const updateColumn = cameraTypes.includes(recording.type)
-    ? "lastThermalRecordingTime"
-    : "lastAudioRecordingTime";
-  if (!isLatLon(recording.location)) {
-    // FIXME: Handle this, maybe further down the stack
-    throw new Error("Invalid location");
+  fromDevice: boolean,
+): Promise<unknown> => {
+  // TODO: Streamline logic
+  let uploadingDeviceUpdatePayload: UpdateDevicePayload = {};
+  if (fromDevice) {
+    let shouldSetActive = false;
+    if (!uploadingDevice.active) {
+      // Check if the device has been re-assigned to another group:
+      const activeDevice = await Device.findOne({
+        where: {
+          saltId: uploadingDevice.saltId,
+          active: true,
+        },
+      });
+      if (!activeDevice) {
+        shouldSetActive = true;
+      }
+    }
+    // Set the device active and update its connection time.
+    uploadingDeviceUpdatePayload = {
+      lastConnectionTime: greaterDate(new Date(), "lastConnectionTime"),
+    };
+    if (shouldSetActive) {
+      uploadingDeviceUpdatePayload.active = true;
+    }
+  } else if (
+    !fromDevice &&
+    (recording.recordingDateTime > uploadingDevice.lastConnectionTime ||
+      !uploadingDevice.lastConnectionTime)
+  ) {
+    let shouldSetActive = false;
+    if (!uploadingDevice.active) {
+      // Check if the device has been re-assigned to another group:
+      const activeDevice = await Device.findOne({
+        where: {
+          saltId: uploadingDevice.saltId,
+          active: true,
+        },
+      });
+      if (!activeDevice) {
+        shouldSetActive = true;
+      }
+    }
+    // If we're getting a recording via sidekick that's later than a previous lastConnectionTime,
+    // or there is no previous lastConnectionTime, we can null out the lastConnectionTime,
+    // which indicates that this device is now "offline".
+    // As such, it will no longer be targeted by stopped device emails, and can show up as offline in browse.
+
+    // FIXME: Test NULLING out lastConnectionTime
+    uploadingDeviceUpdatePayload = {
+      lastConnectionTime: null,
+    };
+    if (shouldSetActive) {
+      uploadingDeviceUpdatePayload.active = true;
+    }
   }
-  return new Promise((resolve, _reject) => {
-    Promise.all([
-      uploadingGroup.update({
-        [updateColumn]: greaterDate(recording.recordingDateTime, updateColumn),
-      }),
-      Device.update(
-        {
-          ...updateDevicePayload,
-          lastRecordingTime: greaterDate(
-            recording.recordingDateTime,
-            "lastRecordingTime",
-          ),
-          location: Sequelize.literal(`
+
+  return Device.update(
+    {
+      ...uploadingDeviceUpdatePayload,
+      location: Sequelize.literal(`
             case
-              when '${recording.recordingDateTime.toISOString()}' > "lastRecordingTime" or "lastRecordingTime" is null 
-                then ST_GeomFromGeoJSON('{"type":"Point","coordinates":[${recording.location.lng},${recording.location.lat}]}')
+              when (
+                "kind" = '${DeviceType.Thermal}' 
+                  and '${recording.recordingDateTime.toISOString()}' > "lastThermalRecordingTime" 
+                  or "lastThermalRecordingTime" is null
+              or 
+                "kind" = '${DeviceType.Audio}' 
+                and '${recording.recordingDateTime.toISOString()}' > "lastAudioRecordingTime" 
+                or "lastAudioRecordingTime" is null
+              ) 
+                then ST_GeomFromGeoJSON('{"type":"Point", "coordinates":[${recording.location.lng}, ${recording.location.lat}]}')
               else "location"
             end
           `),
-          kind: Sequelize.literal(`
+      kind: Sequelize.literal(`
             case "kind"
               when '${DeviceType.Unknown}' then '${mapRecordingTypeToDeviceKind(recording.type, DeviceType.Unknown)}'
               when '${DeviceType.Thermal}' then '${mapRecordingTypeToDeviceKind(recording.type, DeviceType.Thermal)}'
@@ -1127,15 +1054,13 @@ const maybeUpdateLastRecordingTimesForDeviceAndGroup = async (
               else "kind"
             end  
           `),
-        },
-        {
-          validate: false,
-          sideEffects: false,
-          where: {
-            id: uploadingDevice.id,
-          },
-        },
-      ),
-    ]).then(() => resolve());
-  });
+    },
+    {
+      validate: false,
+      sideEffects: false,
+      where: {
+        id: uploadingDevice.id,
+      },
+    },
+  );
 };

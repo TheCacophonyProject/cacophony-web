@@ -128,12 +128,22 @@ const mapGroup = (
     groupData.lastAudioRecordingTime =
       group.lastAudioRecordingTime.toISOString();
   }
+  if (group.earliestThermalRecordingTime) {
+    groupData.earliestThermalRecordingTime =
+      group.earliestThermalRecordingTime.toISOString();
+  }
+  if (group.earliestAudioRecordingTime) {
+    groupData.earliestAudioRecordingTime =
+      group.earliestAudioRecordingTime.toISOString();
+  }
   const pending = !viewAsSuperAdmin && group.Users[0].GroupUsers.pending;
   if (pending) {
     groupData.pending = pending;
     // If the user is only pending, they shouldn't see these fields.
     delete groupData.lastAudioRecordingTime;
     delete groupData.lastThermalRecordingTime;
+    delete groupData.earliestAudioRecordingTime;
+    delete groupData.earliestThermalRecordingTime;
     delete groupData.userSettings;
     delete groupData.settings;
   }

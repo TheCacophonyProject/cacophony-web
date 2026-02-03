@@ -29,7 +29,10 @@ export interface ApiDeviceResponse {
   isHealthy?: boolean;
   public?: boolean; // Assumed to be private unless otherwise specified.
   lastConnectionTime?: IsoFormattedDateString;
-  lastRecordingTime?: IsoFormattedDateString;
+  earliestThermalRecordingTime?: IsoFormattedDateString;
+  lastThermalRecordingTime?: IsoFormattedDateString;
+  earliestAudioRecordingTime?: IsoFormattedDateString;
+  lastAudioRecordingTime?: IsoFormattedDateString;
   location?: LatLng;
   scheduleId?: ScheduleId;
   users?: ApiGroupUserResponse[];
