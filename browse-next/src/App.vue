@@ -276,7 +276,7 @@ const pollFrameTimes = () => {
 }
 
 #main-content {
-  background: var(--app-bg-color);
+  background-color: var(--app-bg-color);
   width: 100%;
   overflow-y: auto;
   transition: margin-left 0.2s;

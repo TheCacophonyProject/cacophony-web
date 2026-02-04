@@ -38,6 +38,7 @@ import {
   getClassifications,
 } from "@api/classificationsUtils.ts";
 import { BSpinner } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const props = defineProps<{
   track: ApiTrackResponse;
@@ -546,357 +547,424 @@ onMounted(async () => {
 });
 </script>
 <template>
-  <div
-    class="track p-2 fs-8 d-flex align-items-center justify-content-between"
-    ref="row"
-    :class="{ selected }"
-    @click="selectAndMaybeToggleExpanded"
-  >
-    <div class="d-flex align-items-center">
-      <span
-        class="track-number me-3 fw-bold text-center d-inline-block"
-        :style="{
-          background: color.background,
-          color: color.foreground === 'dark' ? '#333' : '#fff',
-        }"
-        >{{ index + 1 }}</span
-      >
-      <div v-if="!hasUserTag && masterTag" class="d-flex flex-column">
-        <span class="text-uppercase fs-9 fw-bold">AI Classification</span>
+  <div class="track-item" :class="{ selected, expanded }">
+    <div
+      class="track p-1 ps-2 p-sm-2 d-flex align-items-center justify-content-between"
+      ref="row"
+      :class="{ selected }"
+      @click="selectAndMaybeToggleExpanded"
+    >
+      <div class="d-flex align-items-center">
         <span
-          class="classification text-capitalize d-inline-block fw-bold"
-          v-if="masterTag"
-          >{{
-            displayLabelForClassificationLabel(
-              masterTag.what,
-              true,
-              isAudioRecording,
-            )
-          }}</span
+          class="track-number flex-shrink-0 me-3 fw-medium text-center d-inline-block rounded-1"
+          :style="{
+            background: color.background,
+            color: color.foreground === 'dark' ? '#333' : '#fff',
+          }"
+          >{{ index + 1 }}</span
         >
+        <div v-if="!hasUserTag && masterTag" class="d-flex flex-column">
+          <span class="fs-6">AI Classification</span>
+          <span
+            class="classification text-capitalize d-inline-block fw-semibold"
+            v-if="masterTag"
+            >{{
+              displayLabelForClassificationLabel(
+                masterTag.what,
+                true,
+                isAudioRecording,
+              )
+            }}</span
+          >
+        </div>
+        <span v-else-if="hasUserTag" class="d-flex flex-column">
+          <span class="fs-6">Manual ID</span>
+          <span
+            class="classification text-capitalize d-inline-block fw-semibold"
+            v-if="
+              consensusUserTag &&
+              masterTag &&
+              displayLabelForClassificationLabel(
+                masterTag.what,
+                false,
+                isAudioRecording,
+              ) === consensusUserTag
+            "
+            >{{ consensusUserTag }}
+            <font-awesome-icon icon="check-circle" class="text-success"
+          /></span>
+          <span
+            class="classification text-capitalize d-inline-block fw-semibold"
+            v-else-if="
+              consensusUserTag &&
+              masterTag &&
+              displayLabelForClassificationLabel(
+                masterTag.what,
+                false,
+                isAudioRecording,
+              ) !== consensusUserTag
+            "
+            >{{ consensusUserTag }}
+            <span class="strikethrough">{{
+              displayLabelForClassificationLabel(
+                masterTag.what,
+                false,
+                isAudioRecording,
+              )
+            }}</span></span
+          >
+          <!-- Controversial tag, should be automatically flagged for review. -->
+          <span
+            class="classification text-capitalize d-inline-block fw-semibold conflicting-tags"
+            v-else-if="
+              !consensusUserTag &&
+              masterTag &&
+              !uniqueUserTags.includes(masterTag.what)
+            "
+            >{{
+              uniqueUserTags
+                .map((tag) =>
+                  displayLabelForClassificationLabel(
+                    tag,
+                    false,
+                    isAudioRecording,
+                  ),
+                )
+                .join(", ")
+            }}
+            <span class="strikethrough conflicting-tags">{{
+              displayLabelForClassificationLabel(
+                masterTag.what,
+                false,
+                isAudioRecording,
+              )
+            }}</span></span
+          >
+          <span
+            class="classification text-capitalize d-inline-block fw-semibold conflicting-tags"
+            v-else-if="!consensusUserTag && masterTag"
+            >{{
+              uniqueUserTags
+                .map((tag) =>
+                  displayLabelForClassificationLabel(
+                    tag,
+                    false,
+                    isAudioRecording,
+                  ),
+                )
+                .join(", ")
+            }}</span
+          >
+          <span
+            class="text-capitalize d-inline-block fw-semibold"
+            v-else-if="consensusUserTag && !hasAiTag"
+            >{{
+              uniqueUserTags
+                .map((tag) =>
+                  displayLabelForClassificationLabel(
+                    tag,
+                    false,
+                    isAudioRecording,
+                  ),
+                )
+                .join(", ")
+            }}</span
+          >
+        </span>
+        <!-- No tag, maybe this is a dummy track?   -->
+        <div v-else class="d-flex flex-column classification">
+          <span class="text-uppercase fw-semibold">
+            <span v-if="processingIsAnalysing" class="d-flex align-items-center"
+              ><b-spinner variant="secondary" small class="me-2" /><span
+                >AI classifying</span
+              ></span
+            >
+            <span v-else>Unclassified</span>
+          </span>
+          <span v-if="!processingIsAnalysing">&mdash;</span>
+        </div>
       </div>
-      <span v-else-if="hasUserTag" class="d-flex flex-column">
-        <span class="text-uppercase fs-9 fw-bold">Manual ID</span>
-        <span
-          class="classification text-capitalize d-inline-block fw-bold"
+      <div v-if="!hasUserTag && hasAiTag && !expanded" class="d-flex">
+        <button
+          type="button"
+          class="btn confirm-button"
+          :class="{ 'btn-outline-secondary': selected, 'btn-icon': !selected }"
+          @click.stop.prevent="confirmAiSuggestedTag"
+        >
+          <span class="d-flex align-items-center">
+            <span class="me-2" :class="{ 'visually-hidden': !selected }"
+              >Confirm</span
+            >
+            <material-symbol
+              :name="
+                thisUsersTagAgreesWithAiClassification ? 'thumb_up' : 'thumb_up'
+              "
+              size="1.125rem"
+              class="icon"
+            />
+          </span>
+        </button>
+        <button
+          type="button"
+          class="btn btn-icon reject-button"
+          aria-label="Reject AI classification"
+          @click.stop.prevent="rejectAiSuggestedTag"
+        >
+          <span class="d-flex align-items-center">
+            <span class="visually-hidden">Reject</span>
+            <material-symbol name="thumb_down" size="1.125rem" class="icon" />
+          </span>
+        </button>
+        <button
+          v-if="expanded"
+          type="button"
+          aria-label="Replay track"
+          class="btn btn-icon"
+          @click.stop.prevent="replaySelectedTrack"
+        >
+          <span class="visually-hidden">Replay track</span>
+          <material-symbol name="replay" size="1.125rem" class="icon" />
+        </button>
+        <two-step-action-button
+          v-if="isAudioRecording"
+          :action="() => permanentlyDeleteTrack(track.id)"
+          icon="delete"
+          tooltip-label="Delete"
+          confirmation-label="Delete track"
+          :boundary-padding="true"
+        />
+      </div>
+      <div v-else class="d-flex">
+        <button
+          v-if="!hasUserTag && hasAiTag"
+          type="button"
+          class="btn btn-outline-secondary confirm-button d-flex align-items-center"
+          @click.stop.prevent="confirmAiSuggestedTag"
+        >
+          <span class="label">Confirm</span>
+          <material-symbol
+            :name="
+              thisUsersTagAgreesWithAiClassification ? 'thumb_up' : 'thumb_up'
+            "
+            size="1.125rem"
+            class="icon ms-2"
+          />
+        </button>
+        <button
+          v-if="expanded"
+          type="button"
+          aria-label="Replay track"
+          class="btn btn-icon"
+          @click.stop.prevent="replaySelectedTrack"
+        >
+          <span class="visually-hidden">Replay track</span>
+          <font-awesome-icon icon="rotate-right" />
+        </button>
+        <two-step-action-button
           v-if="
-            consensusUserTag &&
-            masterTag &&
-            displayLabelForClassificationLabel(
-              masterTag.what,
-              false,
-              isAudioRecording,
-            ) === consensusUserTag
+            isAudioRecording &&
+            (userIsGroupAdmin || trackWasCreatedByUser(track))
           "
-          >{{ consensusUserTag }}
-          <font-awesome-icon icon="check-circle" class="icon"
-        /></span>
-        <span
-          class="classification text-capitalize d-inline-block fw-bold"
-          v-else-if="
-            consensusUserTag &&
-            masterTag &&
-            displayLabelForClassificationLabel(
-              masterTag.what,
-              false,
-              isAudioRecording,
-            ) !== consensusUserTag
-          "
-          >{{ consensusUserTag }}
-          <span class="strikethrough">{{
-            displayLabelForClassificationLabel(
-              masterTag.what,
-              false,
-              isAudioRecording,
-            )
-          }}</span></span
-        >
-        <!-- Controversial tag, should be automatically flagged for review. -->
-        <span
-          class="classification text-capitalize d-inline-block fw-bold conflicting-tags"
-          v-else-if="
-            !consensusUserTag &&
-            masterTag &&
-            !uniqueUserTags.includes(masterTag.what)
-          "
-          >{{
-            uniqueUserTags
-              .map((tag) =>
-                displayLabelForClassificationLabel(
-                  tag,
-                  false,
-                  isAudioRecording,
-                ),
-              )
-              .join(", ")
-          }}
-          <span class="strikethrough conflicting-tags">{{
-            displayLabelForClassificationLabel(
-              masterTag.what,
-              false,
-              isAudioRecording,
-            )
-          }}</span></span
-        >
-        <span
-          class="classification text-capitalize d-inline-block fw-bold conflicting-tags"
-          v-else-if="!consensusUserTag && masterTag"
-          >{{
-            uniqueUserTags
-              .map((tag) =>
-                displayLabelForClassificationLabel(
-                  tag,
-                  false,
-                  isAudioRecording,
-                ),
-              )
-              .join(", ")
-          }}</span
-        >
-        <span
-          class="text-capitalize d-inline-block fw-bold"
-          v-else-if="consensusUserTag && !hasAiTag"
-          >{{
-            uniqueUserTags
-              .map((tag) =>
-                displayLabelForClassificationLabel(
-                  tag,
-                  false,
-                  isAudioRecording,
-                ),
-              )
-              .join(", ")
-          }}</span
-        >
-      </span>
-      <!-- No tag, maybe this is a dummy track?   -->
-      <div v-else class="d-flex flex-column classification">
-        <span class="text-uppercase fs-9 fw-bold">
-          <span v-if="processingIsAnalysing" class="d-flex align-items-center"
-            ><b-spinner variant="secondary" small class="me-2" /><span
-              >AI classifying</span
-            ></span
-          >
-          <span v-else>Unclassified</span>
-        </span>
-        <span v-if="!processingIsAnalysing">&mdash;</span>
+          :action="() => permanentlyDeleteTrack(track.id)"
+          icon="delete"
+          tooltip-label="Delete"
+          confirmation-label="Delete track"
+          :boundary-padding="true"
+        />
+        <button type="button" aria-label="Expand track" class="btn btn-icon">
+          <span class="visually-hidden">Expand track</span>
+          <font-awesome-icon
+            icon="chevron-right"
+            :rotation="expanded ? 270 : 90"
+          />
+        </button>
       </div>
     </div>
-    <div v-if="!hasUserTag && hasAiTag && !expanded" class="d-flex">
-      <button
-        type="button"
-        class="btn confirm-button"
-        @click.stop.prevent="confirmAiSuggestedTag"
-      >
-        <span class="label">Confirm</span>
-        <span class="fs-6 icon">
-          <font-awesome-icon
-            :icon="
-              thisUsersTagAgreesWithAiClassification
-                ? ['fas', 'thumbs-up']
-                : ['far', 'thumbs-up']
-            "
+    <div
+      :class="[{ expanded, mounting }]"
+      class="track-details px-2"
+      ref="trackDetails"
+    >
+      <div class="classification-btns">
+        <button
+          type="button"
+          class="btn btn-classification text-capitalize d-flex flex-column gap-1 align-items-center justify-content-evenly"
+          :class="[
+            tag.label,
+            { selected: thisUserTag && tag.label === thisUserTag.what },
+            {
+              'selected-by-other-user':
+                !(thisUserTag && tag.label === thisUserTag.what) &&
+                otherUserTags.includes(tag.label),
+            },
+            { pinned: !!userDefinedTags[tag.label] },
+          ]"
+          :key="tag.label"
+          v-for="(tag, _index) in availableTags"
+          @click="(e) => toggleTag(tag.label)"
+        >
+          <span v-if="!!userDefinedTags[tag.label]" class="pinned-tag">
+            <material-symbol name="keep" size="1.25rem" />
+          </span>
+          <tag-image
+            v-if="expandedOnce"
+            :tag="tag.label"
+            width="24"
+            height="24"
+            :class="{ selected: thisUserTag && tag.label === thisUserTag.what }"
           />
-        </span>
-      </button>
-      <button
-        type="button"
-        class="btn reject-button"
-        aria-label="Reject AI classification"
-        @click.stop.prevent="rejectAiSuggestedTag"
-      >
-        <span class="visually-hidden">Reject</span>
-        <span class="fs-6 icon">
-          <font-awesome-icon :icon="['far', 'thumbs-down']" />
-        </span>
-      </button>
-      <button
-        v-if="expanded"
-        type="button"
-        aria-label="Replay track"
-        class="btn"
-        @click.stop.prevent="replaySelectedTrack"
-      >
-        <span class="visually-hidden">Replay track</span>
-        <font-awesome-icon icon="rotate-right" color="#666" />
-      </button>
-      <two-step-action-button
-        v-if="isAudioRecording"
-        :action="() => permanentlyDeleteTrack(track.id)"
-        icon="delete"
-        tooltip-label="Delete"
-        confirmation-label="Delete track"
-        :boundary-padding="true"
-      />
-    </div>
-    <div v-else class="d-flex">
-      <button
-        v-if="!hasUserTag && hasAiTag"
-        type="button"
-        class="btn confirm-button"
-        @click.stop.prevent="confirmAiSuggestedTag"
-      >
-        <span class="label">Confirm</span>
-        <span class="fs-6 icon">
-          <font-awesome-icon
-            :icon="
-              thisUsersTagAgreesWithAiClassification
-                ? ['fas', 'thumbs-up']
-                : ['far', 'thumbs-up']
-            "
-          />
-        </span>
-      </button>
-      <button
-        v-if="expanded"
-        type="button"
-        aria-label="Replay track"
-        class="btn"
-        @click.stop.prevent="replaySelectedTrack"
-      >
-        <span class="visually-hidden">Replay track</span>
-        <font-awesome-icon icon="rotate-right" color="#666" />
-      </button>
-      <two-step-action-button
-        v-if="
-          isAudioRecording && (userIsGroupAdmin || trackWasCreatedByUser(track))
-        "
-        :action="() => permanentlyDeleteTrack(track.id)"
-        icon="delete"
-        tooltip-label="Delete"
-        confirmation-label="Delete track"
-        :boundary-padding="true"
-      />
-      <button type="button" aria-label="Expand track" class="btn">
-        <span class="visually-hidden">Expand track</span>
-        <font-awesome-icon
-          icon="chevron-right"
-          :rotation="expanded ? 270 : 90"
-          color="#666"
+          <span v-if="isAudioRecording" class="fs-6">{{
+            tag.displayAudio
+          }}</span>
+          <span v-else class="fs-6">{{ tag.display }}</span>
+        </button>
+        <button
+          type="button"
+          class="btn btn-classification add d-flex flex-column gap-1 align-items-center justify-content-evenly"
+          @click="addCustomTag"
+        >
+          <material-symbol name="add" size="2rem" />
+          <span class="fs-6">Add tag</span>
+        </button>
+      </div>
+      <div v-if="showClassificationSearch" class="mt-2 d-flex">
+        <hierarchical-tag-select
+          v-if="currentlySelectedTagCanBePinned || showClassificationSearch"
+          class="flex-grow-1"
+          @pin="pinCustomTag"
+          @options-change="resizeDetails"
+          @deselected="showClassificationSearch = false"
+          ref="tagSelect"
+          v-model="selectedUserTagLabel"
+          :can-be-pinned="currentlySelectedTagCanBePinned"
+          :pinned-items="userDefinedTagLabels"
         />
-      </button>
-    </div>
-  </div>
-  <div
-    :class="[{ expanded, mounting }]"
-    class="track-details px-2"
-    ref="trackDetails"
-  >
-    <div class="classification-btns">
-      <button
-        type="button"
-        class="btn classification-btn fs-8 text-capitalize d-flex flex-column align-items-center justify-content-evenly"
-        :class="[
-          tag.label,
-          { selected: thisUserTag && tag.label === thisUserTag.what },
-          {
-            'selected-by-other-user':
-              !(thisUserTag && tag.label === thisUserTag.what) &&
-              otherUserTags.includes(tag.label),
-          },
-          { pinned: !!userDefinedTags[tag.label] },
-        ]"
-        :key="tag.label"
-        v-for="(tag, _index) in availableTags"
-        @click="(e) => toggleTag(tag.label)"
-      >
-        <span v-if="!!userDefinedTags[tag.label]" class="pinned-tag"
-          ><font-awesome-icon icon="thumbtack" />
-        </span>
-        <tag-image
-          v-if="expandedOnce"
-          :tag="tag.label"
-          width="24"
-          height="24"
-          :class="{ selected: thisUserTag && tag.label === thisUserTag.what }"
-        />
-        <span v-if="isAudioRecording">{{ tag.displayAudio }}</span>
-        <span v-else>{{ tag.display }}</span>
-      </button>
-      <button
-        type="button"
-        class="add-classification-btn btn fs-2"
-        @click="addCustomTag"
-      >
-        <font-awesome-icon icon="plus" />
-      </button>
-    </div>
-    <div v-if="showClassificationSearch" class="mt-2 d-flex">
-      <hierarchical-tag-select
-        v-if="currentlySelectedTagCanBePinned || showClassificationSearch"
-        class="flex-grow-1"
-        @pin="pinCustomTag"
-        @options-change="resizeDetails"
-        @deselected="showClassificationSearch = false"
-        ref="tagSelect"
-        v-model="selectedUserTagLabel"
-        :can-be-pinned="currentlySelectedTagCanBePinned"
-        :pinned-items="userDefinedTagLabels"
-      />
-    </div>
-    <div class="tagger-details mt-2 d-flex justify-content-center flex-column">
-      <button
-        class="fs-8 btn details-toggle-btn"
-        @click="showTaggerDetails = !showTaggerDetails"
-      >
-        <span v-if="!showTaggerDetails">View details</span>
-        <span v-else>Hide details</span>
-        <font-awesome-icon
-          icon="chevron-right"
-          :rotation="showTaggerDetails ? 270 : 90"
-          class="ms-2"
-        />
-      </button>
-      <card-table
-        v-if="showTaggerDetails && taggerDetails.length !== 0"
-        :items="taggerDetails"
-        compact
-        :max-card-width="0"
-      >
-        <template #_deleteAction="{ cell }: { cell: Ref<ApiTrackTagResponse> }">
-          <button
-            v-if="userIsGroupAdmin && !cell.value.automatic"
-            class="btn text-secondary"
-            @click.prevent="
-              () =>
-                emit('remove-tag', {
-                  trackId: track.id,
-                  trackTagId: cell.value.id,
-                })
-            "
-          >
-            <font-awesome-icon icon="trash-can" />
-          </button>
-          <span v-else></span>
-        </template>
-      </card-table>
+      </div>
       <div
-        v-else-if="showTaggerDetails && taggerDetails.length === 0"
-        class="mb-2"
+        class="tagger-details mt-2 d-flex justify-content-center flex-column"
       >
-        No tags have been added yet.
+        <button
+          class="btn link-secondary fs-6"
+          @click="showTaggerDetails = !showTaggerDetails"
+        >
+          <span v-if="!showTaggerDetails">View details</span>
+          <span v-else>Hide details</span>
+          <font-awesome-icon
+            icon="chevron-right"
+            :rotation="showTaggerDetails ? 270 : 90"
+            class="ms-2"
+          />
+        </button>
+        <card-table
+          v-if="showTaggerDetails && taggerDetails.length !== 0"
+          :items="taggerDetails"
+          compact
+          :max-card-width="0"
+        >
+          <template
+            #_deleteAction="{ cell }: { cell: Ref<ApiTrackTagResponse> }"
+          >
+            <button
+              v-if="userIsGroupAdmin && !cell.value.automatic"
+              class="btn text-secondary"
+              @click.prevent="
+                () =>
+                  emit('remove-tag', {
+                    trackId: track.id,
+                    trackTagId: cell.value.id,
+                  })
+              "
+            >
+              <font-awesome-icon icon="trash-can" />
+            </button>
+            <span v-else></span>
+          </template>
+        </card-table>
+        <div
+          v-else-if="showTaggerDetails && taggerDetails.length === 0"
+          class="mb-2"
+        >
+          No tags have been added yet.
+        </div>
       </div>
     </div>
   </div>
 </template>
 <style scoped lang="less">
+@import "../assets/less/breakpoints.less";
 @import "../assets/less/typography.less";
+@import "../assets/less/elevation.less";
 
-.details-toggle-btn,
-.details-toggle-btn:active,
-.details-toggle-btn:focus {
-  color: #007086;
-  font-weight: 500;
-}
-
-.track-details {
-  background: white;
-  &:not(.mounting) {
-    transition: height 0.2s ease-in-out;
+.track-item {
+  .track {
+    min-height: calc(var(--cp-grid-base) * 12);
+    user-select: none;
+    transition: background-color ease-in-out 0.2s;
   }
-  height: 0;
-  overflow-y: hidden;
+  &.selected {
+    border-radius: var(--bs-border-radius);
+    .track {
+      border-radius: var(--bs-border-radius);
+    }
+    &:not(.expanded) {
+      .track {
+        background-color: var(--cp-color-green-50);
+      }
+    }
+    &.expanded {
+      box-shadow:
+        0 2px 4px 0 rgba(0, 0, 0, 0.1),
+        0 0 1rem 24rem rgba(0, 0, 0, 0.05);
+    }
+  }
+  .track-details {
+    background: var(--bs-white);
+    &:not(.mounting) {
+      transition: height 0.2s ease-in-out;
+    }
+    height: 0;
+    overflow-y: hidden;
+  }
 }
+
+.track-item {
+  &:not(.selected) {
+    opacity: 0.6;
+  }
+}
+
+.track-number {
+  background-color: orange;
+  color: white;
+  line-height: var(--cp-line-height-md);
+  width: calc(var(--cp-grid-base) * 5);
+  height: calc(var(--cp-grid-base) * 5);
+  border: 1px solid var(--bs-gray-300);
+  font-size: var(--cp-font-size-sm);
+}
+
+.classification {
+  line-height: var(--cp-line-height-sm);
+  @media (max-width: @breakpoint-xs-max) {
+    margin: var(--cp-spacing-xxxs) 0 var(--cp-spacing-xxs);
+  }
+  @media (min-width: @breakpoint-sm) {
+    margin: var(--cp-spacing-xxs) 0 var(--cp-spacing-xxxs);
+  }
+}
+
+.strikethrough {
+  text-decoration: line-through;
+  font-weight: var(--cp-font-weight-regular);
+  color: color-mix(in srgb, var(--bs-red), black 25%);
+  &.conflicting-tags {
+    color: var(--bs-secondary);
+  }
+}
+.conflicting-tags {
+  color: color-mix(in srgb, var(--bs-red), black 25%);
+}
+
 .classification-btns {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -918,136 +986,51 @@ onMounted(async () => {
   @media screen and (min-width: 1041px) {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
-  column-gap: 7px;
-  row-gap: 5px;
+  column-gap: var(--cp-spacing-xxs);
+  row-gap: var(--cp-spacing-xxs);
 }
-.add-classification-btn,
-.add-classification-btn:focus {
-  color: rgba(0, 112, 134, 0.5);
-  border-radius: 8px;
-  border: 4px dashed rgba(0, 112, 134, 0.2);
-  &:active,
-  &:hover {
-    color: rgba(0, 112, 134, 0.8);
-    border: 4px dashed rgba(0, 112, 134, 0.4);
-  }
-}
-.classification-btn {
-  border-radius: 4px;
-  color: #444;
-  gap: 3px;
-  box-shadow: inset 0 -1px 2px 0 rgba(0, 0, 0, 0.2);
-  background: #f2f2f2;
-  &:active,
-  &:focus {
-    background: #f2f2f2;
-  }
-  min-height: 72px;
+
+.btn-classification {
+  //--bs-btn-font-weight: 500;
+  //--bs-btn-color: var(--bs-primary);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: var(--bs-gray-200);
+  //--bs-btn-hover-color: var(--bs-white);
+  --bs-btn-hover-bg: var(--bs-gray-100);
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-focus-shadow-rgb: 49, 132, 253;
+  --bs-btn-active-color: var(--bs-btn-hover-color);
+  --bs-btn-active-bg: var(--bs-gray-200);
+  --bs-btn-active-border-color: transparent;
+  --bs-btn-line-height: var(--cp-line-height-md);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  padding: var(--cp-spacing-sm) var(--cp-spacing-xxxs) var(--cp-spacing-xs);
   &.selected {
-    background: #888;
-    color: white;
-    text-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.7);
-    font-weight: 500;
-    box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    background: var(--bs-gray-600);
+    color: var(--bs-white);
+    .standard-shadow-inset(0.8);
   }
   &.selected-by-other-user {
-    background: #eee;
-    box-shadow:
-      inset 0 1px 10px 3px rgba(144, 238, 144, 0.4),
-      inset 0 -1px 2px 0 rgba(0, 0, 0, 0.2);
+    background: var(--bs-gray-200);
+    .standard-shadow-inset();
+  }
+  &.add {
+    box-shadow: none;
+    border-style: dashed;
+    border-color: var(--bs-gray-400);
   }
   &.pinned {
     position: relative;
     .pinned-tag {
       position: absolute;
-      top: 1px;
-      right: 4px;
+      top: var(--cp-spacing-xxxs);
+      right: var(--cp-spacing-xxs);
       transform: rotate(30deg);
     }
   }
-  padding-left: 3px;
-  padding-right: 3px;
   > span {
     word-break: break-word;
+    letter-spacing: -0.01rem;
   }
-}
-
-.track-number {
-  background-color: orange;
-  color: white;
-  line-height: 20px;
-  padding: 0;
-  width: 22px;
-  border: 1px solid #ccc;
-}
-.track {
-  height: 48px;
-  user-select: none;
-  transition: background-color ease-in-out 0.2s;
-  background-color: #f6f6f6;
-  border-top: 1px solid white;
-  color: rgba(68, 68, 68, 0.8);
-  &.selected {
-    background-color: white;
-    color: #444;
-
-    .confirm-button {
-      background-color: #f9f9f9;
-      border: 1px solid #183153;
-      color: #666;
-      > .icon {
-        margin-left: 10px;
-      }
-    }
-    .confirm-button,
-    .reject-button {
-      > .icon {
-        color: #444;
-        opacity: 1;
-      }
-    }
-  }
-  &:not(.selected) {
-    .confirm-button > .label {
-      // "visibly-hidden"
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
-  }
-}
-.confirm-button,
-.reject-button {
-  line-height: 1.2;
-  > .icon {
-    color: #666;
-    opacity: 0.8;
-  }
-}
-
-.strikethrough {
-  text-decoration: line-through;
-  color: rgba(126, 42, 42, 0.75);
-  &.conflicting-tags {
-    color: #666;
-  }
-}
-.conflicting-tags {
-  color: darkred;
-}
-.classification {
-  > .icon {
-    vertical-align: middle;
-    color: #408f58;
-  }
-}
-.track .btn:not(.confirm-button) {
-  width: 42px;
 }
 </style>

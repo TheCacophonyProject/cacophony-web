@@ -361,11 +361,11 @@ const isStillProcessing = computed<boolean>(() => {
       >
         <div
           v-for="([classification, path, count], index) in visitCountBySpecies"
-          class="fs-8 visit-species-count"
+          class="visit-species-count"
           :class="[classification, ...path.split('.')]"
           :key="index"
         >
-          <span class="count text-capitalize">
+          <span class="count text-capitalize d-inline-flex justify-content-center align-items-center">
             <b-spinner
               v-if="classification === 'unclassified'"
               small
@@ -590,22 +590,22 @@ const isStillProcessing = computed<boolean>(() => {
     &.cat {
       background: color-mix(
         in srgb,
-        var(--cp-tag-priority-badge-1),
+        var(--cp-tag-priority-badge-2),
         transparent 88%
       );
       .count {
-        background: var(--cp-tag-priority-badge-1);
+        background: var(--cp-tag-priority-badge-2);
       }
     }
     &.rodent,
     &.hedgehog {
       background: color-mix(
         in srgb,
-        var(--cp-tag-priority-badge-2),
+        var(--cp-tag-priority-badge-3),
         transparent 88%
       );
       .count {
-        background: var(--cp-tag-priority-badge-2);
+        background: var(--cp-tag-priority-badge-3);
       }
     }
   }
@@ -676,6 +676,17 @@ const isStillProcessing = computed<boolean>(() => {
         width: 2px;
         left: -2px;
         border-left: 2px dashed var(--bs-white);
+        transition: border-color 0.2s;
+      }
+    }
+  }
+  &:hover:not(&.sun) {
+    &:first-child,
+    &:last-child {
+      .visit-timeline {
+        &::before {
+          border-left: 2px dashed var(--bs-gray-200);
+        }
       }
     }
   }
@@ -718,11 +729,11 @@ const isStillProcessing = computed<boolean>(() => {
     }
     &.possum,
     &.cat {
-      background: var(--cp-tag-priority-badge-1);
+      background: var(--cp-tag-priority-badge-2);
     }
     &.rodent,
     &.hedgehog {
-      background: var(--cp-tag-priority-badge-2);
+      background: var(--cp-tag-priority-badge-3);
     }
   }
 }

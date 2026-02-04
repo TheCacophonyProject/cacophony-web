@@ -7,6 +7,7 @@ import {
   getClassificationForLabel,
 } from "@api/classificationsUtils.ts";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import { BTooltip } from "bootstrap-vue-next";
 
 const props = withDefaults(
   defineProps<{
@@ -332,15 +333,22 @@ defineExpose({
         </button>
         <button
           type="button"
-          class="btn btn-outline-secondary ms-2 pin-btn"
+          class="btn btn-icon ms-2 d-flex align-items-center"
           :class="{ pinned: singleSelectionIsPinned }"
           v-if="canBePinned"
+          id="pin-btn"
+          :aria-label="singleSelectionIsPinned ? 'Unpin tag' : 'Pin tag'"
         >
-          <font-awesome-icon
-            icon="thumbtack"
+          <material-symbol
+            :name="singleSelectionIsPinned ? 'keep_off' : 'keep'"
             @click.prevent="pinCurrentSelection"
+            size="1.25rem"
           />
         </button>
+        <b-tooltip target="pin-btn">
+          <span v-if="singleSelectionIsPinned"> Unpin tag </span>
+          <span v-else> Pin tag </span>
+        </b-tooltip>
       </div>
       <div
         v-else-if="multiselect && hasSelection"
@@ -603,24 +611,5 @@ defineExpose({
 .options-list-item:focus-within {
   background-color: #f1f1f1;
   transition: background-color 0.2s ease-in-out;
-}
-
-.pin-btn {
-  outline: none;
-  border: 0;
-  &:hover,
-  &:active,
-  &:focus {
-    background: transparent;
-    color: #444;
-  }
-  &.pinned {
-    &:hover,
-    &:active,
-    &:focus {
-      color: blue;
-    }
-    color: blue;
-  }
 }
 </style>
