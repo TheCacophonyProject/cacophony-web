@@ -570,7 +570,7 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
       recording &&
       recording.processingState !== RecordingProcessingState.Tracking
     "
-    class="accordion"
+    class="accordion px-1 px-sm-2 pt-1"
   >
     <div v-if="recordingHasFalseTriggers" class="p-2">
       <b-form-checkbox switch v-model="showFalseTriggers"

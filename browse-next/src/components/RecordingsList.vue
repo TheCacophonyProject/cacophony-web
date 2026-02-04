@@ -596,11 +596,11 @@ const removeMarginBottom = (
     }
     &.possum,
     &.cat {
-      background: var(--cp-tag-priority-badge-1);
+      background: var(--cp-tag-priority-badge-2);
     }
     &.rodent,
     &.hedgehog {
-      background: var(--cp-tag-priority-badge-2);
+      background: var(--cp-tag-priority-badge-3);
     }
     &.test-recording {
       background: #6a8bd5;

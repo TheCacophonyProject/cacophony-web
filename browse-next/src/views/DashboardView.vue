@@ -46,6 +46,7 @@ import { canonicalLatLngForLocations } from "@/helpers/Location";
 import { sortTagPrecedence } from "@models/visitsUtils";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import { DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS } from "@/consts.ts";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const selectedVisit = ref<ApiVisitResponse | null>(null);
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
@@ -479,27 +480,27 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       </div>
     </div>
   </div>
-  <h2 class="dashboard-subhead h4" v-if="hasVisitsForSelectedTimePeriod">
+  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
     Species summary
   </h2>
   <horizontal-overflow-carousel
-    class="species-summary-container mb-sm-5 mb-4"
+    class="species-summary-container mb-4 mb-sm-4 mb-md-5"
     v-if="hasVisitsForSelectedTimePeriod"
   >
-    <div class="species-summary flex-sm-nowrap flex-wrap d-flex">
+    <div class="species-summary flex-sm-nowrap flex-wrap d-flex gap-2 gap-sm-0">
       <div
         v-for="[key, val] in speciesSummarySorted"
         :key="key"
-        class="species-summary__item d-flex flex-row align-items-center gap-2"
+        class="species-summary__item d-flex flex-row align-items-center gap-2 gap-sm-3"
         @click="showVisitsForTag(key)"
       >
-        <div class="species-summary__item__icon p-2">
-          <tag-image :tag="key" width="24" height="24" class="" />
+        <div class="species-summary__item__icon p-1 p-md-2" :class="key">
+          <tag-image :tag="key" width="24" height="24" />
         </div>
         <div
           class="d-flex justify-content-evenly flex-sm-column align-items-center align-items-sm-start"
         >
-          <div class="species-summary__item__count lh-sm">
+          <div class="species-summary__item__count lh-sm me-1">
             {{ val }}
           </div>
           <div class="species-summary__item__name lh-sm text-capitalize">
@@ -509,13 +510,13 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       </div>
     </div>
   </horizontal-overflow-carousel>
-  <h2 class="dashboard-subhead h4" v-if="hasVisitsForSelectedTimePeriod">
+  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
     Visits summary
   </h2>
-  <div class="d-md-flex flex-md-row mb-5 gap-3">
+  <div class="row g-1 g-lg-3 mb-3 mb-sm-4 mb-md-5">
     <project-visits-summary
       v-if="!isMobileView && hasVisitsForSelectedTimePeriod"
-      class="mb-3 flex-md-fill"
+      class="mb-3 col-12 col-lg-7 col-xl-8 order-2 order-lg-1"
       :locations="allLocations"
       :active-locations="locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
       :visits="dashboardVisits"
@@ -523,6 +524,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       :loading="isLoading"
     />
     <visits-breakdown-list
+      class="col-12 col-lg-5 col-xl-4 order-1 order-lg-2"
       :visits="dashboardVisits"
       :location="canonicalLatLngForActiveLocations"
       :highlighted-location="currentlyHighlightedLocation"
@@ -532,7 +534,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       "
     />
   </div>
-  <h2 class="dashboard-subhead h4" v-if="hasVisitsForSelectedTimePeriod">
+  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
     Locations summary
   </h2>
   <horizontal-overflow-carousel
@@ -541,7 +543,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   >
     <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
     <div
-      class="species-summary flex-sm-nowrap"
+      class="species-summary d-flex gap-sm-3 flex-sm-nowrap mb-3 mb-sm-0"
       v-if="!isLoading && hasVisitsForSelectedTimePeriod"
     >
       <location-visit-summary
@@ -561,39 +563,49 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   </horizontal-overflow-carousel>
   <div
     v-if="isLoading || !hasVisitsForSelectedTimePeriod"
-    class="d-flex justify-content-sm-center flex-fill flex-column align-items-center justify-content-end mb-5 mb-sm-0"
+    class="d-flex justify-content-sm-center flex-fill flex-column align-items-center justify-content-center mb-5 mb-sm-0"
   >
     <div v-if="isLoading">
       <b-spinner variant="secondary" />
     </div>
     <div v-else class="d-flex justify-content-center flex-column">
-      <div style="text-align: center">
-        <span
-          v-if="
-            locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.length === 0
-          "
+      <div class="text-body-tertiary text-center py-3">
+        <material-symbol
+          name="search_off"
+          size="2.4rem"
+          grade="thin"
+          class="mb-2"
+        />
+        <p>
+          <!-- TODO: cater for no locations, no devices, show different copy? -->
+          <span
+            v-if="
+              locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.length ===
+              0
+            "
+          >
+            There were no active locations in the last
+            <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
+            ><span v-else>day</span> for this project.
+          </span>
+          <span v-else>
+            There were no visits for any target species in any of the active
+            locations in the last
+            <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
+            ><span v-else>day</span> for this project.
+          </span>
+        </p>
+        <b-button
+          variant="outline-secondary"
+          :to="{
+            name: 'activity',
+            params: {
+              projectName: urlNormalisedCurrentProjectName,
+            },
+          }"
+          >View latest visits</b-button
         >
-          There were no active locations in the last
-          <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
-          ><span v-else>day</span> for this project.
-        </span>
-        <span v-else>
-          There were no visits for any target species in any of the active
-          locations in the last
-          <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
-          ><span v-else>day</span> for this project.
-        </span>
       </div>
-      <b-button
-        class="mt-3"
-        :to="{
-          name: 'activity',
-          params: {
-            projectName: urlNormalisedCurrentProjectName,
-          },
-        }"
-        >Take me to the latest visits for this project</b-button
-      >
     </div>
   </div>
   <inline-view-modal
@@ -604,6 +616,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   />
 </template>
 <style lang="less" scoped>
+@import "../assets/less/breakpoints.less";
 @import "../assets/less/typography.less";
 @import "../assets/less/elevation.less";
 .header-container {
@@ -630,12 +643,16 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
 }
 
 .dashboard-subhead {
-  margin-bottom: var(--cp-spacing-sm);
+  margin-bottom: var(--cp-spacing-md);
+  font-size: var(--cp-font-size-h4);
+  @media screen and (max-width: @breakpoint-sm-max) {
+    margin-top: var(--cp-spacing-xs);
+  }
 }
 
 .species-summary-container {
   border-radius: var(--bs-border-radius);
-  @media screen and (min-width: 576px) {
+  @media screen and (min-width: @breakpoint-sm) {
     background: white;
     .standard-shadow();
   }
@@ -646,42 +663,90 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   &__item {
     background: var(--bs-white);
     cursor: pointer;
-    padding: var(--cp-spacing-md) var(--cp-spacing-sm);
-    @media screen and (max-width: 575px) {
-      //flex-basis: calc(50% - (var(--spacing--xxs)));
-      flex: 0 0 calc(50% - calc(var(--cp-spacing-xxs) / 2));
-      border: 1px solid var(--border-color-light);
+    @media screen and (max-width: @breakpoint-xs-max) {
+      padding: var(--cp-spacing-xs);
+      flex: 0 0 calc(50% - calc(var(--cp-spacing-xs) / 2));
+      border-radius: var(--bs-border-radius-sm);
+      .standard-shadow();
     }
-    @media screen and (min-width: 576px) {
+    @media screen and (min-width: @breakpoint-sm) {
+      padding: var(--cp-spacing-md);
       border-right: 1px solid var(--border-color-light);
       transition: background-color 0.2s ease-in-out;
+      flex: 1 0 auto;
       &:last-child {
         border-right: none;
       }
-      flex: 1 1 128px;
       //min-width: 130px; // TODO @media breakpoints
     }
+    @media screen and (min-width: @breakpoint-xl) {
+      padding: var(--cp-spacing-lg);
+    }
     &:hover {
-      background-color: var(--bs-gray-200);
+      background-color: var(--bs-gray-100);
+    }
+    &__icon {
+      background: color-mix(
+        in srgb,
+        var(--cp-tag-no-priority),
+        transparent 88%
+      );
+      border-radius: var(--bs-border-radius-sm);
+      &.mustelid {
+        background: color-mix(
+          in srgb,
+          var(--cp-tag-priority-badge-1),
+          transparent 88%
+        );
+      }
+      &.possum,
+      &.cat {
+        background: color-mix(
+          in srgb,
+          var(--cp-tag-priority-badge-2),
+          transparent 88%
+        );
+      }
+      &.rodent,
+      &.hedgehog {
+        background: color-mix(
+          in srgb,
+          var(--cp-tag-priority-badge-3),
+          transparent 88%
+        );
+      }
     }
     &__count {
-      font-weight: var(--cp-font-weight-medium);
-      @media screen and (min-width: 576px) {
+      font-weight: var(--cp-font-weight-semilbold);
+      @media screen and (min-width: @breakpoint-sm) {
         font-size: var(--cp-font-size-h2);
       }
     }
     &__name {
-      font-size: var(--cp-font-size-lg);
+      @media screen and (min-width: @breakpoint-sm) {
+        font-size: var(--cp-font-size-lg);
+        color: var(--bs-secondary-color);
+      }
     }
   }
 }
 </style>
 <style lang="less">
+@import "../assets/less/breakpoints.less";
+// make sure that the shadow of the species summary displays
+@media screen and (max-width: @breakpoint-xs-max) {
+  .species-summary-container {
+    margin: -2px -2px 0;
+    .inner {
+      padding: 2px 2px 4px;
+    }
+  }
+}
 // make sure that the shadow and hover effect of the location card displays - it won't otherwise because of the overflow hidden property
 .locations-summary-wrapper {
-  margin: -4px -6px -12px;
+  margin: -2px -2px 0;
   .inner {
-    padding: 4px 6px 12px;
+    padding: 2px 2px 4px;
   }
 }
 </style>

@@ -200,14 +200,14 @@ const reset = () => {
     <div class="col-lg-3">
       <h3 class="section-card-heading">Project label settings</h3>
       <p class="text-secondary pb-1">
-        Manage the set of default labels that users can apply to camera
-        recordings or bird recordings, and what those labels mean in the context
-        of your project.
+        Manage the set of default labels that users can apply to thermal video
+        recordings or audio recordings, and what those labels mean in the
+        context of your project.
       </p>
     </div>
     <div class="col-lg-9">
       <section-card>
-        <template #header-title> Camera labels </template>
+        <template #header-title> Thermal video labels </template>
         <template #header-action>
           <div>
             <button
@@ -276,7 +276,7 @@ const reset = () => {
     <div class="col-lg-3"></div>
     <div class="col-lg-9">
       <section-card>
-        <template #header-title> Bird recording labels </template>
+        <template #header-title> Audio labels </template>
         <template #header-action>
           <div>
             <button

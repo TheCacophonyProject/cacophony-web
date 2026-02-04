@@ -109,7 +109,9 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
         <div class="station-name h5 lh-base mb-1">
           {{ location.name }}
         </div>
-        <div class="visit-count lh-base">{{ visitCount }} visits</div>
+        <div class="visit-count lh-base text-muted">
+          {{ visitCount }} visits
+        </div>
       </div>
     </div>
     <div class="visit-species-breakdown d-flex justify-content-between gap-3">
@@ -156,26 +158,14 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
   user-select: none;
   text-decoration: none;
   color: inherit;
-  transform: translate3d(0, 0, 0);
-  transition:
-    transform 0.1s,
-    box-shadow 0.15s;
   .standard-shadow();
-  @media screen and (min-width: 576px) {
-    &:not(:first-child) {
-      margin-left: 19px;
-    }
-  }
-  &:hover {
-    box-shadow: 0 6px 12px 0 rgba(44, 79, 1, 0.1);
-    transform: translate3d(0, -2px, 0);
-  }
 }
 .visit-species-breakdown {
   padding: var(--cp-spacing-sm);
   .species-count {
     height: 24px;
     line-height: 24px;
+    font-size: var(--cp-font-size-sm);
   }
   .species-value {
     position: relative;
@@ -225,14 +215,13 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
   }
   .station-name,
   .visit-count {
-    background: color-mix(in srgb, var(--bs-white), transparent 15%);
-    backdrop-filter: blur(8px);
+    background: var(--bs-white);
     border-radius: var(--bs-border-radius-sm);
     padding: var(--cp-spacing-xxxs) var(--cp-spacing-xs);
   }
   .station-name {
     font-weight: var(--cp-font-weight-medium);
-    color: var(--cp-color-green-700);
+    //color: var(--cp-color-green-700);
   }
   .visit-count {
     display: inline-block;

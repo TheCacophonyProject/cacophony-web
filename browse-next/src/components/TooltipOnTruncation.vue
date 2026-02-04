@@ -15,9 +15,9 @@ const fullText = computed(() => {
 });
 </script>
 <template>
-  <span class="text-truncate" ref="spanItem">
-    <slot></slot>
-    <b-tooltip hover v-if="isTruncated" :target="spanItem">{{
+  <span class="text-truncate" ref="spanItem"
+    ><slot></slot
+    ><b-tooltip hover v-if="isTruncated" :target="spanItem">{{
       fullText
     }}</b-tooltip>
   </span>

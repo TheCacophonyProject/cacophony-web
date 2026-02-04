@@ -69,6 +69,10 @@ import SpectrogramViewer from "@/components/SpectrogramViewer.vue";
 import RecordingViewNotes from "@/components/RecordingViewNotes.vue";
 import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
 import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import LocationName from "@/components/LocationName.vue";
+import TooltipOnTruncation from "@/components/TooltipOnTruncation.vue";
+import { BBadge } from "bootstrap-vue-next";
 
 const selectedVisit = inject(
   "currentlySelectedVisit",
@@ -313,6 +317,15 @@ const currentVisitIndex = computed<number | null>(() => {
     }
   }
   return null;
+});
+
+const hasRecordingsOrVisitsInContext = computed<boolean>(() => {
+  return (
+    hasPreviousRecording.value ||
+    hasPreviousVisit.value ||
+    hasNextRecording.value ||
+    hasNextVisit.value
+  );
 });
 
 const hasNextRecording = computed<boolean>(() => {
@@ -1037,7 +1050,7 @@ const mapPointForRecording = computed<NamedPoint[]>(() => {
   return [];
 });
 
-const navLinkClasses = ["nav-item", "nav-link", "border-0", "fw-bold"];
+const navLinkClasses = ["nav-item", "nav-link"];
 const activeTabName = computed(() => {
   return route.name;
 });
@@ -1292,24 +1305,24 @@ const inlineModal = ref<boolean>(false);
     }"
   >
     <header
-      class="recording-view-header d-flex justify-content-between ps-sm-3 pe-sm-1 ps-2 pe-1 py-sm-1"
+      class="recording-view-header d-flex justify-content-between ps-sm-3 pe-0 pe-sm-1 ps-2 py-sm-2"
     >
       <div v-if="isInVisitContext">
-        <span class="recording-header-type text-uppercase fw-bold">Visit</span>
+        <span class="recording-header-type fs-6 fw-medium">Visit</span>
         <div class="recording-header-details mb-1 mb-sm-0">
-          <span class="recording-header-label fw-bold text-capitalize">{{
-            displayLabelForClassificationLabel(visitLabel)
-          }}</span>
+          <span
+            class="recording-header-label fw-semibold text-capitalize"
+            >{{ displayLabelForClassificationLabel(visitLabel) }}</span
+          >
           <span
             v-if="isInGreaterVisitContext"
             v-html="visitDurationString"
-            class="ms-sm-3 ms-2 recording-header-time"
-            style="color: #444"
+            class="recording-header-time ms-2 ms-sm-2 text-secondary"
           />
         </div>
       </div>
       <div v-else>
-        <span class="recording-header-type text-uppercase fw-bold">
+        <span class="recording-header-type fs-6 fw-medium">
           <span
             v-if="recordingType && recordingType === RecordingType.ThermalRaw"
             >Thermal Recording</span
@@ -1321,7 +1334,7 @@ const inlineModal = ref<boolean>(false);
         </span>
         <div class="recording-header-details mb-1 mb-sm-0">
           <span
-            class="recording-header-label fw-bold text-capitalize"
+            class="recording-header-label fw-semibold text-capitalize"
             v-if="isInVisitContext"
             >{{ visitForRecording }}</span
           >
@@ -1339,17 +1352,17 @@ const inlineModal = ref<boolean>(false);
       </div>
       <button
         type="button"
-        class="btn btn-square btn-hi"
+        class="btn btn-icon d-flex align-items-center"
         @click.stop.prevent="() => emit('close')"
       >
-        <font-awesome-icon icon="xmark" />
+        <material-symbol name="close" />
       </button>
     </header>
 
     <!--  Camera recording  -->
     <div class="player-overflow" v-if="recordingType !== RecordingType.Audio">
       <div class="player-and-tagging d-flex">
-        <div class="player-container">
+        <div class="player-container bg-black">
           <div ref="playerContainer">
             <cptv-player
               :recording="recording as ApiRecordingResponse"
@@ -1376,44 +1389,30 @@ const inlineModal = ref<boolean>(false);
             />
           </div>
         </div>
-        <div class="recording-info d-flex flex-column" ref="recordingInfo">
+        <div
+          class="recording-info d-flex flex-column flex-fill"
+          ref="recordingInfo"
+        >
           <!-- Desktop view only -->
           <div
-            class="recording-station-info d-inline-flex mb-3"
+            class="recording-station-info d-inline-flex justify-content-between p-4 pb-2"
             v-if="!isMobileView"
           >
-            <map-with-points
-              class="recording-location-map"
-              :points="mapPointForRecording"
-              :active-points="mapPointForRecording"
-              :highlighted-point="null"
-              :is-interactive="false"
-              :markers-are-interactive="false"
-              :has-attribution="false"
-              :can-change-base-map="false"
-              :zoom="false"
-              :radius="30"
-            />
             <div class="recording-details d-flex flex-column flex-fill">
               <div
-                class="fw-bolder"
+                class="mb-2"
                 :class="{
                   'recording-details-hover':
                     stationNameIsTruncated || deviceNameIsTruncated,
                 }"
               >
                 <div
-                  class="device-name pt-3 px-3 text-truncate d-inline-flex"
+                  class="device-name text-truncate d-inline-flex align-items-center me-3"
                   :class="{ 'is-truncated': deviceNameIsTruncated }"
                 >
-                  <font-awesome-icon
-                    icon="microchip"
-                    size="xs"
-                    class="me-2"
-                    color="rgba(0, 0, 0, 0.7)"
-                  />
+                  <material-symbol name="memory" size="1.125rem" class="me-1" />
                   <router-link
-                    class="text-truncate non-blue-link"
+                    class="text-truncate fw-semibold"
                     ref="deviceNameSpan"
                     v-if="recording && recording.deviceId"
                     :to="{
@@ -1424,40 +1423,36 @@ const inlineModal = ref<boolean>(false);
                       },
                     }"
                   >
-                    {{ currentDeviceName }}
+                    <tooltip-on-truncation>{{
+                      currentDeviceName
+                    }}</tooltip-on-truncation>
                   </router-link>
                 </div>
                 <div
-                  class="station-name pt-3 pe-2 text-truncate d-inline-flex"
+                  class="station-name text-truncate d-inline-flex"
                   :class="{ 'is-truncated': stationNameIsTruncated }"
                 >
-                  <font-awesome-icon
-                    icon="map-marker-alt"
-                    size="xs"
-                    class="me-2"
-                    color="rgba(0, 0, 0, 0.7)"
+                  <location-name
+                    :name="currentLocationName"
+                    truncate
+                    class="fw-semibold"
                   />
-                  <span class="text-truncate" ref="stationNameSpan">
-                    {{ currentLocationName }}
-                  </span>
                 </div>
               </div>
-              <div class="recording-date-time fs-7 d-flex px-3 mt-1">
-                <div>
-                  <font-awesome-icon
-                    :icon="['far', 'calendar']"
-                    size="sm"
+              <div class="recording-date-time d-flex">
+                <div class="d-flex align-items-center">
+                  <material-symbol
+                    name="calendar_today"
+                    size="1.125rem"
                     class="me-1"
-                    color="rgba(0, 0, 0, 0.5)"
                   />
                   <span v-html="recordingDate" />
                 </div>
-                <div class="ms-4">
-                  <font-awesome-icon
-                    :icon="['far', 'clock']"
-                    size="sm"
+                <div class="d-flex align-items-center ms-3">
+                  <material-symbol
+                    name="schedule"
+                    size="1.125rem"
                     class="me-1"
-                    color="rgba(0, 0, 0, 0.5)"
                   />
                   <span v-html="recordingStartTime" />
                 </div>
@@ -1472,11 +1467,20 @@ const inlineModal = ref<boolean>(false);
                 @delete-recording="deleteRecording"
               />
             </div>
+            <map-with-points
+              class="recording-location-map"
+              :points="mapPointForRecording"
+              :active-points="mapPointForRecording"
+              :highlighted-point="null"
+              :is-interactive="false"
+              :markers-are-interactive="false"
+              :has-attribution="false"
+              :can-change-base-map="false"
+              :zoom="false"
+              :radius="30"
+            />
           </div>
-          <ul
-            class="nav nav-tabs justify-content-md-center justify-content-evenly"
-            v-if="!isMobileView"
-          >
+          <ul class="nav nav-underline nav-fill px-4" v-if="!isMobileView">
             <router-link
               :class="[
                 ...navLinkClasses,
@@ -1492,8 +1496,11 @@ const inlineModal = ref<boolean>(false);
                 query: route.query,
               }"
               >Tracks
-              <span v-if="activeTabName !== `${recordingViewContext}-tracks`"
-                >({{ tracks.length }})</span
+              <b-badge
+                v-if="activeTabName !== `${recordingViewContext}-tracks`"
+                variant="light"
+                text-variant="primary-emphasis"
+                >{{ tracks.length }}</b-badge
               ></router-link
             >
             <router-link
@@ -1511,8 +1518,14 @@ const inlineModal = ref<boolean>(false);
                 query: route.query,
               }"
               >Labels
-              <span v-if="activeTabName !== `${recordingViewContext}-labels`"
-                >({{ tags.length }})</span
+              <b-badge
+                v-if="
+                  activeTabName !== `${recordingViewContext}-labels` &&
+                  tags.length
+                "
+                variant="light"
+                text-variant="primary-emphasis"
+                >{{ tags.length }}</b-badge
               ></router-link
             >
             <router-link
@@ -1530,8 +1543,14 @@ const inlineModal = ref<boolean>(false);
                 query: route.query,
               }"
               >Notes
-              <span v-if="activeTabName !== `${recordingViewContext}-notes`"
-                >({{ notes.length }})</span
+              <b-badge
+                v-if="
+                  activeTabName !== `${recordingViewContext}-notes` &&
+                  notes.length
+                "
+                variant="light"
+                text-variant="primary-emphasis"
+                >{{ notes.length }}</b-badge
               ></router-link
             >
           </ul>
@@ -1575,7 +1594,7 @@ const inlineModal = ref<boolean>(false);
               v-if="isMobileView"
             />
             <div
-              class="recording-station-info bg-white d-flex mb-3 flex-column-reverse mt-3"
+              class="recording-station-info bg-white d-flex flex-column-reverse"
             >
               <map-with-points
                 class="recording-location-map"
@@ -1590,60 +1609,57 @@ const inlineModal = ref<boolean>(false);
                 :radius="30"
               />
               <div
-                class="flex-fill d-flex align-items-sm-center p-2 px-3 flex-column flex-sm-row"
+                class="flex-fill d-flex align-items-sm-center py-3 px-0 flex-column flex-sm-row"
               >
-                <div class="fw-bolder d-flex">
-                  <div class="device-name pe-3 text-truncate">
-                    <font-awesome-icon
-                      icon="microchip"
-                      size="xs"
-                      class="me-2"
-                      color="rgba(0, 0, 0, 0.7)"
-                    />
+                <div>
+                  <div
+                    class="device-name text-truncate d-inline-flex align-items-center me-3"
+                    :class="{ 'is-truncated': deviceNameIsTruncated }"
+                  >
+                    <material-symbol name="memory" size="1.125rem" class="me-1" />
                     <router-link
-                      class="text-truncate non-blue-link"
+                      class="text-truncate fw-semibold"
                       ref="deviceNameSpan"
                       v-if="recording && recording.deviceId"
                       :to="{
-                        name: 'device-status',
-                        params: {
-                          deviceId: recording.deviceId,
-                          deviceName: urlNormaliseName(recording.deviceName),
-                        },
-                      }"
+                      name: 'device-status',
+                      params: {
+                        deviceId: recording.deviceId,
+                        deviceName: urlNormaliseName(recording.deviceName),
+                      },
+                    }"
                     >
-                      {{ currentDeviceName }}
+                      <tooltip-on-truncation>{{
+                          currentDeviceName
+                        }}</tooltip-on-truncation>
                     </router-link>
                   </div>
-                  <div class="station-name pe-2 text-truncate">
-                    <font-awesome-icon
-                      icon="map-marker-alt"
-                      size="xs"
-                      class="me-2"
-                      color="rgba(0, 0, 0, 0.7)"
+                  <div
+                    class="station-name text-truncate d-inline-flex"
+                    :class="{ 'is-truncated': stationNameIsTruncated }"
+                  >
+                    <location-name
+                      :name="currentLocationName"
+                      truncate
+                      class="fw-semibold"
                     />
-                    <span class="text-truncate">
-                      {{ currentLocationName }}
-                    </span>
                   </div>
                 </div>
 
-                <div class="recording-date-time fs-7 d-flex px-sm-3 ps-0 mt-1">
-                  <div>
-                    <font-awesome-icon
-                      :icon="['far', 'calendar']"
-                      size="sm"
+                <div class="recording-date-time d-flex">
+                  <div class="d-flex align-items-center">
+                    <material-symbol
+                      name="calendar_today"
+                      size="1.125rem"
                       class="me-1"
-                      color="rgba(0, 0, 0, 0.5)"
                     />
                     <span v-html="recordingDate" />
                   </div>
-                  <div class="ms-4">
-                    <font-awesome-icon
-                      :icon="['far', 'clock']"
-                      size="sm"
+                  <div class="d-flex align-items-center ms-3">
+                    <material-symbol
+                      name="schedule"
+                      size="1.125rem"
                       class="me-1"
-                      color="rgba(0, 0, 0, 0.5)"
                     />
                     <span v-html="recordingStartTime" />
                   </div>
@@ -1678,9 +1694,9 @@ const inlineModal = ref<boolean>(false);
       v-if="recordingType === RecordingType.Audio"
     >
       <!-- Desktop view only -->
-      <div class="recording-info d-flex flex-column">
+      <div class="recording-info d-flex flex-column flex-fill">
         <ul
-          class="nav nav-tabs justify-content-md-center justify-content-evenly"
+          class="nav nav-underline nav-fill px-4"
           v-if="!isMobileView"
         >
           <router-link
@@ -1790,7 +1806,7 @@ const inlineModal = ref<boolean>(false);
                       color="rgba(0, 0, 0, 0.7)"
                     />
                     <router-link
-                      class="text-truncate non-blue-link"
+                      class="text-truncate"
                       ref="deviceNameSpan"
                       v-if="recording && recording.deviceId"
                       :to="{
@@ -1855,7 +1871,7 @@ const inlineModal = ref<boolean>(false);
       </div>
       <div
         class="recording-station-info"
-        style="min-width: min(30%, 550px)"
+        style="min-width: min(30%, 320px)"
         v-if="!isMobileView"
       >
         <map-with-points
@@ -1870,70 +1886,61 @@ const inlineModal = ref<boolean>(false);
           :zoom="false"
           :radius="30"
         />
-        <div class="recording-details d-flex flex-column">
+        <div class="recording-details d-flex flex-column flex-fill">
           <div
-            class="fw-bolder"
+            class="mb-2"
             :class="{
-              'recording-details-hover':
-                stationNameIsTruncated || deviceNameIsTruncated,
-            }"
+                  'recording-details-hover':
+                    stationNameIsTruncated || deviceNameIsTruncated,
+                }"
           >
             <div
-              class="device-name pt-3 px-3 text-truncate d-inline-flex"
+              class="device-name text-truncate d-inline-flex align-items-center me-3"
               :class="{ 'is-truncated': deviceNameIsTruncated }"
             >
-              <font-awesome-icon
-                icon="microchip"
-                size="xs"
-                class="me-2"
-                color="rgba(0, 0, 0, 0.7)"
-              />
+              <material-symbol name="memory" size="1.125rem" class="me-1" />
               <router-link
-                class="text-truncate non-blue-link"
+                class="text-truncate fw-semibold"
                 ref="deviceNameSpan"
                 v-if="recording && recording.deviceId"
                 :to="{
-                  name: 'device-status',
-                  params: {
-                    deviceId: recording.deviceId,
-                    deviceName: urlNormaliseName(recording.deviceName),
-                  },
-                }"
+                      name: 'device-status',
+                      params: {
+                        deviceId: recording.deviceId,
+                        deviceName: urlNormaliseName(recording.deviceName),
+                      },
+                    }"
               >
-                {{ currentDeviceName }}
+                <tooltip-on-truncation>{{
+                    currentDeviceName
+                  }}</tooltip-on-truncation>
               </router-link>
             </div>
             <div
-              class="station-name pt-3 pe-2 text-truncate d-inline-flex"
+              class="station-name text-truncate d-inline-flex"
               :class="{ 'is-truncated': stationNameIsTruncated }"
             >
-              <font-awesome-icon
-                icon="map-marker-alt"
-                size="xs"
-                class="me-2"
-                color="rgba(0, 0, 0, 0.7)"
+              <location-name
+                :name="currentLocationName"
+                truncate
+                class="fw-semibold"
               />
-              <span class="text-truncate" ref="stationNameSpan">
-                {{ currentLocationName }}
-              </span>
             </div>
           </div>
-          <div class="recording-date-time fs-7 d-flex px-3 mt-1">
-            <div>
-              <font-awesome-icon
-                :icon="['far', 'calendar']"
-                size="sm"
+          <div class="recording-date-time d-flex">
+            <div class="d-flex align-items-center">
+              <material-symbol
+                name="calendar_today"
+                size="1.125rem"
                 class="me-1"
-                color="rgba(0, 0, 0, 0.5)"
               />
               <span v-html="recordingDate" />
             </div>
-            <div class="ms-4">
-              <font-awesome-icon
-                :icon="['far', 'clock']"
-                size="sm"
+            <div class="d-flex align-items-center ms-3">
+              <material-symbol
+                name="schedule"
+                size="1.125rem"
                 class="me-1"
-                color="rgba(0, 0, 0, 0.5)"
               />
               <span v-html="recordingStartTime" />
             </div>
@@ -1954,7 +1961,7 @@ const inlineModal = ref<boolean>(false);
     </div>
 
     <!-- Mobile view only -->
-    <footer class="recording-view-footer">
+    <footer v-if="hasRecordingsOrVisitsInContext" class="recording-view-footer">
       <div class="visit-progress">
         <div
           class="progress-bar"
@@ -1966,7 +1973,8 @@ const inlineModal = ref<boolean>(false);
           }"
         ></div>
       </div>
-      <nav class="d-flex footer-nav flex-fill">
+
+      <nav class="d-flex justify-content-between flex-fill">
         <div class="prev-button d-flex">
           <!-- Mobile only button without labels, advances through recordings and visits -->
           <button
@@ -1975,80 +1983,52 @@ const inlineModal = ref<boolean>(false);
             :disabled="!hasPreviousRecording && !hasPreviousVisit"
             @click.prevent="gotoPreviousRecordingOrVisit"
           >
-            <span class="px-1">
-              <svg
-                :width="hasPreviousRecording ? 10 : 17"
-                height="16"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M10 2.28c0 .17-.06.32-.18.45L4.69 8l5.13 5.27a.64.64 0 0 1 0 .89l-1.6 1.65a.59.59 0 0 1-.44.19.59.59 0 0 1-.43-.19L.18 8.45A.62.62 0 0 1 0 8c0-.17.06-.32.18-.45L7.35.2a.59.59 0 0 1 .43-.2c.17 0 .31.06.43.19l1.6 1.65c.13.12.19.27.19.44Z"
-                  fill="#666"
-                />
-                <path
-                  v-if="!hasPreviousRecording"
-                  transform="translate(7 0)"
-                  d="M10 2.28c0 .17-.06.32-.18.45L4.69 8l5.13 5.27a.64.64 0 0 1 0 .89l-1.6 1.65a.59.59 0 0 1-.44.19.59.59 0 0 1-.43-.19L.18 8.45A.62.62 0 0 1 0 8c0-.17.06-.32.18-.45L7.35.2a.59.59 0 0 1 .43-.2c.17 0 .31.06.43.19l1.6 1.65c.13.12.19.27.19.44Z"
-                  fill="#666"
-                />
-              </svg>
-            </span>
+            <material-symbol
+              v-if="hasPreviousRecording"
+              name="keyboard_arrow_left"
+            />
+            <material-symbol
+              v-if="hasPreviousVisit && !hasPreviousRecording"
+              name="keyboard_double_arrow_left"
+            />
           </button>
           <!-- Desktop only button, advances through visits -->
           <button
             type="button"
-            class="btn d-none d-md-flex flex-row-reverse align-items-center btn-hi position-relative"
+            class="btn d-none d-md-flex flex-row-reverse align-items-center position-relative"
             :disabled="!hasPreviousVisit"
             @click.prevent="gotoPreviousVisit"
-            v-if="isInGreaterVisitContext"
+            v-if="isInGreaterVisitContext && hasPreviousVisit"
             title="alt+shift &larr;"
           >
             <span class="d-none d-md-flex ps-2 flex-column align-items-start">
-              <span class="fs-8 fw-bold" v-if="hasPreviousVisit"
+              <span class="fs-6 text-body-secondary"
                 >Prev<span class="d-sm-none d-cs-inline">ious</span> visit</span
               >
-              <span class="fs-8" v-else v-html="'&nbsp;'"></span>
-              <span class="fs-9" v-if="previousVisit">
-                <span class="text-capitalize fw-bold">{{
+              <span v-if="previousVisit" class="text-capitalize fw-medium fs-6">
+                {{
                   displayLabelForClassificationLabel(
                     previousVisit.classification as string,
                   )
-                }}</span
-                >,&nbsp;<span
-                  >{{ previousVisit.recordings.length }} rec<span
-                    class="d-sm-none d-cs-inline"
-                    >ording</span
-                  ><span v-if="previousVisit.recordings.length > 1"
-                    >s</span
-                  ></span
-                >
+                }}
               </span>
-              <span class="fs-9" v-else v-html="'&nbsp;'"></span>
             </span>
-            <span class="px-1">
-              <svg width="17" height="16" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M10 2.28c0 .17-.06.32-.18.45L4.69 8l5.13 5.27a.64.64 0 0 1 0 .89l-1.6 1.65a.59.59 0 0 1-.44.19.59.59 0 0 1-.43-.19L.18 8.45A.62.62 0 0 1 0 8c0-.17.06-.32.18-.45L7.35.2a.59.59 0 0 1 .43-.2c.17 0 .31.06.43.19l1.6 1.65c.13.12.19.27.19.44Z"
-                  fill="#666"
-                />
-                <path
-                  transform="translate(7 0)"
-                  d="M10 2.28c0 .17-.06.32-.18.45L4.69 8l5.13 5.27a.64.64 0 0 1 0 .89l-1.6 1.65a.59.59 0 0 1-.44.19.59.59 0 0 1-.43-.19L.18 8.45A.62.62 0 0 1 0 8c0-.17.06-.32.18-.45L7.35.2a.59.59 0 0 1 .43-.2c.17 0 .31.06.43.19l1.6 1.65c.13.12.19.27.19.44Z"
-                  fill="#666"
-                />
-              </svg>
-            </span>
+            <material-symbol
+              name="keyboard_double_arrow_left"
+              size="1.25rem"
+              class="me-1"
+            />
           </button>
           <!-- Desktop only button, advances through recordings -->
           <button
             type="button"
-            class="btn d-none d-md-flex flex-row-reverse align-items-center btn-hi position-relative"
+            class="btn d-none d-md-flex flex-row-reverse align-items-center position-relative"
             v-if="hasPreviousRecording"
             @click.prevent="gotoPreviousRecording"
             title="alt &larr;"
           >
             <span class="d-none d-md-flex ps-2 flex-column align-items-start">
-              <span class="fs-8 fw-bold"
+              <span class="fs-6 text-body-secondary"
                 >Prev<span
                   :class="{
                     'd-sm-none': hasPreviousVisit,
@@ -2064,20 +2044,17 @@ const inlineModal = ref<boolean>(false);
                   >ording</span
                 ></span
               >
-              <span class="fs-9"
+              <span class="fs-6 fw-medium"
                 >{{ (previousRecordingIndex as number) + 1 }}/{{
                   currentRecordingCount || allRecordingIds.length
                 }}</span
               >
             </span>
-            <span class="px-1">
-              <svg width="10" height="16" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M10 2.28c0 .17-.06.32-.18.45L4.69 8l5.13 5.27a.64.64 0 0 1 0 .89l-1.6 1.65a.59.59 0 0 1-.44.19.59.59 0 0 1-.43-.19L.18 8.45A.62.62 0 0 1 0 8c0-.17.06-.32.18-.45L7.35.2a.59.59 0 0 1 .43-.2c.17 0 .31.06.43.19l1.6 1.65c.13.12.19.27.19.44Z"
-                  fill="#666"
-                />
-              </svg>
-            </span>
+            <material-symbol
+              name="keyboard_arrow_left"
+              size="1.25rem"
+              class="me-1"
+            />
           </button>
         </div>
         <recording-view-action-buttons
@@ -2095,13 +2072,13 @@ const inlineModal = ref<boolean>(false);
           <!-- Desktop only button, advances through recordings -->
           <button
             type="button"
-            class="btn d-none d-md-flex align-items-center btn-hi position-relative"
+            class="btn d-none d-md-flex align-items-center position-relative"
             v-if="hasNextRecording"
             @click.prevent="gotoNextRecording"
             title="alt &rarr;"
           >
             <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
-              <span class="fs-8 fw-bold"
+              <span class="fs-6 text-body-secondary"
                 >Next rec<span
                   :class="{
                     'd-sm-none': hasNextVisit,
@@ -2110,87 +2087,58 @@ const inlineModal = ref<boolean>(false);
                   >ording</span
                 ></span
               >
-              <span class="fs-9"
+              <span class="fs-6 fw-medium"
                 >{{ (nextRecordingIndex as number) + 1 }}/{{
                   currentRecordingCount || allRecordingIds.length
                 }}</span
               >
             </span>
-            <span class="px-1">
-              <svg width="10" height="16" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M10 8c0 .17-.06.32-.18.45L2.65 15.8a.59.59 0 0 1-.43.19.59.59 0 0 1-.43-.19l-1.6-1.65a.62.62 0 0 1-.19-.44c0-.17.06-.32.18-.45L5.31 8 .18 2.73A.62.62 0 0 1 0 2.28a.6.6 0 0 1 .18-.44L1.78.19A.59.59 0 0 1 2.23 0c.17 0 .31.06.43.19l7.17 7.36c.12.13.18.28.18.45Z"
-                  fill="#666"
-                />
-              </svg>
-            </span>
+            <material-symbol
+              name="keyboard_arrow_right"
+              size="1.25rem"
+              class="ms-1"
+            />
           </button>
           <!-- Desktop only button, advances through visits -->
           <button
             type="button"
-            class="btn d-none d-md-flex align-items-center btn-hi position-relative"
+            class="btn d-none d-md-flex align-items-center position-relative"
             :disabled="!hasNextVisit"
             @click.prevent="gotoNextVisit"
-            v-if="isInGreaterVisitContext"
+            v-if="isInGreaterVisitContext && hasNextVisit"
             title="alt+shift &rarr;"
           >
             <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
-              <span class="fs-8 fw-bold" v-if="hasNextVisit">Next visit</span>
-              <span class="fs-8" v-else v-html="'&nbsp;'"></span>
-              <span class="fs-9" v-if="nextVisit">
-                <span class="text-capitalize fw-bold">{{
+              <span class="fs-6 text-body-secondary">Next visit</span>
+              <span v-if="nextVisit" class="text-capitalize fw-medium fs-6">
+                {{
                   displayLabelForClassificationLabel(
                     nextVisit.classification as string,
                   )
-                }}</span
-                >,&nbsp;<span
-                  >{{ nextVisit.recordings.length }} rec<span
-                    class="d-sm-none d-cs-inline"
-                    >ording</span
-                  ><span v-if="nextVisit.recordings.length > 1">s</span></span
-                >
+                }}
               </span>
-              <span class="fs-9" v-else v-html="'&nbsp;'"></span>
             </span>
-            <span class="px-1">
-              <svg width="17" height="16" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M10 8c0 .17-.06.32-.18.45L2.65 15.8a.59.59 0 0 1-.43.19.59.59 0 0 1-.43-.19l-1.6-1.65a.62.62 0 0 1-.19-.44c0-.17.06-.32.18-.45L5.31 8 .18 2.73A.62.62 0 0 1 0 2.28a.6.6 0 0 1 .18-.44L1.78.19A.59.59 0 0 1 2.23 0c.17 0 .31.06.43.19l7.17 7.36c.12.13.18.28.18.45Z"
-                  fill="#666"
-                />
-                <path
-                  transform="translate(7 0)"
-                  d="M10 8c0 .17-.06.32-.18.45L2.65 15.8a.59.59 0 0 1-.43.19.59.59 0 0 1-.43-.19l-1.6-1.65a.62.62 0 0 1-.19-.44c0-.17.06-.32.18-.45L5.31 8 .18 2.73A.62.62 0 0 1 0 2.28a.6.6 0 0 1 .18-.44L1.78.19A.59.59 0 0 1 2.23 0c.17 0 .31.06.43.19l7.17 7.36c.12.13.18.28.18.45Z"
-                  fill="#666"
-                />
-              </svg>
-            </span>
+            <material-symbol
+              name="keyboard_double_arrow_right"
+              size="1.25rem"
+              class="ms-1"
+            />
           </button>
           <!-- Mobile only button without labels, advances through recordings and visits -->
           <button
             type="button"
-            class="btn d-flex d-md-none align-items-center btn-hi"
+            class="btn btn-icon d-flex d-md-none align-items-center"
             :disabled="!hasNextRecording && !hasNextVisit"
             @click.prevent="async () => await gotoNextRecordingOrVisit()"
           >
-            <span class="px-1">
-              <svg
-                :width="hasNextRecording ? 10 : 17"
-                height="16"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M10 8c0 .17-.06.32-.18.45L2.65 15.8a.59.59 0 0 1-.43.19.59.59 0 0 1-.43-.19l-1.6-1.65a.62.62 0 0 1-.19-.44c0-.17.06-.32.18-.45L5.31 8 .18 2.73A.62.62 0 0 1 0 2.28a.6.6 0 0 1 .18-.44L1.78.19A.59.59 0 0 1 2.23 0c.17 0 .31.06.43.19l7.17 7.36c.12.13.18.28.18.45Z"
-                  fill="#666"
-                />
-                <path
-                  transform="translate(7 0)"
-                  v-if="!hasNextRecording"
-                  d="M10 8c0 .17-.06.32-.18.45L2.65 15.8a.59.59 0 0 1-.43.19.59.59 0 0 1-.43-.19l-1.6-1.65a.62.62 0 0 1-.19-.44c0-.17.06-.32.18-.45L5.31 8 .18 2.73A.62.62 0 0 1 0 2.28a.6.6 0 0 1 .18-.44L1.78.19A.59.59 0 0 1 2.23 0c.17 0 .31.06.43.19l7.17 7.36c.12.13.18.28.18.45Z"
-                  fill="#666"
-                />
-              </svg>
-            </span>
+            <material-symbol
+              v-if="hasNextRecording"
+              name="keyboard_arrow_right"
+            />
+            <material-symbol
+              v-if="hasNextVisit && !hasNextRecording"
+              name="keyboard_double_arrow_right"
+            />
           </button>
         </div>
       </nav>
@@ -2207,29 +2155,30 @@ const inlineModal = ref<boolean>(false);
 <style scoped lang="less">
 @import "../assets/less/typography.less";
 @import "../assets/less/elevation.less";
+@import "../assets/less/breakpoints.less";
 
 .overflow-x-hidden {
   overflow-x: hidden;
 }
 // TODO: When there is overflow, show shadows at top/bottom
 .player-overflow {
-  @media screen and (max-width: 1040px) {
+  @media (max-width: @breakpoint-md-max) {
     overflow-y: auto;
   }
-  background: #f6f6f6;
 }
 .player-overflow.recording-type-audio {
   overflow-y: auto;
-  background: #f6f6f6;
 }
+
+// TODO, maybe Sara: what is this for? Better way of doing it?
 .tags-overflow {
-  @media screen and (min-width: 1041px) {
-    overflow-y: scroll;
+  @media (min-width: @breakpoint-lg) {
+    overflow-y: auto;
     @headerHeight: 64px;
     @playerHeight: 426px;
-    @locationInfoHeight: 120px;
-    @tabsHeight: 38.5px;
-    @footerHeight: 55px;
+    @locationInfoHeight: 140px;
+    @tabsHeight: 42px;
+    @footerHeight: 56px;
     flex: 1;
     //max-height: min(
     //  @playerHeight,
@@ -2244,189 +2193,90 @@ const inlineModal = ref<boolean>(false);
     height: 100%;
   }
 }
-.footer-nav {
-  flex-direction: row;
-  justify-content: center;
-  align-items: stretch;
-  position: relative;
 
-  @media screen and (min-width: 576px) {
-    min-height: 55px;
-  }
-  min-height: 48px;
-}
-.next-button,
-.prev-button {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-}
-.next-button {
-  right: 0;
-}
-.prev-button {
-  left: 0;
-}
-
-.recording-tracks {
+/*.recording-tracks {
   box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
   z-index: 1;
-}
+}*/
 
 .recording-view-header {
-  border-bottom: 2px solid #e1e1e1;
-  .recording-header-type {
-    .fs-8();
+  border-bottom: 1px solid var(--border-color-light);
+}
+
+.recording-header-details {
+  @media (max-width: @breakpoint-xs-max) {
+    line-height: var(--cp-line-height-sm);
   }
-  .recording-header-details {
-    line-height: 1;
-  }
-  .recording-header-label {
-    .fs-6();
-  }
-  .recording-header-time {
-    .fs-8();
-  }
-  @media screen and (min-width: 576px) {
-    .recording-header-type {
-      .fs-8();
-    }
-    .recording-header-details {
-      line-height: unset;
-    }
-    .recording-header-label {
-      .fs-5();
-    }
-    .recording-header-time {
-      .fs-7();
-    }
-  }
-  @container (max-height: 940px) {
-    .recording-header-type {
-      .fs-8();
-    }
-    .recording-header-details {
-      line-height: 1;
-    }
-    .recording-header-label {
-      .fs-6();
-    }
-    .recording-header-time {
-      .fs-8();
-    }
+  @media (min-width: @breakpoint-sm) {
+    line-height: var(--cp-line-height-md);
   }
 }
+
+.recording-header-label {
+  @media (max-width: @breakpoint-xs-max) {
+    font-size: var(--cp-font-size-md);
+  }
+  @media (min-width: @breakpoint-sm) {
+    font-size: var(--cp-font-size-lg);
+  }
+}
+
+.recording-header-time {
+  @media (max-width: @breakpoint-xs-max) {
+    font-size: var(--cp-font-size-sm);
+  }
+  @media (min-width: @breakpoint-sm) {
+    font-size: var(--cp-font-size-md);
+  }
+}
+
 .recording-view-footer {
-  background: white;
+  @media (min-width: @breakpoint-sm) {
+    padding-bottom: var(--cp-spacing-xxxs);
+  }
   .visit-progress {
     height: 2px;
-    background: #e1e1e1;
+    background: var(--border-color-light);
+    @media (min-width: @breakpoint-sm) {
+      margin-bottom: var(--cp-spacing-xxxs);
+    }
     .progress-bar {
       transition: width 0.3s;
       // TODO - make the progress bar proportional to the offset of the recording within the visit timeline.
       // When the video is playing, we could even update it for the duration of the video?
       height: 100%;
-      background: #6dbd4b;
+      background: var(--cp-color-primary);
     }
   }
 }
-.recording-info {
+/*.recording-info {
   width: 100%;
-}
-.recording-station-info {
-  .standard-shadow();
-}
-.recording-details {
-  max-width: 318px;
-}
+}*/
 .recording-type-audio .recording-details {
   max-width: unset;
 }
 .recording-location-map {
-  @media screen and (max-width: 1039px) {
+  @media (max-width: @breakpoint-md-max) {
     width: 100%;
-    height: 180px;
+    height: calc(var(--cp-grid-base) * 44);
   }
-  width: 120px;
-  height: 120px;
-  min-width: 120px;
+  @media (min-width: @breakpoint-lg) {
+    width: calc(var(--cp-grid-base) * 26);
+    height: calc(var(--cp-grid-base) * 26);
+    min-width: calc(var(--cp-grid-base) * 26);
+    border-radius: 100%;
+  }
 }
 @media screen and (min-width: 880px) {
   .d-cs-inline {
     display: inline !important;
   }
 }
-.nav-item.active {
-  background: unset;
-  border-bottom: 3px solid #6dbd4b !important;
-}
-.station-name,
-.recording-date-time {
-  color: #444;
-}
-@media screen and (min-width: 1041px) {
-  .recording-details-hover {
-    &:hover {
-      position: relative;
-      .device-name,
-      .station-name {
-        transition: all 0.2s ease-in-out;
-        opacity: 0.25;
-        &:hover {
-          opacity: 1;
-        }
-      }
-      .station-name:hover {
-        transform: translateX(-90%);
-        > span {
-          min-width: 270px;
-        }
-      }
-    }
-  }
-}
 
-.device-name span {
-  transition: background-color 1s ease-in;
-  background-color: transparent;
-}
-
-.device-name,
-.station-name {
+.device-name {
   max-width: 50%;
-  width: 50%;
-  cursor: default;
-  padding-top: 0;
-  align-items: center;
-  background-color: transparent;
-  @media screen and (min-width: 1041px) {
-    &:hover {
-      z-index: 1;
-      background: #f6f6f6;
-      > span {
-        background: #f6f6f6;
-        border-radius: 3px;
-      }
-
-      > .text-truncate {
-        overflow: unset;
-        white-space: unset;
-        word-break: break-all;
-        z-index: 1;
-      }
-      overflow: visible;
-    }
-  }
 }
 
-.nav-tabs {
-  .nav-link:not(.active) {
-    color: inherit;
-  }
-  .active {
-    cursor: default;
-  }
-}
 .player-and-tagging {
   flex-direction: row;
   @media screen and (max-width: 1040px) {
@@ -2459,6 +2309,7 @@ const inlineModal = ref<boolean>(false);
   left: 16px;
   right: 16px;
   container-type: size;
+  border-radius: var(--bs-modal-border-radius);
   @media screen and (max-width: 1040px) {
     top: 0;
     bottom: 0;
@@ -2492,11 +2343,5 @@ const inlineModal = ref<boolean>(false);
     right: 0;
     z-index: 400;
   }
-}
-.player-container {
-  background: black;
-}
-.non-blue-link {
-  color: inherit;
 }
 </style>
