@@ -100,6 +100,10 @@ watch(
   },
 );
 
+const trackIsExpanded = computed<boolean>(() => {
+  return route.path.endsWith("detail");
+});
+
 const showFalseTriggers = ref<boolean>(false);
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
@@ -571,6 +575,7 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
       recording.processingState !== RecordingProcessingState.Tracking
     "
     class="accordion px-1 px-sm-2 pt-1"
+    :class="{ 'has-selected': trackIsExpanded }"
   >
     <div v-if="recordingHasFalseTriggers" class="p-2">
       <b-form-checkbox switch v-model="showFalseTriggers"
@@ -617,3 +622,11 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
     <b-spinner variant="secondary" />
   </div>
 </template>
+<style scoped>
+.accordion {
+  transition: background-color 0.2s linear;
+  &.has-selected {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+}
+</style>

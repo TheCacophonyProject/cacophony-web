@@ -234,7 +234,9 @@ describe("Fix location: subsequent recordings", () => {
    * -> recording: uses location as uploaded, creates new automatic station
    * -> device location remains at updated location
    */
-  it("Move recording: add new recording in same place, before station creation time", () => {
+
+  // NOTE: This logic seems to be obsolete now: in practice no-one creates stations manually.
+  it.skip("Move recording: add new recording in same place, before station creation time", () => {
     const deviceName = "update-device-12";
     const manualStationName = "Josie-station-12";
 

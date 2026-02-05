@@ -134,7 +134,7 @@ const handleExpansion = (isExpanding: boolean) => {
     if (trackDetails.value) {
       (trackDetails.value as HTMLDivElement).style.height = `${
         (trackDetails.value as HTMLDivElement).scrollHeight +
-        (expandedOnce.value ? 0 : 10)
+        (expandedOnce.value ? 0 : trackDetails.value.children[1].scrollHeight)
       }px`;
     }
     expandedOnce.value = true;
@@ -912,9 +912,8 @@ onMounted(async () => {
       }
     }
     &.expanded {
-      box-shadow:
-        0 2px 4px 0 rgba(0, 0, 0, 0.1),
-        0 0 1rem 24rem rgba(0, 0, 0, 0.05);
+      background-color: white;
+      box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
     }
   }
   .track-details {

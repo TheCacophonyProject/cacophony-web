@@ -925,6 +925,7 @@ export const maybeUpdateDeviceHistory = async (
             where: {
               GroupId: device.GroupId,
               location: locationExactlyMatches(location),
+              retiredAt: { [Op.eq]: null },
             },
             defaults: {
               name: `New location for ${
@@ -934,6 +935,7 @@ export const maybeUpdateDeviceHistory = async (
               activeAt: dateTime,
               automatic: true,
               needsRename: true,
+              retiredAt: null,
               GroupId: device.GroupId,
             },
             transaction,

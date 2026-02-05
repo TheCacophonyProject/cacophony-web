@@ -1,5 +1,6 @@
 import {
   DEFAULT_AUTH_ID,
+  type FetchResult,
   type JwtToken,
   type JwtTokenPayload,
   type JwtUserAuthTokenPayload,
@@ -241,13 +242,19 @@ const credentialsResolvers = {
   isDevEnvironment: () => {
     return import.meta.env.DEV;
   },
-  // networkConnectionErrorHandler: {
-  //   // eslint-disable-next-line no-undef
-  //   retry: async (authKey: TestHandle | null, url: string, request: RequestInit) => {
-  //     console.log("Would retry network connection in prod environment");
-  //     // FIXME:
-  //   },
-  // },
+  networkConnectionErrorHandler: {
+    retry: async (
+      _authKey: TestHandle | null,
+      _url: string,
+      // eslint-disable-next-line no-undef
+      _request: RequestInit,
+    ) => {
+      // Would retry network connection in prod environment
+      return new Promise<void>((resolve, _reject) => {
+        resolve();
+      }) as unknown as Promise<FetchResult<unknown>>;
+    },
+  },
   getApiRoot: () => {
     let apiRoot = import.meta.env.VITE_API;
     if (apiRoot === "CURRENT_HOST") {

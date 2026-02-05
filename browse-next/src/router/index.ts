@@ -64,6 +64,11 @@ const recordingModalTabChildren = (grandParent: string, parent: string) => [
     name: `${grandParent}-${parent}-notes`,
     component: () => import("@/components/RecordingViewNotes.vue"),
   },
+  {
+    path: "location/:trackId?/:detail?",
+    name: `${grandParent}-${parent}-location`,
+    component: () => import("@/components/RecordingViewLocation.vue"),
+  },
 ];
 
 const recordingModalChildren = (parent: string) => [

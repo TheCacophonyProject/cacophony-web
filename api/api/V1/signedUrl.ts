@@ -85,7 +85,7 @@ export const streamS3Object = async (
   //  So in terms of recording bytes transferred for billing purposes, we basically
   //  may have to attribute more bytes to the download than were actually used by the
   //  end-user browser request.
-  response.setHeader("Content-disposition", `attachment; filename=${fileName}`);
+  response.setHeader("Content-disposition", `attachment; filename=${fileSize}`);
   if (!request.headers.range) {
     // seems like this removes content-length header and breaks chrome for mp4
     response.setHeader("Transfer-Encoding", "chunked");
@@ -93,10 +93,11 @@ export const streamS3Object = async (
     // Set a custom header, so we can still know the total length of the streaming file
     // and show a progress bar where we're streaming the whole file up front.
     if (fileSize) {
+      // NOTE: This seems to be stripped out by nginx, so we're putting the filesize at the end of the mimeType.
       response.setHeader("Fallback-Content-Length", fileSize);
     }
   }
-  response.setHeader("Content-type", mimeType);
+  response.setHeader("Content-type", `${mimeType}__${fileSize}`);
   const s3 = openS3();
 
   try {
@@ -123,29 +124,34 @@ export const streamS3Object = async (
       dataStreamed += chunk.length;
       response.write(chunk);
     }
-    if (userId && groupId) {
+    if (userId && groupId && !config.processingUserIds.includes(userId)) {
       // Log out to the DB how much we streamed for this user.
-      const groupUser = await GroupUsers.findOne({
-        where: {
-          UserId: userId,
-          GroupId: groupId,
-          removedAt: { [Op.eq]: null },
-        },
-      });
-      if (!groupUser && SuperUsers.has(userId)) {
-        // NOTE: If the user is a super-user, just attribute it to their user.
-        const user = await User.findByPk(userId);
-        if (user) {
-          await user.increment({
-            transferredBytes: dataStreamed,
-            transferredItems: 1,
-          });
-        }
-      } else {
-        await groupUser.increment({
+      const [_rows, affectedCount] = await GroupUsers.increment(
+        {
           transferredBytes: dataStreamed,
           transferredItems: 1,
-        });
+        },
+        {
+          where: {
+            UserId: userId,
+            GroupId: groupId,
+            removedAt: { [Op.eq]: null },
+          },
+        },
+      );
+      if (affectedCount === 0 && SuperUsers.has(userId)) {
+        // NOTE: If the user is a super-user, just attribute it to their user.
+        await User.increment(
+          {
+            transferredBytes: dataStreamed,
+            transferredItems: 1,
+          },
+          {
+            where: {
+              id: userId,
+            },
+          },
+        );
       }
     }
     response.end();

@@ -61,16 +61,18 @@ const calculateListOverflow = (availableWidth: number) => {
 
     for (const child of Array.from(children)) {
       if (!child.classList.contains("btn-group")) {
-        const width =
-          child.querySelector(".text")!.getBoundingClientRect().width + gap;
-        totalWidth += width;
+        const text = child.querySelector(".text");
+        if (text) {
+          const width = text.getBoundingClientRect().width + gap;
+          totalWidth += width;
 
-        if (Math.floor(totalWidth) + extraWidth >= availableWidth) {
-          safeNum = widths.length;
-          overflows = true;
-          break;
+          if (Math.floor(totalWidth) + extraWidth >= availableWidth) {
+            safeNum = widths.length;
+            overflows = true;
+            break;
+          }
+          widths.push(width);
         }
-        widths.push(width);
       }
     }
     if (overflows) {

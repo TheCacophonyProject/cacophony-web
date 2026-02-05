@@ -158,7 +158,7 @@ const notImplemented = () => {
   >
     <button
       type="button"
-      class="btn btn-icon btn-lg d-flex align-items-center"
+      class="btn btn-icon d-flex align-items-center"
       id="flag"
       aria-label="Flag record"
       :disabled="
