@@ -29,20 +29,10 @@ export async function tryToMatchLocationToStationInGroup(
   location: LatLng,
   groupId: GroupId,
   activeFromDate: Date,
-  lookForwards = false,
 ): Promise<Station | null> {
   // Match the recording to any stations that the group might have:
-  let stations: Station[];
-  if (lookForwards) {
-    stations = await Station.activeInGroupDuringTimeRange(
-      groupId,
-      activeFromDate,
-      new Date(),
-      lookForwards,
-    );
-  } else {
-    stations = await Station.activeInGroupAtTime(groupId, activeFromDate);
-  }
+  const stations = await Station.activeInGroupAtTime(groupId, activeFromDate);
+
   const stationDistances = [];
   for (const station of stations) {
     // See if any stations match: Looking at the location distance between this recording and the stations.

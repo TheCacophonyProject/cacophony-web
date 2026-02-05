@@ -907,7 +907,7 @@ const assignGroupAndStationToRecording = async (
   | {
       groupId: GroupId;
       deviceId: DeviceId;
-      station: Station;
+      station?: Station;
     }
   | string
 > => {

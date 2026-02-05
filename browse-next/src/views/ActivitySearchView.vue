@@ -34,11 +34,6 @@ import type {
   LoadedResource,
   SuccessFetchResult,
 } from "@apiClient/types";
-import type {
-  ApiAudioRecordingResponse,
-  ApiRecordingResponse,
-  ApiThermalRecordingResponse,
-} from "@typedefs/api/recording";
 import {
   type RecordingType,
   RecordingType as ConcreteRecordingType,
@@ -107,6 +102,12 @@ import {
   BSpinner,
 } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import type {
+  ApiAudioRecordingMetadataResponse,
+  ApiAudioRecordingResponse,
+  ApiRecordingResponse,
+  ApiThermalRecordingResponse,
+} from "@typedefs/api/recording";
 
 const mapBuffer = ref<HTMLDivElement>();
 const mapContainer = ref<HTMLDivElement>();
@@ -1148,7 +1149,7 @@ const appendRecordingsChunkedByDay = (recordings: ApiRecordingResponse[]) => {
         ((recording as ApiAudioRecordingResponse | ApiThermalRecordingResponse)
           .additionalMetadata || {})
       ) {
-        detail = `${((recording as ApiAudioRecordingResponse).additionalMetadata as any).status} recording`;
+        detail = `${((recording as ApiAudioRecordingResponse).additionalMetadata as ApiAudioRecordingMetadataResponse).status} recording`;
       }
       recording.tags.push({
         id: -1,

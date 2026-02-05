@@ -26,8 +26,10 @@ import {
   visitDuration,
 } from "@models/visitsUtils";
 import type {
+  ApiAudioRecordingMetadataResponse,
   ApiAudioRecordingResponse,
   ApiRecordingResponse,
+  ApiThermalRecordingMetadataResponse,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
 import router from "@/router";
@@ -35,10 +37,8 @@ import type {
   ApiVisitResponse,
   VisitRecordingTag,
 } from "@typedefs/api/monitoring";
-import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { DateTime } from "luxon";
-import type { NamedPoint } from "@models/mapUtils";
 import CptvPlayer from "@/components/cptv-player/CptvPlayer.vue";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
@@ -51,29 +51,20 @@ import { ClientApi } from "@/api";
 import {
   activeLocations,
   currentUser as currentUserInfo,
-  currentUserCreds as currentUserCredentials,
   latLngForActiveLocations,
 } from "@models/provides";
-import {
-  DEFAULT_AUTH_ID,
-  type LoadedResource,
-  type LoggedInUserAuth,
-} from "@apiClient/types";
+import { DEFAULT_AUTH_ID, type LoadedResource } from "@apiClient/types";
 import {
   RecordingProcessingState,
   RecordingType as ConcreteRecordingType,
   RecordingType,
 } from "@typedefs/api/consts.ts";
 import sunCalc from "suncalc";
-import { capitalize, urlNormaliseName } from "@/utils.ts";
+import { capitalize } from "@/utils.ts";
 import SpectrogramViewer from "@/components/SpectrogramViewer.vue";
-import RecordingViewNotes from "@/components/RecordingViewNotes.vue";
-import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
-import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
-import LocationName from "@/components/LocationName.vue";
-import TooltipOnTruncation from "@/components/TooltipOnTruncation.vue";
-import { BBadge } from "bootstrap-vue-next";
+import RecordingViewLocation from "@/components/RecordingViewLocation.vue";
+import RecordingViewTabs from "@/components/RecordingViewTabs.vue";
 
 const selectedVisit = inject(
   "currentlySelectedVisit",
@@ -700,31 +691,6 @@ const isInGreaterVisitContext = computed<boolean>(() => {
 
 const recording = ref<LoadedResource<ApiRecordingResponse>>(null);
 
-const tracks = computed<ApiTrackResponse[]>(() => {
-  if (recording.value) {
-    return (recording.value as ApiRecordingResponse).tracks;
-  }
-  return [];
-});
-
-const tags = computed<ApiRecordingTagResponse[]>(() => {
-  if (recording.value) {
-    return (recording.value as ApiRecordingResponse).tags.filter(
-      (tag) => tag.detail !== "note",
-    );
-  }
-  return [];
-});
-
-const notes = computed<ApiRecordingTagResponse[]>(() => {
-  if (recording.value) {
-    return (recording.value as ApiRecordingResponse).tags.filter(
-      (tag) => tag.detail === "note",
-    );
-  }
-  return [];
-});
-
 interface Timespan {
   fromDateTime: Date;
   untilDateTime?: Date;
@@ -828,7 +794,7 @@ const loadRecording = async () => {
           ).additionalMetadata || {})
         ) {
           detail = capitalize(
-            `${((recording.value as ApiAudioRecordingResponse).additionalMetadata as any).status} recording`,
+            `${((recording.value as ApiAudioRecordingResponse).additionalMetadata as ApiAudioRecordingMetadataResponse | ApiThermalRecordingMetadataResponse).status} recording`,
           );
         }
         recording.value.tags.push({
@@ -987,78 +953,9 @@ const recordingDurationString = computed<string>(() => {
   return "";
 });
 
-const recordingDateTime = computed<DateTime | null>(() => {
-  if (recording.value) {
-    const rec = recording.value as ApiRecordingResponse;
-    if (rec.location) {
-      const zone = timezoneForLatLng(rec.location);
-      return DateTime.fromISO(rec.recordingDateTime, {
-        zone,
-      });
-    }
-    return DateTime.fromISO(rec.recordingDateTime);
-  }
-  return null;
-});
-
-const recordingDate = computed<string>(() => {
-  return recordingDateTime.value?.toFormat("dd/MM/yyyy") || "&ndash;";
-});
-const recordingStartTime = computed<string>(() => {
-  return (
-    recordingDateTime.value
-      ?.toLocaleString({
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hourCycle: "h12",
-      })
-      .replace(/ /g, "") || "&ndash;"
-  );
-});
-
-const currentLocationName = computed<string>(() => {
-  return (
-    (recording.value &&
-      (recording.value as ApiRecordingResponse).stationName) ||
-    "–"
-  );
-});
-
-const currentDeviceName = computed<string>(() => {
-  return (
-    (recording.value && (recording.value as ApiRecordingResponse).deviceName) ||
-    "–"
-  );
-});
-
-const mapPointForRecording = computed<NamedPoint[]>(() => {
-  if (recording.value) {
-    const rec = recording.value as ApiRecordingResponse;
-    if (rec.location) {
-      return [
-        {
-          name: currentLocationName.value,
-          location: rec.location,
-          project: rec.groupName,
-        },
-      ] as NamedPoint[];
-    }
-  }
-  return [];
-});
-
-const navLinkClasses = ["nav-item", "nav-link"];
-const activeTabName = computed(() => {
-  return route.name;
-});
-
 const desktop = useMediaQuery("(min-width: 992px)");
 const isMobileView = computed<boolean>(() => {
   return !desktop.value;
-
-  // ||
-  //   (!!recordingType.value && recordingType.value === RecordingType.Audio)
 });
 
 const recordingViewContext: string = (route.meta as Record<string, string>)
@@ -1081,7 +978,7 @@ watch(playerHeight.height, (newHeight) => {
   }
 });
 
-const exportRequested = ref<boolean | "advanced">(false);
+const exportRequested = ref<boolean | "advanced" | "download">(false);
 const requestedExport = () => {
   inlineModal.value = true;
   nextTick(() => {
@@ -1168,25 +1065,59 @@ const requestedDownload = async () => {
       anchor.click();
     };
     const recordingId = rec.id;
-    // FIXME: This looks wrong. (maybe want authKey for getApiRoot?)
+    inlineModal.value = true;
+    await nextTick(() => {
+      exportRequested.value = "download";
+    });
     const downloadedFileResponse = await window.fetch(
-      `${ClientApi.getApiRoot()}/api/v1/recordings/raw/${recordingId}/archive`,
+      `${ClientApi.getApiRoot()}/api/v1/recordings/raw/${recordingId}`,
       // eslint-disable-next-line no-undef
       request as RequestInit,
     );
-    const mimeType =
+    let mimeType =
       downloadedFileResponse.headers.get("Content-Type") ||
       "application/octet-stream";
-    const rawFileUint8Array = await downloadedFileResponse.arrayBuffer();
+    let downloadSize = 0;
+    if (mimeType.includes("__")) {
+      // We've shoved some fileSize info into the mime type, since this is the only header that seems to get through.
+      downloadSize = Number(mimeType.split("__")[1]);
+      mimeType = mimeType.split("__")[0];
+    }
+    const chunks = [];
+    if (downloadSize && downloadedFileResponse.body) {
+      let loaded = 0;
+      const reader = downloadedFileResponse.body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          break; // Reading is complete
+        }
+
+        chunks.push(value);
+        loaded += value.length;
+
+        // Calculate and log progress (update a UI element here)
+        downloadProgress.value = Math.round((loaded / downloadSize) * 100);
+      }
+    } else {
+      chunks.push(await downloadedFileResponse.arrayBuffer());
+    }
+    //const rawFileUint8Array = await downloadedFileResponse.arrayBuffer();
+    inlineModal.value = false;
+    await nextTick(() => {
+      exportRequested.value = false;
+      downloadProgress.value = 0;
+    });
     download(
-      URL.createObjectURL(new Blob([rawFileUint8Array], { type: mimeType })),
+      URL.createObjectURL(new Blob(chunks, { type: mimeType })),
       `recording-${recordingId}-${DateTime.fromJSDate(
         new Date(rec.recordingDateTime),
       ).toFormat("dd-MM-yyyy--HH-mm-ss")}.${getExtensionForMimeType(mimeType)}`,
     );
   }
 };
-
+const downloadProgress = ref<number>(0);
 const recordingHasRealDuration = computed<boolean>(() => {
   if (recording.value) {
     if (
@@ -1355,7 +1286,6 @@ const inlineModal = ref<boolean>(false);
         <material-symbol name="close" />
       </button>
     </header>
-
     <!--  Camera recording  -->
     <div class="player-overflow" v-if="recordingType !== RecordingType.Audio">
       <div class="player-and-tagging d-flex">
@@ -1364,6 +1294,7 @@ const inlineModal = ref<boolean>(false);
             <cptv-player
               :recording="recording as ApiRecordingResponse"
               :recording-id="currentRecordingId"
+              :download-progress="downloadProgress"
               :current-track="currentTrack"
               :has-next="hasNextRecording || hasNextVisit"
               :has-prev="hasPreviousRecording || hasPreviousVisit"
@@ -1390,161 +1321,23 @@ const inlineModal = ref<boolean>(false);
           class="recording-info d-flex flex-column flex-fill overflow-hidden"
           ref="recordingInfo"
         >
-          <!-- Desktop view only -->
-          <div
-            class="recording-station-info d-inline-flex justify-content-between p-4 pb-2"
-            v-if="!isMobileView"
-          >
-            <div
-              class="recording-details d-flex flex-fill flex-column flex-fill overflow-hidden"
-            >
-              <div class="mb-2 d-flex">
-                <div
-                  class="device-name d-inline-flex flex-grow-1 align-items-center me-3"
-                >
-                  <material-symbol name="memory" size="1.125rem" class="me-1" />
-                  <router-link
-                    class="text-truncate fw-semibold"
-                    ref="deviceNameSpan"
-                    v-if="recording && recording.deviceId"
-                    :to="{
-                      name: 'device-status',
-                      params: {
-                        deviceId: recording.deviceId,
-                        deviceName: urlNormaliseName(recording.deviceName),
-                      },
-                    }"
-                  >
-                    <tooltip-on-truncation>{{
-                      currentDeviceName
-                    }}</tooltip-on-truncation>
-                  </router-link>
-                </div>
-                <div class="station-name d-inline-flex overflow-hidden">
-                  <location-name
-                    :name="currentLocationName"
-                    truncate
-                    class="fw-semibold"
-                  />
-                </div>
-              </div>
-              <div class="recording-date-time d-flex">
-                <div class="d-flex align-items-center">
-                  <material-symbol
-                    name="calendar_today"
-                    size="1.125rem"
-                    class="me-1"
-                  />
-                  <span v-html="recordingDate" />
-                </div>
-                <div class="d-flex align-items-center ms-3">
-                  <material-symbol
-                    name="schedule"
-                    size="1.125rem"
-                    class="me-1"
-                  />
-                  <span v-html="recordingStartTime" />
-                </div>
-              </div>
-              <recording-view-action-buttons
-                :recording="recording"
-                @added-recording-label="addedRecordingLabel"
-                @removed-recording-label="removedRecordingLabel"
-                @requested-export="requestedExport"
-                @requested-advanced-export="requestedAdvancedExport"
-                @requested-download="requestedDownload"
-                @delete-recording="deleteRecording"
-              />
-            </div>
-            <map-with-points
-              class="recording-location-map"
-              :points="mapPointForRecording"
-              :active-points="mapPointForRecording"
-              :highlighted-point="null"
-              :is-interactive="false"
-              :markers-are-interactive="false"
-              :has-attribution="false"
-              :can-change-base-map="false"
-              :zoom="false"
-              :radius="30"
+          <recording-view-location v-if="desktop" :recording="recording">
+            <recording-view-action-buttons
+              :recording="recording"
+              @added-recording-label="addedRecordingLabel"
+              @removed-recording-label="removedRecordingLabel"
+              @requested-export="requestedExport"
+              @requested-advanced-export="requestedAdvancedExport"
+              @requested-download="requestedDownload"
+              @delete-recording="deleteRecording"
             />
-          </div>
-          <ul class="nav nav-underline nav-fill px-4" v-if="!isMobileView">
-            <router-link
-              :class="[
-                ...navLinkClasses,
-                { active: activeTabName === `${recordingViewContext}-tracks` },
-              ]"
-              title="Tracks"
-              :to="{
-                name: `${recordingViewContext}-tracks`,
-                params: {
-                  ...route.params,
-                  trackId: currentTrack?.id || tracks[0]?.id,
-                },
-                query: route.query,
-              }"
-              >Tracks
-              <b-badge
-                v-if="activeTabName !== `${recordingViewContext}-tracks`"
-                variant="light"
-                text-variant="primary-emphasis"
-                >{{ tracks.length }}</b-badge
-              ></router-link
-            >
-            <router-link
-              :class="[
-                ...navLinkClasses,
-                { active: activeTabName === `${recordingViewContext}-labels` },
-              ]"
-              title="Labels"
-              :to="{
-                name: `${recordingViewContext}-labels`,
-                params: {
-                  ...route.params,
-                  trackId: currentTrack?.id || tracks[0]?.id,
-                },
-                query: route.query,
-              }"
-              >Labels
-              <b-badge
-                v-if="
-                  activeTabName !== `${recordingViewContext}-labels` &&
-                  tags.length
-                "
-                variant="light"
-                text-variant="primary-emphasis"
-                >{{ tags.length }}</b-badge
-              ></router-link
-            >
-            <router-link
-              :class="[
-                ...navLinkClasses,
-                { active: activeTabName === `${recordingViewContext}-notes` },
-              ]"
-              title="Notes"
-              :to="{
-                name: `${recordingViewContext}-notes`,
-                params: {
-                  ...route.params,
-                  trackId: currentTrack?.id || tracks[0]?.id,
-                },
-                query: route.query,
-              }"
-              >Notes
-              <b-badge
-                v-if="
-                  activeTabName !== `${recordingViewContext}-notes` &&
-                  notes.length
-                "
-                variant="light"
-                text-variant="primary-emphasis"
-                >{{ notes.length }}</b-badge
-              ></router-link
-            >
-          </ul>
-          <div class="tags-overflow" v-if="!isMobileView">
-            <!-- RecordingViewTracks -->
+          </recording-view-location>
+          <recording-view-tabs
+            :recording="recording"
+            :current-track="currentTrack"
+          />
+          <div class="tags-overflow">
+            <!-- RecordingViewTracks, RecordingViewLabels, RecordingViewNotes, RecordingViewLocation (mobile) -->
             <router-view
               :recording="recording"
               @track-tag-changed="trackTagChanged"
@@ -1554,106 +1347,6 @@ const inlineModal = ref<boolean>(false);
               @removed-recording-label="removedRecordingLabel"
               @delete-recording="deleteRecording"
             />
-          </div>
-          <!-- Mobile view only -->
-          <recording-view-tracks
-            v-if="isMobileView && recording"
-            :recording="recording"
-            class="recording-tracks"
-            @track-tag-changed="trackTagChanged"
-            @track-removed="trackRemoved"
-            @track-selected="selectedTrackWrap"
-            @added-recording-label="addedRecordingLabel"
-            @delete-recording="deleteRecording"
-          />
-          <div
-            class="recording-info-mobile p-3 flex-grow-1"
-            v-if="isMobileView"
-          >
-            <recording-view-labels
-              :recording="recording as ApiRecordingResponse"
-              @added-recording-label="addedRecordingLabel"
-              @removed-recording-label="removedRecordingLabel"
-              v-if="isMobileView"
-            />
-            <recording-view-notes
-              :recording="recording as ApiRecordingResponse"
-              @added-recording-label="addedRecordingLabel"
-              @removed-recording-label="removedRecordingLabel"
-              v-if="isMobileView"
-            />
-            <div
-              class="recording-station-info d-flex flex-column mt-3 bg-white rounded-2 standard-shadow"
-            >
-              <div
-                class="recording-details p-3 d-flex flex-fill flex-column flex-fill overflow-hidden"
-              >
-                <div class="mb-2 d-flex">
-                  <div
-                    class="device-name d-inline-flex flex-grow-1 align-items-center me-3"
-                  >
-                    <material-symbol
-                      name="memory"
-                      size="1.125rem"
-                      class="me-1"
-                    />
-                    <router-link
-                      class="text-truncate fw-semibold"
-                      ref="deviceNameSpan"
-                      v-if="recording && recording.deviceId"
-                      :to="{
-                        name: 'device-status',
-                        params: {
-                          deviceId: recording.deviceId,
-                          deviceName: urlNormaliseName(recording.deviceName),
-                        },
-                      }"
-                    >
-                      <tooltip-on-truncation>{{
-                        currentDeviceName
-                      }}</tooltip-on-truncation>
-                    </router-link>
-                  </div>
-                  <div class="station-name d-inline-flex overflow-hidden">
-                    <location-name
-                      :name="currentLocationName"
-                      truncate
-                      class="fw-semibold"
-                    />
-                  </div>
-                </div>
-                <div class="recording-date-time d-flex">
-                  <div class="d-flex align-items-center">
-                    <material-symbol
-                      name="calendar_today"
-                      size="1.125rem"
-                      class="me-1"
-                    />
-                    <span v-html="recordingDate" />
-                  </div>
-                  <div class="d-flex align-items-center ms-3">
-                    <material-symbol
-                      name="schedule"
-                      size="1.125rem"
-                      class="me-1"
-                    />
-                    <span v-html="recordingStartTime" />
-                  </div>
-                </div>
-              </div>
-              <map-with-points
-                class="recording-location-map rounded-bottom-2"
-                :points="mapPointForRecording"
-                :active-points="mapPointForRecording"
-                :highlighted-point="null"
-                :is-interactive="false"
-                :markers-are-interactive="false"
-                :has-attribution="false"
-                :can-change-base-map="false"
-                :zoom="false"
-                :radius="30"
-              />
-            </div>
           </div>
         </div>
       </div>
@@ -1681,70 +1374,13 @@ const inlineModal = ref<boolean>(false);
       ref="recordingInfo"
       v-if="recordingType === RecordingType.Audio"
     >
-      <!-- Desktop view only -->
       <div class="recording-info d-flex flex-column flex-fill">
-        <ul class="nav nav-underline nav-fill px-4" v-if="!isMobileView">
-          <router-link
-            :class="[
-              ...navLinkClasses,
-              { active: activeTabName === `${recordingViewContext}-tracks` },
-            ]"
-            title="Tracks"
-            :to="{
-              name: `${recordingViewContext}-tracks`,
-              params: {
-                ...route.params,
-                trackId: currentTrack?.id || tracks[0]?.id,
-              },
-              query: route.query,
-            }"
-            >Tracks
-            <span v-if="activeTabName !== `${recordingViewContext}-tracks`"
-              >({{ tracks.length }})</span
-            ></router-link
-          >
-          <router-link
-            :class="[
-              ...navLinkClasses,
-              { active: activeTabName === `${recordingViewContext}-labels` },
-            ]"
-            title="Labels"
-            :to="{
-              name: `${recordingViewContext}-labels`,
-              params: {
-                ...route.params,
-                trackId: currentTrack?.id || tracks[0]?.id,
-              },
-              query: route.query,
-            }"
-            >Labels
-            <span v-if="activeTabName !== `${recordingViewContext}-labels`"
-              >({{ tags.length }})</span
-            ></router-link
-          >
-          <router-link
-            :class="[
-              ...navLinkClasses,
-              { active: activeTabName === `${recordingViewContext}-notes` },
-            ]"
-            title="Notes"
-            :to="{
-              name: `${recordingViewContext}-notes`,
-              params: {
-                ...route.params,
-                trackId: currentTrack?.id || tracks[0]?.id,
-              },
-              query: route.query,
-            }"
-            >Notes
-            <span v-if="activeTabName !== `${recordingViewContext}-notes`"
-              >({{ notes.length }})</span
-            ></router-link
-          >
-        </ul>
+        <recording-view-tabs
+          :recording="recording"
+          :current-track="currentTrack"
+        />
         <div class="overflow-auto recording-type-audio">
           <router-view
-            v-if="!isMobileView"
             :recording="recording"
             @track-tag-changed="trackTagChanged"
             @track-selected="selectedTrackWrapped"
@@ -1753,185 +1389,28 @@ const inlineModal = ref<boolean>(false);
             @removed-recording-label="removedRecordingLabel"
             @delete-recording="deleteRecording"
           />
-          <recording-view-tracks
-            v-if="isMobileView && recording"
-            :recording="recording"
-            class="recording-tracks"
-            @track-tag-changed="trackTagChanged"
-            @track-removed="trackRemoved"
-            @track-selected="selectedTrackWrap"
-            @added-recording-label="addedRecordingLabel"
-            @delete-recording="deleteRecording"
-          />
-          <div class="recording-info-mobile p-3" v-if="isMobileView">
-            <div
-              class="recording-station-info bg-white d-flex mb-3 flex-column-reverse mt-3"
-            >
-              <map-with-points
-                class="recording-location-map"
-                :points="mapPointForRecording"
-                :active-points="mapPointForRecording"
-                :highlighted-point="null"
-                :is-interactive="false"
-                :markers-are-interactive="false"
-                :has-attribution="false"
-                :can-change-base-map="false"
-                :zoom="false"
-                :radius="30"
-              />
-              <div
-                class="flex-fill d-flex align-items-sm-center p-2 px-3 flex-column flex-sm-row"
-              >
-                <div class="fw-bolder d-flex">
-                  <div class="device-name pe-3 text-truncate">
-                    <font-awesome-icon
-                      icon="microchip"
-                      size="xs"
-                      class="me-2"
-                      color="rgba(0, 0, 0, 0.7)"
-                    />
-                    <router-link
-                      class="text-truncate"
-                      ref="deviceNameSpan"
-                      v-if="recording && recording.deviceId"
-                      :to="{
-                        name: 'device-status',
-                        params: {
-                          deviceId: recording.deviceId,
-                          deviceName: urlNormaliseName(recording.deviceName),
-                        },
-                      }"
-                    >
-                      {{ currentDeviceName }}
-                    </router-link>
-                  </div>
-                  <div class="station-name pe-2 text-truncate">
-                    <font-awesome-icon
-                      icon="map-marker-alt"
-                      size="xs"
-                      class="me-2"
-                      color="rgba(0, 0, 0, 0.7)"
-                    />
-                    <span class="text-truncate">
-                      {{ currentLocationName }}
-                    </span>
-                  </div>
-                </div>
-                <div class="recording-date-time fs-7 d-flex px-sm-3 ps-0 mt-1">
-                  <div>
-                    <font-awesome-icon
-                      :icon="['far', 'calendar']"
-                      size="sm"
-                      class="me-1"
-                      color="rgba(0, 0, 0, 0.5)"
-                    />
-                    <span v-html="recordingDate" />
-                  </div>
-                  <div class="ms-4">
-                    <font-awesome-icon
-                      :icon="['far', 'clock']"
-                      size="sm"
-                      class="me-1"
-                      color="rgba(0, 0, 0, 0.5)"
-                    />
-                    <span v-html="recordingStartTime" />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <recording-view-labels
-              :recording="recording as ApiRecordingResponse"
-              @added-recording-label="addedRecordingLabel"
-              @removed-recording-label="removedRecordingLabel"
-              v-if="isMobileView"
-            />
-            <recording-view-notes
-              :recording="recording as ApiRecordingResponse"
-              @added-recording-label="addedRecordingLabel"
-              @removed-recording-label="removedRecordingLabel"
-              v-if="isMobileView"
-            />
-          </div>
         </div>
       </div>
-      <div
-        class="recording-station-info"
-        style="min-width: min(30%, 320px)"
+      <recording-view-location
         v-if="!isMobileView"
+        :recording="recording"
+        style="min-width: min(30%, 320px)"
       >
-        <map-with-points
-          class="recording-location-map"
-          :points="mapPointForRecording"
-          :active-points="mapPointForRecording"
-          :highlighted-point="null"
-          :is-interactive="false"
-          :markers-are-interactive="false"
-          :has-attribution="false"
-          :can-change-base-map="false"
-          :zoom="false"
-          :radius="30"
+        <recording-view-action-buttons
+          v-if="recording"
+          :recording="recording"
+          :classes="['align-self-center']"
+          @added-recording-label="addedRecordingLabel"
+          @removed-recording-label="removedRecordingLabel"
+          @requested-export="requestedExport"
+          @requested-advanced-export="requestedAdvancedExport"
+          @requested-download="requestedDownload"
+          @delete-recording="deleteRecording"
         />
-        <div class="recording-details d-flex flex-column flex-fill">
-          <div class="mb-2">
-            <div
-              class="device-name text-truncate d-inline-flex align-items-center me-3"
-            >
-              <material-symbol name="memory" size="1.125rem" class="me-1" />
-              <router-link
-                class="text-truncate fw-semibold"
-                ref="deviceNameSpan"
-                v-if="recording && recording.deviceId"
-                :to="{
-                  name: 'device-status',
-                  params: {
-                    deviceId: recording.deviceId,
-                    deviceName: urlNormaliseName(recording.deviceName),
-                  },
-                }"
-              >
-                <tooltip-on-truncation>{{
-                  currentDeviceName
-                }}</tooltip-on-truncation>
-              </router-link>
-            </div>
-            <div class="station-name text-truncate d-inline-flex">
-              <location-name
-                :name="currentLocationName"
-                truncate
-                class="fw-semibold"
-              />
-            </div>
-          </div>
-          <div class="recording-date-time d-flex">
-            <div class="d-flex align-items-center">
-              <material-symbol
-                name="calendar_today"
-                size="1.125rem"
-                class="me-1"
-              />
-              <span v-html="recordingDate" />
-            </div>
-            <div class="d-flex align-items-center ms-3">
-              <material-symbol name="schedule" size="1.125rem" class="me-1" />
-              <span v-html="recordingStartTime" />
-            </div>
-          </div>
-          <recording-view-action-buttons
-            v-if="recording"
-            :recording="recording"
-            :classes="['align-self-center']"
-            @added-recording-label="addedRecordingLabel"
-            @removed-recording-label="removedRecordingLabel"
-            @requested-export="requestedExport"
-            @requested-advanced-export="requestedAdvancedExport"
-            @requested-download="requestedDownload"
-            @delete-recording="deleteRecording"
-          />
-        </div>
-      </div>
+      </recording-view-location>
     </div>
 
-    <!-- Mobile view only -->
+    <!-- Footer -->
     <footer
       v-if="(hasRecordingsOrVisitsInContext && desktop) || isMobileView"
       class="recording-view-footer"

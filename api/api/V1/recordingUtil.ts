@@ -639,31 +639,28 @@ export const maybeUpdateDeviceHistory = async (
         (lastLocation && !locationsAreEqual(lastLocation, location)))
     ) {
       // FIXME: Do we have any test coverage for this?
-      await device.sequelize.transaction(async (transaction) => {
-        await Device.update(
-          {
-            location,
-          },
-          {
-            where: {
-              id: device.id,
-              [Op.or]: [
-                {
-                  lastThermalRecordingTime: {
-                    [Op.or]: [{ [Op.lt]: dateTime }, { [Op.eq]: null }],
-                  },
+      await Device.update(
+        {
+          location,
+        },
+        {
+          where: {
+            id: device.id,
+            [Op.or]: [
+              {
+                lastThermalRecordingTime: {
+                  [Op.or]: [{ [Op.lt]: dateTime }, { [Op.eq]: null }],
                 },
-                {
-                  lastAudioRecordingTime: {
-                    [Op.or]: [{ [Op.lt]: dateTime }, { [Op.eq]: null }],
-                  },
+              },
+              {
+                lastAudioRecordingTime: {
+                  [Op.or]: [{ [Op.lt]: dateTime }, { [Op.eq]: null }],
                 },
-              ],
-            },
-            transaction,
+              },
+            ],
           },
-        );
-      });
+        },
+      );
     }
   }
   {
@@ -890,7 +887,6 @@ export const maybeUpdateDeviceHistory = async (
         location,
         device.GroupId,
         dateTime,
-        false,
       );
       if (stationToAssign && stationToAssign.activeAt > dateTime) {
         // We matched a future station in this location, so it's likely this is an older recording coming in out
@@ -929,7 +925,7 @@ export const maybeUpdateDeviceHistory = async (
             where: {
               GroupId: device.GroupId,
               location: locationExactlyMatches(location),
-              automatic: true,
+              retiredAt: { [Op.eq]: null },
             },
             defaults: {
               name: `New location for ${
@@ -939,10 +935,18 @@ export const maybeUpdateDeviceHistory = async (
               activeAt: dateTime,
               automatic: true,
               needsRename: true,
+              retiredAt: null,
               GroupId: device.GroupId,
             },
             transaction,
           });
+          if (stationToAssign.activeAt > dateTime) {
+            // Backdate the station active time to this recording time.
+            await stationToAssign.update(
+              { activeAt: dateTime },
+              { transaction },
+            );
+          }
         });
       }
 

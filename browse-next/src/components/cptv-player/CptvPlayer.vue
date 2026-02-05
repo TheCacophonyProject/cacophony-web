@@ -80,7 +80,8 @@ const props = withDefaults(
     hasPrev?: boolean;
     hasReferencePhoto?: boolean;
     displayHeaderInfo?: boolean;
-    exportRequested?: boolean | "advanced";
+    exportRequested?: boolean | "advanced" | "download";
+    downloadProgress?: number;
   }>(),
   {
     cptvSize: null,
@@ -2412,6 +2413,10 @@ const updateSavedOpacity = (val: InputEvent) => {
           Cancel
         </button>
       </div>
+    </div>
+    <div v-else-if="exportRequested === 'download'" class="p-3">
+      <span>Downloading...</span>
+      <b-progress striped animated :value="downloadProgress"></b-progress>
     </div>
     <div v-else class="p-3">
       <span>Exporting...</span>
