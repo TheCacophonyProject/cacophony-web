@@ -968,6 +968,8 @@ onMounted(async () => {
 .classification-btns {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: var(--cp-spacing-xxs);
+  row-gap: var(--cp-spacing-xxs);
   @media screen and (min-width: 430px) {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
@@ -983,11 +985,9 @@ onMounted(async () => {
   @media screen and (min-width: 830px) {
     grid-template-columns: repeat(9, minmax(0, 1fr));
   }
-  @media screen and (min-width: 1041px) {
+  @media screen and (min-width: @breakpoint-lg) {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
-  column-gap: var(--cp-spacing-xxs);
-  row-gap: var(--cp-spacing-xxs);
 }
 
 .btn-classification {

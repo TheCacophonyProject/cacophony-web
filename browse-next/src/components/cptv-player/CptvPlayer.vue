@@ -2429,11 +2429,13 @@ const updateSavedOpacity = (val: InputEvent) => {
   </teleport>
 </template>
 <style scoped lang="less">
+@import "../../assets/less/breakpoints.less";
+
 .video-container {
-  @media screen and (max-width: 1040px) {
+  @media screen and (max-width: @breakpoint-md-max) {
     max-width: 640px;
   }
-  @media screen and (min-width: 1041px) {
+  @media screen and (min-width: @breakpoint-lg) {
     width: 640px;
   }
   aspect-ratio: 4 / 3;

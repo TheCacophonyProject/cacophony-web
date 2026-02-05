@@ -255,6 +255,8 @@ const doAddLabel = async () => {
   </div>
 </template>
 <style lang="less" scoped>
+@import "../assets/less/breakpoints.less";
+
 .recording-labels {
   height: 100%;
   @media screen and (min-width: 1041px) {
@@ -263,7 +265,7 @@ const doAddLabel = async () => {
 }
 .recording-labels-title {
   display: none;
-  @media screen and (max-width: 1040px) {
+  @media screen and (max-width: @breakpoint-md-max) {
     display: inline;
   }
 }

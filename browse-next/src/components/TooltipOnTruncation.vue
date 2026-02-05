@@ -2,6 +2,7 @@
 import { computed, ref } from "vue";
 import { BTooltip } from "bootstrap-vue-next";
 
+// TODO: this is broken. Check recording modal view, device name when it's longer
 const spanItem = ref<HTMLSpanElement>();
 const isTruncated = computed<boolean>(() => {
   if (spanItem.value) {
@@ -17,9 +18,13 @@ const fullText = computed(() => {
 <template>
   <span class="text-truncate" ref="spanItem"
     ><slot></slot
-    ><b-tooltip hover v-if="isTruncated" :target="spanItem">{{
-      fullText
-    }}</b-tooltip>
+    ><b-tooltip
+      hover
+      v-if="isTruncated"
+      :target="spanItem"
+      teleport-to="body"
+      >{{ fullText }}</b-tooltip
+    >
   </span>
 </template>
 

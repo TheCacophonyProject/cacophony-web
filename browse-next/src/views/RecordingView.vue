@@ -28,7 +28,7 @@ import {
 import type {
   ApiAudioRecordingResponse,
   ApiRecordingResponse,
-  ApiThermalRecordingResponse
+  ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
 import router from "@/router";
 import type {
@@ -60,11 +60,12 @@ import {
   type LoggedInUserAuth,
 } from "@apiClient/types";
 import {
-  RecordingProcessingState, RecordingType as ConcreteRecordingType,
+  RecordingProcessingState,
+  RecordingType as ConcreteRecordingType,
   RecordingType,
 } from "@typedefs/api/consts.ts";
 import sunCalc from "suncalc";
-import {capitalize, urlNormaliseName} from "@/utils.ts";
+import { capitalize, urlNormaliseName } from "@/utils.ts";
 import SpectrogramViewer from "@/components/SpectrogramViewer.vue";
 import RecordingViewNotes from "@/components/RecordingViewNotes.vue";
 import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
@@ -152,11 +153,6 @@ const currentTrack = ref<ApiTrackResponse | undefined>(undefined);
 const userSelectedTrack = ref<ApiTrackResponse | undefined>(undefined);
 const currentLocations = ref<ApiLocationResponse[] | null>(locations.value);
 const visitLabel = ref<string>((route.params.visitLabel as string) || "");
-
-const deviceNameSpan = ref<HTMLSpanElement>();
-const stationNameSpan = ref<HTMLSpanElement>();
-const stationNameIsTruncated = ref<boolean>(false);
-const deviceNameIsTruncated = ref<boolean>(false);
 
 const recordingIsProcessing = computed<boolean>(() => {
   if (recording.value) {
@@ -729,18 +725,6 @@ const notes = computed<ApiRecordingTagResponse[]>(() => {
   return [];
 });
 
-const checkNameTruncations = () => {
-  stationNameIsTruncated.value =
-    (stationNameSpan.value &&
-      stationNameSpan.value?.offsetWidth <
-        stationNameSpan.value?.scrollWidth) ||
-    false;
-  deviceNameIsTruncated.value =
-    (deviceNameSpan.value &&
-      deviceNameSpan.value?.offsetWidth < deviceNameSpan.value?.scrollWidth) ||
-    false;
-};
-
 interface Timespan {
   fromDateTime: Date;
   untilDateTime?: Date;
@@ -821,16 +805,31 @@ const loadRecording = async () => {
       recording.value = recordingResponse;
 
       if (
-          (recording.value.type === ConcreteRecordingType.ThermalRaw &&
-              (recording.value.duration < 2.5 &&
-                  recording.value.duration > 1.8) || "status" in ((recording.value as ApiThermalRecordingResponse).additionalMetadata || {})) ||
-          (recording.value.type === ConcreteRecordingType.Audio &&
-              (recording.value.duration < 11 &&
-                  recording.value.duration > 9.8)) || "status" in ((recording.value as ApiAudioRecordingResponse).additionalMetadata || {})
+        (recording.value.type === ConcreteRecordingType.ThermalRaw &&
+          recording.value.duration < 2.5 &&
+          recording.value.duration > 1.8) ||
+        "status" in
+          ((recording.value as ApiThermalRecordingResponse)
+            .additionalMetadata || {}) ||
+        (recording.value.type === ConcreteRecordingType.Audio &&
+          recording.value.duration < 11 &&
+          recording.value.duration > 9.8) ||
+        "status" in
+          ((recording.value as ApiAudioRecordingResponse).additionalMetadata ||
+            {})
       ) {
         let detail = "Test Recording";
-        if ("status" in ((recording.value as ApiAudioRecordingResponse | ApiThermalRecordingResponse).additionalMetadata || {})) {
-          detail = capitalize(`${((recording.value as ApiAudioRecordingResponse).additionalMetadata as any).status} recording`);
+        if (
+          "status" in
+          ((
+            recording.value as
+              | ApiAudioRecordingResponse
+              | ApiThermalRecordingResponse
+          ).additionalMetadata || {})
+        ) {
+          detail = capitalize(
+            `${((recording.value as ApiAudioRecordingResponse).additionalMetadata as any).status} recording`,
+          );
         }
         recording.value.tags.push({
           id: -1,
@@ -857,7 +856,6 @@ const loadRecording = async () => {
         );
       }
 
-      const _ = nextTick(checkNameTruncations);
       if (route.params.trackId) {
         currentTrack.value = (
           recording.value as ApiRecordingResponse
@@ -1055,7 +1053,7 @@ const activeTabName = computed(() => {
   return route.name;
 });
 
-const desktop = useMediaQuery("(min-width: 1040px)");
+const desktop = useMediaQuery("(min-width: 992px)");
 const isMobileView = computed<boolean>(() => {
   return !desktop.value;
 
@@ -1310,10 +1308,9 @@ const inlineModal = ref<boolean>(false);
       <div v-if="isInVisitContext">
         <span class="recording-header-type fs-6 fw-medium">Visit</span>
         <div class="recording-header-details mb-1 mb-sm-0">
-          <span
-            class="recording-header-label fw-semibold text-capitalize"
-            >{{ displayLabelForClassificationLabel(visitLabel) }}</span
-          >
+          <span class="recording-header-label fw-semibold text-capitalize">{{
+            displayLabelForClassificationLabel(visitLabel)
+          }}</span>
           <span
             v-if="isInGreaterVisitContext"
             v-html="visitDurationString"
@@ -1390,7 +1387,7 @@ const inlineModal = ref<boolean>(false);
           </div>
         </div>
         <div
-          class="recording-info d-flex flex-column flex-fill"
+          class="recording-info d-flex flex-column flex-fill overflow-hidden"
           ref="recordingInfo"
         >
           <!-- Desktop view only -->
@@ -1398,17 +1395,12 @@ const inlineModal = ref<boolean>(false);
             class="recording-station-info d-inline-flex justify-content-between p-4 pb-2"
             v-if="!isMobileView"
           >
-            <div class="recording-details d-flex flex-column flex-fill">
-              <div
-                class="mb-2"
-                :class="{
-                  'recording-details-hover':
-                    stationNameIsTruncated || deviceNameIsTruncated,
-                }"
-              >
+            <div
+              class="recording-details d-flex flex-fill flex-column flex-fill overflow-hidden"
+            >
+              <div class="mb-2 d-flex">
                 <div
-                  class="device-name text-truncate d-inline-flex align-items-center me-3"
-                  :class="{ 'is-truncated': deviceNameIsTruncated }"
+                  class="device-name d-inline-flex flex-grow-1 align-items-center me-3"
                 >
                   <material-symbol name="memory" size="1.125rem" class="me-1" />
                   <router-link
@@ -1428,10 +1420,7 @@ const inlineModal = ref<boolean>(false);
                     }}</tooltip-on-truncation>
                   </router-link>
                 </div>
-                <div
-                  class="station-name text-truncate d-inline-flex"
-                  :class="{ 'is-truncated': stationNameIsTruncated }"
-                >
+                <div class="station-name d-inline-flex overflow-hidden">
                   <location-name
                     :name="currentLocationName"
                     truncate
@@ -1594,50 +1583,38 @@ const inlineModal = ref<boolean>(false);
               v-if="isMobileView"
             />
             <div
-              class="recording-station-info bg-white d-flex flex-column-reverse"
+              class="recording-station-info d-flex flex-column mt-3 bg-white rounded-2 standard-shadow"
             >
-              <map-with-points
-                class="recording-location-map"
-                :points="mapPointForRecording"
-                :active-points="mapPointForRecording"
-                :highlighted-point="null"
-                :is-interactive="false"
-                :markers-are-interactive="false"
-                :has-attribution="false"
-                :can-change-base-map="false"
-                :zoom="false"
-                :radius="30"
-              />
               <div
-                class="flex-fill d-flex align-items-sm-center py-3 px-0 flex-column flex-sm-row"
+                class="recording-details p-3 d-flex flex-fill flex-column flex-fill overflow-hidden"
               >
-                <div>
+                <div class="mb-2 d-flex">
                   <div
-                    class="device-name text-truncate d-inline-flex align-items-center me-3"
-                    :class="{ 'is-truncated': deviceNameIsTruncated }"
+                    class="device-name d-inline-flex flex-grow-1 align-items-center me-3"
                   >
-                    <material-symbol name="memory" size="1.125rem" class="me-1" />
+                    <material-symbol
+                      name="memory"
+                      size="1.125rem"
+                      class="me-1"
+                    />
                     <router-link
                       class="text-truncate fw-semibold"
                       ref="deviceNameSpan"
                       v-if="recording && recording.deviceId"
                       :to="{
-                      name: 'device-status',
-                      params: {
-                        deviceId: recording.deviceId,
-                        deviceName: urlNormaliseName(recording.deviceName),
-                      },
-                    }"
+                        name: 'device-status',
+                        params: {
+                          deviceId: recording.deviceId,
+                          deviceName: urlNormaliseName(recording.deviceName),
+                        },
+                      }"
                     >
                       <tooltip-on-truncation>{{
-                          currentDeviceName
-                        }}</tooltip-on-truncation>
+                        currentDeviceName
+                      }}</tooltip-on-truncation>
                     </router-link>
                   </div>
-                  <div
-                    class="station-name text-truncate d-inline-flex"
-                    :class="{ 'is-truncated': stationNameIsTruncated }"
-                  >
+                  <div class="station-name d-inline-flex overflow-hidden">
                     <location-name
                       :name="currentLocationName"
                       truncate
@@ -1645,7 +1622,6 @@ const inlineModal = ref<boolean>(false);
                     />
                   </div>
                 </div>
-
                 <div class="recording-date-time d-flex">
                   <div class="d-flex align-items-center">
                     <material-symbol
@@ -1665,6 +1641,18 @@ const inlineModal = ref<boolean>(false);
                   </div>
                 </div>
               </div>
+              <map-with-points
+                class="recording-location-map rounded-bottom-2"
+                :points="mapPointForRecording"
+                :active-points="mapPointForRecording"
+                :highlighted-point="null"
+                :is-interactive="false"
+                :markers-are-interactive="false"
+                :has-attribution="false"
+                :can-change-base-map="false"
+                :zoom="false"
+                :radius="30"
+              />
             </div>
           </div>
         </div>
@@ -1695,10 +1683,7 @@ const inlineModal = ref<boolean>(false);
     >
       <!-- Desktop view only -->
       <div class="recording-info d-flex flex-column flex-fill">
-        <ul
-          class="nav nav-underline nav-fill px-4"
-          v-if="!isMobileView"
-        >
+        <ul class="nav nav-underline nav-fill px-4" v-if="!isMobileView">
           <router-link
             :class="[
               ...navLinkClasses,
@@ -1887,16 +1872,9 @@ const inlineModal = ref<boolean>(false);
           :radius="30"
         />
         <div class="recording-details d-flex flex-column flex-fill">
-          <div
-            class="mb-2"
-            :class="{
-                  'recording-details-hover':
-                    stationNameIsTruncated || deviceNameIsTruncated,
-                }"
-          >
+          <div class="mb-2">
             <div
               class="device-name text-truncate d-inline-flex align-items-center me-3"
-              :class="{ 'is-truncated': deviceNameIsTruncated }"
             >
               <material-symbol name="memory" size="1.125rem" class="me-1" />
               <router-link
@@ -1904,22 +1882,19 @@ const inlineModal = ref<boolean>(false);
                 ref="deviceNameSpan"
                 v-if="recording && recording.deviceId"
                 :to="{
-                      name: 'device-status',
-                      params: {
-                        deviceId: recording.deviceId,
-                        deviceName: urlNormaliseName(recording.deviceName),
-                      },
-                    }"
+                  name: 'device-status',
+                  params: {
+                    deviceId: recording.deviceId,
+                    deviceName: urlNormaliseName(recording.deviceName),
+                  },
+                }"
               >
                 <tooltip-on-truncation>{{
-                    currentDeviceName
-                  }}</tooltip-on-truncation>
+                  currentDeviceName
+                }}</tooltip-on-truncation>
               </router-link>
             </div>
-            <div
-              class="station-name text-truncate d-inline-flex"
-              :class="{ 'is-truncated': stationNameIsTruncated }"
-            >
+            <div class="station-name text-truncate d-inline-flex">
               <location-name
                 :name="currentLocationName"
                 truncate
@@ -1937,11 +1912,7 @@ const inlineModal = ref<boolean>(false);
               <span v-html="recordingDate" />
             </div>
             <div class="d-flex align-items-center ms-3">
-              <material-symbol
-                name="schedule"
-                size="1.125rem"
-                class="me-1"
-              />
+              <material-symbol name="schedule" size="1.125rem" class="me-1" />
               <span v-html="recordingStartTime" />
             </div>
           </div>
@@ -1961,7 +1932,10 @@ const inlineModal = ref<boolean>(false);
     </div>
 
     <!-- Mobile view only -->
-    <footer v-if="hasRecordingsOrVisitsInContext" class="recording-view-footer">
+    <footer
+      v-if="(hasRecordingsOrVisitsInContext && desktop) || isMobileView"
+      class="recording-view-footer"
+    >
       <div class="visit-progress">
         <div
           class="progress-bar"
@@ -2279,13 +2253,14 @@ const inlineModal = ref<boolean>(false);
 
 .player-and-tagging {
   flex-direction: row;
-  @media screen and (max-width: 1040px) {
+  @media screen and (max-width: @breakpoint-md-max) {
+    flex-direction: column;
+  }
+  &.recording-type-audio {
     flex-direction: column;
   }
 }
-.player-and-tagging.recording-type-audio {
-  flex-direction: column;
-}
+
 .inline-modal {
   // TODO - Max width for mobile breakpoints
   @width: 400px;
@@ -2301,30 +2276,30 @@ const inlineModal = ref<boolean>(false);
   .standard-shadow();
 }
 
-.recording-view.recording-type-audio {
-  background: white;
-  position: fixed;
-  top: 16px;
-  bottom: 16px;
-  left: 16px;
-  right: 16px;
-  container-type: size;
-  border-radius: var(--bs-modal-border-radius);
-  @media screen and (max-width: 1040px) {
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-  }
-}
 .recording-view {
-  @media screen and (max-width: 1040px) {
+  @media screen and (max-width: @breakpoint-md-max) {
     background: white;
     position: fixed;
     top: 0;
     bottom: 0;
     left: 0;
     right: 0;
+  }
+  &.recording-type-audio {
+    background: white;
+    position: fixed;
+    top: 16px;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    container-type: size;
+    border-radius: var(--bs-modal-border-radius);
+    @media screen and (max-width: @breakpoint-md-max) {
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+    }
   }
 }
 
@@ -2342,6 +2317,18 @@ const inlineModal = ref<boolean>(false);
     bottom: 0;
     right: 0;
     z-index: 400;
+  }
+}
+</style>
+
+<style lang="less">
+@import "../assets/less/breakpoints.less";
+
+.player-and-tagging {
+  .video-container {
+    @media screen and (min-width: @breakpoint-lg) and (max-width: @breakpoint-lg-max) {
+      max-width: 576px;
+    }
   }
 }
 </style>
