@@ -138,4 +138,19 @@ const mapPointForRecording = computed<NamedPoint[]>(() => {
   </div>
 </template>
 
-<style scoped lang="less"></style>
+<style scoped lang="less">
+@import "../assets/less/breakpoints.less";
+
+.recording-location-map {
+  @media (max-width: @breakpoint-md-max) {
+    width: 100%;
+    height: calc(var(--cp-grid-base) * 44);
+  }
+  @media (min-width: @breakpoint-lg) {
+    width: calc(var(--cp-grid-base) * 26);
+    height: calc(var(--cp-grid-base) * 26);
+    min-width: calc(var(--cp-grid-base) * 26);
+    border-radius: 100%;
+  }
+}
+</style>
