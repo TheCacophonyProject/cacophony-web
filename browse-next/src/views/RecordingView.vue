@@ -1708,18 +1708,7 @@ const inlineModal = ref<boolean>(false);
 .recording-type-audio .recording-details {
   max-width: unset;
 }
-.recording-location-map {
-  @media (max-width: @breakpoint-md-max) {
-    width: 100%;
-    height: calc(var(--cp-grid-base) * 44);
-  }
-  @media (min-width: @breakpoint-lg) {
-    width: calc(var(--cp-grid-base) * 26);
-    height: calc(var(--cp-grid-base) * 26);
-    min-width: calc(var(--cp-grid-base) * 26);
-    border-radius: 100%;
-  }
-}
+
 @media screen and (min-width: 880px) {
   .d-cs-inline {
     display: inline !important;
