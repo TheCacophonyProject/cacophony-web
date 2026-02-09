@@ -188,18 +188,19 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
 @import "../assets/less/breakpoints";
 .location-buttons {
   border-top: 1px solid var(--border-color-light);
-  gap: var(--cp-spacing-xs);
   @media screen and (min-width: @breakpoint-xs) and (max-width: @breakpoint-sm-max) {
     padding: 0 var(--cp-spacing-xs);
     margin-left: calc(var(--cp-spacing-md) * -1);
     margin-right: calc(var(--cp-spacing-md) * -1);
     margin-bottom: calc(var(--cp-spacing-md) * -1);
+    gap: var(--cp-spacing-xxs);
   }
   @media screen and (min-width: @breakpoint-md) {
     margin-left: calc(var(--cp-spacing-xl) * -1);
     margin-right: calc(var(--cp-spacing-xl) * -1);
     margin-bottom: calc(var(--cp-spacing-xl) * -1);
     padding: 0 var(--cp-spacing-md);
+    gap: var(--cp-spacing-xs);
   }
   .vr {
     background-color: var(--border-color-light);

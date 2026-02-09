@@ -18,6 +18,7 @@ import type { LoadedResource } from "@apiClient/types";
 import { ClientApi } from "@/api";
 import { useElementBounding, useWindowSize } from "@vueuse/core";
 import { BPopover, BSpinner } from "bootstrap-vue-next";
+import {MaterialSymbol} from "@dbetka/vue-material-symbols";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
@@ -272,9 +273,26 @@ const updateLocationName = async (payload: {
       </div>
 
       <div class="d-flex flex-column-reverse justify-content-between flex-fill">
-        <div v-if="!projectHasLocations" class="d-flex flex-fill">
-          <!-- TODO: Styles for empty state -->
-          There are no existing locations for this project
+        <div
+          v-if="!projectHasLocations"
+          class="d-flex flex-fill justify-content-center align-items-center"
+        >
+          <div
+            class="no-results text-body-tertiary d-flex flex-column text-center col col-12 col-md-8 col-lg-6"
+          >
+            <material-symbol
+              name="location_off"
+              size="2.4rem"
+              grade="thin"
+              class="mb-2"
+            />
+            <h4 class="h5 mb-2">
+              This project has no locations
+            </h4>
+            <p>
+              Locations are automatically created from a device location. Locations will be displayed here when devices connect to the Monitoring Platform.
+            </p>
+          </div>
         </div>
         <div
           v-else
