@@ -1289,8 +1289,12 @@ const inlineModal = ref<boolean>(false);
     <div
       class="player-overflow flex-grow-1"
       v-if="recordingType !== RecordingType.Audio"
+      :class="{ 'd-flex': isMobileView }"
     >
-      <div class="player-and-tagging d-flex h-100">
+      <div
+        class="player-and-tagging d-flex"
+        :class="{ 'flex-fill overflow-x-hidden': isMobileView }"
+      >
         <div class="player-container bg-black">
           <div ref="playerContainer">
             <cptv-player
@@ -1628,12 +1632,14 @@ const inlineModal = ref<boolean>(false);
     left: var(--cp-spacing-base);
     right: var(--cp-spacing-base);
     container-type: size;
-    border-radius: var(--bs-modal-border-radius);
     @media screen and (max-width: @breakpoint-md-max) {
       top: 0;
       bottom: 0;
       left: 0;
       right: 0;
+    }
+    @media screen and (min-width: @breakpoint-lg) {
+      border-radius: var(--bs-modal-border-radius);
     }
   }
 }
@@ -1715,6 +1721,9 @@ const inlineModal = ref<boolean>(false);
 }
 
 .tags-overflow {
+  @media (max-width: @breakpoint-md-max) {
+    overflow: auto;
+  }
   @media (min-width: @breakpoint-lg) {
     overflow-y: auto;
     flex: 1;
@@ -1730,11 +1739,11 @@ const inlineModal = ref<boolean>(false);
   width: @width;
   height: @height;
   position: absolute;
-  border-radius: 2px;
   top: 40%;
   left: calc(50% - (@width / 2));
-  background: white;
+  background: var(--bs-white);
   z-index: 401;
+  border-radius: var(--bs-border-radius);
   .standard-shadow();
 }
 

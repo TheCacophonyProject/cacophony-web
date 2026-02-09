@@ -106,7 +106,7 @@ const mapPointForRecording = computed<NamedPoint[]>(() => {
       class="recording-details d-flex flex-column overflow-hidden"
       :class="{
         'flex-fill': isDesktop && recordingType === RecordingType.ThermalRaw,
-        'flex-shrink-0': recordingType === RecordingType.Audio,
+        'flex-shrink-0': isMobile,
       }"
     >
       <div class="mb-2 overflow-hidden">

@@ -13,6 +13,7 @@
   --bs-primary: var(--cp-color-green-600);
   --bs-body-line-height: 1.6;
   --bs-primary-rgb: 87, 158, 2; // same as --color-cp-green-600
+  --bs-progress-bar-bg: var(--cp-color-green-600);
 }
 
 b,
@@ -95,7 +96,6 @@ strong {
   color: var(--bs-gray-900);
 }
 
-
 // Font size of inputs
 .form-control {
   font-size: var(--cp-font-size-md);
@@ -127,7 +127,6 @@ strong {
 }
 
 // range styles
-
 .form-range {
   &::-webkit-slider-thumb {
     background: var(--cp-color-green-600);
@@ -161,6 +160,10 @@ strong {
   }
 }
 
+.dropdown-item:active {
+  background-color: var(--cp-color-green-700);
+}
+
 // nav styles
 .nav-tabs {
   --bs-nav-tabs-link-active-color: var(--cp-color-green-800);
@@ -177,6 +180,7 @@ strong {
   color: var(--cp-color-green-800);
 }
 
+// badge
 .badge {
   --bs-badge-font-size: var(--cp-font-size-sm);
   --bs-badge-font-weight: 500;
@@ -185,6 +189,12 @@ strong {
   }
 }
 
+// progress bar
+.progress, .progress-stacked {
+  --bs-progress-bar-bg: var(--cp-color-green-600);
+}
+
+// modal styles
 .modal-title {
   font-size: var(--cp-font-size-h3);
 }
