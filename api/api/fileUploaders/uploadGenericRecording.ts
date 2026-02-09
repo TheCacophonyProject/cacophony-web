@@ -14,7 +14,7 @@ import {
 } from "@typedefs/api/consts.js";
 import { successResponse } from "@api/V1/responseUtil.js";
 import multiparty from "multiparty";
-import e, { NextFunction, Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import Sequelize, { Op, Transaction } from "sequelize";
 import { Recording } from "@models/Recording.js";
 import { openS3 } from "@models/util/util.js";
@@ -47,7 +47,8 @@ import { isLatLon } from "@models/util/validation.js";
 import { tryReadingM4aMetadata } from "@api/m4a-metadata-reader/m4a-metadata-reader.js";
 import { RawTrack } from "@typedefs/api/fileProcessing.js";
 import { Fn } from "sequelize/lib/utils";
-import station from "@api/V1/Station.js";
+import { Visit, VISITS_ADVISORY_LOCK_KEY } from "@models/Visit.js";
+import ISOLATION_LEVELS = Transaction.ISOLATION_LEVELS;
 
 const cameraTypes = [RecordingType.ThermalRaw, RecordingType.InfraredVideo];
 
@@ -781,9 +782,19 @@ export const uploadGenericRecording =
       if (stationToAssignToRecording) {
         recordingTemplate.StationId = stationToAssignToRecording.id;
       }
-      let recording;
+      let recording: Recording;
       await Recording.sequelize.transaction(async (transaction) => {
-        // These three calls must complete in blocking sequence.
+        // These calls must complete in blocking sequence.
+        await Recording.sequelize.query(
+          `SELECT pg_advisory_xact_lock(:k, :stationId);`,
+          {
+            transaction,
+            replacements: {
+              k: VISITS_ADVISORY_LOCK_KEY,
+              stationId: recordingTemplate.StationId,
+            },
+          },
+        );
         recording = await recordingTemplate.save({ transaction });
         await maybeUpdateDeviceMetadata(
           recordingTemplate,
@@ -796,9 +807,11 @@ export const uploadGenericRecording =
           fromDevice,
           transaction,
         );
+        await Visit.rebuildForRecording(recording, transaction);
       });
-
       if (wouldHaveSuppliedTracks) {
+        // TODO: If tracks are supplied, we need to recalculate the Visits
+
         // Now that we have a recording saved to the DB, we can create any associated track items
         await tracksFromMeta(recording, data.metadata);
       }
@@ -812,7 +825,6 @@ export const uploadGenericRecording =
           new Date().getTime() - recording.recordingDateTime.getTime();
         if (uploader === "device" && recordingAgeMs < twentyFourHoursMs) {
           // Alerts should only be sent for uploading devices.
-
           // FIXME: Alerts should really be added to a queue table, and processed out of band, rather than
           //  blocking the upload request.
           await sendAlerts(recording.id);
@@ -993,6 +1005,7 @@ const maybeUpdateDeviceMetadata = async (
           saltId: uploadingDevice.saltId,
           active: true,
         },
+        transaction,
       });
       if (!activeDevice) {
         shouldSetActive = true;
@@ -1018,6 +1031,7 @@ const maybeUpdateDeviceMetadata = async (
           saltId: uploadingDevice.saltId,
           active: true,
         },
+        transaction,
       });
       if (!activeDevice) {
         shouldSetActive = true;

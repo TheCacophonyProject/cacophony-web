@@ -7,6 +7,7 @@ import classificationsInit from "./Classifications.js";
 import recordingsInit from "./Recording.js";
 import locationsInit from "./Location.js";
 import monitoringInit from "./Monitoring.js";
+import visitsInit from "./Visits.js";
 import {
   FetchResult,
   JwtToken,
@@ -127,6 +128,7 @@ const Classifications = classificationsInit(api);
 const Recordings = recordingsInit(api);
 const Locations = locationsInit(api);
 const Monitoring = monitoringInit(api);
+const Visits = visitsInit(api);
 
 const _Users = usersInit(api).withAuth("");
 const _Projects = projectsInit(api).withAuth("");
@@ -135,6 +137,7 @@ const _Devices = devicesInit(api).withAuth("");
 const _Recordings = recordingsInit(api).withAuth("");
 const _Locations = locationsInit(api).withAuth("");
 const _Monitoring = monitoringInit(api).withAuth("");
+const _Visits = visitsInit(api).withAuth("");
 
 export interface TestApi {
   Alerts: typeof _Alerts;
@@ -145,6 +148,7 @@ export interface TestApi {
   Projects: typeof _Projects;
   Users: typeof _Users;
   Recordings: typeof _Recordings;
+  Visits: typeof _Visits;
 }
 
 const withAuth = (authKey: TestHandle): TestApi => ({
@@ -156,6 +160,7 @@ const withAuth = (authKey: TestHandle): TestApi => ({
   Projects: Projects.withAuth(authKey),
   Users: Users.withAuth(authKey),
   Recordings: Recordings.withAuth(authKey),
+  Visits: Visits.withAuth(authKey),
 });
 
 export const TestApiImpl = {
@@ -167,6 +172,7 @@ export const TestApiImpl = {
   Projects,
   Users,
   Recordings,
+  Visits,
   registerCredentials: (
     authKey: TestHandle,
     creds: LoggedInDeviceCredentials | LoggedInUserAuth,

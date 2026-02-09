@@ -72,6 +72,8 @@ import type {
   ApiAudioRecordingMetadataResponse,
   ApiThermalRecordingMetadataResponse,
 } from "@typedefs/api/recording.js";
+import { Visit } from "@models/Visit.js";
+import { Duration } from "moment";
 
 const ffmpegPath = "/usr/bin/ffmpeg";
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -1122,7 +1124,15 @@ export async function bulkDelete(
   const ids = recordings.map((value) => value.id);
   const deletedRecordings = (await Recording.update(deletion, {
     where: { id: ids, deletedAt: { [Op.eq]: null } },
-    returning: ["id", "DeviceId", "StationId", "GroupId", "type"],
+    returning: [
+      "id",
+      "DeviceId",
+      "StationId",
+      "GroupId",
+      "type",
+      "recordingDateTime",
+      "duration",
+    ],
   })) as unknown as Promise<
     [
       number,
@@ -1132,6 +1142,8 @@ export async function bulkDelete(
         StationId: StationId;
         DeviceId: DeviceId;
         type: RecordingType;
+        recordingDateTime: Date;
+        duration: number;
       }[],
     ]
   >;
@@ -1139,6 +1151,9 @@ export async function bulkDelete(
     await updateRecordingTimeBookkeepingForBulkDeletedRecordings(
       deletedRecordings[1],
     );
+    for (const recording of deletedRecordings[1]) {
+      await Visit.rebuildForRecording(recording);
+    }
     return deletedRecordings[1].map((value: { id: RecordingId }) => value.id);
   }
   return [];

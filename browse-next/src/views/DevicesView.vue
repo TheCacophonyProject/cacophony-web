@@ -424,7 +424,11 @@ const unarchiveDevice = async (deviceId: DeviceId) => {
 const deleteConfirmationLabelForDevice = (
   device: ApiDeviceResponse,
 ): string => {
-  if (!!device.lastConnectionTime && !!device.lastRecordingTime) {
+  if (
+    !!device.lastConnectionTime &&
+    !!device.lastAudioRecordingTime &&
+    !!device.lastThermalRecordingTime
+  ) {
     return `Set <strong><em>${device.deviceName}</em></strong> inactive`;
   } else {
     return `Delete <strong><em>${device.deviceName}</em></strong>`;
@@ -653,11 +657,20 @@ const isDevicesRoot = computed(() => {
               v-if="isProjectAdmin && cell.value.active"
               class="d-flex align-items-center"
             >
-              <div v-if="!cell.value.lastRecordingTime">No recordings</div>
+              <div
+                v-if="
+                  !cell.value.lastThermalRecordingTime &&
+                  !cell.value.lastAudioRecordingTime
+                "
+              >
+                No recordings
+              </div>
               <two-step-action-button
                 :action="() => deleteOrArchiveDevice(cell.value.id)"
                 :icon="
-                  cell.value.lastConnectionTime && cell.value.lastRecordingTime
+                  cell.value.lastConnectionTime &&
+                  (cell.value.lastThermalRecordingTime ||
+                    cell.value.lastAudioRecordingTime)
                     ? 'do_not_disturb_on'
                     : 'delete'
                 "
@@ -665,7 +678,9 @@ const isDevicesRoot = computed(() => {
                   deleteConfirmationLabelForDevice(cell.value)
                 "
                 :tooltip-label="
-                  cell.value.lastConnectionTime && cell.value.lastRecordingTime
+                  cell.value.lastConnectionTime &&
+                  (cell.value.lastThermalRecordingTime ||
+                    cell.value.lastAudioRecordingTime)
                     ? 'Set as inactive'
                     : 'Delete'
                 "
@@ -736,7 +751,12 @@ const isDevicesRoot = computed(() => {
                     :name="card.__location"
                   />
                   <div class="d-flex">
-                    <div v-if="!card._deleteAction.value.lastRecordingTime">
+                    <div
+                      v-if="
+                        !card._deleteAction.value.lastThermalRecordingTime &&
+                        !card._deleteAction.value.lastAudioRecordingTime
+                      "
+                    >
                       No recordings
                     </div>
                     <two-step-action-button
@@ -746,7 +766,8 @@ const isDevicesRoot = computed(() => {
                       "
                       :icon="
                         card._deleteAction.value.lastConnectionTime &&
-                        card._deleteAction.value.lastRecordingTime
+                        (card._deleteAction.value.lastThermalRecordingTime ||
+                          card._deleteAction.value.lastAudioRecordingTime)
                           ? 'do_not_disturb_on'
                           : 'delete'
                       "
@@ -757,7 +778,8 @@ const isDevicesRoot = computed(() => {
                       "
                       :tooltip-label="
                         card._deleteAction.value.lastConnectionTime &&
-                        card._deleteAction.value.lastRecordingTime
+                        (card._deleteAction.value.lastAudioRecordingTime ||
+                          card._deleteAction.value.lastThermalRecordingTime)
                           ? 'Set as inactive'
                           : 'Delete'
                       "

@@ -48,6 +48,7 @@ import type {
   MinimalTrackRequestData,
   MinimalTrack,
 } from "@/../types/api/fileProcessing.js";
+import { Visit } from "@models/Visit.js";
 
 const NULL_TRACK_ID = 1;
 
@@ -246,6 +247,7 @@ export default function (app: Application, baseUrl: string) {
           if (complete && recording.type === RecordingType.Audio) {
             const group = await recording.getGroup();
             const shouldFilter = group.settings?.filterHuman ?? true;
+            // If group filters out human audio, delete the file
             if (shouldFilter) {
               let hasHuman = false;
               for (const t of tracks) {
@@ -306,9 +308,6 @@ export default function (app: Application, baseUrl: string) {
               }
             }
           }
-
-          // If group filters out human audio, delete the file
-
           const twentyFourHoursMs = 24 * 60 * 60 * 1000;
           const recordingAgeMs =
             new Date().getTime() - recording.recordingDateTime.getTime();
@@ -476,6 +475,7 @@ export default function (app: Application, baseUrl: string) {
         }
       }
       await Promise.all(trackDataPromises);
+      await Visit.rebuildForRecording(recording);
       return successResponse(response, "Tracks added.", { trackIds });
     },
   );

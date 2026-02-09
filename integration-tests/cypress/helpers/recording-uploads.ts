@@ -46,6 +46,7 @@ export const uploadRecording = async (
     location?: LatLng;
     deviceHandle?: TestDeviceHandle;
     recordingType?: "test" | "startup" | "shutdown";
+    duration?: number;
     type: RecordingType;
     recordingDateTime: Date;
   },
@@ -69,6 +70,9 @@ export const uploadRecording = async (
     type: recordingOptions.type,
     recordingDateTime: recordingOptions.recordingDateTime,
   };
+  if (recordingOptions.duration) {
+    data.duration = recordingOptions.duration;
+  }
   if (
     recordingOptions.type === RecordingType.ThermalRaw &&
     recordingOptions.recordingType === "test"
@@ -107,6 +111,7 @@ export const uploadRecordingFromDeviceForProject = async (options: {
   location?: LatLng;
   deviceHandle?: TestDeviceHandle;
   recordingType?: "test" | "startup" | "shutdown";
+  duration?: number;
   type: RecordingType;
   recordingDateTime: Date;
 }): Promise<RecordingId | null> => {
@@ -120,6 +125,7 @@ export const uploadThermalRecordingFromDeviceForProject = async (options: {
   project: ProjectBundle;
   location?: LatLng;
   deviceHandle?: TestDeviceHandle;
+  duration?: number; // Artifically set a duration for test purposes
   recordingDateTime: Date;
 }): Promise<RecordingId> => {
   return uploadRecordingFromDeviceForProject({

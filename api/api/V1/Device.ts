@@ -96,6 +96,7 @@ import { deleteFile } from "@/models/util/util.js";
 import { TrackTag } from "@models/TrackTag.js";
 import { User } from "@models/User.js";
 import { SaltId } from "@typedefs/api/common.js";
+import { Visit } from "@models/Visit.js";
 
 export const mapDeviceResponse = (
   device: Device,
@@ -1802,15 +1803,26 @@ export default function (app: Application, baseUrl: string) {
         }, {}),
       ).map(Number);
 
-      const [affectedCount] = await Recording.update(
+      const [affectedCount, affectedRows] = await Recording.update(
         {
           location: setLocation,
           StationId: station.id,
         },
         {
           where: recordingTimeWindow,
+          returning: [
+            "id",
+            "StationId",
+            "recordingDateTime",
+            "deletedAt",
+            "duration",
+          ],
         },
       );
+      for (const recording of affectedRows) {
+        // TODO(VisitsV2): TEST THIS CASE
+        await Visit.rebuildForRecording(recording);
+      }
       let stationsToUpdateLatestRecordingFor: Station[] = [];
       if (stationsIdsToUpdateLatestRecordingFor.length !== 0) {
         stationsToUpdateLatestRecordingFor = await Station.findAll({

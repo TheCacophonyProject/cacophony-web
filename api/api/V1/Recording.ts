@@ -124,6 +124,7 @@ import { User } from "@models/User.js";
 import { TrackTagUserData } from "@models/TrackTagUserData.js";
 import { Device } from "@models/Device.js";
 import { Station } from "@models/Station.js";
+import { Visit } from "@models/Visit.js";
 
 const sequelize = await initSequelize();
 
@@ -827,6 +828,9 @@ export default (app: Application, baseUrl: string) => {
           { deletedAt: null, deletedBy: null },
           { where: { id: idsToUndelete } },
         );
+
+        // FIXME: Need to fixup visits for each of these recordings.
+
         // For each set of recordings to delete or undelete, we need to get the unique stations and devices,
         // and then fixup the latest recording times for each device and station and group.
         const uniqueByStation = new Map();
@@ -1469,7 +1473,10 @@ export default (app: Application, baseUrl: string) => {
           });
         }
       }
-      await updateRecordingTimeBookkeeping(recording);
+      await Promise.all([
+        updateRecordingTimeBookkeeping(recording),
+        Visit.rebuildForRecording(recording),
+      ]);
       if (softDelete) {
         return successResponse(response, "Deleted recording.");
       } else {
@@ -1506,6 +1513,8 @@ export default (app: Application, baseUrl: string) => {
       await response.locals.recording.update(
         response.locals.updates as ApiRecordingUpdateRequest,
       );
+      // NOTE: Updates via this API cannot update keys that are used to determine Visit membership,
+      //  therefore, we don't need to recalculate Visits after this call.
       return successResponse(response, "Updated recording.");
     },
   );
@@ -1543,6 +1552,7 @@ export default (app: Application, baseUrl: string) => {
         deletedBy: null,
       });
       await updateRecordingTimeBookkeeping(recording);
+      await Visit.rebuildForRecording(recording);
       return successResponse(response, "Undeleted recording.");
     },
   );

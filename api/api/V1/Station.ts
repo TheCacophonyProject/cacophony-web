@@ -606,46 +606,64 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAdminAuthorizedRequiredStationById(param("id")),
     async (request: Request, response: Response) => {
-      // Remove stationId from DeviceHistory entries
-      await DeviceHistory.update(
-        {
-          stationId: null,
-        },
-        {
-          where: {
-            stationId: Number(request.params.id),
-          },
-        },
-      );
+      const station = response.locals.station;
+      // NOTE: Due to the cascade on the StationId foreign key in the Visits table,
+      //  deleting the station will also delete all associated visits.
+
       // FIXME(ManageStationsV2): Should we reassign device history entries to another close-by station, or automatically
       //  create a new station for the entry, or should we just delete the entry?
-
       if (request.query["delete-recordings"]) {
-        // Delete this station, and mark delete recordings associated with it as deleted by this user.
-        const recordings = await Recording.findAll({
-          where: {
-            StationId: Number(request.params.id),
-          },
-          attributes: ["id"],
-        });
-        const deleteRecordingPromises = [];
-        const deletionTime = new Date();
-        for (const recording of recordings) {
-          deleteRecordingPromises.push(
-            recording.update({
-              deletedAt: deletionTime,
-              deletedBy: response.locals.requestUser.id,
-            }),
+        let deletedRecordingCount = 0;
+        await station.sequelize.transaction(async (transaction) => {
+          // Remove stationId from DeviceHistory entries
+          await DeviceHistory.update(
+            {
+              stationId: null,
+            },
+            {
+              where: {
+                stationId: response.locals.station.id,
+              },
+              transaction,
+            },
           );
-        }
-        await Promise.all(deleteRecordingPromises);
-        await response.locals.station.destroy();
+          // Delete this station, and mark delete recordings associated with it as deleted by this user.
+          const [affectedCount] = await Recording.update(
+            {
+              deletedAt: new Date(),
+              deletedBy: response.locals.requestUser.id,
+            },
+            {
+              where: {
+                StationId: response.locals.station.id,
+              },
+              transaction,
+            },
+          );
+          deletedRecordingCount = affectedCount;
+          await response.locals.station.destroy({ transaction });
+        });
+
         return successResponse(
           response,
-          `Deleted station and ${recordings.length} associated recordings`,
+          `Deleted station and ${deletedRecordingCount} associated recordings`,
         );
       } else {
-        await response.locals.station.destroy();
+        await station.sequelize.transaction(async (transaction) => {
+          // Remove stationId from DeviceHistory entries
+          await DeviceHistory.update(
+            {
+              stationId: null,
+            },
+            {
+              where: {
+                stationId: response.locals.station.id,
+              },
+              transaction,
+            },
+          );
+          await response.locals.station.destroy({ transaction });
+        });
         return successResponse(response, "Deleted station");
       }
     },
