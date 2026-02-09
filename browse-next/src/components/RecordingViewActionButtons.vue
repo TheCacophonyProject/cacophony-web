@@ -153,7 +153,7 @@ const notImplemented = () => {
 </script>
 <template>
   <div
-    class="recording-icons d-flex align-items-center gap-2"
+    class="recording-icons d-flex align-items-center gap-2 mt-lg-2"
     :class="props.classes || []"
   >
     <button
@@ -252,15 +252,4 @@ const notImplemented = () => {
     <!--    </button>-->
   </div>
 </template>
-<style scoped lang="less">
-@media screen and (max-width: 320px) {
-  .optional-button {
-    display: none;
-  }
-}
-@media screen and (min-width: 1041px) {
-  .recording-icons {
-    margin-top: 0.5rem;
-  }
-}
-</style>
+<style scoped lang="less"></style>

@@ -124,7 +124,7 @@
               height="64"
             />
           </div>
-          <div class="overflow-hidden">
+          <div class="overflow-hidden flex-grow-1">
             <div
               class="tags-container d-flex justify-content-between flex-grow-1"
             >
@@ -186,30 +186,33 @@
                   >{{ label.what }}
                 </span>
               </div>
-              <div>
+              <div
+                class="d-inline-flex flex-grow-1 justify-content-end gap-2 ms-2"
+              >
                 <span
-                  class="px-1 mb-1 me-1"
                   :class="[label.what]"
                   :key="label.what"
                   v-for="label in specialLabelsForRecording(
                     (item as RecordingItem).data,
                   )"
                 >
-                  <font-awesome-icon
-                    :icon="
+                  <material-symbol
+                    :name="
                       label.what === 'cool'
-                        ? ['fas', 'star']
+                        ? 'star'
                         : label.what === 'requires review'
-                          ? ['fas', 'flag']
-                          : ['fas', 'comment']
+                          ? 'flag'
+                          : 'chat'
                     "
-                    :color="
+                    :style="
                       label.what === 'cool'
-                        ? 'goldenrod'
+                        ? 'color:goldenrod'
                         : label.what === 'requires review'
-                          ? '#ad0707'
-                          : '#3279ed'
+                          ? 'color:#ad0707'
+                          : 'color:#3279ed'
                     "
+                    size="1.125rem"
+                    filled
                   />
                 </span>
               </div>

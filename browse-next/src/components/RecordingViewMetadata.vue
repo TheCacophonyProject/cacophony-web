@@ -10,10 +10,22 @@ import type { LoadedResource } from "@apiClient/types.ts";
 import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils.ts";
 import type { NamedPoint } from "@models/mapUtils.ts";
+import { RecordingType } from "@typedefs/api/consts.ts";
+import { useMediaQuery } from "@vueuse/core";
 
 const props = defineProps<{
   recording: LoadedResource<ApiRecordingResponse>;
 }>();
+
+const isMobile = useMediaQuery("(max-width: 991px)");
+const isDesktop = useMediaQuery("(min-width: 992px)");
+
+const recordingType = computed<RecordingType | null>(() => {
+  if (props.recording) {
+    return (props.recording as ApiRecordingResponse).type;
+  }
+  return null;
+});
 
 const currentLocationName = computed<string>(() => {
   return (
@@ -79,11 +91,26 @@ const mapPointForRecording = computed<NamedPoint[]>(() => {
 
 <template>
   <div
-    class="recording-station-info d-inline-flex justify-content-between p-4 pb-2"
+    class="recording-metadata overflow-hidden p-3"
+    :class="{
+      'recording-type-audio d-flex flex-column h-100':
+        recordingType === RecordingType.Audio,
+      'recording-type-video justify-content-between p-lg-4 pb-lg-2':
+        recordingType === RecordingType.ThermalRaw,
+      'd-inline-flex': isDesktop && recordingType === RecordingType.ThermalRaw,
+      'd-flex flex-column':
+        isMobile && recordingType === RecordingType.ThermalRaw,
+    }"
   >
-    <div class="recording-details d-flex flex-column flex-fill">
-      <div class="mb-2">
-        <div
+    <div
+      class="recording-details d-flex flex-column overflow-hidden"
+      :class="{
+        'flex-fill': isDesktop && recordingType === RecordingType.ThermalRaw,
+        'flex-shrink-0': recordingType === RecordingType.Audio,
+      }"
+    >
+      <div class="mb-2 overflow-hidden">
+        <span
           class="device-name text-truncate d-inline-flex align-items-center me-3"
         >
           <material-symbol name="memory" size="1.125rem" class="me-1" />
@@ -102,14 +129,14 @@ const mapPointForRecording = computed<NamedPoint[]>(() => {
               currentDeviceName
             }}</tooltip-on-truncation>
           </router-link>
-        </div>
-        <div class="station-name text-truncate d-inline-flex">
+        </span>
+        <span class="station-name overflow-hidden d-inline-flex pe-2">
           <location-name
             :name="currentLocationName"
             truncate
             class="fw-semibold"
           />
-        </div>
+        </span>
       </div>
       <div class="recording-date-time d-flex">
         <div class="d-flex align-items-center">
@@ -125,6 +152,9 @@ const mapPointForRecording = computed<NamedPoint[]>(() => {
     </div>
     <map-with-points
       class="recording-location-map"
+      :class="{
+        'flex-fill': isMobile || recordingType === RecordingType.Audio,
+      }"
       :points="mapPointForRecording"
       :active-points="mapPointForRecording"
       :highlighted-point="null"
@@ -138,4 +168,50 @@ const mapPointForRecording = computed<NamedPoint[]>(() => {
   </div>
 </template>
 
-<style scoped lang="less"></style>
+<style scoped lang="less">
+@import "../assets/less/breakpoints.less";
+@import "../assets/less/spacing.less";
+
+.device-name,
+.station-name {
+  max-width: 100%;
+}
+
+.recording-metadata {
+  // set a min-width, otherwise when audio recordings load this div is very squished
+  @media (min-width: @breakpoint-lg) {
+    min-width: calc(var(--cp-grid-base) * 96);
+  }
+  &.recording-type-video {
+    .recording-location-map {
+      @media (max-width: @breakpoint-md-max) {
+        width: 100%;
+        height: calc(var(--cp-grid-base) * 44);
+        margin-top: var(--cp-spacing-md);
+        border-radius: var(--bs-border-radius);
+      }
+      @media (min-width: @breakpoint-lg) {
+        width: calc(var(--cp-grid-base) * 26);
+        height: calc(var(--cp-grid-base) * 26);
+        min-width: calc(var(--cp-grid-base) * 26);
+        border-radius: 100%;
+      }
+    }
+  }
+  &.recording-type-audio {
+    @media (min-width: @breakpoint-lg) {
+      width: calc(var(--cp-grid-base) * 96);
+      border-left: 1px solid var(--bs-border-color);
+    }
+    .recording-location-map {
+      width: 100%;
+      height: calc(var(--cp-grid-base) * 44);
+      margin-top: var(--cp-spacing-md);
+      border-radius: var(--bs-border-radius);
+      @media (min-width: @breakpoint-lg) {
+        max-height: calc(var(--cp-grid-base) * 88);
+      }
+    }
+  }
+}
+</style>

@@ -73,6 +73,7 @@ declare module 'vue' {
     RecordingViewActionButtons: typeof import('./src/components/RecordingViewActionButtons.vue')['default']
     RecordingViewLabels: typeof import('./src/components/RecordingViewLabels.vue')['default']
     RecordingViewLocation: typeof import('./src/components/RecordingViewLocation.vue')['default']
+    RecordingViewMetadata: typeof import('./src/components/RecordingViewMetadata.vue')['default']
     RecordingViewNotes: typeof import('./src/components/RecordingViewNotes.vue')['default']
     RecordingViewTabs: typeof import('./src/components/RecordingViewTabs.vue')['default']
     RecordingViewTracks: typeof import('./src/components/RecordingViewTracks.vue')['default']

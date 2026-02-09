@@ -1590,7 +1590,7 @@ const hasSelectedTrack = computed<boolean>(() => {
   return !!props.currentTrack;
 });
 
-const desktop = useMediaQuery("(min-width: 1040px)");
+const desktop = useMediaQuery("(min-width: 992px)");
 const isMobileView = computed<boolean>(() => {
   return !desktop.value;
 });

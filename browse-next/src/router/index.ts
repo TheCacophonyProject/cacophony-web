@@ -67,7 +67,7 @@ const recordingModalTabChildren = (grandParent: string, parent: string) => [
   {
     path: "location/:trackId?/:detail?",
     name: `${grandParent}-${parent}-location`,
-    component: () => import("@/components/RecordingViewLocation.vue"),
+    component: () => import("@/components/RecordingViewMetadata.vue"),
   },
 ];
 

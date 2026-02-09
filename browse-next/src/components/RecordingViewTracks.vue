@@ -574,7 +574,7 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
       recording &&
       recording.processingState !== RecordingProcessingState.Tracking
     "
-    class="accordion px-1 px-sm-2 pt-1"
+    class="accordion px-1 px-sm-2 py-1"
     :class="{ 'has-selected': trackIsExpanded }"
   >
     <div v-if="recordingHasFalseTriggers" class="p-2">
@@ -625,6 +625,7 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
 <style scoped>
 .accordion {
   transition: background-color 0.2s linear;
+  min-height: 100%;
   &.has-selected {
     background-color: rgba(0, 0, 0, 0.05);
   }
