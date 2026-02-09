@@ -63,7 +63,7 @@ import sunCalc from "suncalc";
 import { capitalize } from "@/utils.ts";
 import SpectrogramViewer from "@/components/SpectrogramViewer.vue";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
-import RecordingViewLocation from "@/components/RecordingViewLocation.vue";
+import RecordingViewMetadata from "@/components/RecordingViewMetadata.vue";
 import RecordingViewTabs from "@/components/RecordingViewTabs.vue";
 
 const selectedVisit = inject(
@@ -911,7 +911,7 @@ onMounted(async () => {
 const visitDurationString = computed<string>(() => {
   if (selectedVisit.value && locationContext && locationContext.value) {
     const visit = selectedVisit.value as ApiVisitResponse;
-    const duration = visitDuration(visit, true);
+    const duration = visitDuration(visit, !!isDesktop.value);
     let visitStart = timeAtLocation(visit.timeStart, locationContext.value);
     const visitEnd = timeAtLocation(visit.timeEnd, locationContext.value);
     if (visitStart === visitEnd) {
@@ -953,9 +953,9 @@ const recordingDurationString = computed<string>(() => {
   return "";
 });
 
-const desktop = useMediaQuery("(min-width: 992px)");
+const isDesktop = useMediaQuery("(min-width: 992px)");
 const isMobileView = computed<boolean>(() => {
-  return !desktop.value;
+  return !isDesktop.value;
 });
 
 const recordingViewContext: string = (route.meta as Record<string, string>)
@@ -968,9 +968,9 @@ const playerHeight = useElementSize(playerContainer);
 watch(playerHeight.height, (newHeight) => {
   if (recordingInfo.value) {
     const recordingInfoEl = recordingInfo.value as HTMLDivElement;
-    if (desktop.value && recordingType.value !== RecordingType.Audio) {
+    if (isDesktop.value && recordingType.value !== RecordingType.Audio) {
       recordingInfoEl.style.maxHeight = `${newHeight}px`;
-    } else if (desktop.value && recordingType.value === RecordingType.Audio) {
+    } else if (isDesktop.value && recordingType.value === RecordingType.Audio) {
       recordingInfoEl.removeAttribute("style");
     } else {
       recordingInfoEl.style.maxHeight = "auto";
@@ -1269,12 +1269,11 @@ const inlineModal = ref<boolean>(false);
           <span
             v-if="recordingHasRealDuration"
             v-html="recordingDurationString"
-            class="recording-header-time"
+            class="recording-header-time text-muted"
             :class="{
               'ms-sm-3': isInVisitContext,
               'ms-2': isInVisitContext,
             }"
-            style="color: #444"
           />
         </div>
       </div>
@@ -1287,8 +1286,11 @@ const inlineModal = ref<boolean>(false);
       </button>
     </header>
     <!--  Camera recording  -->
-    <div class="player-overflow" v-if="recordingType !== RecordingType.Audio">
-      <div class="player-and-tagging d-flex">
+    <div
+      class="player-overflow flex-grow-1"
+      v-if="recordingType !== RecordingType.Audio"
+    >
+      <div class="player-and-tagging d-flex h-100">
         <div class="player-container bg-black">
           <div ref="playerContainer">
             <cptv-player
@@ -1321,7 +1323,7 @@ const inlineModal = ref<boolean>(false);
           class="recording-info d-flex flex-column flex-fill overflow-hidden"
           ref="recordingInfo"
         >
-          <recording-view-location v-if="desktop" :recording="recording">
+          <recording-view-metadata v-if="isDesktop" :recording="recording">
             <recording-view-action-buttons
               :recording="recording"
               @added-recording-label="addedRecordingLabel"
@@ -1331,13 +1333,13 @@ const inlineModal = ref<boolean>(false);
               @requested-download="requestedDownload"
               @delete-recording="deleteRecording"
             />
-          </recording-view-location>
+          </recording-view-metadata>
           <recording-view-tabs
             :recording="recording"
             :current-track="currentTrack"
           />
-          <div class="tags-overflow">
-            <!-- RecordingViewTracks, RecordingViewLabels, RecordingViewNotes, RecordingViewLocation (mobile) -->
+          <div class="tags-overflow d-flex flex-grow-1">
+            <!-- RecordingViewTracks, RecordingViewLabels, RecordingViewNotes, RecordingViewMetadata (mobile) -->
             <router-view
               :recording="recording"
               @track-tag-changed="trackTagChanged"
@@ -1370,16 +1372,18 @@ const inlineModal = ref<boolean>(false);
       />
     </div>
     <div
-      class="d-flex flex-row overflow-auto flex-fill recording-type-audio"
+      class="recording-type-audio d-flex flex-row overflow-y-auto overflow-x-hidden flex-fill"
       ref="recordingInfo"
       v-if="recordingType === RecordingType.Audio"
     >
-      <div class="recording-info d-flex flex-column flex-fill">
+      <div class="recording-info d-flex flex-column flex-fill overflow-hidden">
         <recording-view-tabs
           :recording="recording"
           :current-track="currentTrack"
         />
-        <div class="overflow-auto recording-type-audio">
+        <div
+          class="recording-type-audio overflow-y-auto overflow-x-hidden h-100"
+        >
           <router-view
             :recording="recording"
             @track-tag-changed="trackTagChanged"
@@ -1391,11 +1395,7 @@ const inlineModal = ref<boolean>(false);
           />
         </div>
       </div>
-      <recording-view-location
-        v-if="!isMobileView"
-        :recording="recording"
-        style="min-width: min(30%, 320px)"
-      >
+      <recording-view-metadata v-if="!isMobileView" :recording="recording">
         <recording-view-action-buttons
           v-if="recording"
           :recording="recording"
@@ -1407,12 +1407,12 @@ const inlineModal = ref<boolean>(false);
           @requested-download="requestedDownload"
           @delete-recording="deleteRecording"
         />
-      </recording-view-location>
+      </recording-view-metadata>
     </div>
 
     <!-- Footer -->
     <footer
-      v-if="(hasRecordingsOrVisitsInContext && desktop) || isMobileView"
+      v-if="(hasRecordingsOrVisitsInContext && isDesktop) || isMobileView"
       class="recording-view-footer"
     >
       <div class="visit-progress">
@@ -1456,7 +1456,7 @@ const inlineModal = ref<boolean>(false);
           >
             <span class="d-none d-md-flex ps-2 flex-column align-items-start">
               <span class="fs-6 text-body-secondary"
-                >Prev<span class="d-sm-none d-cs-inline">ious</span> visit</span
+                >Prev<span class="d-none d-lg-inline">ious</span> visit</span
               >
               <span v-if="previousVisit" class="text-capitalize fw-medium fs-6">
                 {{
@@ -1483,16 +1483,17 @@ const inlineModal = ref<boolean>(false);
             <span class="d-none d-md-flex ps-2 flex-column align-items-start">
               <span class="fs-6 text-body-secondary"
                 >Prev<span
+                  class=""
                   :class="{
-                    'd-sm-none': hasPreviousVisit,
-                    'd-cs-inline': hasPreviousVisit,
+                    'd-none': hasPreviousVisit,
+                    'd-lg-inline': hasPreviousVisit,
                   }"
                   >ious</span
                 >
                 rec<span
                   :class="{
                     'd-sm-none': hasPreviousVisit,
-                    'd-cs-inline': hasPreviousVisit,
+                    'd-lg-inline': hasPreviousVisit,
                   }"
                   >ording</span
                 ></span
@@ -1511,7 +1512,7 @@ const inlineModal = ref<boolean>(false);
           </button>
         </div>
         <recording-view-action-buttons
-          class="action-buttons"
+          class="action-buttons ms-auto me-auto"
           v-if="isMobileView"
           :recording="recording as ApiRecordingResponse"
           @added-recording-label="addedRecordingLabel"
@@ -1521,7 +1522,7 @@ const inlineModal = ref<boolean>(false);
           @requested-download="requestedDownload"
           @delete-recording="deleteRecording"
         />
-        <div class="next-button d-flex">
+        <div class="next-button d-flex justify-content-end">
           <!-- Desktop only button, advances through recordings -->
           <button
             type="button"
@@ -1535,7 +1536,7 @@ const inlineModal = ref<boolean>(false);
                 >Next rec<span
                   :class="{
                     'd-sm-none': hasNextVisit,
-                    'd-cs-inline': hasNextVisit,
+                    'd-lg-inline': hasNextVisit,
                   }"
                   >ording</span
                 ></span
@@ -1610,47 +1611,42 @@ const inlineModal = ref<boolean>(false);
 @import "../assets/less/elevation.less";
 @import "../assets/less/breakpoints.less";
 
-.overflow-x-hidden {
-  overflow-x: hidden;
+.recording-view {
+  @media screen and (max-width: @breakpoint-md-max) {
+    background: var(--bs-white);
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+  &.recording-type-audio {
+    background: var(--bs-white);
+    position: fixed;
+    top: var(--cp-spacing-base);
+    bottom: var(--cp-spacing-base);
+    left: var(--cp-spacing-base);
+    right: var(--cp-spacing-base);
+    container-type: size;
+    border-radius: var(--bs-modal-border-radius);
+    @media screen and (max-width: @breakpoint-md-max) {
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+    }
+  }
 }
+
 // TODO: When there is overflow, show shadows at top/bottom
 .player-overflow {
   @media (max-width: @breakpoint-md-max) {
     overflow-y: auto;
   }
-}
-.player-overflow.recording-type-audio {
-  overflow-y: auto;
-}
-
-// TODO, maybe Sara: what is this for? Better way of doing it?
-.tags-overflow {
-  @media (min-width: @breakpoint-lg) {
+  &.recording-type-audio {
     overflow-y: auto;
-    @headerHeight: 64px;
-    @playerHeight: 426px;
-    @locationInfoHeight: 140px;
-    @tabsHeight: 42px;
-    @footerHeight: 56px;
-    flex: 1;
-    //max-height: min(
-    //  @playerHeight,
-    //  calc(
-    //    100svh -
-    //      (
-    //        @headerHeight + @playerHeight + @locationInfoHeight + @tabsHeight +
-    //          @footerHeight
-    //      )
-    //  )
-    //);
-    height: 100%;
   }
 }
-
-/*.recording-tracks {
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
-  z-index: 1;
-}*/
 
 .recording-view-header {
   border-bottom: 1px solid var(--border-color-light);
@@ -1701,34 +1697,32 @@ const inlineModal = ref<boolean>(false);
       background: var(--cp-color-primary);
     }
   }
-}
-/*.recording-info {
-  width: 100%;
-}*/
-.recording-type-audio .recording-details {
-  max-width: unset;
-}
-
-@media screen and (min-width: 880px) {
-  .d-cs-inline {
-    display: inline !important;
+  .prev-button,
+  .next-button {
+    // maybe there's a cleaner way of doing this but it works for now
+    width: calc(calc(100% - 256px) / 2); // 256px is the width of action buttons
   }
 }
 
-.device-name {
-  max-width: 50%;
-}
-
+// only for video
 .player-and-tagging {
-  flex-direction: row;
   @media screen and (max-width: @breakpoint-md-max) {
     flex-direction: column;
   }
-  &.recording-type-audio {
-    flex-direction: column;
+  @media screen and (min-width: @breakpoint-lg) {
+    flex-direction: row;
   }
 }
 
+.tags-overflow {
+  @media (min-width: @breakpoint-lg) {
+    overflow-y: auto;
+    flex: 1;
+    height: 100%;
+  }
+}
+
+// Video export modals
 .inline-modal {
   // TODO - Max width for mobile breakpoints
   @width: 400px;
@@ -1742,33 +1736,6 @@ const inlineModal = ref<boolean>(false);
   background: white;
   z-index: 401;
   .standard-shadow();
-}
-
-.recording-view {
-  @media screen and (max-width: @breakpoint-md-max) {
-    background: white;
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-  }
-  &.recording-type-audio {
-    background: white;
-    position: fixed;
-    top: 16px;
-    bottom: 16px;
-    left: 16px;
-    right: 16px;
-    container-type: size;
-    border-radius: var(--bs-modal-border-radius);
-    @media screen and (max-width: @breakpoint-md-max) {
-      top: 0;
-      bottom: 0;
-      left: 0;
-      right: 0;
-    }
-  }
 }
 
 .dimmed {

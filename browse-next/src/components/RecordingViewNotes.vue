@@ -10,6 +10,7 @@ import type { TagId } from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
 import { DateTime } from "luxon";
 import type { LoggedInUser } from "@models/LoggedInUser.ts";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const CurrentUser = inject(currentUser) as Ref<LoggedInUser | null>;
 const props = withDefaults(
@@ -110,20 +111,16 @@ const doAddNote = async () => {
 };
 </script>
 <template>
-  <div v-if="recording" class="recording-labels d-flex flex-column">
-    <div class="d-flex align-items-center mt-2">
-      <h2 class="recording-labels-title fs-6">Notes</h2>
-      <div class="d-md-none d-flex justify-content-end flex-grow-1">
-        <button
-          type="button"
-          class="btn btn-outline-secondary align-self-end add-label-btn d-flex align-items-center"
-          @click="addNote"
-        >
-          <font-awesome-icon icon="plus" /><span> Add note</span>
-        </button>
-      </div>
-    </div>
-    <card-table :items="tableItems" compact>
+  <div
+    v-if="recording"
+    class="recording-notes position-relative flex-fill d-flex flex-column p-2 p-md-3"
+  >
+    <card-table
+      :items="tableItems"
+      compact
+      class="flex-fill flex-grow-1"
+      :class="{ 'mb-3': tableItems.length }"
+    >
       <template #_deleteAction="{ cell }">
         <button
           class="btn text-secondary"
@@ -155,15 +152,15 @@ const doAddNote = async () => {
         </div>
       </template>
     </card-table>
-    <div class="d-none d-md-flex justify-content-end flex-grow-1 my-2">
-      <button
-        type="button"
-        class="btn btn-outline-secondary align-self-end add-label-btn d-flex align-items-center"
-        @click="addNote"
+    <button
+      type="button"
+      class="add-note-btn btn btn-outline-secondary position-sticky align-self-end d-flex align-items-center"
+      @click="addNote"
+    >
+      <material-symbol name="add" size="1.125rem" class="me-2" /><span>
+        Add label</span
       >
-        <font-awesome-icon icon="plus" /><span> Add note</span>
-      </button>
-    </div>
+    </button>
     <b-modal
       v-model="addingNote"
       centered
@@ -195,37 +192,16 @@ const doAddNote = async () => {
 <style lang="less" scoped>
 @import "../assets/less/breakpoints.less";
 
-.recording-labels {
-  height: 100%;
-  @media screen and (min-width: @breakpoint-lg) {
-    padding: 0 0.5rem;
+.add-note-btn {
+  @media (max-width: @breakpoint-sm-max) {
+    bottom: var(--cp-spacing-sm);
+  }
+  @media (min-width: @breakpoint-md) {
+    bottom: var(--cp-spacing-md);
   }
 }
-.recording-labels-title {
-  display: none;
-  @media screen and (max-width: @breakpoint-md-max) {
-    display: inline;
-  }
-}
-.recording-label {
-  background: white;
-}
-.delete-action {
-  color: #bbb;
-}
-.add-label-btn {
-  > span {
-    transition: width 0.2s ease-in-out;
-    width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    display: inline-block;
-    text-indent: 10px;
-  }
-  &:hover {
-    > span {
-      width: 80px;
-    }
-  }
+
+.recording-notes {
+  min-height: 100%;
 }
 </style>

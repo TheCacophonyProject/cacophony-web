@@ -75,7 +75,7 @@
         </tr>
       </tbody>
     </table>
-    <div v-else-if="hasItems" class="card-table">
+    <div v-else-if="hasItems" class="card-table d-flex flex-column gap-3">
       <div v-if="hasSorts">
         <!--        TODO -->
       </div>
@@ -90,7 +90,7 @@
             selectedItem(e, sortedItems[cardIndex] as CardTableRow<unknown>);
           }
         "
-        class="card-table-card py-3 px-3 py-md-4 px-md-4 mb-3"
+        class="card-table-card py-3 px-3 py-md-4 px-md-4"
         :class="{ highlighted: eq(card, highlightedItem) }"
       >
         <slot name="card" v-bind="{ card }">

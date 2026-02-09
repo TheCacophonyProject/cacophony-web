@@ -186,7 +186,9 @@
                   >{{ label.what }}
                 </span>
               </div>
-              <div class="d-inline-flex flex-grow-1 justify-content-end gap-2 ms-2">
+              <div
+                class="d-inline-flex flex-grow-1 justify-content-end gap-2 ms-2"
+              >
                 <span
                   :class="[label.what]"
                   :key="label.what"
@@ -204,7 +206,7 @@
                     "
                     :style="
                       label.what === 'cool'
-                        ?  'color:goldenrod'
+                        ? 'color:goldenrod'
                         : label.what === 'requires review'
                           ? 'color:#ad0707'
                           : 'color:#3279ed'

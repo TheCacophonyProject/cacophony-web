@@ -896,33 +896,46 @@ onMounted(async () => {
 @import "../assets/less/elevation.less";
 
 .track-item {
+  border-radius: var(--bs-border-radius);
   .track {
     min-height: calc(var(--cp-grid-base) * 12);
     user-select: none;
     transition: background-color ease-in-out 0.2s;
+    border-radius: var(--bs-border-radius);
   }
   &.selected {
-    border-radius: var(--bs-border-radius);
-    .track {
-      border-radius: var(--bs-border-radius);
+    &.expanded {
+      background-color: var(--bs-white);
+      box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+      .track {
+        background-color: var(--bs-white);
+      }
     }
     &:not(.expanded) {
       .track {
         background-color: var(--cp-color-green-50);
       }
     }
-    &.expanded {
-      background-color: white;
-      box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
+  }
+  &:not(.selected) {
+    &:hover {
+      &:not(.expanded) {
+        .track {
+          background-color: var(--bs-gray-200);
+          transition: 0.1s linear;
+        }
+      }
     }
   }
   .track-details {
     background: var(--bs-white);
+    border-bottom-left-radius: var(--bs-border-radius);
+    border-bottom-right-radius: var(--bs-border-radius);
+    height: 0;
+    overflow-y: hidden;
     &:not(.mounting) {
       transition: height 0.2s ease-in-out;
     }
-    height: 0;
-    overflow-y: hidden;
   }
 }
 
