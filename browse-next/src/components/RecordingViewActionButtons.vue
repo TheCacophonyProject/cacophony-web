@@ -202,6 +202,7 @@ const notImplemented = () => {
       aria-label="Download record"
       toggle-class="dropdown-btn btn-icon"
       v-if="currentRecordingType === 'cptv'"
+      strategy="fixed"
     >
       <template #button-content>
         <material-symbol name="download" size="1.25rem" />

@@ -2371,7 +2371,7 @@ const updateSavedOpacity = (val: InputEvent) => {
   </teleport>
   <teleport v-if="exportRequested" to="#recording-status-modal">
     <div v-if="exportRequested === 'advanced' && !isExporting" class="p-3">
-      <b-form-group label="Include tracks in exported timespan">
+      <b-form-group label="Include tracks in exported timespan" label-class="fw-medium" class="mb-2">
         <b-form-checkbox
           v-for="(track, index) in trackExportOptions"
           :key="index"
@@ -2384,7 +2384,7 @@ const updateSavedOpacity = (val: InputEvent) => {
           }})</b-form-checkbox
         >
       </b-form-group>
-      <b-form-group label="Display track boxes in export">
+      <b-form-group label="Display track boxes in export" label-class="fw-medium" class="mb-1">
         <b-form-checkbox
           v-for="(track, index) in trackExportOptions"
           :key="index"
@@ -2415,16 +2415,16 @@ const updateSavedOpacity = (val: InputEvent) => {
       </div>
     </div>
     <div v-else-if="exportRequested === 'download'" class="p-3">
-      <span>Downloading...</span>
+      <p class="mb-1">Downloading...</p>
       <b-progress striped animated :value="downloadProgress"></b-progress>
     </div>
     <div v-else class="p-3">
-      <span>Exporting...</span>
+      <p class="mb-1">Exporting...</p>
       <b-progress :value="exportProgress" striped animated></b-progress>
       <div class="d-flex">
         <button
           type="button"
-          class="btn btn-outline-danger mt-2 flex-grow-1"
+          class="btn btn-outline-danger mt-3 flex-grow-1"
           @click="cancelExport"
         >
           Cancel

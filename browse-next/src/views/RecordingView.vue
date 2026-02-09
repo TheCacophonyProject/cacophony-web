@@ -1730,11 +1730,11 @@ const inlineModal = ref<boolean>(false);
   width: @width;
   height: @height;
   position: absolute;
-  border-radius: 2px;
   top: 40%;
   left: calc(50% - (@width / 2));
-  background: white;
+  background: var(--bs-white);
   z-index: 401;
+  border-radius: var(--bs-border-radius);
   .standard-shadow();
 }
 
