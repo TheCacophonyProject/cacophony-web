@@ -933,6 +933,7 @@ onMounted(async () => {
     border-bottom-right-radius: var(--bs-border-radius);
     height: 0;
     overflow-y: hidden;
+    container-type: inline-size; // needed for container queries below
     &:not(.mounting) {
       transition: height 0.2s ease-in-out;
     }
@@ -979,26 +980,35 @@ onMounted(async () => {
 
 .classification-btns {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  //grid-template-columns: repeat(4, minmax(0, 1fr));
   column-gap: var(--cp-spacing-xxs);
   row-gap: var(--cp-spacing-xxs);
-  @media screen and (min-width: 430px) {
+  @container (width <= 480px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  @container (width > 480px) and (width <= 575px) {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
-  @media screen and (min-width: 530px) {
+  @container (width > 575px) and (width <= 640px) {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
-  @media screen and (min-width: 630px) {
+  @container (width > 640px) and (width <= 768px) {
     grid-template-columns: repeat(7, minmax(0, 1fr));
   }
-  @media screen and (min-width: 730px) {
+  @container (width > 768px) and (width <= 832px) {
     grid-template-columns: repeat(8, minmax(0, 1fr));
   }
-  @media screen and (min-width: 830px) {
+  @container (width > 832px) and (width <= 992px) {
     grid-template-columns: repeat(9, minmax(0, 1fr));
   }
-  @media screen and (min-width: @breakpoint-lg) {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+  @container (width > 992px) and (width <= 1200px) {
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+  }
+  @container (width > 1200px) and (width <= 1400px) {
+    grid-template-columns: repeat(11, minmax(0, 1fr));
+  }
+  @container (width > 1400px) {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
   }
 }
 

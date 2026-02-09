@@ -2223,10 +2223,9 @@ onBeforeUnmount(() => {
     />
     <div v-if="inVisitsMode">
       <b-progress :value="exportProgressZeroOneHundred" />
-      <p class="mt-1 mb-0"
-        >{{ Math.max(0, exportTimeElapsed / 1000).toFixed(1) }} seconds
-        elapsed</p
-      >
+      <p class="mt-1 mb-0">
+        {{ Math.max(0, exportTimeElapsed / 1000).toFixed(1) }} seconds elapsed
+      </p>
     </div>
     <div class="d-flex align-content-center align-items-center" v-else>
       <b-spinner variant="secondary" small class="me-2" />

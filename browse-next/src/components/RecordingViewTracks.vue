@@ -574,7 +574,7 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
       recording &&
       recording.processingState !== RecordingProcessingState.Tracking
     "
-    class="accordion px-1 px-sm-2 py-1"
+    class="accordion flex-grow-1 px-1 px-sm-2 py-1"
     :class="{ 'has-selected': trackIsExpanded }"
   >
     <div v-if="recordingHasFalseTriggers" class="p-2">

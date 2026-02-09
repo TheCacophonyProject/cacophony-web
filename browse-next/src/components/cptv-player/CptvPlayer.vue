@@ -2371,7 +2371,11 @@ const updateSavedOpacity = (val: InputEvent) => {
   </teleport>
   <teleport v-if="exportRequested" to="#recording-status-modal">
     <div v-if="exportRequested === 'advanced' && !isExporting" class="p-3">
-      <b-form-group label="Include tracks in exported timespan" label-class="fw-medium" class="mb-2">
+      <b-form-group
+        label="Include tracks in exported timespan"
+        label-class="fw-medium"
+        class="mb-2"
+      >
         <b-form-checkbox
           v-for="(track, index) in trackExportOptions"
           :key="index"
@@ -2384,7 +2388,11 @@ const updateSavedOpacity = (val: InputEvent) => {
           }})</b-form-checkbox
         >
       </b-form-group>
-      <b-form-group label="Display track boxes in export" label-class="fw-medium" class="mb-1">
+      <b-form-group
+        label="Display track boxes in export"
+        label-class="fw-medium"
+        class="mb-1"
+      >
         <b-form-checkbox
           v-for="(track, index) in trackExportOptions"
           :key="index"
