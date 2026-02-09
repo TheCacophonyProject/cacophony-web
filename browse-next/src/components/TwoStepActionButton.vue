@@ -115,7 +115,7 @@ const computedConfirmationLabel = computed<string>(() => {
         </button>
         <b-tooltip
           v-if="actionBtn && computedTooltipLabel !== '' && !popoverIsShowing"
-          :target="actionBtn"
+          :target="actionBtn as unknown as HTMLElement"
           :placement="placement"
         >
           <span v-html="computedTooltipLabel"></span>

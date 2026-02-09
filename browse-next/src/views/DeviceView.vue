@@ -50,8 +50,8 @@ const loadDevice = async (deviceId: DeviceId) => {
         deviceId,
         true,
       );
-      if (deviceResponse.success) {
-        device.value = deviceResponse.result.device;
+      if (deviceResponse) {
+        device.value = deviceResponse;
       }
     }
   }

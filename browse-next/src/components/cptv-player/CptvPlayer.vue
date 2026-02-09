@@ -1,24 +1,15 @@
 <script setup lang="ts">
 import TracksScrubber from "@/components/TracksScrubber.vue";
-import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { type ComputedRef, inject, onBeforeMount, type Ref } from "vue";
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import type {
-  CptvFrame,
-  CptvFrameHeader,
-  CptvHeader,
-} from "./cptv-decoder/decoder";
-import { CptvDecoder } from "./cptv-decoder/decoder";
-import {
-  ColourMaps,
-  formatHeaderInfo,
-  renderFrameIntoFrameBuffer,
-} from "./cptv-decoder/frameRenderUtils";
-import { useDevicePixelRatio, useElementSize } from "@vueuse/core";
-import type { ApiTrackTagResponse } from "@typedefs/api/trackTag";
-import type { ApiTrackPosition, ApiTrackResponse } from "@typedefs/api/track";
-import type { RecordingId, TrackId } from "@typedefs/api/common";
-import { Mp4Encoder } from "@/components/cptv-player/mp4-export";
+import type {ApiRecordingResponse} from "@typedefs/api/recording";
+import {computed, type ComputedRef, inject, onBeforeMount, onBeforeUnmount, onMounted, type Ref, ref, watch} from "vue";
+import type {CptvFrame, CptvFrameHeader, CptvHeader,} from "./cptv-decoder/decoder";
+import {CptvDecoder} from "./cptv-decoder/decoder";
+import {ColourMaps, formatHeaderInfo, renderFrameIntoFrameBuffer,} from "./cptv-decoder/frameRenderUtils";
+import {useDevicePixelRatio, useElementSize} from "@vueuse/core";
+import type {ApiTrackTagResponse} from "@typedefs/api/trackTag";
+import type {ApiTrackPosition, ApiTrackResponse} from "@typedefs/api/track";
+import type {RecordingId, TrackId} from "@typedefs/api/common";
+import {Mp4Encoder} from "@/components/cptv-player/mp4-export";
 import type {
   FrameNum,
   IntermediateTrack,
@@ -36,22 +27,21 @@ import {
   clearOverlay,
   drawBottomLeftOverlayLabel,
   drawBottomRightOverlayLabel,
-  drawRectWithText,
   renderOverlay,
 } from "@/components/cptv-player/overlay-canvas";
-import { rectanglesIntersect } from "@/components/cptv-player/track-merging";
-import type { MotionPath } from "@/components/cptv-player/motion-paths";
-import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
-import type { SelectedProject } from "@models/LoggedInUser";
-import { type CancelableDelay, delayMs } from "@/utils";
-import { displayLabelForClassificationLabel } from "@api/classificationsUtils.ts";
-import { DateTime } from "luxon";
-import { timezoneForLatLng } from "@models/visitsUtils";
-import { ClientApi } from "@/api";
-import { currentSelectedProject as currentActiveProject } from "@models/provides.ts";
-import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
-import { DEFAULT_AUTH_ID } from "@apiClient/types.ts";
-import { BFormCheckbox, BFormGroup, BProgress } from "bootstrap-vue-next";
+import {rectanglesIntersect} from "@/components/cptv-player/track-merging";
+import type {MotionPath} from "@/components/cptv-player/motion-paths";
+import {motionPathForTrack} from "@/components/cptv-player/motion-paths";
+import type {SelectedProject} from "@models/LoggedInUser";
+import {type CancelableDelay, delayMs} from "@/utils";
+import {displayLabelForClassificationLabel} from "@api/classificationsUtils.ts";
+import {DateTime} from "luxon";
+import {timezoneForLatLng} from "@models/visitsUtils";
+import {ClientApi} from "@/api";
+import {currentSelectedProject as currentActiveProject} from "@models/provides.ts";
+import type {ApiGroupUserSettings as ApiProjectUserSettings} from "@typedefs/api/group";
+import {DEFAULT_AUTH_ID} from "@apiClient/types.ts";
+import {BFormCheckbox, BFormGroup, BProgress} from "bootstrap-vue-next";
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
@@ -154,9 +144,10 @@ const recordingDateTime = computed<DateTime | null>(() => {
 });
 
 const playbackTimeZeroOne = computed<number>(() => {
-  const fractionalFrame =
-    (1 / (totalPlayableFrames.value - 1) / ticksBetweenDraws.value) *
-    animationTick.value;
+  const frameZeroOne =
+    (performance.now() - lastRedrawTime.value) / timeBetweenRedraw.value +
+    animationTick.value / 10000;
+  const fractionalFrame = frameZeroOne / totalPlayableFrames.value;
   return Math.max(
     0,
     Math.min(
@@ -344,7 +335,7 @@ const setTimeAndRedraw = async ({
   timeZeroOne?: number;
   frameNumToDraw?: number;
 }) => {
-  //console.log(timeZeroOne);
+  console.log(timeZeroOne);
   // If the user is already seeking, don't queue up new seek events until that download progress completes.
   if (!seekingInProgress.value) {
     isShowingBackgroundFrame.value = false;
@@ -360,10 +351,12 @@ const setTimeAndRedraw = async ({
       } else {
         targetFrameNum.value = frameNumToDraw || 0;
       }
+      console.log(targetFrameNum.value);
       const gotFrame = await seekToSpecifiedFrameAndRender(
         true,
         targetFrameNum.value,
       );
+      console.log(targetFrameNum.value, playbackTimeZeroOne.value);
       if (gotFrame) {
         frameNum.value = targetFrameNum.value;
       }
@@ -440,6 +433,15 @@ const requestNextRecording = () => {
     showAtEndOfSearch.value = true;
   }
 };
+
+const onTouchMove = (e: TouchEvent) => {
+  if ("layerX" in e && e.target) {
+    const width = (e.target as HTMLInputElement).getBoundingClientRect().width;
+    const x = e.layerX as number;
+    referenceOpacity.value = Math.max(0, Math.min(1, x / width));
+    updateSavedOpacity(e as unknown as  InputEvent);
+  }
+}
 
 const requestNextVisit = () => {
   if (props.hasNext) {
@@ -1253,13 +1255,26 @@ const ticksBetweenDraws = computed<number>(() => {
   );
 });
 
-const shouldRedrawThisTick = computed<boolean>(() => {
-  return (
-    (animationTick.value + (playing.value ? 1 : 0)) %
-      ticksBetweenDraws.value ===
-    0
-  );
+const lastRedrawTime = ref<number>(performance.now());
+const timeSinceLastRedraw = computed(() => {
+  return performance.now() - lastRedrawTime.value;
 });
+const timeBetweenRedraw = computed<number>(() => {
+  return 115 / speedMultiplier.value;
+});
+
+const shouldRedrawThisTick = () => {
+  const now = performance.now();
+  if (!playing.value) {
+    lastRedrawTime.value = now;
+    return false;
+  }
+  if (now - lastRedrawTime.value < timeBetweenRedraw.value) {
+    return false;
+  }
+  lastRedrawTime.value = now;
+  return true;
+};
 
 watch(playing, async (nextPlaying: boolean) => {
   if (nextPlaying) {
@@ -1875,7 +1890,7 @@ const drawFrame = async (
       animationTick.value = 0;
     }
     // NOTE: respect fps here, render only when we should.
-    if (shouldRedrawThisTick.value || force) {
+    if (shouldRedrawThisTick() || force) {
       // Actually draw the frame contents for this requestAnimationFrame tick.
       context.putImageData(imgData, 0, 0);
       updateOverlayCanvas(frameNumToRender);
@@ -2229,10 +2244,11 @@ const updateSavedOpacity = (val: InputEvent) => {
               min="0"
               max="1"
               step="0.01"
+              @touchmove="onTouchMove"
               v-model.number="referenceOpacity"
               @input="updateSavedOpacity"
               :disabled="!hasReferencePhoto"
-              :style="`background: linear-gradient(to right, yellowgreen 0%, yellowgreen ${referenceOpacity * 100}%, #191e25 ${referenceOpacity * 100}%)`"
+              :style="`pointer-events: auto; background: linear-gradient(to right, yellowgreen 0%, yellowgreen ${referenceOpacity * 100}%, #191e25 ${referenceOpacity * 100}%)`"
               class="me-2 reference-opacity-slider-el"
             />
             <font-awesome-icon icon="eye" />
@@ -2883,6 +2899,7 @@ const updateSavedOpacity = (val: InputEvent) => {
   }
 }
 input[type="range"].reference-opacity-slider-el {
+  touch-action: pan-y;
   flex: 1;
   cursor: pointer;
   width: 100px;
@@ -2898,7 +2915,13 @@ input[type="range"].reference-opacity-slider-el {
   box-shadow: inset 0 1px 2px #000;
   border-radius: 3.5px;
   height: 9px;
+  //&::-webkit-slider-runnable-track {
+  //  height: 9px;
+  //  border-radius: 3.5px;
+  //  box-shadow: inset 0 1px 2px #000;
+  //}
   &::-webkit-slider-thumb {
+    touch-action: manipulation;
     background: lighten(yellowgreen, 20%);
     width: 15px;
     height: 15px;
@@ -2909,7 +2932,6 @@ input[type="range"].reference-opacity-slider-el {
     -webkit-appearance: none;
     appearance: none;
     &:hover {
-      background: red;
       background: lighten(yellowgreen, 30%);
     }
   }
@@ -2924,7 +2946,6 @@ input[type="range"].reference-opacity-slider-el {
     -webkit-appearance: none;
     appearance: none;
     &:hover {
-      background: red;
       background: lighten(yellowgreen, 30%);
     }
   }

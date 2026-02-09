@@ -661,27 +661,27 @@ const isDevicesRoot = computed(() => {
             class="d-flex align-items-center"
           >
             <div
-                v-if="
-                  !cell.value.lastThermalRecordingTime &&
-                  !cell.value.lastAudioRecordingTime
-                "
-              >
-                No recordings
-              </div>
+              v-if="
+                !cell.value.lastThermalRecordingTime &&
+                !cell.value.lastAudioRecordingTime
+              "
+            >
+              No recordings
+            </div>
             <two-step-action-button
               :action="() => deleteOrArchiveDevice(cell.value.id)"
               :icon="
                 cell.value.lastConnectionTime &&
-                  (cell.value.lastThermalRecordingTime ||
-                    cell.value.lastAudioRecordingTime)
+                (cell.value.lastThermalRecordingTime ||
+                  cell.value.lastAudioRecordingTime)
                   ? 'do_not_disturb_on'
                   : 'delete'
               "
               :confirmation-label="deleteConfirmationLabelForDevice(cell.value)"
               :tooltip-label="
                 cell.value.lastConnectionTime &&
-                  (cell.value.lastThermalRecordingTime ||
-                    cell.value.lastAudioRecordingTime)
+                (cell.value.lastThermalRecordingTime ||
+                  cell.value.lastAudioRecordingTime)
                   ? 'Set as inactive'
                   : 'Delete'
               "
@@ -719,56 +719,56 @@ const isDevicesRoot = computed(() => {
               </div>
               <div>Last seen <span v-html="card.lastSeen"></span></div>
 
-                <div class="d-flex align-items-center">
-                  <span
-                    class="d-flex power-status-icon align-items-center justify-content-center"
-                    :class="[card.status]"
-                  >
-                    <font-awesome-icon
-                      icon="power-off"
-                      v-if="card.status !== '-'"
-                    />
-                  </span>
-                  <span class="ms-2" v-if="card.status !== '-'">{{
-                    card.status
-                  }}</span>
-                </div>
-              </div>
-              <div class="d-flex">
-                <div
-                  class="d-flex flex-column align-items-end"
-                  :class="{
-                    'justify-content-between': card.__location !== '',
-                    'justify-content-end': card.__location === '',
-                  }"
+              <div class="d-flex align-items-center">
+                <span
+                  class="d-flex power-status-icon align-items-center justify-content-center"
+                  :class="[card.status]"
                 >
-                  <location-name
-                    @click.stop.prevent="
-                      () => {
-                        highlightedDeviceInternal = card;
-                      }
-                    "
-                    v-if="card.__location !== ''"
-                    :name="card.__location"
+                  <font-awesome-icon
+                    icon="power-off"
+                    v-if="card.status !== '-'"
                   />
-                  <div class="d-flex">
-                    <div
-                      v-if="
-                        !card._deleteAction.value.lastThermalRecordingTime &&
-                        !card._deleteAction.value.lastAudioRecordingTime
-                      "
-                    >
-                      No recordings
-                    </div>
-                    <two-step-action-button
-                      v-if="card.__active"
-                      :action="
-                        () => deleteOrArchiveDevice(card._deleteAction.value.id)
-                      "
-                      :icon="
-                        card._deleteAction.value.lastConnectionTime &&
-                        (card._deleteAction.value.lastThermalRecordingTime ||
-                          card._deleteAction.value.lastAudioRecordingTime)
+                </span>
+                <span class="ms-2" v-if="card.status !== '-'">{{
+                  card.status
+                }}</span>
+              </div>
+            </div>
+            <div class="d-flex">
+              <div
+                class="d-flex flex-column align-items-end"
+                :class="{
+                  'justify-content-between': card.__location !== '',
+                  'justify-content-end': card.__location === '',
+                }"
+              >
+                <location-name
+                  @click.stop.prevent="
+                    () => {
+                      highlightedDeviceInternal = card;
+                    }
+                  "
+                  v-if="card.__location !== ''"
+                  :name="card.__location"
+                />
+                <div class="d-flex">
+                  <div
+                    v-if="
+                      !card._deleteAction.value.lastThermalRecordingTime &&
+                      !card._deleteAction.value.lastAudioRecordingTime
+                    "
+                  >
+                    No recordings
+                  </div>
+                  <two-step-action-button
+                    v-if="card.__active"
+                    :action="
+                      () => deleteOrArchiveDevice(card._deleteAction.value.id)
+                    "
+                    :icon="
+                      card._deleteAction.value.lastConnectionTime &&
+                      (card._deleteAction.value.lastThermalRecordingTime ||
+                        card._deleteAction.value.lastAudioRecordingTime)
                         ? 'do_not_disturb_on'
                         : 'delete'
                     "
@@ -778,7 +778,7 @@ const isDevicesRoot = computed(() => {
                     :tooltip-label="
                       card._deleteAction.value.lastConnectionTime &&
                       (card._deleteAction.value.lastAudioRecordingTime ||
-                          card._deleteAction.value.lastThermalRecordingTime)
+                        card._deleteAction.value.lastThermalRecordingTime)
                         ? 'Set as inactive'
                         : 'Delete'
                     "

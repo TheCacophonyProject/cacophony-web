@@ -260,11 +260,11 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
         </div>
         <div
           class="container"
-          v-if="Object.keys(event.EventDetail.details).length"
+          v-if="Object.keys(event.EventDetail.details || {}).length"
         >
           <div
             v-for="([key, val], index) in Object.entries(
-              event.EventDetail.details,
+              event.EventDetail.details || {},
             ).filter(([_, vv], i) => !!vv)"
             :key="index"
             class="row"
@@ -367,7 +367,7 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
 @media screen and (max-width: 575px) {
   .filters {
     position: sticky;
-    top: 50px;
+    top: 48px;
   }
 }
 .container > .row:not(:last-child) {
