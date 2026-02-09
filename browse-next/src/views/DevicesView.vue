@@ -46,6 +46,7 @@ import {
 import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
 import LocationName from "@/components/LocationName.vue";
 import { BBadge, BButton, BFormCheckbox, BSpinner } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const activeProjectDevices = inject(selectedProjectDevices) as Ref<
   LoadedResource<ApiDeviceResponse[]>
@@ -583,202 +584,215 @@ const isDevicesRoot = computed(() => {
   <!--    <li>Per device, could show current reference photo image</li>-->
   <!--  </ul>-->
 
-  <div v-if="isDevicesRoot">
-    <b-spinner v-if="loadingDevices" />
-    <div v-else>
-      <div v-if="devices.length">
-        <!-- active-points was devicesSeenInThePast24Hours -->
-        <map-with-points
-          v-if="someDevicesHaveKnownLocations"
-          class="device-map"
-          :points="deviceLocations"
-          :highlighted-point="highlightedPoint"
-          :active-points="deviceLocations"
-          :show-station-radius="false"
-          :show-only-active-points="false"
-          :markers-are-interactive="true"
-          :radius="30"
-          :is-interactive="true"
-          :zoom="false"
-          @hover-point="highlightPoint"
-          @leave-point="highlightPoint"
-          @select-point="selectPoint"
-          :can-change-base-map="false"
-        />
-        <div class="d-flex align-items-center justify-content-end my-2">
-          <b-form-checkbox
-            v-model="showInactiveDevicesInternalCheck"
-            switch
-            @change="toggleActiveAndInactive"
-            >Show inactive devices</b-form-checkbox
-          >
-        </div>
-        <card-table
-          :items="tableItems"
-          @entered-item="enteredTableItem"
-          @left-item="leftTableItem"
-          @select-item="selectTableDevice"
-          :highlighted-item="highlightedDevice"
-          :sort-dimensions="sortDimensions"
-          :default-sort="'lastSeen'"
-          compact
-          standalone
-          :break-point="0"
+  <div
+    v-if="isDevicesRoot"
+    class="d-flex flex-fill justify-content-center align-items-center"
+  >
+    <b-spinner v-if="loadingDevices" variant="secondary" />
+    <div v-if="devices.length" class="w-100 align-self-start">
+      <!-- active-points was devicesSeenInThePast24Hours -->
+      <map-with-points
+        v-if="someDevicesHaveKnownLocations"
+        class="device-map"
+        :points="deviceLocations"
+        :highlighted-point="highlightedPoint"
+        :active-points="deviceLocations"
+        :show-station-radius="false"
+        :show-only-active-points="false"
+        :markers-are-interactive="true"
+        :radius="30"
+        :is-interactive="true"
+        :zoom="false"
+        @hover-point="highlightPoint"
+        @leave-point="highlightPoint"
+        @select-point="selectPoint"
+        :can-change-base-map="false"
+      />
+      <div class="d-flex align-items-center justify-content-end my-2">
+        <b-form-checkbox
+          v-model="showInactiveDevicesInternalCheck"
+          switch
+          @change="toggleActiveAndInactive"
+          >Show inactive devices</b-form-checkbox
         >
-          <template #deviceName="{ cell, row }">
-            <div class="d-flex align-items-center">
-              <device-name :name="cell" :type="row['__type']" /><b-badge
-                class="ms-2"
-                v-if="!row['__active']"
-                >inactive</b-badge
-              >
-            </div>
-          </template>
-          <template #status="{ cell }">
-            <div class="d-flex align-items-center">
-              <span
-                class="d-flex power-status-icon align-items-center justify-content-center"
-                :class="[cell]"
-              >
-                <font-awesome-icon icon="power-off" v-if="cell !== '-'" />
-              </span>
-              <span class="ms-2" v-if="cell !== '-'">{{ cell }}</span>
-            </div>
-          </template>
-          <template #batteryLevel="{ cell }">
-            <device-battery-level :device="cell" />
-          </template>
-          <template #_deleteAction="{ cell }">
-            <div
-              v-if="isProjectAdmin && cell.value.active"
-              class="d-flex align-items-center"
-            >
-              <div v-if="!cell.value.lastRecordingTime">No recordings</div>
-              <two-step-action-button
-                :action="() => deleteOrArchiveDevice(cell.value.id)"
-                :icon="
-                  cell.value.lastConnectionTime && cell.value.lastRecordingTime
-                    ? 'do_not_disturb_on'
-                    : 'delete'
-                "
-                :confirmation-label="
-                  deleteConfirmationLabelForDevice(cell.value)
-                "
-                :tooltip-label="
-                  cell.value.lastConnectionTime && cell.value.lastRecordingTime
-                    ? 'Set as inactive'
-                    : 'Delete'
-                "
-                :boundary-padding="false"
-              />
-            </div>
-            <div v-else-if="isProjectAdmin && !cell.value.active">
-              <two-step-action-button
-                :action="() => unarchiveDevice(cell.value.id)"
-                icon="add_circle"
-                :confirmation-label="
-                  unarchiveConfirmationLabelForDevice(cell.value)
-                "
-                :tooltip-label="`Set as active`"
-              />
-            </div>
-            <span v-else></span>
-          </template>
-          <template #card="{ card }: { card: DeviceTableItem }">
-            <div class="d-flex flex-row">
-              <div class="flex-grow-1">
-                <div class="d-flex justify-content-between">
-                  <div class="d-flex align-items-center">
-                    <device-name
-                      :name="card.deviceName"
-                      :type="card.__type"
-                    /><b-badge class="ms-2" v-if="!card.__active"
-                      >inactive</b-badge
-                    >
-                    <device-battery-level
-                      :device="card.batteryLevel"
-                      class="ms-3"
-                    />
-                  </div>
-                </div>
-                <div>Last seen <span v-html="card.lastSeen"></span></div>
-
-                <div class="d-flex align-items-center">
-                  <span
-                    class="d-flex power-status-icon align-items-center justify-content-center"
-                    :class="[card.status]"
-                  >
-                    <font-awesome-icon
-                      icon="power-off"
-                      v-if="card.status !== '-'"
-                    />
-                  </span>
-                  <span class="ms-2" v-if="card.status !== '-'">{{
-                    card.status
-                  }}</span>
-                </div>
-              </div>
-              <div class="d-flex">
-                <div
-                  class="d-flex flex-column align-items-end"
-                  :class="{
-                    'justify-content-between': card.__location !== '',
-                    'justify-content-end': card.__location === '',
-                  }"
-                >
-                  <location-name
-                    @click.stop.prevent="
-                      () => {
-                        highlightedDeviceInternal = card;
-                      }
-                    "
-                    v-if="card.__location !== ''"
-                    :name="card.__location"
-                  />
-                  <div class="d-flex">
-                    <div v-if="!card._deleteAction.value.lastRecordingTime">
-                      No recordings
-                    </div>
-                    <two-step-action-button
-                      v-if="card.__active"
-                      :action="
-                        () => deleteOrArchiveDevice(card._deleteAction.value.id)
-                      "
-                      :icon="
-                        card._deleteAction.value.lastConnectionTime &&
-                        card._deleteAction.value.lastRecordingTime
-                          ? 'do_not_disturb_on'
-                          : 'delete'
-                      "
-                      :confirmation-label="
-                        deleteConfirmationLabelForDevice(
-                          card._deleteAction.value,
-                        )
-                      "
-                      :tooltip-label="
-                        card._deleteAction.value.lastConnectionTime &&
-                        card._deleteAction.value.lastRecordingTime
-                          ? 'Set as inactive'
-                          : 'Delete'
-                      "
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </template>
-        </card-table>
       </div>
-      <p v-else>
-        There are currently no active thermal cameras or bird monitors
-        registered with this project.<br /><br />
-        Thermal cameras or bird monitors can be either directly connected to the
-        Cacophony platform via internet connection, or may be offline or out of
-        coverage, and managed via the sidekick companion app.
-        <a href="#TODO"
-          >Find out how to register a thermal camera or a bird monitor.</a
-        >
+      <card-table
+        :items="tableItems"
+        @entered-item="enteredTableItem"
+        @left-item="leftTableItem"
+        @select-item="selectTableDevice"
+        :highlighted-item="highlightedDevice"
+        :sort-dimensions="sortDimensions"
+        :default-sort="'lastSeen'"
+        compact
+        standalone
+        :break-point="0"
+      >
+        <template #deviceName="{ cell, row }">
+          <div class="d-flex align-items-center">
+            <device-name :name="cell" :type="row['__type']" /><b-badge
+              class="ms-2"
+              v-if="!row['__active']"
+              >inactive</b-badge
+            >
+          </div>
+        </template>
+        <template #status="{ cell }">
+          <div class="d-flex align-items-center">
+            <span
+              class="d-flex power-status-icon align-items-center justify-content-center"
+              :class="[cell]"
+            >
+              <font-awesome-icon icon="power-off" v-if="cell !== '-'" />
+            </span>
+            <span class="ms-2" v-if="cell !== '-'">{{ cell }}</span>
+          </div>
+        </template>
+        <template #batteryLevel="{ cell }">
+          <device-battery-level :device="cell" />
+        </template>
+        <template #_deleteAction="{ cell }">
+          <div
+            v-if="isProjectAdmin && cell.value.active"
+            class="d-flex align-items-center"
+          >
+            <div v-if="!cell.value.lastRecordingTime">No recordings</div>
+            <two-step-action-button
+              :action="() => deleteOrArchiveDevice(cell.value.id)"
+              :icon="
+                cell.value.lastConnectionTime && cell.value.lastRecordingTime
+                  ? 'do_not_disturb_on'
+                  : 'delete'
+              "
+              :confirmation-label="deleteConfirmationLabelForDevice(cell.value)"
+              :tooltip-label="
+                cell.value.lastConnectionTime && cell.value.lastRecordingTime
+                  ? 'Set as inactive'
+                  : 'Delete'
+              "
+              :boundary-padding="false"
+            />
+          </div>
+          <div v-else-if="isProjectAdmin && !cell.value.active">
+            <two-step-action-button
+              :action="() => unarchiveDevice(cell.value.id)"
+              icon="add_circle"
+              :confirmation-label="
+                unarchiveConfirmationLabelForDevice(cell.value)
+              "
+              :tooltip-label="`Set as active`"
+            />
+          </div>
+          <span v-else></span>
+        </template>
+        <template #card="{ card }: { card: DeviceTableItem }">
+          <div class="d-flex flex-row">
+            <div class="flex-grow-1">
+              <div class="d-flex justify-content-between">
+                <div class="d-flex align-items-center">
+                  <device-name
+                    :name="card.deviceName"
+                    :type="card.__type"
+                  /><b-badge class="ms-2" v-if="!card.__active"
+                    >inactive</b-badge
+                  >
+                  <device-battery-level
+                    :device="card.batteryLevel"
+                    class="ms-3"
+                  />
+                </div>
+              </div>
+              <div>Last seen <span v-html="card.lastSeen"></span></div>
+
+              <div class="d-flex align-items-center">
+                <span
+                  class="d-flex power-status-icon align-items-center justify-content-center"
+                  :class="[card.status]"
+                >
+                  <font-awesome-icon
+                    icon="power-off"
+                    v-if="card.status !== '-'"
+                  />
+                </span>
+                <span class="ms-2" v-if="card.status !== '-'">{{
+                  card.status
+                }}</span>
+              </div>
+            </div>
+            <div class="d-flex">
+              <div
+                class="d-flex flex-column align-items-end"
+                :class="{
+                  'justify-content-between': card.__location !== '',
+                  'justify-content-end': card.__location === '',
+                }"
+              >
+                <location-name
+                  @click.stop.prevent="
+                    () => {
+                      highlightedDeviceInternal = card;
+                    }
+                  "
+                  v-if="card.__location !== ''"
+                  :name="card.__location"
+                />
+                <div class="d-flex">
+                  <div v-if="!card._deleteAction.value.lastRecordingTime">
+                    No recordings
+                  </div>
+                  <two-step-action-button
+                    v-if="card.__active"
+                    :action="
+                      () => deleteOrArchiveDevice(card._deleteAction.value.id)
+                    "
+                    :icon="
+                      card._deleteAction.value.lastConnectionTime &&
+                      card._deleteAction.value.lastRecordingTime
+                        ? 'do_not_disturb_on'
+                        : 'delete'
+                    "
+                    :confirmation-label="
+                      deleteConfirmationLabelForDevice(card._deleteAction.value)
+                    "
+                    :tooltip-label="
+                      card._deleteAction.value.lastConnectionTime &&
+                      card._deleteAction.value.lastRecordingTime
+                        ? 'Set as inactive'
+                        : 'Delete'
+                    "
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </card-table>
+    </div>
+    <div
+      v-else
+      class="no-results text-body-tertiary d-flex flex-column text-center col col-12 col-md-8 col-lg-6 mx-auto"
+    >
+      <material-symbol
+        name="developer_board_off"
+        size="2.4rem"
+        grade="thin"
+        class="mb-2"
+      />
+      <h4 class="h5 mb-2">This project has no registered devices</h4>
+      <p>
+        Devices need to connect to the Monitoring Platform to register. Online
+        devices will connect directly if they have an internet connection
+        configured. Offline or out of coverage devices need to be managed via
+        the Sidekick mobile app.
       </p>
+      <b-button
+        variant="outline-secondary"
+        href="https://docs.google.com/document/d/1wL1A6eJyq7Y5LnVIoKcW3J_3XOWysTedJVKaLEbSK9Q/edit?tab=t.0#heading=h.jmao8urwekj7"
+        target="_blank"
+        rel="nofollow"
+        class="mx-auto"
+        >Connect device to Monitoring Platform</b-button
+      >
     </div>
   </div>
   <router-view v-else></router-view>

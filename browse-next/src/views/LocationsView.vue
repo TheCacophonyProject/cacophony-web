@@ -18,7 +18,7 @@ import type { LoadedResource } from "@apiClient/types";
 import { ClientApi } from "@/api";
 import { useElementBounding, useWindowSize } from "@vueuse/core";
 import { BPopover, BSpinner } from "bootstrap-vue-next";
-import {MaterialSymbol} from "@dbetka/vue-material-symbols";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
@@ -286,11 +286,11 @@ const updateLocationName = async (payload: {
               grade="thin"
               class="mb-2"
             />
-            <h4 class="h5 mb-2">
-              This project has no locations
-            </h4>
+            <h4 class="h5 mb-2">This project has no locations</h4>
             <p>
-              Locations are automatically created from a device location. Locations will be displayed here when devices connect to the Monitoring Platform.
+              Locations are automatically created from a device location.
+              Locations will be displayed here when devices connect to the
+              Monitoring Platform.
             </p>
           </div>
         </div>
