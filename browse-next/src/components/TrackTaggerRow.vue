@@ -754,11 +754,11 @@ onMounted(async () => {
           v-if="expanded"
           type="button"
           aria-label="Replay track"
-          class="btn btn-icon"
+          class="btn btn-icon d-flex align-items-center justify-content-center"
           @click.stop.prevent="replaySelectedTrack"
         >
           <span class="visually-hidden">Replay track</span>
-          <font-awesome-icon icon="rotate-right" />
+          <material-symbol name="replay" size="1.25rem" class="icon" />
         </button>
         <two-step-action-button
           v-if="
@@ -771,12 +771,9 @@ onMounted(async () => {
           confirmation-label="Delete track"
           :boundary-padding="true"
         />
-        <button type="button" aria-label="Expand track" class="btn btn-icon">
+        <button type="button" aria-label="Expand track" class="btn btn-icon d-flex align-items-center justify-content-center px-2">
           <span class="visually-hidden">Expand track</span>
-          <font-awesome-icon
-            icon="chevron-right"
-            :rotation="expanded ? 270 : 90"
-          />
+          <material-symbol :name="expanded ? 'keyboard_arrow_up' : 'keyboard_arrow_down'" size="1.5rem" />
         </button>
       </div>
     </div>
@@ -841,19 +838,15 @@ onMounted(async () => {
         />
       </div>
       <div
-        class="tagger-details mt-2 d-flex justify-content-center flex-column"
+        class="tagger-details mt-2"
       >
         <button
-          class="btn link-secondary fs-6"
+          class="btn link-secondary fs-6 d-block mx-auto d-flex align-items-center justify-content-center"
           @click="showTaggerDetails = !showTaggerDetails"
         >
           <span v-if="!showTaggerDetails">View details</span>
           <span v-else>Hide details</span>
-          <font-awesome-icon
-            icon="chevron-right"
-            :rotation="showTaggerDetails ? 270 : 90"
-            class="ms-2"
-          />
+          <material-symbol :name="showTaggerDetails ? 'keyboard_arrow_up' : 'keyboard_arrow_down'" size="1.25rem" class="ms-1" />
         </button>
         <card-table
           v-if="showTaggerDetails && taggerDetails.length !== 0"
