@@ -43,9 +43,14 @@ const trackHeight = computed(() => {
   const useShrink = trackSlots > 4;
   const maxHeight = viewportWidth.value * 0.75;
   const minHeight = 200;
-  const shrinkAmount = useShrink ? Math.min(1, Math.max(0, (props.scrollOffsetY || 0) / (maxHeight - minHeight))) : 0;
+  const shrinkAmount = useShrink
+    ? Math.min(
+        1,
+        Math.max(0, (props.scrollOffsetY || 0) / (maxHeight - minHeight)),
+      )
+    : 0;
   const maxScrollShrink = 4;
-  return 7 - (maxScrollShrink * shrinkAmount);
+  return 7 - maxScrollShrink * shrinkAmount;
 });
 
 const heightForTracks = computed((): number => {
