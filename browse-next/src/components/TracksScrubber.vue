@@ -39,28 +39,25 @@ const scrubberWidth = ref(0);
 const { width: viewportWidth } = useWindowSize();
 
 const trackHeight = computed(() => {
-  // TODO: If the number of unique y slots is low, we don't need to worry about shrinking the track lines
-  if (props.scrollOffsetY === 0) {
-    return 12;
-  } else {
-    const maxHeight = viewportWidth.value * 0.75;
-    const minHeight = 200;
-    const shrinkAmount = (props.scrollOffsetY || 0) / (maxHeight - minHeight);
-    const maxScrollShrink = 7;
-    return 12 - maxScrollShrink * shrinkAmount;
-  }
+  const trackSlots = numUniqueYSlots.value;
+  const useShrink = trackSlots > 4;
+  const maxHeight = viewportWidth.value * 0.75;
+  const minHeight = 200;
+  const shrinkAmount = useShrink ? Math.min(1, Math.max(0, (props.scrollOffsetY || 0) / (maxHeight - minHeight))) : 0;
+  const maxScrollShrink = 4;
+  return 7 - (maxScrollShrink * shrinkAmount);
 });
 
 const heightForTracks = computed((): number => {
   if (props.tracks.length === 0) {
     return minScrubberHeight;
   }
-  let h = trackHeight.value * numUniqueYSlots.value; // + props.tracks.length - 1;
-  h = Math.max(44, h + trackHeight.value);
+  let h = trackHeight.value * (numUniqueYSlots.value + 4); // + props.tracks.length - 1;
+  h = Math.max(44, h);
   return h;
 });
 
-const getOffsetYForTrack = (
+const getSlotYForTrack = (
   trackIndex: number,
   trackDimensions: TrackDimensions[],
   thisLeft: number,
@@ -111,7 +108,7 @@ const initTrackDimensions = (tracks: IntermediateTrack[]): void => {
         const thisRight =
           tracks[i].positions[tracks[i].positions.length - 1][0] /
           props.totalFrames;
-        const yOffset = getOffsetYForTrack(i, dimensions, thisLeft, thisRight);
+        const yOffset = getSlotYForTrack(i, dimensions, thisLeft, thisRight);
         dimensions.push({
           top: yOffset,
           right: thisRight,
@@ -281,10 +278,9 @@ const currentTrackIndex = computed<number>(() => {
           left: `calc(${sidePadding}px + ${
             trackDimensions[index - 1].left * fullWidthMinusPadding
           }%`,
-          top: `${
-            trackHeight / 2 +
-            (trackDimensions[index - 1].top / numUniqueYSlots) * 100
-          }%`,
+          top: `calc(${
+            ((trackDimensions[index - 1].top + 1) / (numUniqueYSlots + 1)) * 100
+          }% - ${trackHeight / 2}px)`,
           height: `${trackHeight}px`,
         }"
         class="scrub-track"
@@ -304,7 +300,7 @@ const currentTrackIndex = computed<number>(() => {
 .track-scrubber {
   background: #2b333f;
   min-height: 0;
-  transition: height 0.3s;
+  //transition: height 0.3s;
   /* Above the motion paths canvas if it exists */
   box-shadow: 0 1px 5px #000 inset;
   cursor: col-resize;
