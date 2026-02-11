@@ -158,7 +158,7 @@ const doAddNote = async () => {
       @click="addNote"
     >
       <material-symbol name="add" size="1.125rem" class="me-2" /><span>
-        Add label</span
+        Add note</span
       >
     </button>
     <b-modal

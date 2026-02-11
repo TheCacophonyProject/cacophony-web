@@ -54,7 +54,9 @@ const isMobileView = computed<boolean>(() => {
 </script>
 
 <template>
-  <ul class="nav nav-underline nav-fill px-0 px-sm-2 px-md-4 gap-0 gap-sm-2">
+  <ul
+    class="nav nav-underline nav-fill px-0 px-sm-2 px-md-4 gap-0 gap-sm-2 recording-view-tabs"
+  >
     <router-link
       :class="[
         ...navLinkClasses,
@@ -143,4 +145,8 @@ const isMobileView = computed<boolean>(() => {
   </ul>
 </template>
 
-<style scoped lang="less"></style>
+<style scoped>
+ul {
+  background-color: white;
+}
+</style>

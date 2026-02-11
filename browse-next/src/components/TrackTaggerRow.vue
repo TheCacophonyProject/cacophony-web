@@ -127,24 +127,31 @@ const expanded = computed<boolean>(() => {
   );
 });
 
-const expandedOnce = ref<boolean>(false);
-
 const handleExpansion = (isExpanding: boolean) => {
   if (isExpanding) {
     if (trackDetails.value) {
       (trackDetails.value as HTMLDivElement).style.height = `${
-        (trackDetails.value as HTMLDivElement).scrollHeight +
-        (expandedOnce.value ? 0 : trackDetails.value.children[1].scrollHeight)
+        (trackDetails.value as HTMLDivElement).scrollHeight
       }px`;
     }
-    expandedOnce.value = true;
   } else {
     if (trackDetails.value) {
       (trackDetails.value as HTMLDivElement).style.height = "0";
     }
   }
   expandedInternal.value = isExpanding;
-  setTimeout(() => (mounting.value = false), 200);
+  setTimeout(onMount, 200);
+};
+
+const onMount = () => {
+  if (expandedInternal.value) {
+    if (trackDetails.value) {
+      (trackDetails.value as HTMLDivElement).style.height = `${
+        (trackDetails.value as HTMLDivElement).scrollHeight
+      }px`;
+    }
+  }
+  mounting.value = false;
 };
 
 watch(expanded, handleExpansion);
@@ -807,7 +814,6 @@ onMounted(async () => {
             <material-symbol name="keep" size="1.25rem" />
           </span>
           <tag-image
-            v-if="expandedOnce"
             :tag="tag.label"
             width="24"
             height="24"

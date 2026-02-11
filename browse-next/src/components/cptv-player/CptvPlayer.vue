@@ -1,15 +1,38 @@
 <script setup lang="ts">
 import TracksScrubber from "@/components/TracksScrubber.vue";
-import type {ApiRecordingResponse} from "@typedefs/api/recording";
-import {computed, type ComputedRef, inject, onBeforeMount, onBeforeUnmount, onMounted, type Ref, ref, watch} from "vue";
-import type {CptvFrame, CptvFrameHeader, CptvHeader,} from "./cptv-decoder/decoder";
-import {CptvDecoder} from "./cptv-decoder/decoder";
-import {ColourMaps, formatHeaderInfo, renderFrameIntoFrameBuffer,} from "./cptv-decoder/frameRenderUtils";
-import {useDevicePixelRatio, useElementSize} from "@vueuse/core";
-import type {ApiTrackTagResponse} from "@typedefs/api/trackTag";
-import type {ApiTrackPosition, ApiTrackResponse} from "@typedefs/api/track";
-import type {RecordingId, TrackId} from "@typedefs/api/common";
-import {Mp4Encoder} from "@/components/cptv-player/mp4-export";
+import type { ApiRecordingResponse } from "@typedefs/api/recording";
+import {
+  computed,
+  type ComputedRef,
+  inject,
+  onBeforeMount,
+  onBeforeUnmount,
+  onMounted,
+  type Ref,
+  ref,
+  useTemplateRef,
+  watch,
+} from "vue";
+import type {
+  CptvFrame,
+  CptvFrameHeader,
+  CptvHeader,
+} from "./cptv-decoder/decoder";
+import { CptvDecoder } from "./cptv-decoder/decoder";
+import {
+  ColourMaps,
+  formatHeaderInfo,
+  renderFrameIntoFrameBuffer,
+} from "./cptv-decoder/frameRenderUtils";
+import {
+  useDevicePixelRatio,
+  useElementSize,
+  useMediaQuery,
+} from "@vueuse/core";
+import type { ApiTrackTagResponse } from "@typedefs/api/trackTag";
+import type { ApiTrackPosition, ApiTrackResponse } from "@typedefs/api/track";
+import type { RecordingId, TrackId } from "@typedefs/api/common";
+import { Mp4Encoder } from "@/components/cptv-player/mp4-export";
 import type {
   FrameNum,
   IntermediateTrack,
@@ -26,22 +49,21 @@ import {
 import {
   clearOverlay,
   drawBottomLeftOverlayLabel,
-  drawBottomRightOverlayLabel,
   renderOverlay,
 } from "@/components/cptv-player/overlay-canvas";
-import {rectanglesIntersect} from "@/components/cptv-player/track-merging";
-import type {MotionPath} from "@/components/cptv-player/motion-paths";
-import {motionPathForTrack} from "@/components/cptv-player/motion-paths";
-import type {SelectedProject} from "@models/LoggedInUser";
-import {type CancelableDelay, delayMs} from "@/utils";
-import {displayLabelForClassificationLabel} from "@api/classificationsUtils.ts";
-import {DateTime} from "luxon";
-import {timezoneForLatLng} from "@models/visitsUtils";
-import {ClientApi} from "@/api";
-import {currentSelectedProject as currentActiveProject} from "@models/provides.ts";
-import type {ApiGroupUserSettings as ApiProjectUserSettings} from "@typedefs/api/group";
-import {DEFAULT_AUTH_ID} from "@apiClient/types.ts";
-import {BFormCheckbox, BFormGroup, BProgress} from "bootstrap-vue-next";
+import { rectanglesIntersect } from "@/components/cptv-player/track-merging";
+import type { MotionPath } from "@/components/cptv-player/motion-paths";
+import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
+import type { SelectedProject } from "@models/LoggedInUser";
+import { type CancelableDelay, delayMs } from "@/utils";
+import { displayLabelForClassificationLabel } from "@api/classificationsUtils.ts";
+import { DateTime } from "luxon";
+import { timezoneForLatLng } from "@models/visitsUtils";
+import { ClientApi } from "@/api";
+import { currentSelectedProject as currentActiveProject } from "@models/provides.ts";
+import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
+import { DEFAULT_AUTH_ID } from "@apiClient/types.ts";
+import { BFormCheckbox, BFormGroup, BProgress } from "bootstrap-vue-next";
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
@@ -72,12 +94,14 @@ const props = withDefaults(
     displayHeaderInfo?: boolean;
     exportRequested?: boolean | "advanced" | "download";
     downloadProgress?: number;
+    scrollOffsetY?: number;
   }>(),
   {
     cptvSize: null,
     canSelectTracks: true,
     hasNext: false,
     hasPrev: false,
+    scrollOffsetY: 0,
     hasReferencePhoto: false,
     displayHeaderInfo: false,
   },
@@ -173,7 +197,9 @@ const emit = defineEmits<{
 }>();
 
 // HTML refs
-const canvas = ref<HTMLCanvasElement | null>(null);
+const canvas: Ref<HTMLCanvasElement | null> = useTemplateRef("canvas");
+const playerChrome: Ref<HTMLDivElement | null> = useTemplateRef("playerChrome");
+const { height: chromeHeight } = useElementSize(playerChrome);
 const { width: canvasWidth, height: canvasHeight } = useElementSize(canvas);
 
 watch(canvasWidth, () => {
@@ -210,7 +236,6 @@ watch(
   },
 );
 
-const container = ref<HTMLDivElement | null>(null);
 const frameNumField = ref<HTMLDivElement | null>(null);
 const ffcSecsAgo = ref<HTMLDivElement | null>(null);
 const overlayCanvas = ref<HTMLCanvasElement | null>(null);
@@ -335,7 +360,6 @@ const setTimeAndRedraw = async ({
   timeZeroOne?: number;
   frameNumToDraw?: number;
 }) => {
-  console.log(timeZeroOne);
   // If the user is already seeking, don't queue up new seek events until that download progress completes.
   if (!seekingInProgress.value) {
     isShowingBackgroundFrame.value = false;
@@ -351,12 +375,10 @@ const setTimeAndRedraw = async ({
       } else {
         targetFrameNum.value = frameNumToDraw || 0;
       }
-      console.log(targetFrameNum.value);
       const gotFrame = await seekToSpecifiedFrameAndRender(
         true,
         targetFrameNum.value,
       );
-      console.log(targetFrameNum.value, playbackTimeZeroOne.value);
       if (gotFrame) {
         frameNum.value = targetFrameNum.value;
       }
@@ -439,9 +461,9 @@ const onTouchMove = (e: TouchEvent) => {
     const width = (e.target as HTMLInputElement).getBoundingClientRect().width;
     const x = e.layerX as number;
     referenceOpacity.value = Math.max(0, Math.min(1, x / width));
-    updateSavedOpacity(e as unknown as  InputEvent);
+    updateSavedOpacity(e as unknown as InputEvent);
   }
-}
+};
 
 const requestNextVisit = () => {
   if (props.hasNext) {
@@ -1193,6 +1215,9 @@ const _ambientTemperature = computed<string | null>(() => {
 });
 
 const currentAbsoluteTime = computed<string | null>(() => {
+  if (isShowingBackgroundFrame.value) {
+    return "Background frame";
+  }
   if (recordingDateTime.value) {
     return (
       recordingDateTime.value
@@ -1207,6 +1232,15 @@ const currentAbsoluteTime = computed<string | null>(() => {
     );
   }
   return null;
+});
+
+const elapsedTimeString = computed<string>(() => {
+  if (isShowingBackgroundFrame.value) {
+    return "";
+  }
+  return `${elapsedTime.value} / ${formatTime(
+    Math.max(currentTime.value, actualDuration.value),
+  )}`;
 });
 
 const updateOverlayCanvas = (frameNumToRender: number) => {
@@ -1227,19 +1261,19 @@ const updateOverlayCanvas = (frameNumToRender: number) => {
       trackExportOptions.value,
     );
 
-    {
-      const time = `${elapsedTime.value} / ${formatTime(
-        Math.max(currentTime.value, actualDuration.value),
-      )}`;
-      drawBottomRightOverlayLabel(time, overlayContext.value, pixelRatio.value);
-      // Draw time and temperature in
-      // overlayContext.
-      drawBottomLeftOverlayLabel(
-        currentAbsoluteTime.value,
-        overlayContext.value,
-        pixelRatio.value,
-      );
-    }
+    // {
+    //   const time = `${elapsedTime.value} / ${formatTime(
+    //     Math.max(currentTime.value, actualDuration.value),
+    //   )}`;
+    //   drawBottomRightOverlayLabel(time, overlayContext.value, pixelRatio.value);
+    //   // Draw time and temperature in
+    //   // overlayContext.
+    //   drawBottomLeftOverlayLabel(
+    //     currentAbsoluteTime.value,
+    //     overlayContext.value,
+    //     pixelRatio.value,
+    //   );
+    // }
   }
 };
 
@@ -1498,11 +1532,11 @@ const toggleBackground = async (): Promise<void> => {
       );
       cancelAnimationFrame(animationFrame.value);
       if (clearOverlay(overlayContext.value, pixelRatio.value)) {
-        drawBottomLeftOverlayLabel(
-          "Background frame",
-          overlayContext.value,
-          pixelRatio.value,
-        );
+        // drawBottomLeftOverlayLabel(
+        //   "Background frame",
+        //   overlayContext.value,
+        //   pixelRatio.value,
+        // );
       }
     }
   }
@@ -2021,31 +2055,33 @@ const updateSavedOpacity = (val: InputEvent) => {
     (val.target as HTMLInputElement).value,
   );
 };
+const isDesktop = useMediaQuery("(min-width: 992px)");
+const isMobileView = computed<boolean>(() => {
+  return !isDesktop.value;
+});
+const playerHeight = computed(() => {
+  if (isMobileView.value) {
+    return `min(min(480px, 75svw), calc(max(200px, calc(min(75svw, 480px) - ${Math.max(0, props.scrollOffsetY)}px)))`;
+  }
+  return "auto";
+});
 </script>
 <template>
-  <div class="cptv-player">
+  <div class="cptv-player position-relative">
     <div
-      key="container"
+      :style="{ height: playerHeight }"
       class="video-container"
-      ref="container"
       :class="[{ 'no-reference': !hasReferencePhoto }]"
     >
       <canvas
-        key="base"
         ref="canvas"
         :class="['video-canvas', { smoothed: videoSmoothing }]"
       />
       <canvas key="overlay" ref="overlayCanvas" class="overlay-canvas" />
-
-      <span
-        key="px-value"
-        v-show="showValueInfo"
-        ref="valueTooltip"
-        class="value-tooltip"
+      <span v-show="showValueInfo" ref="valueTooltip" class="value-tooltip"
         >{{ valueUnderCursor }}
       </span>
       <span
-        key="messaging"
         :class="['player-messaging', { show: playerMessage !== null }]"
         v-html="playerMessage"
       />
@@ -2079,11 +2115,10 @@ const updateSavedOpacity = (val: InputEvent) => {
           <font-awesome-icon icon="left-right" />
         </div>
       </div>
-      <div key="buffering" :class="['playback-controls', { show: buffering }]">
+      <div :class="['playback-controls', { show: buffering }]">
         <font-awesome-icon class="fa-spin buffering" icon="spinner" size="4x" />
       </div>
       <div
-        key="playback-controls"
         :class="[
           'playback-controls',
           {
@@ -2108,262 +2143,270 @@ const updateSavedOpacity = (val: InputEvent) => {
         </button>
       </div>
     </div>
-    <div key="playback-nav" class="playback-nav">
-      <button
-        @click.prevent="togglePlayback"
-        ref="playPauseButton"
-        :data-tooltip="playing ? 'Pause' : 'Play'"
-      >
-        <font-awesome-icon v-if="!playing" icon="play" />
-        <font-awesome-icon v-else icon="pause" />
-      </button>
-      <div class="right-nav">
-        <div
-          :class="[
-            'advanced-controls',
-            {
-              open:
-                showAdvancedControls &&
-                (!showingReferencePhoto || canvasWidth > 570),
-            },
-          ]"
+    <div
+      class="video-footer position-absolute d-flex w-100 justify-content-between text-white"
+      :style="{ top: `calc(${playerHeight} - 25px)` }"
+    >
+      <span class="ps-2">{{ currentAbsoluteTime }}</span>
+      <span class="pe-2">{{ elapsedTimeString }}</span>
+    </div>
+    <div class="player-chrome" ref="playerChrome">
+      <div class="playback-nav">
+        <button
+          @click.prevent="togglePlayback"
+          ref="playPauseButton"
+          :data-tooltip="playing ? 'Pause' : 'Play'"
         >
-          <button
-            @click.prevent="showAdvancedControls = !showAdvancedControls"
-            class="advanced-controls-btn"
-            :data-tooltip="showAdvancedControls ? 'Show less' : 'Show more'"
-            :disabled="showingReferencePhoto && canvasWidth <= 570"
-            ref="advancedControlsButton"
+          <font-awesome-icon v-if="!playing" icon="play" />
+          <font-awesome-icon v-else icon="pause" />
+        </button>
+        <div class="right-nav">
+          <div
+            :class="[
+              'advanced-controls',
+              {
+                open:
+                  showAdvancedControls &&
+                  (!showingReferencePhoto || canvasWidth > 570),
+              },
+            ]"
           >
-            <font-awesome-icon
-              icon="angle-right"
-              :rotation="
-                showAdvancedControls &&
-                (!showingReferencePhoto || canvasWidth > 570)
-                  ? null
-                  : 180
+            <button
+              @click.prevent="showAdvancedControls = !showAdvancedControls"
+              class="advanced-controls-btn"
+              :data-tooltip="showAdvancedControls ? 'Show less' : 'Show more'"
+              :disabled="showingReferencePhoto && canvasWidth <= 570"
+              ref="advancedControlsButton"
+            >
+              <font-awesome-icon
+                icon="angle-right"
+                :rotation="
+                  showAdvancedControls &&
+                  (!showingReferencePhoto || canvasWidth > 570)
+                    ? null
+                    : 180
+                "
+              />
+            </button>
+            <button
+              @click.prevent="showDebugTools = !showDebugTools"
+              ref="debugTools"
+              data-tooltip="Debug tools"
+              :class="{ selected: showDebugTools }"
+            >
+              <font-awesome-icon icon="wrench" />
+            </button>
+            <button
+              @click.prevent="videoSmoothing = !videoSmoothing"
+              ref="toggleSmoothingButton"
+              :data-tooltip="
+                videoSmoothing ? 'Disable smoothing' : 'Enable smoothing'
               "
-            />
-          </button>
-          <button
-            @click.prevent="showDebugTools = !showDebugTools"
-            ref="debugTools"
-            data-tooltip="Debug tools"
-            :class="{ selected: showDebugTools }"
+            >
+              <svg
+                v-if="videoSmoothing"
+                aria-hidden="true"
+                focusable="false"
+                viewBox="0 0 18 18"
+                width="16"
+                height="20"
+              >
+                <g transform="matrix(1,0,0,1,0,-249)" fill="currentColor">
+                  <path
+                    d="M5.25,248.969L5.25,251.781C5.25,252.247 4.872,252.625 4.406,252.625L0.844,252.625C0.378,252.625 0,252.247 0,251.781L0,248.969C0,248.503 0.378,248.125 0.844,248.125L4.406,248.125C4.872,248.125 5.25,248.503 5.25,248.969Z"
+                    style="fill-opacity: 0.25"
+                  />
+                  <path
+                    d="M11.625,257.406L11.625,254.594C11.625,254.128 11.247,253.75 10.781,253.75L7.219,253.75C6.753,253.75 6.375,254.128 6.375,254.594L6.375,257.406C6.375,257.872 6.753,258.25 7.219,258.25L10.781,258.25C11.247,258.25 11.625,257.872 11.625,257.406Z"
+                  />
+                  <path
+                    d="M12.75,248.969L12.75,251.781C12.75,252.247 13.128,252.625 13.594,252.625L17.156,252.625C17.622,252.625 18,252.247 18,251.781L18,248.969C18,248.503 17.622,248.125 17.156,248.125L13.594,248.125C13.128,248.125 12.75,248.503 12.75,248.969Z"
+                    style="fill-opacity: 0.8"
+                  />
+                  <path
+                    d="M11.625,251.781L11.625,248.969C11.625,248.503 11.247,248.125 10.781,248.125L7.219,248.125C6.753,248.125 6.375,248.503 6.375,248.969L6.375,251.781C6.375,252.247 6.753,252.625 7.219,252.625L10.781,252.625C11.247,252.625 11.625,252.247 11.625,251.781Z"
+                    style="fill-opacity: 0.5"
+                  />
+                  <path
+                    d="M4.406,253.75L0.844,253.75C0.378,253.75 0,254.128 0,254.594L0,257.406C0,257.872 0.378,258.25 0.844,258.25L4.406,258.25C4.872,258.25 5.25,257.872 5.25,257.406L5.25,254.594C5.25,254.128 4.872,253.75 4.406,253.75Z"
+                    style="fill-opacity: 0.5"
+                  />
+                  <path
+                    d="M0,260.219L0,263.031C0,263.497 0.378,263.875 0.844,263.875L4.406,263.875C4.872,263.875 5.25,263.497 5.25,263.031L5.25,260.219C5.25,259.753 4.872,259.375 4.406,259.375L0.844,259.375C0.378,259.375 0,259.753 0,260.219Z"
+                    style="fill-opacity: 0.8"
+                  />
+                  <path
+                    d="M13.594,258.25L17.156,258.25C17.622,258.25 18,257.872 18,257.406L18,254.594C18,254.128 17.622,253.75 17.156,253.75L13.594,253.75C13.128,253.75 12.75,254.128 12.75,254.594L12.75,257.406C12.75,257.872 13.128,258.25 13.594,258.25Z"
+                  />
+                  <path
+                    d="M13.594,263.875L17.156,263.875C17.622,263.875 18,263.497 18,263.031L18,260.219C18,259.753 17.622,259.375 17.156,259.375L13.594,259.375C13.128,259.375 12.75,259.753 12.75,260.219L12.75,263.031C12.75,263.497 13.128,263.875 13.594,263.875Z"
+                  />
+                  <path
+                    d="M6.375,260.219L6.375,263.031C6.375,263.497 6.753,263.875 7.219,263.875L10.781,263.875C11.247,263.875 11.625,263.497 11.625,263.031L11.625,260.219C11.625,259.753 11.247,259.375 10.781,259.375L7.219,259.375C6.753,259.375 6.375,259.753 6.375,260.219Z"
+                  />
+                </g>
+              </svg>
+
+              <svg v-else width="16" height="18" viewBox="0 0 18 18">
+                <g transform="matrix(1,0,0,1,0,-2)" fill="currentColor">
+                  <path
+                    d="M1.294,16.976L18.709,17.063L18.853,0.932C9.155,0.932 1.294,7.279 1.294,16.976Z"
+                  />
+                </g>
+              </svg>
+            </button>
+            <button
+              @click.prevent="incrementPalette"
+              ref="cyclePalette"
+              data-tooltip="Cycle colour map"
+            >
+              <font-awesome-icon icon="palette" />
+            </button>
+            <button
+              @click.prevent="requestHeaderInfoDisplay"
+              data-tooltip="Show recording header info"
+              :class="{ selected: displayHeaderInfo }"
+              ref="showHeader"
+            >
+              <font-awesome-icon icon="info-circle" />
+            </button>
+          </div>
+          <div
+            class="reference-opacity-container"
+            :class="{ open: showingReferencePhoto && hasReferencePhoto }"
           >
-            <font-awesome-icon icon="wrench" />
+            <div
+              class="reference-opacity-slider"
+              :class="{
+                open: showingReferencePhoto,
+                'has-no-reference': !hasReferencePhoto,
+              }"
+            >
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                @touchmove="onTouchMove"
+                v-model.number="referenceOpacity"
+                @input="updateSavedOpacity"
+                :disabled="!hasReferencePhoto"
+                :style="`background: linear-gradient(to right, yellowgreen 0%, yellowgreen ${referenceOpacity * 100}%, #191e25 ${referenceOpacity * 100}%)`"
+                class="me-2 reference-opacity-slider-el"
+              />
+              <font-awesome-icon icon="eye" />
+            </div>
+          </div>
+          <button
+            :disabled="!hasReferencePhoto"
+            :class="{ selected: showingReferencePhoto }"
+            @click="toggleReferencePhotoComparison"
+            ref="toggleReferencePhoto"
+            class="reference-photo-btn"
+            data-tooltip="Reference photo"
+          >
+            <font-awesome-icon icon="panorama" />
           </button>
           <button
-            @click.prevent="videoSmoothing = !videoSmoothing"
-            ref="toggleSmoothingButton"
+            @click.prevent="incrementSpeed"
+            ref="cyclePlaybackSpeed"
+            class="playback-speed"
+            data-tooltip="Cycle playback speed"
+          >
+            <span>{{ speedMultiplier }}x</span>
+          </button>
+        </div>
+      </div>
+      <div :class="['debug-tools', { open: showDebugTools }]">
+        <div class="debug-info">
+          <div ref="frameNumField"></div>
+          <div ref="ffcSecsAgo"></div>
+        </div>
+        <div>
+          <button
+            @click.prevent="stepBackward"
+            data-tooltip="Go back one frame"
+            :disabled="!canStepBackward"
+          >
+            <font-awesome-icon icon="step-backward" />
+          </button>
+          <button
+            @click.prevent="stepForward"
+            data-tooltip="Go forward one frame"
+            :disabled="!canStepForward"
+          >
+            <font-awesome-icon icon="step-forward" />
+          </button>
+          <button
+            class="d-none d-sm-inline-block"
+            @click.prevent="showValueInfo = !showValueInfo"
+            :class="{ selected: showValueInfo }"
             :data-tooltip="
-              videoSmoothing ? 'Disable smoothing' : 'Enable smoothing'
+              showValueInfo
+                ? 'Disable picker'
+                : 'Show raw pixel values under cursor'
             "
           >
-            <svg
-              v-if="videoSmoothing"
-              aria-hidden="true"
-              focusable="false"
-              viewBox="0 0 18 18"
-              width="16"
-              height="20"
-            >
-              <g transform="matrix(1,0,0,1,0,-249)" fill="currentColor">
-                <path
-                  d="M5.25,248.969L5.25,251.781C5.25,252.247 4.872,252.625 4.406,252.625L0.844,252.625C0.378,252.625 0,252.247 0,251.781L0,248.969C0,248.503 0.378,248.125 0.844,248.125L4.406,248.125C4.872,248.125 5.25,248.503 5.25,248.969Z"
-                  style="fill-opacity: 0.25"
-                />
-                <path
-                  d="M11.625,257.406L11.625,254.594C11.625,254.128 11.247,253.75 10.781,253.75L7.219,253.75C6.753,253.75 6.375,254.128 6.375,254.594L6.375,257.406C6.375,257.872 6.753,258.25 7.219,258.25L10.781,258.25C11.247,258.25 11.625,257.872 11.625,257.406Z"
-                />
-                <path
-                  d="M12.75,248.969L12.75,251.781C12.75,252.247 13.128,252.625 13.594,252.625L17.156,252.625C17.622,252.625 18,252.247 18,251.781L18,248.969C18,248.503 17.622,248.125 17.156,248.125L13.594,248.125C13.128,248.125 12.75,248.503 12.75,248.969Z"
-                  style="fill-opacity: 0.8"
-                />
-                <path
-                  d="M11.625,251.781L11.625,248.969C11.625,248.503 11.247,248.125 10.781,248.125L7.219,248.125C6.753,248.125 6.375,248.503 6.375,248.969L6.375,251.781C6.375,252.247 6.753,252.625 7.219,252.625L10.781,252.625C11.247,252.625 11.625,252.247 11.625,251.781Z"
-                  style="fill-opacity: 0.5"
-                />
-                <path
-                  d="M4.406,253.75L0.844,253.75C0.378,253.75 0,254.128 0,254.594L0,257.406C0,257.872 0.378,258.25 0.844,258.25L4.406,258.25C4.872,258.25 5.25,257.872 5.25,257.406L5.25,254.594C5.25,254.128 4.872,253.75 4.406,253.75Z"
-                  style="fill-opacity: 0.5"
-                />
-                <path
-                  d="M0,260.219L0,263.031C0,263.497 0.378,263.875 0.844,263.875L4.406,263.875C4.872,263.875 5.25,263.497 5.25,263.031L5.25,260.219C5.25,259.753 4.872,259.375 4.406,259.375L0.844,259.375C0.378,259.375 0,259.753 0,260.219Z"
-                  style="fill-opacity: 0.8"
-                />
-                <path
-                  d="M13.594,258.25L17.156,258.25C17.622,258.25 18,257.872 18,257.406L18,254.594C18,254.128 17.622,253.75 17.156,253.75L13.594,253.75C13.128,253.75 12.75,254.128 12.75,254.594L12.75,257.406C12.75,257.872 13.128,258.25 13.594,258.25Z"
-                />
-                <path
-                  d="M13.594,263.875L17.156,263.875C17.622,263.875 18,263.497 18,263.031L18,260.219C18,259.753 17.622,259.375 17.156,259.375L13.594,259.375C13.128,259.375 12.75,259.753 12.75,260.219L12.75,263.031C12.75,263.497 13.128,263.875 13.594,263.875Z"
-                />
-                <path
-                  d="M6.375,260.219L6.375,263.031C6.375,263.497 6.753,263.875 7.219,263.875L10.781,263.875C11.247,263.875 11.625,263.497 11.625,263.031L11.625,260.219C11.625,259.753 11.247,259.375 10.781,259.375L7.219,259.375C6.753,259.375 6.375,259.753 6.375,260.219Z"
-                />
-              </g>
-            </svg>
-
-            <svg v-else width="16" height="18" viewBox="0 0 18 18">
-              <g transform="matrix(1,0,0,1,0,-2)" fill="currentColor">
-                <path
-                  d="M1.294,16.976L18.709,17.063L18.853,0.932C9.155,0.932 1.294,7.279 1.294,16.976Z"
-                />
-              </g>
-            </svg>
+            <font-awesome-icon icon="eye-dropper" />
           </button>
           <button
-            @click.prevent="incrementPalette"
-            ref="cyclePalette"
-            data-tooltip="Cycle colour map"
+            @click.prevent="trackHighlightMode = !trackHighlightMode"
+            :class="{ selected: trackHighlightMode }"
+            :data-tooltip="
+              trackHighlightMode
+                ? 'Disable highlight'
+                : 'Highlight selected track'
+            "
           >
-            <font-awesome-icon icon="palette" />
+            <font-awesome-icon icon="highlighter" />
           </button>
           <button
-            @click.prevent="requestHeaderInfoDisplay"
-            data-tooltip="Show recording header info"
-            :class="{ selected: displayHeaderInfo }"
-            ref="showHeader"
+            class="d-none d-sm-inline-block"
+            @click.prevent="polygonEditMode = !polygonEditMode"
+            :class="{ selected: polygonEditMode }"
+            :data-tooltip="
+              polygonEditMode ? 'Disable polygon edit' : 'Edit polygons'
+            "
           >
-            <font-awesome-icon icon="info-circle" />
+            <font-awesome-icon icon="draw-polygon" />
+            <!--         draw-polygon, bezier-curve, vector-square -->
+          </button>
+          <button
+            class="d-none d-sm-inline-block"
+            @click.prevent="silhouetteMode = !silhouetteMode"
+            :class="{ selected: silhouetteMode }"
+            :data-tooltip="
+              silhouetteMode ? 'Disable silhouettes' : 'Show silhouettes'
+            "
+          >
+            <font-awesome-icon icon="burst" />
+          </button>
+          <button
+            @click.prevent="motionPathMode = !motionPathMode"
+            :class="{ selected: motionPathMode }"
+            :data-tooltip="
+              motionPathMode ? 'Hide motion paths' : 'Show motion paths'
+            "
+          >
+            <font-awesome-icon icon="route" />
+          </button>
+          <button
+            :disabled="!hasBackgroundFrame"
+            ref="showBackgroundFrame"
+            :class="{ selected: isShowingBackgroundFrame }"
+            data-tooltip="Press to show background frame"
+            @click.prevent="toggleBackground"
+          >
+            <font-awesome-icon icon="image" />
           </button>
         </div>
-        <div
-          class="reference-opacity-container"
-          :class="{ open: showingReferencePhoto && hasReferencePhoto }"
-        >
-          <div
-            class="reference-opacity-slider"
-            :class="{
-              open: showingReferencePhoto,
-              'has-no-reference': !hasReferencePhoto,
-            }"
-          >
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              @touchmove="onTouchMove"
-              v-model.number="referenceOpacity"
-              @input="updateSavedOpacity"
-              :disabled="!hasReferencePhoto"
-              :style="`pointer-events: auto; background: linear-gradient(to right, yellowgreen 0%, yellowgreen ${referenceOpacity * 100}%, #191e25 ${referenceOpacity * 100}%)`"
-              class="me-2 reference-opacity-slider-el"
-            />
-            <font-awesome-icon icon="eye" />
-          </div>
-        </div>
-        <button
-          :disabled="!hasReferencePhoto"
-          :class="{ selected: showingReferencePhoto }"
-          @click="toggleReferencePhotoComparison"
-          ref="toggleReferencePhoto"
-          class="reference-photo-btn"
-          data-tooltip="Reference photo"
-        >
-          <font-awesome-icon icon="panorama" />
-        </button>
-        <button
-          @click.prevent="incrementSpeed"
-          ref="cyclePlaybackSpeed"
-          class="playback-speed"
-          data-tooltip="Cycle playback speed"
-        >
-          <span>{{ speedMultiplier }}x</span>
-        </button>
       </div>
-    </div>
-    <div key="debug-nav" :class="['debug-tools', { open: showDebugTools }]">
-      <div class="debug-info">
-        <div ref="frameNumField"></div>
-        <div ref="ffcSecsAgo"></div>
-      </div>
-      <div>
-        <button
-          @click.prevent="stepBackward"
-          data-tooltip="Go back one frame"
-          :disabled="!canStepBackward"
-        >
-          <font-awesome-icon icon="step-backward" />
-        </button>
-        <button
-          @click.prevent="stepForward"
-          data-tooltip="Go forward one frame"
-          :disabled="!canStepForward"
-        >
-          <font-awesome-icon icon="step-forward" />
-        </button>
-        <button
-          class="d-none d-sm-inline-block"
-          @click.prevent="showValueInfo = !showValueInfo"
-          :class="{ selected: showValueInfo }"
-          :data-tooltip="
-            showValueInfo
-              ? 'Disable picker'
-              : 'Show raw pixel values under cursor'
-          "
-        >
-          <font-awesome-icon icon="eye-dropper" />
-        </button>
-        <button
-          @click.prevent="trackHighlightMode = !trackHighlightMode"
-          :class="{ selected: trackHighlightMode }"
-          :data-tooltip="
-            trackHighlightMode
-              ? 'Disable highlight'
-              : 'Highlight selected track'
-          "
-        >
-          <font-awesome-icon icon="highlighter" />
-        </button>
-        <button
-          class="d-none d-sm-inline-block"
-          @click.prevent="polygonEditMode = !polygonEditMode"
-          :class="{ selected: polygonEditMode }"
-          :data-tooltip="
-            polygonEditMode ? 'Disable polygon edit' : 'Edit polygons'
-          "
-        >
-          <font-awesome-icon icon="draw-polygon" />
-          <!--         draw-polygon, bezier-curve, vector-square -->
-        </button>
-        <button
-          class="d-none d-sm-inline-block"
-          @click.prevent="silhouetteMode = !silhouetteMode"
-          :class="{ selected: silhouetteMode }"
-          :data-tooltip="
-            silhouetteMode ? 'Disable silhouettes' : 'Show silhouettes'
-          "
-        >
-          <font-awesome-icon icon="burst" />
-        </button>
-        <button
-          @click.prevent="motionPathMode = !motionPathMode"
-          :class="{ selected: motionPathMode }"
-          :data-tooltip="
-            motionPathMode ? 'Hide motion paths' : 'Show motion paths'
-          "
-        >
-          <font-awesome-icon icon="route" />
-        </button>
-        <button
-          :disabled="!hasBackgroundFrame"
-          ref="showBackgroundFrame"
-          :class="{ selected: isShowingBackgroundFrame }"
-          data-tooltip="Press to show background frame"
-          @click.prevent="toggleBackground"
-        >
-          <font-awesome-icon icon="image" />
-        </button>
-      </div>
-    </div>
-    <div class="tracks-container">
       <tracks-scrubber
-        class="player-tracks"
+        class="player-tracks tracks-container"
         :tracks="tracksIntermediate"
         :current-track="currentTrack"
         :total-frames="totalPlayableFrames"
+        :scroll-offset-y="scrollOffsetY"
         @change-playback-time="playbackTimeChanged"
         @start-scrub="startSeek"
         @end-scrub="endSeek"
@@ -2467,7 +2510,7 @@ const updateSavedOpacity = (val: InputEvent) => {
   @media screen and (min-width: @breakpoint-lg) {
     width: 640px;
   }
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 4/3;
 }
 .cptv-player {
   position: relative;
@@ -2923,11 +2966,7 @@ input[type="range"].reference-opacity-slider-el {
   box-shadow: inset 0 1px 2px #000;
   border-radius: 3.5px;
   height: 9px;
-  //&::-webkit-slider-runnable-track {
-  //  height: 9px;
-  //  border-radius: 3.5px;
-  //  box-shadow: inset 0 1px 2px #000;
-  //}
+  pointer-events: auto;
   &::-webkit-slider-thumb {
     touch-action: manipulation;
     background: lighten(yellowgreen, 20%);
@@ -2957,5 +2996,18 @@ input[type="range"].reference-opacity-slider-el {
       background: lighten(yellowgreen, 30%);
     }
   }
+}
+.video-footer {
+  -webkit-text-stroke-width: 1px;
+  -webkit-text-stroke-color: rgba(0, 0, 0, 0.5);
+  font-weight: 900;
+  font-family: sans-serif;
+  font-size: 13px;
+  user-select: none;
+  pointer-events: none;
+  //overlayContext.lineWidth = 4;
+  //overlayContext.strokeStyle = "rgba(0, 0, 0, 0.5)";
+  //overlayContext.lineJoin = "round";
+  //overlayContext.fillStyle = "white";
 }
 </style>
