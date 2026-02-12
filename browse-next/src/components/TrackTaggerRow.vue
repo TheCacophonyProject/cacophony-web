@@ -771,9 +771,16 @@ onMounted(async () => {
           confirmation-label="Delete track"
           :boundary-padding="true"
         />
-        <button type="button" aria-label="Expand track" class="btn btn-icon d-flex align-items-center justify-content-center px-2">
+        <button
+          type="button"
+          aria-label="Expand track"
+          class="btn btn-icon d-flex align-items-center justify-content-center px-2"
+        >
           <span class="visually-hidden">Expand track</span>
-          <material-symbol :name="expanded ? 'keyboard_arrow_up' : 'keyboard_arrow_down'" size="1.5rem" />
+          <material-symbol
+            :name="expanded ? 'keyboard_arrow_up' : 'keyboard_arrow_down'"
+            size="1.5rem"
+          />
         </button>
       </div>
     </div>
@@ -837,16 +844,20 @@ onMounted(async () => {
           :pinned-items="userDefinedTagLabels"
         />
       </div>
-      <div
-        class="tagger-details mt-2"
-      >
+      <div class="tagger-details mt-2">
         <button
           class="btn link-secondary fs-6 d-block mx-auto d-flex align-items-center justify-content-center"
           @click="showTaggerDetails = !showTaggerDetails"
         >
           <span v-if="!showTaggerDetails">View details</span>
           <span v-else>Hide details</span>
-          <material-symbol :name="showTaggerDetails ? 'keyboard_arrow_up' : 'keyboard_arrow_down'" size="1.25rem" class="ms-1" />
+          <material-symbol
+            :name="
+              showTaggerDetails ? 'keyboard_arrow_up' : 'keyboard_arrow_down'
+            "
+            size="1.25rem"
+            class="ms-1"
+          />
         </button>
         <card-table
           v-if="showTaggerDetails && taggerDetails.length !== 0"

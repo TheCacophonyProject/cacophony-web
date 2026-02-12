@@ -90,7 +90,7 @@ const permissions = ref<string[]>([]);
           @blur="inviteeEmailAddress.touched = true"
           :state="needsValidationAndIsValidEmailAddress"
           aria-label="email address"
-          placeholder="email address"
+          placeholder="Email address"
           :disabled="submittingInvite"
           data-cy="invitee email address"
           required

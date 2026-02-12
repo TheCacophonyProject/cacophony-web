@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { persistProjectSettings } from "@models/LoggedInUser";
 import type { SelectedProject } from "@models/LoggedInUser";
-import { computed, inject, onMounted, ref } from "vue";
+import { computed, inject, onMounted, ref, useTemplateRef } from "vue";
 import type { Ref } from "vue";
 import CardTable from "@/components/CardTable.vue";
 import type { CardTableRows } from "@/components/CardTableTypes";
@@ -14,7 +14,8 @@ import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import { capitalize } from "@/utils";
 import { currentSelectedProject } from "@models/provides";
 import SectionCard from "@/components/SectionCard.vue";
-import { BModal } from "bootstrap-vue-next";
+import { BModal, BTooltip } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const customCameraTags = computed<string[]>(() => {
@@ -226,6 +227,8 @@ const pendingTagIsValid = computed<boolean>(() => {
   );
 });
 
+const moveUpBtn = useTemplateRef("moveUpBtn");
+
 // If there are no custom tags, display the defaultTags here in the default order.
 // Add tag.  delete tag, move tag up, move tag down, reset to defaults
 </script>
@@ -266,28 +269,31 @@ const pendingTagIsValid = computed<boolean>(() => {
         <card-table :items="cameraTagTableItems" compact :max-card-width="0">
           <template #_moveUp="{ cell }">
             <button
-              class="btn"
+              class="btn btn-icon d-inline-flex justify-content-center"
               @click.prevent="() => moveCameraTagUp(cell.value)"
               :disabled="isFirstTagInCameraList(cell.value)"
+              ref="moveUpBtn"
             >
-              <font-awesome-icon icon="arrow-up" />
+              <material-symbol name="arrow_upward" size="1.25rem" />
             </button>
+            <b-tooltip :target="moveUpBtn"> Move up </b-tooltip>
           </template>
           <template #_moveDown="{ cell }">
             <button
-              class="btn"
+              class="btn btn-icon d-inline-flex justify-content-center"
               @click.prevent="() => moveCameraTagDown(cell.value)"
               :disabled="isLastTagInCameraList(cell.value)"
+              id="move-up"
             >
-              <font-awesome-icon icon="arrow-up" rotation="180" />
+              <material-symbol name="arrow_downward" size="1.25rem" />
             </button>
           </template>
           <template #_deleteAction="{ cell }">
             <button
-              class="btn"
+              class="btn btn-icon d-inline-flex justify-content-center"
               @click.prevent="() => removeCameraTag(cell.value)"
             >
-              <font-awesome-icon icon="trash-can" />
+              <material-symbol name="delete" size="1.25rem" />
             </button>
           </template>
         </card-table>
@@ -321,28 +327,28 @@ const pendingTagIsValid = computed<boolean>(() => {
         <card-table :items="audioTagTableItems" compact :max-card-width="0">
           <template #_moveUp="{ cell }">
             <button
-              class="btn"
+              class="btn btn-icon d-inline-flex justify-content-center"
               @click.prevent="() => moveAudioTagUp(cell.value)"
               :disabled="isFirstTagInAudioList(cell.value)"
             >
-              <font-awesome-icon icon="arrow-up" />
+              <material-symbol name="arrow_upward" size="1.25rem" />
             </button>
           </template>
           <template #_moveDown="{ cell }">
             <button
-              class="btn"
+              class="btn btn-icon d-inline-flex justify-content-center"
               @click.prevent="() => moveAudioTagDown(cell.value)"
               :disabled="isLastTagInAudioList(cell.value)"
             >
-              <font-awesome-icon icon="arrow-up" rotation="180" />
+              <material-symbol name="arrow_downward" size="1.25rem" />
             </button>
           </template>
           <template #_deleteAction="{ cell }">
             <button
-              class="btn"
+              class="btn btn-icon d-inline-flex justify-content-center"
               @click.prevent="() => removeAudioTag(cell.value)"
             >
-              <font-awesome-icon icon="trash-can" />
+              <material-symbol name="delete" size="1.25rem" />
             </button>
           </template>
         </card-table>

@@ -20,6 +20,7 @@ import {
   BFormInvalidFeedback,
   BModal,
 } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
 
@@ -311,11 +312,11 @@ const changePassword = async () => {
             <span data-cy="user display name">{{ currentUser?.userName }}</span>
             <button
               type="button"
-              class="btn ms-2"
+              class="btn btn-icon d-flex justify-content-center ms-2"
               data-cy="change display name button"
               @click="() => (changeDisplayNameModal = true)"
             >
-              <font-awesome-icon icon="pencil-alt" size="xs" />
+              <material-symbol name="edit" size="1.25rem" />
             </button>
           </div>
         </div>
@@ -325,11 +326,11 @@ const changePassword = async () => {
             <span cy-data="user email">{{ currentUser?.email }}</span>
             <button
               type="button"
-              class="btn ms-2"
+              class="btn btn-icon d-flex justify-content-center ms-2"
               data-cy="change email address button"
               @click.prevent="() => (changeEmailModal = true)"
             >
-              <font-awesome-icon icon="pencil-alt" size="xs" />
+              <material-symbol name="edit" size="1.25rem" />
             </button>
           </div>
         </div>
@@ -339,15 +340,11 @@ const changePassword = async () => {
           <div class="col-sm-9 d-flex align-items-center">
             <button
               type="button"
-              class="btn btn-light ms-2"
+              class="btn btn-light ms-2 d-flex justify-content-center"
               data-cy="change password button"
               @click="() => (changePasswordModal = true)"
             >
-              <font-awesome-icon
-                icon="pencil-alt"
-                size="xs"
-                class="me-2"
-              />Change
+              <material-symbol name="edit" size="1.25rem" class="me-2" />Change
             </button>
           </div>
         </div>
@@ -486,7 +483,7 @@ const changePassword = async () => {
           v-model="currentPassword.value"
           @blur="() => (currentPassword.touched = true)"
           aria-label="Current password"
-          placeholder="current password"
+          placeholder="Current password"
           data-cy="current-password"
           :disabled="userUpdateInProgress"
           required
@@ -501,7 +498,7 @@ const changePassword = async () => {
           v-model="newPassword.value"
           @blur="() => (newPassword.touched = true)"
           aria-label="New password"
-          placeholder="new password"
+          placeholder="New password"
           data-cy="new-password"
           :disabled="userUpdateInProgress"
           required
@@ -520,7 +517,7 @@ const changePassword = async () => {
           v-model="confirmPassword.value"
           @blur="() => (confirmPassword.touched = true)"
           aria-label="Confirm new password"
-          placeholder="confirm new password"
+          placeholder="Confirm new password"
           data-cy="confirm-password"
           :disabled="userUpdateInProgress"
           required

@@ -14,6 +14,7 @@ import { currentSelectedProject } from "@models/provides";
 import type { RecordingLabel } from "@typedefs/api/group";
 import SectionCard from "@/components/SectionCard.vue";
 import { BFormInput, BModal } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 
@@ -113,13 +114,15 @@ const cameraLabelTableItems = computed<CardTableRows<string | RecordingLabel>>(
     return customCameraLabels.value.map((label: RecordingLabel) => ({
       label: {
         value: label.text || label.value || "",
+        cellClasses: ["w-25"],
       },
       description: {
         value: label.description || "",
-        cellClasses: ["w-100"],
+        cellClasses: ["mw-100"],
       },
       _deleteAction: {
         value: label,
+        cellClasses: ["text-end"],
       },
     }));
   },
@@ -130,13 +133,15 @@ const audioLabelTableItems = computed<CardTableRows<string | RecordingLabel>>(
     return customAudioLabels.value.map((label: RecordingLabel) => ({
       label: {
         value: label.text || label.value || "",
+        cellClasses: ["w-25"],
       },
       description: {
         value: label.description || "",
-        cellClasses: ["w-100"],
+        cellClasses: ["mw-100"],
       },
       _deleteAction: {
         value: label,
+        cellClasses: ["text-end"],
       },
     }));
   },
@@ -236,10 +241,10 @@ const reset = () => {
         >
           <template #_deleteAction="{ cell }">
             <button
-              class="btn"
+              class="btn btn-icon d-inline-flex align-items-center"
               @click.prevent="() => removeCameraLabel(cell.value)"
             >
-              <font-awesome-icon icon="trash-can" />
+              <material-symbol name="delete" size="1.25rem" />
             </button>
           </template>
           <template
@@ -260,10 +265,10 @@ const reset = () => {
                 <span>{{ card.description.value }}</span>
               </div>
               <button
-                class="btn"
+                class="btn btn-icon d-inline-flex align-items-center justify-content-center my-auto"
                 @click.prevent="() => removeCameraLabel(card.label.value)"
               >
-                <font-awesome-icon icon="trash-can" />
+                <material-symbol name="delete" size="1.25rem" />
               </button>
             </div>
           </template>
@@ -301,10 +306,10 @@ const reset = () => {
         <card-table :items="audioLabelTableItems" compact :max-card-width="575">
           <template #_deleteAction="{ cell }">
             <button
-              class="btn"
+              class="btn btn-icon d-inline-flex align-items-center"
               @click.prevent="() => removeAudioLabel(cell.value)"
             >
-              <font-awesome-icon icon="trash-can" />
+              <material-symbol name="delete" size="1.25rem" />
             </button>
           </template>
           <template
@@ -325,10 +330,10 @@ const reset = () => {
                 <span>{{ card.description.value }}</span>
               </div>
               <button
-                class="btn"
+                class="btn btn-icon d-inline-flex align-items-center justify-content-center my-auto"
                 @click.prevent="() => removeCameraLabel(card.label.value)"
               >
-                <font-awesome-icon icon="trash-can" />
+                <material-symbol name="delete" size="1.25rem" />
               </button>
             </div>
           </template>
@@ -354,7 +359,7 @@ const reset = () => {
     <b-form-input
       id="camera-label"
       v-model="pendingLabel"
-      placeholder="enter a new label"
+      placeholder="Enter a new label"
       class="mb-3"
     />
     <label for="camera-description" class="form-label"
@@ -363,7 +368,7 @@ const reset = () => {
     <b-form-input
       id="camera-description"
       v-model="pendingDescription"
-      placeholder="describe the label usage in your project"
+      placeholder="Describe the label usage in your project"
     />
   </b-modal>
   <b-modal

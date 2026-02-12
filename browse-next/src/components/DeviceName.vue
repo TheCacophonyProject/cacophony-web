@@ -26,7 +26,7 @@
     >
       <material-symbol :name="deviceTypeIcon" size="1.125rem" />
     </span>
-    <span :class="{ 'text-truncate': truncate }">
+    <span :class="[{ 'text-truncate': truncate }, nameClass]">
       {{ name }}
     </span> </span
   ><span v-if="slots.default"><slot></slot></span>
@@ -50,6 +50,7 @@ const props = defineProps<{
   color?: string;
   noMargin?: boolean;
   truncate?: boolean;
+  nameClass?: string;
 }>();
 const slots = useSlots();
 

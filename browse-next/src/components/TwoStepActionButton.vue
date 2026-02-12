@@ -32,6 +32,7 @@ const props = withDefaults(
   defineProps<{
     action: () => void;
     label?: string | (() => string);
+    confirmationExtra?: string | (() => string);
     tooltipLabel?: string | (() => string);
     confirmationLabel?: string | (() => string);
     disabled?: boolean;
@@ -121,7 +122,11 @@ const computedConfirmationLabel = computed<string>(() => {
           <span v-html="computedTooltipLabel"></span>
         </b-tooltip>
       </template>
-
+      <div
+        v-if="confirmationExtra"
+        v-html="confirmationExtra"
+        class="mb-2"
+      ></div>
       <button
         @click.stop.prevent="
           () => {

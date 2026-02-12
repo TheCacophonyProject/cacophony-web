@@ -94,6 +94,7 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
     @entered-item="enteredTableItem as GenericCardTableValue<unknown>"
     @left-item="leftTableItem as GenericCardTableValue<unknown>"
     :max-card-width="2000"
+    standalone
   >
     <template #card="{ card: location }: { card: ApiLocationResponse }">
       <div>

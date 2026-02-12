@@ -30,6 +30,7 @@ import {
   BModal,
   BSpinner,
 } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const currentProjectSettings = computed(() => {
@@ -201,7 +202,7 @@ const pendingTagIsValid = computed<boolean>(() => {
     </div>
   </div>
 
-  <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
+  <div class="row mb-3 mb-sm-4 mb-lg-5">
     <div class="col-lg-3">
       <h3 class="section-card-heading">Ignored Dashboard tags</h3>
       <p class="text-secondary pb-1">
@@ -238,10 +239,10 @@ const pendingTagIsValid = computed<boolean>(() => {
         >
           <template #_deleteAction="{ cell }">
             <button
-              class="btn"
+              class="btn btn-icon d-inline-flex align-items-center"
               @click.prevent="() => removeIgnoredTag(cell.value, 'camera')"
             >
-              <font-awesome-icon icon="trash-can" />
+              <material-symbol name="delete" size="1.25rem" />
             </button>
           </template>
         </card-table>

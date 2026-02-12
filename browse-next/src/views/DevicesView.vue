@@ -630,14 +630,15 @@ const isDevicesRoot = computed(() => {
         :default-sort="'lastSeen'"
         compact
         standalone
-        :break-point="0"
+        :max-card-width="768"
+        class="mb-3"
       >
         <template #deviceName="{ cell, row }">
           <div class="d-flex align-items-center">
             <device-name :name="cell" :type="row['__type']" /><b-badge
               class="ms-2"
               v-if="!row['__active']"
-              >inactive</b-badge
+              >Inactive</b-badge
             >
           </div>
         </template>
@@ -660,28 +661,30 @@ const isDevicesRoot = computed(() => {
             v-if="isProjectAdmin && cell.value.active"
             class="d-flex align-items-center"
           >
-            <div
-                v-if="
-                  !cell.value.lastThermalRecordingTime &&
-                  !cell.value.lastAudioRecordingTime
-                "
-              >
-                No recordings
-              </div>
+            <b-badge
+              v-if="
+                !cell.value.lastThermalRecordingTime &&
+                !cell.value.lastAudioRecordingTime
+              "
+              variant="light"
+              class="ms-2"
+            >
+              No recordings
+            </b-badge>
             <two-step-action-button
               :action="() => deleteOrArchiveDevice(cell.value.id)"
               :icon="
                 cell.value.lastConnectionTime &&
-                  (cell.value.lastThermalRecordingTime ||
-                    cell.value.lastAudioRecordingTime)
+                (cell.value.lastThermalRecordingTime ||
+                  cell.value.lastAudioRecordingTime)
                   ? 'do_not_disturb_on'
                   : 'delete'
               "
               :confirmation-label="deleteConfirmationLabelForDevice(cell.value)"
               :tooltip-label="
                 cell.value.lastConnectionTime &&
-                  (cell.value.lastThermalRecordingTime ||
-                    cell.value.lastAudioRecordingTime)
+                (cell.value.lastThermalRecordingTime ||
+                  cell.value.lastAudioRecordingTime)
                   ? 'Set as inactive'
                   : 'Delete'
               "
@@ -702,89 +705,94 @@ const isDevicesRoot = computed(() => {
         </template>
         <template #card="{ card }: { card: DeviceTableItem }">
           <div class="d-flex flex-row">
-            <div class="flex-grow-1">
-              <div class="d-flex justify-content-between">
-                <div class="d-flex align-items-center">
-                  <device-name
-                    :name="card.deviceName"
-                    :type="card.__type"
-                  /><b-badge class="ms-2" v-if="!card.__active"
-                    >inactive</b-badge
-                  >
-                  <device-battery-level
-                    :device="card.batteryLevel"
-                    class="ms-3"
-                  />
-                </div>
+            <div class="overflow-hidden flex-grow-1">
+              <div
+                class="d-flex align-items-center"
+              >
+                <device-name
+                  :name="card.deviceName"
+                  :type="card.__type"
+                  :no-margin="true"
+                  name-class="fw-semibold text-break"
+                />
+                <device-battery-level
+                  :device="card.batteryLevel"
+                  class="ms-3"
+                />
               </div>
-              <div>Last seen <span v-html="card.lastSeen"></span></div>
+              <div></div>
+              <location-name
+                @click.stop.prevent="
+                  () => {
+                    highlightedDeviceInternal = card;
+                  }
+                "
+                v-if="card.__location !== ''"
+                :name="card.__location"
+                class="mt-2"
+              />
+              <div class="mt-2 d-flex align-items-center">
+                <material-symbol name="history" size="1.125rem" class="me-1" />
+                <span class="me-1">Last seen:</span>
+                <span v-html="card.lastSeen"></span>
+              </div>
+            </div>
+            <div class="d-flex align-items-center">
+              <two-step-action-button
+                v-if="card.__active"
+                :action="
+                  () => deleteOrArchiveDevice(card._deleteAction.value.id)
+                "
+                :icon="
+                  card._deleteAction.value.lastConnectionTime &&
+                  (card._deleteAction.value.lastThermalRecordingTime ||
+                    card._deleteAction.value.lastAudioRecordingTime)
+                    ? 'do_not_disturb_on'
+                    : 'delete'
+                "
+                :confirmation-label="
+                  deleteConfirmationLabelForDevice(card._deleteAction.value)
+                "
+                :tooltip-label="
+                  card._deleteAction.value.lastConnectionTime &&
+                  (card._deleteAction.value.lastAudioRecordingTime ||
+                    card._deleteAction.value.lastThermalRecordingTime)
+                    ? 'Set as inactive'
+                    : 'Delete'
+                "
+              />
+            </div>
+          </div>
+          <hr />
+          <div class="d-flex align-items-center justify-content-between mt-2">
+            <div class="d-flex align-items-center">
+              <span
+                class="d-flex power-status-icon align-items-center justify-content-center"
+                :class="[card.status]"
+              >
+                <material-symbol
+                  name="power_settings_new"
+                  size="1rem"
+                  v-if="card.status !== '-'"
+                />
+              </span>
+              <span class="ms-2" v-if="card.status !== '-'">{{
+                card.status
+              }}</span>
+            </div>
 
-                <div class="d-flex align-items-center">
-                  <span
-                    class="d-flex power-status-icon align-items-center justify-content-center"
-                    :class="[card.status]"
-                  >
-                    <font-awesome-icon
-                      icon="power-off"
-                      v-if="card.status !== '-'"
-                    />
-                  </span>
-                  <span class="ms-2" v-if="card.status !== '-'">{{
-                    card.status
-                  }}</span>
-                </div>
-              </div>
-              <div class="d-flex">
-                <div
-                  class="d-flex flex-column align-items-end"
-                  :class="{
-                    'justify-content-between': card.__location !== '',
-                    'justify-content-end': card.__location === '',
-                  }"
-                >
-                  <location-name
-                    @click.stop.prevent="
-                      () => {
-                        highlightedDeviceInternal = card;
-                      }
-                    "
-                    v-if="card.__location !== ''"
-                    :name="card.__location"
-                  />
-                  <div class="d-flex">
-                    <div
-                      v-if="
-                        !card._deleteAction.value.lastThermalRecordingTime &&
-                        !card._deleteAction.value.lastAudioRecordingTime
-                      "
-                    >
-                      No recordings
-                    </div>
-                    <two-step-action-button
-                      v-if="card.__active"
-                      :action="
-                        () => deleteOrArchiveDevice(card._deleteAction.value.id)
-                      "
-                      :icon="
-                        card._deleteAction.value.lastConnectionTime &&
-                        (card._deleteAction.value.lastThermalRecordingTime ||
-                          card._deleteAction.value.lastAudioRecordingTime)
-                        ? 'do_not_disturb_on'
-                        : 'delete'
-                    "
-                    :confirmation-label="
-                      deleteConfirmationLabelForDevice(card._deleteAction.value)
-                    "
-                    :tooltip-label="
-                      card._deleteAction.value.lastConnectionTime &&
-                      (card._deleteAction.value.lastAudioRecordingTime ||
-                          card._deleteAction.value.lastThermalRecordingTime)
-                        ? 'Set as inactive'
-                        : 'Delete'
-                    "
-                  />
-                </div>
-              </div>
+            <div class="d-flex flex-row">
+              <b-badge
+                v-if="
+                  !card._deleteAction.value.lastThermalRecordingTime &&
+                  !card._deleteAction.value.lastAudioRecordingTime
+                "
+                variant="light"
+                class="ms-2"
+              >
+                No recordings
+              </b-badge>
+              <b-badge class="ms-2" v-if="!card.__active">Inactive</b-badge>
             </div>
           </div>
         </template>

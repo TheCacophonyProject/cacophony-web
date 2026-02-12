@@ -21,6 +21,9 @@ strong {
   font-weight: var(--cp-font-weight-semilbold);
 }
 
+hr {
+  border-color: var(--bs-gray-500);
+}
 
 .btn {
   --bs-btn-font-size:  var(--cp-font-size-md);
@@ -67,6 +70,9 @@ strong {
   --bs-btn-active-color: var(--bs-btn-hover-color);
   --bs-btn-active-bg: var(--bs-gray-200);
   --bs-btn-active-border-color: transparent;
+  &:disabled {
+    color: var(--bs-tertiary-color);
+  }
 }
 
 // grouped buttons
@@ -184,9 +190,6 @@ strong {
 .badge {
   --bs-badge-font-size: var(--cp-font-size-sm);
   --bs-badge-font-weight: 500;
-  &.text-bg-secondary {
-    background-color: var(--bs-black) !important;
-  }
 }
 
 // progress bar

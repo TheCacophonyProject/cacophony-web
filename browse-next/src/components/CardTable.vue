@@ -8,10 +8,14 @@
       <thead>
         <tr>
           <th
-            class="py-2 px-3 text-nowrap"
+            class="text-nowrap fw-medium"
             v-for="(heading, index) in displayedItems.headings"
             :key="`${heading}_${index}`"
-            :class="{ sortable: !!sorts[heading] }"
+            :class="[
+              standalone ? 'px-3' : 'px-1',
+              compact ? 'py-2' : 'py-3',
+              { sortable: !!sorts[heading] },
+            ]"
             @click="toggleSorting(heading)"
           >
             {{ heading }}
@@ -44,8 +48,8 @@
         >
           <td
             :class="[
-              compact ? 'py-2 ps-3' : 'py-3 ps-3',
-              { 'pe-3': index === row.length - 1 },
+              standalone ? 'px-3' : 'px-1',
+              compact ? 'py-2' : 'py-3',
               ...cellClasses(cell),
             ]"
             v-for="(cell, index) in row"
@@ -62,23 +66,22 @@
                   cell !== null &&
                   'value' in cell
                 "
-                :class="{ 'text-nowrap': !hasLineBreaks(cell) }"
                 v-html="cell.value"
               />
-              <span
-                v-else-if="cell"
-                :class="{ 'text-nowrap': !hasLineBreaks(cell) }"
-                v-html="cell"
-              />
+              <span v-else-if="cell" v-html="cell" />
             </slot>
           </td>
         </tr>
       </tbody>
     </table>
-    <div v-else-if="hasItems" class="card-table d-flex flex-column gap-3">
-      <div v-if="hasSorts">
-        <!--        TODO -->
-      </div>
+    <div
+      v-else-if="hasItems"
+      class="card-table cards-wrapper d-flex flex-column"
+      :class="{ standalone: standalone }"
+    >
+      <!--        TODO -->
+<!--      <div v-if="hasSorts">
+      </div>-->
       <div
         v-for="(card, cardIndex) in sortedItems"
         :key="cardIndex"
@@ -90,8 +93,12 @@
             selectedItem(e, sortedItems[cardIndex] as CardTableRow<unknown>);
           }
         "
-        class="card-table-card py-3 px-3 py-md-4 px-md-4"
-        :class="{ highlighted: eq(card, highlightedItem) }"
+        class="card-table-card"
+        :class="{
+          highlighted: eq(card, highlightedItem),
+          'py-3 px-3 py-md-4 px-md-4': standalone,
+          standalone: standalone,
+        }"
       >
         <slot name="card" v-bind="{ card }">
           <div
@@ -345,8 +352,6 @@ const displayedItems = computed<{
 .card-table {
   width: 100%;
   thead {
-    //background: #fafafa;
-    //color: #888;
     text-transform: capitalize;
     border-bottom: 1px solid var(--border-color-light);
     tr:hover {
@@ -359,9 +364,6 @@ const displayedItems = computed<{
     &.sortable {
       cursor: pointer;
     }
-    /*    &:first-of-type {
-      padding-left: 0 !important;
-    }*/
   }
   tr {
     user-select: none;
@@ -369,17 +371,44 @@ const displayedItems = computed<{
       border-bottom: 1px solid var(--border-color-light);
     }
     &.highlighted {
-      background: #ddd;
+      background: var(--bs-gray-200);
     }
     &:hover {
       background: var(--bs-gray-100);
     }
   }
+  &.cards-wrapper {
+    &:not(.standalone) {
+      gap: var(--cp-spacing-xxl);
+    }
+    &.standalone {
+      gap: var(--cp-spacing-md);
+    }
+  }
   .card-table-card {
     background: var(--bs-white);
     transition: background-color 0.3s linear;
-    border-radius: var(--bs-border-radius);
-    .standard-shadow();
+    position: relative;
+    &:not(.standalone) {
+      // might be able to do this in a less hacky way in the future with row-rule
+      // https://developer.chrome.com/blog/gap-decorations
+      &:not(:last-child) {
+        &:after {
+          position: absolute;
+          content: "";
+          width: 100%;
+          height: 1px;
+          background: var(--border-color-light);
+          bottom: calc(
+            var(--cp-spacing-md) * -1
+          ); // depends on gap set on parent
+        }
+      }
+    }
+    &.standalone {
+      border-radius: var(--bs-border-radius);
+      .standard-shadow();
+    }
     &.highlighted {
       background: var(--bs-gray-200);
     }
