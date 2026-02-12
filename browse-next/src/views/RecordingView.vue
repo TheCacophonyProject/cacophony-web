@@ -9,6 +9,7 @@ import {
   onMounted,
   type Ref,
   ref,
+  useTemplateRef,
   watch,
 } from "vue";
 import type {
@@ -80,7 +81,7 @@ const emit = defineEmits<{
   (e: "recording-updated", recordingId: RecordingId, action: string): void;
 }>();
 const inlineModalEl = ref<HTMLDivElement>();
-
+const stickyTabs = useTemplateRef("stickyTabs");
 const { height: inlineModalHeight } = useElementSize(inlineModalEl);
 watch(inlineModalHeight, (newHeight) => {
   if (inlineModalEl.value) {
@@ -961,10 +962,13 @@ const isMobileView = computed<boolean>(() => {
 const recordingViewContext: string = (route.meta as Record<string, string>)
   .context;
 
-const recordingInfo = ref<HTMLDivElement>();
-const playerContainer = ref<HTMLDivElement>();
+const recordingInfo: Ref<HTMLDivElement | null> =
+  useTemplateRef("recordingInfo");
+const playerContainer: Ref<HTMLDivElement | null> =
+  useTemplateRef("playerContainer");
 
 const playerHeight = useElementSize(playerContainer);
+
 watch(playerHeight.height, (newHeight) => {
   if (recordingInfo.value) {
     const recordingInfoEl = recordingInfo.value as HTMLDivElement;
@@ -1223,6 +1227,14 @@ const deleteRecording = async () => {
   }
 };
 const inlineModal = ref<boolean>(false);
+const scrollOffsetY = ref<number>(0);
+const onScroll = (e: Event) => {
+  // So, when we make the player smaller, we're also *reducing* the scrollTop amount again.
+  const scrollTop = (e.target as HTMLElement).scrollTop;
+  if (playerContainer.value) {
+    scrollOffsetY.value = scrollTop;
+  }
+};
 </script>
 <template>
   <div
@@ -1292,39 +1304,53 @@ const inlineModal = ref<boolean>(false);
       :class="{ 'd-flex': isMobileView }"
     >
       <div
+        @scroll.passive="onScroll"
         class="player-and-tagging d-flex"
         :class="{ 'flex-fill overflow-x-hidden': isMobileView }"
       >
-        <div class="player-container bg-black">
-          <div ref="playerContainer">
-            <cptv-player
-              :recording="recording as ApiRecordingResponse"
-              :recording-id="currentRecordingId"
-              :download-progress="downloadProgress"
-              :current-track="currentTrack"
-              :has-next="hasNextRecording || hasNextVisit"
-              :has-prev="hasPreviousRecording || hasPreviousVisit"
-              :user-selected-track="userSelectedTrack"
-              :export-requested="exportRequested"
-              :display-header-info="showHeaderInfo"
-              :has-reference-photo="deviceHasReferencePhotoAtRecordingTime"
-              @export-completed="exportCompleted"
-              @request-next-recording="
-                async () => await gotoNextRecordingOrVisit()
-              "
-              @request-prev-recording="
-                async () => await gotoPreviousRecordingOrVisit()
-              "
-              @request-next-visit="async () => await gotoNextVisit()"
-              @request-prev-visit="async () => await gotoPreviousVisit()"
-              @request-header-info-display="requestedHeaderInfoDisplay"
-              @dismiss-header-info="dismissHeaderInfo"
-              @track-selected="selectedTrackWrap"
-            />
-          </div>
-        </div>
         <div
-          class="recording-info d-flex flex-column flex-fill overflow-hidden"
+          class="player-container bg-black"
+          ref="playerContainer"
+          :class="{ 'sticky-top': isMobileView }"
+          :style="{ 'margin-bottom': `${Math.min(200, scrollOffsetY)}px` }"
+        >
+          <cptv-player
+            :scroll-offset-y="scrollOffsetY"
+            :recording="recording as ApiRecordingResponse"
+            :recording-id="currentRecordingId"
+            :download-progress="downloadProgress"
+            :current-track="currentTrack"
+            :has-next="hasNextRecording || hasNextVisit"
+            :has-prev="hasPreviousRecording || hasPreviousVisit"
+            :user-selected-track="userSelectedTrack"
+            :export-requested="exportRequested"
+            :display-header-info="showHeaderInfo"
+            :has-reference-photo="deviceHasReferencePhotoAtRecordingTime"
+            @export-completed="exportCompleted"
+            @request-next-recording="
+              async () => await gotoNextRecordingOrVisit()
+            "
+            @request-prev-recording="
+              async () => await gotoPreviousRecordingOrVisit()
+            "
+            @request-next-visit="async () => await gotoNextVisit()"
+            @request-prev-visit="async () => await gotoPreviousVisit()"
+            @request-header-info-display="requestedHeaderInfoDisplay"
+            @dismiss-header-info="dismissHeaderInfo"
+            @track-selected="selectedTrackWrap"
+          >
+          </cptv-player>
+        </div>
+        <recording-view-tabs
+          :recording="recording"
+          :current-track="currentTrack"
+          v-if="isMobileView"
+          class="sticky-top"
+          :style="{ top: `${playerHeight.height.value}px` }"
+          ref="stickyTabs"
+        />
+        <div
+          class="recording-info d-flex flex-column flex-fill"
           ref="recordingInfo"
         >
           <recording-view-metadata v-if="isDesktop" :recording="recording">
@@ -1341,8 +1367,9 @@ const inlineModal = ref<boolean>(false);
           <recording-view-tabs
             :recording="recording"
             :current-track="currentTrack"
+            v-if="isDesktop"
           />
-          <div class="tags-overflow d-flex flex-grow-1">
+          <div class="tags-overflow d-flex flex-grow-1" ref="scrollContainer">
             <!-- RecordingViewTracks, RecordingViewLabels, RecordingViewNotes, RecordingViewMetadata (mobile) -->
             <router-view
               :recording="recording"
@@ -1721,6 +1748,7 @@ const inlineModal = ref<boolean>(false);
 }
 
 .tags-overflow {
+  //max-height: 1000000px;
   @media (max-width: @breakpoint-md-max) {
     overflow: auto;
   }
@@ -1769,6 +1797,7 @@ const inlineModal = ref<boolean>(false);
 @import "../assets/less/breakpoints.less";
 
 .player-and-tagging {
+  overscroll-behavior-y: none;
   .video-container {
     @media screen and (min-width: @breakpoint-lg) and (max-width: @breakpoint-lg-max) {
       max-width: 576px;

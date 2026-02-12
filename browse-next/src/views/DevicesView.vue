@@ -722,10 +722,10 @@ const isDevicesRoot = computed(() => {
               </div>
               <div></div>
               <location-name
-                @click.stop.prevent="
-                  () => {
-                    highlightedDeviceInternal = card;
-                  }
+              @click.stop.prevent="
+                () => {
+                  highlightedDeviceInternal = card;
+                }
                 "
                 v-if="card.__location !== ''"
                 :name="card.__location"

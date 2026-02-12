@@ -624,8 +624,9 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
 </template>
 <style scoped>
 .accordion {
+  //overflow: auto;
   transition: background-color 0.2s linear;
-  min-height: 100%;
+  //min-height: 100%;
   &.has-selected {
     background-color: rgba(0, 0, 0, 0.05);
   }
