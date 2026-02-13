@@ -41,7 +41,6 @@ hr {
   &:disabled {
     &:hover {
       cursor: not-allowed;
-
     }
   }
 }
@@ -55,7 +54,9 @@ hr {
 .btn-outline-secondary {
   --bs-btn-border-color: var(--bs-gray-400);
   --bs-btn-bg: var(--bs-white);
-
+  &:disabled {
+    border-color: var(--bs-gray-400);
+  }
 }
 
 .btn-icon {

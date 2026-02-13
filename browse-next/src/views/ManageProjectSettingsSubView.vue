@@ -21,7 +21,10 @@ import {
   displayLabelForClassificationLabel,
   getClassifications,
 } from "@api/classificationsUtils.ts";
-import { DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS } from "@/consts.ts";
+import {
+  DEFAULT_AUDIO_RECORDING_LABELS,
+  DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS,
+} from "@/consts.ts";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import SectionCard from "@/components/SectionCard.vue";
 import {
@@ -31,6 +34,7 @@ import {
   BSpinner,
 } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const currentProjectSettings = computed(() => {
@@ -215,20 +219,21 @@ const pendingTagIsValid = computed<boolean>(() => {
       <section-card>
         <template #header-title> Tags </template>
         <template #header-action>
-          <div>
+          <div class="d-inline-flex gap-2 ms-2">
+            <two-step-action-button
+              :action="resetCameraIgnoredTags"
+              :btn-variant-class="`btn-outline-secondary`"
+              :icon="null"
+              :confirmation-label="`Reset ignored tags`"
+              :label="`Reset`"
+              :placement="`bottom`"
+            />
             <button
               type="button"
-              class="btn btn-outline-secondary ms-2"
+              class="btn btn-secondary"
               @click.stop.prevent="showAddCameraIgnoredTagModal = true"
             >
               Add
-            </button>
-            <button
-              type="button"
-              class="btn btn-outline-danger ms-2"
-              @click.stop.prevent="resetCameraIgnoredTags"
-            >
-              Reset
             </button>
           </div>
         </template>
@@ -238,12 +243,12 @@ const pendingTagIsValid = computed<boolean>(() => {
           :max-card-width="0"
         >
           <template #_deleteAction="{ cell }">
-            <button
-              class="btn btn-icon d-inline-flex align-items-center"
-              @click.prevent="() => removeIgnoredTag(cell.value, 'camera')"
-            >
-              <material-symbol name="delete" size="1.25rem" />
-            </button>
+            <two-step-action-button
+              :action="() => removeIgnoredTag(cell.value, 'camera')"
+              icon="delete"
+              :confirmation-label="`Remove tag`"
+              tooltip-label="Remove"
+            />
           </template>
         </card-table>
       </section-card>

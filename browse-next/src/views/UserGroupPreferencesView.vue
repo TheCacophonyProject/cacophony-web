@@ -50,6 +50,8 @@ import {
   BSpinner,
 } from "bootstrap-vue-next";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import LocationName from "@/components/LocationName.vue";
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
@@ -292,18 +294,20 @@ const alertItems = computed<AlertItem[]>(() => {
           <b-button
             variant="outline-secondary"
             @click="selectedAddEmailAlert = true"
+            class="d-flex align-items-center"
           >
-            <font-awesome-icon icon="plus" /> Create email alert
+            <material-symbol name="add" size="1.25rem" class="me-2" />
+            Create email alert
           </b-button>
         </template>
-        <div v-if="loadingAlerts" class="d-flex justify-content-center pb-3">
-          <b-spinner variant="secondary" />
+        <div v-if="loadingAlerts" class="d-flex justify-content-center my-4">
+          <b-spinner variant="secondary" small />
         </div>
         <card-table
           v-else-if="alertItems && alertItems.length"
           :items="alertItems"
           compact
-          :break-point="0"
+          :max-card-width="768"
         >
           <template #alertOn="{ cell }">
             <b-badge
@@ -323,26 +327,17 @@ const alertItems = computed<AlertItem[]>(() => {
               cell: string | ApiDeviceResponse | ApiLocationResponse;
             }"
           >
-            <div v-if="row.__scope === 'project'">{{ cell }}</div>
-            <div
+            <span v-if="row.__scope === 'project'">{{ cell }}</span>
+            <location-name
               v-else-if="row.__scope === 'location' && cell"
-              class="station-name text-truncate d-inline-flex align-content-center align-items-center"
-            >
-              <font-awesome-icon
-                icon="map-marker-alt"
-                class="me-2"
-                color="rgba(0, 0, 0, 0.7)"
-              />
-              <span class="text-truncate" ref="stationNameSpan">
-                {{ (cell as ApiLocationResponse).name }}
-              </span>
-            </div>
-            <div v-else-if="row.__scope === 'device' && cell">
-              <device-name
-                :name="(cell as ApiDeviceResponse).deviceName"
-                :type="(cell as ApiDeviceResponse).type"
-              />
-            </div>
+              :name="(cell as ApiLocationResponse).name"
+            />
+            <device-name
+              v-else-if="row.__scope === 'device' && cell"
+              :name="(cell as ApiDeviceResponse).deviceName"
+              :type="(cell as ApiDeviceResponse).type"
+              :no-margin="true"
+            />
           </template>
           <template #_deleteAction="{ cell }">
             <div class="d-flex align-items-center justify-content-end">
@@ -358,49 +353,46 @@ const alertItems = computed<AlertItem[]>(() => {
             <div class="d-flex flex-row">
               <div class="flex-grow-1">
                 <div class="d-flex align-items-center">
-                  <span class="me-2">Trigger on: </span>
-                  <b-badge
-                    v-for="(tag, index) in card.alertOn"
-                    :key="index"
-                    class="me-1"
-                    variant="secondary"
-                    >{{ tag }}</b-badge
-                  >
+                  <span class="me-2 flex-shrink-0 text-muted"
+                    >Trigger on:
+                  </span>
+                  <div class="d-flex flex-wrap gap-1">
+                    <b-badge
+                      v-for="(tag, index) in card.alertOn"
+                      :key="index"
+                      variant="secondary"
+                      >{{ tag }}</b-badge
+                    >
+                  </div>
                 </div>
-                <div class="mt-2">
-                  <span>Alert scope: </span>
+                <div class="mt-2 d-flex align-items-center gap-1">
+                  <span class="flex-shrink-0 text-muted">Alert scope: </span>
                   <span v-if="card.__scope === 'project'">{{
                     card.alertScope
                   }}</span>
-                  <span
+                  <location-name
                     v-else-if="card.__scope === 'location' && card.alertScope"
-                    class="station-name text-truncate d-inline-flex align-content-center align-items-center"
-                  >
-                    <font-awesome-icon
-                      icon="map-marker-alt"
-                      class="me-2"
-                      color="rgba(0, 0, 0, 0.7)"
-                    />
-                    <span class="text-truncate" ref="stationNameSpan">
-                      {{ (card.alertScope as ApiLocationResponse).name }}
-                    </span>
-                  </span>
-                  <span v-else-if="card.__scope === 'device'">
-                    <device-name
-                      :name="(card.alertScope as ApiDeviceResponse).deviceName"
-                      :type="(card.alertScope as ApiDeviceResponse).type"
-                    />
-                  </span>
+                    :name="(card.alertScope as ApiLocationResponse).name"
+                  />
+                  <device-name
+                    v-else-if="card.__scope === 'device'"
+                    :name="(card.alertScope as ApiDeviceResponse).deviceName"
+                    :type="(card.alertScope as ApiDeviceResponse).type"
+                    :no-margin="true"
+                  />
                 </div>
                 <div class="mt-2">
-                  Last triggered: <strong v-html="card.lastTriggered"></strong>
+                  <span class="text-muted">Last triggered:</span>
+                  <strong v-html="card.lastTriggered"></strong>
                 </div>
                 <div class="mt-2">
-                  <span>Minimum time between triggers: </span>
+                  <span class="text-muted"
+                    >Minimum time between triggers:
+                  </span>
                   {{ card.minimumTimeBetweenTriggers }}
                 </div>
               </div>
-              <div class="d-flex align-items-end justify-content-end">
+              <div class="d-flex align-items-center justify-content-center">
                 <two-step-action-button
                   :action="() => deleteAlert(card._deleteAction)"
                   icon="delete"
@@ -475,14 +467,14 @@ const alertItems = computed<AlertItem[]>(() => {
   <b-modal
     v-model="selectedAddEmailAlert"
     @ok="saveAlert"
-    title="Add an email alert"
+    title="Create email alert"
     ok-title="Save alert"
     :ok-disabled="!formIsValid"
     @cancel="resetFormFields"
   >
     <div>
-      <label>Alert scope:</label>
-      <b-form-radio-group v-model="alertScope">
+      <label class="mb-2">Alert scope:</label>
+      <b-form-radio-group v-model="alertScope" class="mb-2">
         <b-form-radio value="project">This project</b-form-radio>
         <b-form-radio value="location">A specific location</b-form-radio>
         <b-form-radio value="device">A specific device</b-form-radio>
@@ -497,6 +489,7 @@ const alertItems = computed<AlertItem[]>(() => {
         :can-clear="false"
         class="ms-bootstrap"
         searchable
+        placeholder="Select location"
       />
       <multiselect
         v-else-if="alertScope === 'device'"
@@ -508,22 +501,24 @@ const alertItems = computed<AlertItem[]>(() => {
         :can-clear="false"
         class="ms-bootstrap"
         searchable
+        placeholder="Select device"
       />
     </div>
-    <div class="mt-1">
-      <label>Alert on:</label>
+    <div class="mt-3">
+      <label class="mb-1">Alert on:</label>
       <hierarchical-tag-select v-model="alertOnTags" multiselect />
     </div>
-    <div class="mt-1">
-      <label
-        >Alert no more than once every
-        <strong>{{ maxAlertFrequencyMins }}</strong> minutes</label
-      >
+    <div class="mt-3">
+      <label class="mb-1">Alert frequency (in minutes):</label>
       <b-form-input
         v-model="maxAlertFrequencyMins"
         type="number"
         min="1"
       ></b-form-input>
+      <small class="text-body-secondary form-text"
+        >Alert no more than once every
+        <strong>{{ maxAlertFrequencyMins }}</strong> minutes</small
+      >
     </div>
   </b-modal>
   <div v-if="false && isNotOnlyProjectOwnerOrAdmin">

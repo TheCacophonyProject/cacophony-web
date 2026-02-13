@@ -351,10 +351,11 @@ const permissionsOptions = computed(() => [
               v-if="card.user.value.pending === 'requested'"
               :action="() => acceptPendingUser(card.user.value)"
               icon="check"
-              :confirmation-label="`Accept <strong><em>${card.user.value.userName}</em></strong> into group`"
+              :confirmation-extra="`Accept <strong>${card.user.value.userName}</strong> into group?`"
+              :confirmation-label="`Accept`"
               label="Approve request"
-              tooltip-label="Approve"
               class="mt-2"
+              :confirmation-btn-variant-class="`btn-secondary`"
               :classes="['ms-auto']"
             />
           </template>

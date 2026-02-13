@@ -36,8 +36,10 @@ const props = withDefaults(
     tooltipLabel?: string | (() => string);
     confirmationLabel?: string | (() => string);
     disabled?: boolean;
+    btnVariantClass?: string;
+    confirmationBtnVariantClass?: string;
     classes?: string[];
-    icon?: SymbolsProp;
+    icon?: SymbolsProp | null;
     color?: string;
     rotate?: 90 | 180 | 270 | null;
     placement?: PopoverPlacement;
@@ -48,6 +50,8 @@ const props = withDefaults(
     confirmationLabel: "",
     tooltipLabel: "",
     disabled: false,
+    btnVariantClass: "btn-icon",
+    confirmationBtnVariantClass: "btn-outline-danger",
     classes: () => [],
     icon: "delete",
     color: "inherit",
@@ -85,7 +89,6 @@ const computedConfirmationLabel = computed<string>(() => {
   <div>
     <b-popover
       click
-      :disabled="disabled"
       :placement="placement"
       no-fade
       :strategy="'absolute'"
@@ -99,11 +102,12 @@ const computedConfirmationLabel = computed<string>(() => {
     >
       <template #target>
         <button
-          class="btn btn-icon d-flex justify-content-center"
-          :class="[...classes]"
+          class="btn d-flex justify-content-center"
+          :class="[...classes, btnVariantClass]"
           @click.stop.prevent="() => {}"
           ref="actionBtn"
           :aria-label="computedTooltipLabel"
+          :disabled="disabled"
         >
           <material-symbol
             :name="icon"
@@ -112,7 +116,11 @@ const computedConfirmationLabel = computed<string>(() => {
             :color="color || 'inherit'"
             :rotation="rotate || null"
           />
-          <span v-if="computedLabel" class="ps-2" v-html="computedLabel" />
+          <span
+            v-if="computedLabel"
+            :class="{ 'ps-2': icon }"
+            v-html="computedLabel"
+          />
         </button>
         <b-tooltip
           v-if="actionBtn && computedTooltipLabel !== '' && !popoverIsShowing"
@@ -135,10 +143,16 @@ const computedConfirmationLabel = computed<string>(() => {
             hide();
           }
         "
-        class="btn btn-outline-danger text-nowrap w-100"
+        class="btn d-flex align-items-center justify-content-center text-nowrap w-100"
+        :class="[confirmationBtnVariantClass]"
       >
-        <font-awesome-icon icon="exclamation-triangle" />
-        <span class="ms-2" v-html="computedConfirmationLabel" />
+        <material-symbol
+          v-if="confirmationBtnVariantClass === 'btn-outline-danger'"
+          name="warning"
+          size="1.25rem"
+          class="me-2"
+        />
+        <span v-html="computedConfirmationLabel" />
       </button>
     </b-popover>
   </div>
