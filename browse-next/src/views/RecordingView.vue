@@ -1351,6 +1351,10 @@ const onScroll = (e: Event) => {
         />
         <div
           class="recording-info d-flex flex-column flex-fill"
+          :class="{
+            'overflow-hidden':
+              isDesktop && recordingType === RecordingType.ThermalRaw,
+          }"
           ref="recordingInfo"
         >
           <recording-view-metadata v-if="isDesktop" :recording="recording">

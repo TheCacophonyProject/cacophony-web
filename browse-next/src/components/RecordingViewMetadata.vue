@@ -98,18 +98,17 @@ const mapPointForRecording = computed<NamedPoint[]>(() => {
       'recording-type-video justify-content-between p-lg-4 pb-lg-2':
         recordingType === RecordingType.ThermalRaw,
       'd-inline-flex': isDesktop && recordingType === RecordingType.ThermalRaw,
-      'd-flex flex-column':
+      'd-flex flex-fill flex-column':
         isMobile && recordingType === RecordingType.ThermalRaw,
     }"
   >
     <div
       class="recording-details d-flex flex-column overflow-hidden"
       :class="{
-        'flex-fill': isDesktop && recordingType === RecordingType.ThermalRaw,
-        'flex-shrink-0': isMobile,
+        'flex-shrink-0': isMobile || recordingType === RecordingType.Audio,
       }"
     >
-      <div class="mb-2 overflow-hidden">
+      <div class="flex-shrink-0 mb-2 overflow-hidden">
         <span
           class="device-name text-truncate d-inline-flex align-items-center me-3"
         >
