@@ -42,6 +42,7 @@ import type {
   ApiHumanTrackTagResponse,
   ApiTrackTagResponse,
 } from "@typedefs/api/trackTag";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const props = defineProps<{
   userSelectedTrack?: ApiTrackResponse;
@@ -1617,11 +1618,12 @@ const isMobileView = computed<boolean>(() => {
             @click.prevent="togglePlayback"
             ref="playPauseButton"
             :data-tooltip="audioIsPlaying ? 'Pause' : 'Play'"
+            class="d-flex align-items-center justify-content-center"
           >
-            <font-awesome-icon v-if="!audioIsPlaying" icon="play" />
-            <font-awesome-icon v-else icon="pause" />
+            <material-symbol v-if="!audioIsPlaying" name="play_arrow" filled />
+            <material-symbol v-else name="pause" filled />
           </button>
-          <div class="vertical-divider"></div>
+          <div class="vr my-auto"></div>
           <div class="ps-3 align-items-end">
             {{ formatTime(currentTime) }} / {{ formatTime(audioDuration) }}
           </div>
@@ -1634,9 +1636,12 @@ const isMobileView = computed<boolean>(() => {
                 ref="regionCreationMode"
                 :disabled="pendingTrack !== null"
                 data-tooltip="Create new region"
+                class="d-flex align-items-center"
               >
-                <font-awesome-icon
-                  :icon="[inRegionCreationMode ? 'fas' : 'far', 'square-plus']"
+                <material-symbol
+                  name="add_box"
+                  :filled="!!inRegionCreationMode"
+                  size="1.25rem"
                 />
                 <span class="ms-2"
                   >add<span v-if="!isMobileView"> track</span></span
@@ -1645,13 +1650,13 @@ const isMobileView = computed<boolean>(() => {
             </div>
             <div class="pe-3 align-items-end">
               <button
-                class="ms-2"
+                class="ms-2 d-flex align-items-center"
                 @click.prevent="resizeCurrentlySelectedTrack"
                 ref="trackResizeMode"
                 :disabled="!hasSelectedTrack || inRegionCreationMode"
                 data-tooltip="Resize track"
               >
-                <font-awesome-icon icon="expand" />
+                <material-symbol name="resize" size="1.25rem" />
                 <span class="ms-2">resize</span>
               </button>
             </div>
@@ -1659,36 +1664,37 @@ const isMobileView = computed<boolean>(() => {
           <div v-else class="d-flex align-items-center">
             <div class="pe-3 align-items-end">
               <button
-                class="ms-2"
+                class="ms-2 d-flex align-items-center"
                 @click.prevent="confirmTrackResizeOperation"
                 ref="trackResizeModeSave"
                 :disabled="!hasSelectedTrack || updateInProgress"
                 data-tooltip="Save track changes"
               >
-                <font-awesome-icon icon="check" />
+                <material-symbol name="check" size="1.25rem" />
                 <span class="ms-2">save</span>
               </button>
             </div>
             <div class="pe-3 align-items-end">
               <button
-                class="ms-2"
+                class="ms-2 d-flex align-items-center"
                 @click.prevent="cancelTrackResizeOperation"
                 ref="trackResizeModeCancel"
                 :disabled="!hasSelectedTrack || updateInProgress"
                 data-tooltip="Cancel track resizing"
               >
-                <font-awesome-icon icon="xmark" />
+                <material-symbol name="close" size="1.25rem" />
                 <span class="ms-2">cancel</span>
               </button>
             </div>
           </div>
-          <div class="vertical-divider"></div>
+          <div class="vr my-auto"></div>
           <button
             @click.prevent="incrementPalette"
             ref="cyclePalette"
             data-tooltip="Cycle colour map"
+            class="d-flex align-items-center justify-content-center"
           >
-            <font-awesome-icon icon="palette" />
+            <material-symbol name="palette" size="1.25rem" />
           </button>
         </div>
       </div>
@@ -1709,11 +1715,11 @@ const isMobileView = computed<boolean>(() => {
 .class-selection-popover {
   position: absolute;
   width: 300px;
-  background: #333;
-  padding: 12px;
-  border-radius: 5px;
-  top: 20px;
   left: calc(50% - 150px);
+  top: 20px;
+  /* background: #333;
+  padding: 12px;*/
+  border-radius: var(--bs-border-radius);
   z-index: 1000;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
   animation: add-animate-in 0.2s ease-in-out;
@@ -1748,17 +1754,16 @@ const isMobileView = computed<boolean>(() => {
   // 360px for spectrogram only
   //min-height: 404px;
   position: relative;
-  background: #2b333f;
+  background: var(--bs-gray-900);
   overflow: hidden;
 }
-.vertical-divider {
-  border-left: 2px solid rgba(255, 255, 255, 0.5);
+.vr {
   height: 24px;
 }
 .player-controls {
   min-height: 44px;
-  background: #2b333f;
-  color: white;
+  background: var(--bs-gray-900);
+  color: var(--bs-white);
   display: flex;
   position: relative;
   button {
@@ -1774,7 +1779,7 @@ const isMobileView = computed<boolean>(() => {
     }
     &:active:not(:disabled),
     &.selected:not(:disabled) {
-      color: yellowgreen;
+      color: var(--cp-color-primary);
     }
     &:disabled {
       color: rgba(255, 255, 255, 0.1);
@@ -1796,23 +1801,6 @@ const isMobileView = computed<boolean>(() => {
   100% {
     opacity: 1;
     transform: translate(17%, -35%) rotate(270deg) scaleX(1);
-  }
-}
-.volume-slider {
-  display: none;
-  position: absolute;
-  transform-origin: left;
-  transform: translate(17%, -35%) rotate(270deg);
-  z-index: 300;
-  :hover {
-    display: block;
-  }
-}
-.volume-selection:hover {
-  .volume-slider {
-    display: block;
-    animation: fade_in_show 0.2s;
-    transition-delay: 2s;
   }
 }
 </style>

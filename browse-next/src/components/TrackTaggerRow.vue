@@ -587,7 +587,7 @@ onMounted(async () => {
         <span v-else-if="hasUserTag" class="d-flex flex-column">
           <span class="fs-6">Manual ID</span>
           <span
-            class="classification text-capitalize d-inline-block fw-semibold"
+            class="classification text-capitalize d-inline-flex fw-semibold gap-1"
             v-if="
               consensusUserTag &&
               masterTag &&
@@ -598,8 +598,13 @@ onMounted(async () => {
               ) === consensusUserTag
             "
             >{{ consensusUserTag }}
-            <font-awesome-icon icon="check-circle" class="text-success"
-          /></span>
+            <material-symbol
+              name="check_circle"
+              class="text-success"
+              size="1.125rem"
+              filled
+            />
+          </span>
           <span
             class="classification text-capitalize d-inline-block fw-semibold"
             v-else-if="
@@ -876,7 +881,7 @@ onMounted(async () => {
           >
             <button
               v-if="userIsGroupAdmin && !cell.value.automatic"
-              class="btn text-secondary"
+              class="btn btn-icon btn-sm d-flex align-items-center"
               @click.prevent="
                 () =>
                   emit('remove-tag', {
@@ -885,7 +890,7 @@ onMounted(async () => {
                   })
               "
             >
-              <font-awesome-icon icon="trash-can" />
+              <material-symbol name="delete" size="1.125rem" />
             </button>
             <span v-else></span>
           </template>

@@ -63,7 +63,13 @@ import { ClientApi } from "@/api";
 import { currentSelectedProject as currentActiveProject } from "@models/provides.ts";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
 import { DEFAULT_AUTH_ID } from "@apiClient/types.ts";
-import { BFormCheckbox, BFormGroup, BProgress } from "bootstrap-vue-next";
+import {
+  BFormCheckbox,
+  BFormGroup,
+  BProgress,
+  BSpinner,
+} from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
@@ -2112,11 +2118,11 @@ const playerHeight = computed(() => {
           @pointerup="releaseRevealHandle"
           @pointermove="moveRevealHandle"
         >
-          <font-awesome-icon icon="left-right" />
+          <material-symbol name="arrow_range" size="2rem" />
         </div>
       </div>
       <div :class="['playback-controls', { show: buffering }]">
-        <font-awesome-icon class="fa-spin buffering" icon="spinner" size="4x" />
+        <b-spinner />
       </div>
       <div
         :class="[
@@ -2130,16 +2136,16 @@ const playerHeight = computed(() => {
           @click.prevent="requestPrevRecording"
           :class="{ disabled: !hasPrev }"
         >
-          <font-awesome-icon icon="backward" class="replay" />
+          <material-symbol name="fast_rewind" size="3.6rem" class="replay" />
         </button>
         <button @click.prevent="togglePlayback">
-          <font-awesome-icon icon="redo-alt" class="replay" rotation="270" />
+          <material-symbol name="replay" size="3.6rem" class="replay" />
         </button>
         <button
           @click.prevent="requestNextRecording"
           :class="{ disabled: !hasNext }"
         >
-          <font-awesome-icon icon="forward" class="replay" />
+          <material-symbol name="fast_forward" size="3.6rem" class="replay" />
         </button>
       </div>
     </div>
@@ -2156,9 +2162,15 @@ const playerHeight = computed(() => {
           @click.prevent="togglePlayback"
           ref="playPauseButton"
           :data-tooltip="playing ? 'Pause' : 'Play'"
+          class="d-flex align-items-center justify-content-center"
         >
-          <font-awesome-icon v-if="!playing" icon="play" />
-          <font-awesome-icon v-else icon="pause" />
+          <material-symbol
+            v-if="!playing"
+            name="play_arrow"
+            filled
+            size="1.5rem"
+          />
+          <material-symbol v-else name="pause" filled size="1.5rem" />
         </button>
         <div class="right-nav">
           <div
@@ -2173,18 +2185,17 @@ const playerHeight = computed(() => {
           >
             <button
               @click.prevent="showAdvancedControls = !showAdvancedControls"
-              class="advanced-controls-btn"
+              class="advanced-controls-btn d-flex align-items-center justify-content-center"
               :data-tooltip="showAdvancedControls ? 'Show less' : 'Show more'"
               :disabled="showingReferencePhoto && canvasWidth <= 570"
               ref="advancedControlsButton"
             >
-              <font-awesome-icon
-                icon="angle-right"
-                :rotation="
+              <material-symbol
+                :name="
                   showAdvancedControls &&
                   (!showingReferencePhoto || canvasWidth > 570)
-                    ? null
-                    : 180
+                    ? 'keyboard_arrow_right'
+                    : 'keyboard_arrow_left'
                 "
               />
             </button>
@@ -2193,8 +2204,9 @@ const playerHeight = computed(() => {
               ref="debugTools"
               data-tooltip="Debug tools"
               :class="{ selected: showDebugTools }"
+              class="d-flex align-items-center justify-content-center"
             >
-              <font-awesome-icon icon="wrench" />
+              <material-symbol name="construction" size="1.25rem" />
             </button>
             <button
               @click.prevent="videoSmoothing = !videoSmoothing"
@@ -2202,73 +2214,31 @@ const playerHeight = computed(() => {
               :data-tooltip="
                 videoSmoothing ? 'Disable smoothing' : 'Enable smoothing'
               "
+              class="d-flex align-items-center justify-content-center"
             >
-              <svg
+              <material-symbol
                 v-if="videoSmoothing"
-                aria-hidden="true"
-                focusable="false"
-                viewBox="0 0 18 18"
-                width="16"
-                height="20"
-              >
-                <g transform="matrix(1,0,0,1,0,-249)" fill="currentColor">
-                  <path
-                    d="M5.25,248.969L5.25,251.781C5.25,252.247 4.872,252.625 4.406,252.625L0.844,252.625C0.378,252.625 0,252.247 0,251.781L0,248.969C0,248.503 0.378,248.125 0.844,248.125L4.406,248.125C4.872,248.125 5.25,248.503 5.25,248.969Z"
-                    style="fill-opacity: 0.25"
-                  />
-                  <path
-                    d="M11.625,257.406L11.625,254.594C11.625,254.128 11.247,253.75 10.781,253.75L7.219,253.75C6.753,253.75 6.375,254.128 6.375,254.594L6.375,257.406C6.375,257.872 6.753,258.25 7.219,258.25L10.781,258.25C11.247,258.25 11.625,257.872 11.625,257.406Z"
-                  />
-                  <path
-                    d="M12.75,248.969L12.75,251.781C12.75,252.247 13.128,252.625 13.594,252.625L17.156,252.625C17.622,252.625 18,252.247 18,251.781L18,248.969C18,248.503 17.622,248.125 17.156,248.125L13.594,248.125C13.128,248.125 12.75,248.503 12.75,248.969Z"
-                    style="fill-opacity: 0.8"
-                  />
-                  <path
-                    d="M11.625,251.781L11.625,248.969C11.625,248.503 11.247,248.125 10.781,248.125L7.219,248.125C6.753,248.125 6.375,248.503 6.375,248.969L6.375,251.781C6.375,252.247 6.753,252.625 7.219,252.625L10.781,252.625C11.247,252.625 11.625,252.247 11.625,251.781Z"
-                    style="fill-opacity: 0.5"
-                  />
-                  <path
-                    d="M4.406,253.75L0.844,253.75C0.378,253.75 0,254.128 0,254.594L0,257.406C0,257.872 0.378,258.25 0.844,258.25L4.406,258.25C4.872,258.25 5.25,257.872 5.25,257.406L5.25,254.594C5.25,254.128 4.872,253.75 4.406,253.75Z"
-                    style="fill-opacity: 0.5"
-                  />
-                  <path
-                    d="M0,260.219L0,263.031C0,263.497 0.378,263.875 0.844,263.875L4.406,263.875C4.872,263.875 5.25,263.497 5.25,263.031L5.25,260.219C5.25,259.753 4.872,259.375 4.406,259.375L0.844,259.375C0.378,259.375 0,259.753 0,260.219Z"
-                    style="fill-opacity: 0.8"
-                  />
-                  <path
-                    d="M13.594,258.25L17.156,258.25C17.622,258.25 18,257.872 18,257.406L18,254.594C18,254.128 17.622,253.75 17.156,253.75L13.594,253.75C13.128,253.75 12.75,254.128 12.75,254.594L12.75,257.406C12.75,257.872 13.128,258.25 13.594,258.25Z"
-                  />
-                  <path
-                    d="M13.594,263.875L17.156,263.875C17.622,263.875 18,263.497 18,263.031L18,260.219C18,259.753 17.622,259.375 17.156,259.375L13.594,259.375C13.128,259.375 12.75,259.753 12.75,260.219L12.75,263.031C12.75,263.497 13.128,263.875 13.594,263.875Z"
-                  />
-                  <path
-                    d="M6.375,260.219L6.375,263.031C6.375,263.497 6.753,263.875 7.219,263.875L10.781,263.875C11.247,263.875 11.625,263.497 11.625,263.031L11.625,260.219C11.625,259.753 11.247,259.375 10.781,259.375L7.219,259.375C6.753,259.375 6.375,259.753 6.375,260.219Z"
-                  />
-                </g>
-              </svg>
-
-              <svg v-else width="16" height="18" viewBox="0 0 18 18">
-                <g transform="matrix(1,0,0,1,0,-2)" fill="currentColor">
-                  <path
-                    d="M1.294,16.976L18.709,17.063L18.853,0.932C9.155,0.932 1.294,7.279 1.294,16.976Z"
-                  />
-                </g>
-              </svg>
+                name="grid_4x4"
+                size="1.25rem"
+              />
+              <material-symbol v-else name="blur_on" size="1.25rem" />
             </button>
             <button
               @click.prevent="incrementPalette"
               ref="cyclePalette"
               data-tooltip="Cycle colour map"
+              class="d-flex align-items-center justify-content-center"
             >
-              <font-awesome-icon icon="palette" />
+              <material-symbol name="palette" size="1.25rem" />
             </button>
             <button
               @click.prevent="requestHeaderInfoDisplay"
               data-tooltip="Show recording header info"
               :class="{ selected: displayHeaderInfo }"
               ref="showHeader"
+              class="d-flex align-items-center justify-content-center"
             >
-              <font-awesome-icon icon="info-circle" />
+              <material-symbol name="info" size="1.25rem" />
             </button>
           </div>
           <div
@@ -2292,9 +2262,8 @@ const playerHeight = computed(() => {
                 @input="updateSavedOpacity"
                 :disabled="!hasReferencePhoto"
                 :style="`background: linear-gradient(to right, yellowgreen 0%, yellowgreen ${referenceOpacity * 100}%, #191e25 ${referenceOpacity * 100}%)`"
-                class="me-2 reference-opacity-slider-el"
+                class="reference-opacity-slider-el"
               />
-              <font-awesome-icon icon="eye" />
             </div>
           </div>
           <button
@@ -2302,10 +2271,10 @@ const playerHeight = computed(() => {
             :class="{ selected: showingReferencePhoto }"
             @click="toggleReferencePhotoComparison"
             ref="toggleReferencePhoto"
-            class="reference-photo-btn"
+            class="reference-photo-btn d-flex align-items-center justify-content-center"
             data-tooltip="Reference photo"
           >
-            <font-awesome-icon icon="panorama" />
+            <material-symbol name="panorama" size="1.25rem" />
           </button>
           <button
             @click.prevent="incrementSpeed"
@@ -2327,18 +2296,20 @@ const playerHeight = computed(() => {
             @click.prevent="stepBackward"
             data-tooltip="Go back one frame"
             :disabled="!canStepBackward"
+            class="d-inline-flex align-items-center justify-content-center"
           >
-            <font-awesome-icon icon="step-backward" />
+            <material-symbol name="skip_previous" size="1.25rem" />
           </button>
           <button
             @click.prevent="stepForward"
             data-tooltip="Go forward one frame"
             :disabled="!canStepForward"
+            class="d-inline-flex align-items-center justify-content-center"
           >
-            <font-awesome-icon icon="step-forward" />
+            <material-symbol name="skip_next" size="1.25rem" />
           </button>
           <button
-            class="d-none d-sm-inline-block"
+            class="d-none d-sm-inline-block d-inline-flex align-items-center justify-content-center"
             @click.prevent="showValueInfo = !showValueInfo"
             :class="{ selected: showValueInfo }"
             :data-tooltip="
@@ -2347,57 +2318,60 @@ const playerHeight = computed(() => {
                 : 'Show raw pixel values under cursor'
             "
           >
-            <font-awesome-icon icon="eye-dropper" />
+            <material-symbol name="colorize" size="1.25rem" />
           </button>
           <button
             @click.prevent="trackHighlightMode = !trackHighlightMode"
             :class="{ selected: trackHighlightMode }"
+            class="d-inline-flex align-items-center justify-content-center"
             :data-tooltip="
               trackHighlightMode
                 ? 'Disable highlight'
                 : 'Highlight selected track'
             "
           >
-            <font-awesome-icon icon="highlighter" />
+            <material-symbol name="ink_highlighter" size="1.25rem" />
           </button>
           <button
-            class="d-none d-sm-inline-block"
+            class="d-none d-sm-inline-block d-inline-flex align-items-center justify-content-center"
             @click.prevent="polygonEditMode = !polygonEditMode"
             :class="{ selected: polygonEditMode }"
             :data-tooltip="
               polygonEditMode ? 'Disable polygon edit' : 'Edit polygons'
             "
           >
-            <font-awesome-icon icon="draw-polygon" />
+            <material-symbol name="polyline" size="1.25rem" />
             <!--         draw-polygon, bezier-curve, vector-square -->
           </button>
           <button
-            class="d-none d-sm-inline-block"
+            class="d-none d-sm-inline-block d-inline-flex align-items-center justify-content-center"
             @click.prevent="silhouetteMode = !silhouetteMode"
             :class="{ selected: silhouetteMode }"
             :data-tooltip="
               silhouetteMode ? 'Disable silhouettes' : 'Show silhouettes'
             "
           >
-            <font-awesome-icon icon="burst" />
+            <material-symbol name="flare" size="1.25rem" />
           </button>
           <button
             @click.prevent="motionPathMode = !motionPathMode"
             :class="{ selected: motionPathMode }"
+            class="d-inline-flex align-items-center justify-content-center"
             :data-tooltip="
               motionPathMode ? 'Hide motion paths' : 'Show motion paths'
             "
           >
-            <font-awesome-icon icon="route" />
+            <material-symbol name="automation" size="1.25rem" />
           </button>
           <button
             :disabled="!hasBackgroundFrame"
             ref="showBackgroundFrame"
             :class="{ selected: isShowingBackgroundFrame }"
+            class="d-inline-flex align-items-center justify-content-center"
             data-tooltip="Press to show background frame"
             @click.prevent="toggleBackground"
           >
-            <font-awesome-icon icon="image" />
+            <material-symbol name="image" size="1.25rem" />
           </button>
         </div>
       </div>
@@ -2662,24 +2636,21 @@ const playerHeight = computed(() => {
       touch-action: manipulation;
       min-width: 44px;
       min-height: 44px;
+      transition: opacity 0.3s;
+      opacity: 0.5;
       &.hide {
         opacity: 0;
-      }
-      > svg {
-        transition: opacity 0.3s;
-        opacity: 0.5;
       }
       &:hover:not(:disabled),
       &:hover:not(.disabled),
       &:active:not(:disabled),
       &:active:not(.disabled) {
-        > svg {
-          opacity: 0.8;
-        }
+        opacity: 0.8;
       }
       &:disabled,
       &.disabled {
-        > svg {
+        opacity: 0.1;
+        &:hover {
           opacity: 0.1;
         }
       }

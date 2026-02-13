@@ -15,20 +15,24 @@
               standalone ? 'px-3' : 'px-1',
               compact ? 'py-2' : 'py-3',
               { sortable: !!sorts[heading] },
+              /*{ 'ct-vertical': [sorts[heading]]}*/
             ]"
             @click="toggleSorting(heading)"
           >
             {{ heading }}
-            <span
+            <button
               v-if="!!sorts[heading] && sorts[heading].direction !== 'none'"
-              class="sort-icon"
+              class="btn btn-sm p-0 ms-1"
             >
-              <font-awesome-icon
-                :icon="'arrow-up'"
-                :flip="sorts[heading].direction === 'desc' ? 'vertical' : null"
+              <material-symbol
+                :name="
+                  sorts[heading].direction === 'desc'
+                    ? 'arrow_downward'
+                    : 'arrow_upward'
+                "
+                size="1.125rem"
               />
-            </span>
-            <span v-else class="sort-icon"></span>
+            </button>
           </th>
         </tr>
       </thead>
@@ -80,7 +84,7 @@
       :class="{ standalone: standalone }"
     >
       <!--        TODO -->
-<!--      <div v-if="hasSorts">
+      <!--      <div v-if="hasSorts">
       </div>-->
       <div
         v-for="(card, cardIndex) in sortedItems"
@@ -145,6 +149,7 @@ import type {
   GenericCardTableValue,
 } from "@/components/CardTableTypes";
 import { useElementSize } from "@vueuse/core";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const props = withDefaults(
   defineProps<{
@@ -413,11 +418,6 @@ const displayedItems = computed<{
       background: var(--bs-gray-200);
     }
     cursor: default;
-  }
-  .sort-icon {
-    margin-left: 10px;
-    display: inline-block;
-    min-width: 20px;
   }
 }
 </style>

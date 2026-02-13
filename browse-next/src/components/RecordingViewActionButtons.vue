@@ -208,17 +208,14 @@ const notImplemented = () => {
         <material-symbol name="download" size="1.25rem" />
       </template>
       <b-dropdown-item-button @click="() => emit('requested-export')">
-        <font-awesome-icon :icon="['far', 'file-video']" />
         Export Video
       </b-dropdown-item-button>
       <b-dropdown-item-button @click="() => emit('requested-advanced-export')">
-        <font-awesome-icon :icon="['far', 'file-video']" />
         Export Video (Advanced)
       </b-dropdown-item-button>
       <b-dropdown-divider />
       <b-dropdown-item-button @click="() => emit('requested-download')">
-        <font-awesome-icon :icon="['far', 'file']" />
-        Download CPTV
+        Download CPTV File
       </b-dropdown-item-button>
     </b-dropdown>
     <button

@@ -3,6 +3,7 @@ import { BModal } from "bootstrap-vue-next";
 import { ref, watch } from "vue";
 import { MAX_RETRY_COUNT, networkConnectionError } from "@/api";
 import { delayMs, delayMsThen } from "@/utils";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 const countDownInterval = ref(0);
 const countDown = ref(networkConnectionError.retryInterval / 1000);
 const show = ref(true);
@@ -62,13 +63,13 @@ watch(
     busy
     no-close-on-backdrop
     no-footer
-    hide-header
+    no-header
   >
     <div
-      class="bg-danger align-items-center justify-content-center d-flex text-light"
+      class="bg-danger align-items-center justify-content-center d-flex text-light p-3"
     >
-      <font-awesome-icon icon="triangle-exclamation" size="lg" class="m-3" />
-      <span class="d-md-none">Network Connection Error</span>
+      <material-symbol name="warning" />
+      <span class="d-md-none ms-2">Network Connection Error</span>
     </div>
     <div class="p-3">
       <h1 class="h6">Currently unable to reach Cacophony API.</h1>

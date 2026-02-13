@@ -528,7 +528,7 @@ const isDevicesRoot = computed(() => {
     >
       <b-button
         class="ps-0 py-0 d-none d-md-flex"
-        variant="link"
+        variant="light"
         :to="{
           name: 'devices',
           params: {
@@ -536,7 +536,7 @@ const isDevicesRoot = computed(() => {
           },
         }"
       >
-        <font-awesome-icon icon="arrow-left" size="lg" color="#333" />
+        <material-symbol name="arrow_back" size="1.5rem" />
       </b-button>
       <div
         class="d-flex flex-grow-1 justify-content-between align-items-center"
@@ -563,13 +563,7 @@ const isDevicesRoot = computed(() => {
                 'recording-mode': deviceRecordingMode,
               },
             }"
-            ><span class="d-sm-block d-none me-sm-2">View Recordings</span>
-            <font-awesome-icon
-              icon="arrow-turn-down"
-              :rotation="270"
-              size="xs"
-              class="ps-1"
-            />
+            ><span class="d-sm-block d-none">View Recordings</span>
           </b-button>
         </device-name>
       </div>
@@ -648,7 +642,11 @@ const isDevicesRoot = computed(() => {
               class="d-flex power-status-icon align-items-center justify-content-center"
               :class="[cell]"
             >
-              <font-awesome-icon icon="power-off" v-if="cell !== '-'" />
+              <material-symbol
+                name="power_settings_new"
+                size="1rem"
+                v-if="cell !== '-'"
+              />
             </span>
             <span class="ms-2" v-if="cell !== '-'">{{ cell }}</span>
           </div>
@@ -706,9 +704,7 @@ const isDevicesRoot = computed(() => {
         <template #card="{ card }: { card: DeviceTableItem }">
           <div class="d-flex flex-row">
             <div class="overflow-hidden flex-grow-1">
-              <div
-                class="d-flex align-items-center"
-              >
+              <div class="d-flex align-items-center">
                 <device-name
                   :name="card.deviceName"
                   :type="card.__type"
@@ -722,10 +718,10 @@ const isDevicesRoot = computed(() => {
               </div>
               <div></div>
               <location-name
-              @click.stop.prevent="
-                () => {
-                  highlightedDeviceInternal = card;
-                }
+                @click.stop.prevent="
+                  () => {
+                    highlightedDeviceInternal = card;
+                  }
                 "
                 v-if="card.__location !== ''"
                 :name="card.__location"

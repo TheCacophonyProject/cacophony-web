@@ -362,10 +362,10 @@ defineExpose({
         >
           {{ option.display || option.label }}
           <span
-            class="selected-option-icon d-flex justify-content-center align-items-center ms-1 p-1"
+            class="selected-option-icon d-flex justify-content-center align-items-center mx-1"
             @click="() => removeSelectedOption(option)"
           >
-            <font-awesome-icon icon="times" />
+            <material-symbol name="close" size="1rem" />
           </span>
         </button>
       </div>
@@ -431,10 +431,10 @@ defineExpose({
             v-if="option.children"
             @click="() => setToPath(option.label)"
           >
-            <font-awesome-icon
+            <material-symbol
               id="child-button-icon"
-              icon="angle-double-right"
-              class="fa-1x"
+              name="keyboard_double_arrow_right"
+              size="1.125rem"
             />
           </button>
         </div>

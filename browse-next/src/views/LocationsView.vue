@@ -319,7 +319,7 @@ const updateLocationName = async (payload: {
             @show-rename-hint="showRenameHint"
             @hide-rename-hint="hideRenameHint"
             @updated-location-name="updateLocationName"
-            class="mb-3 mb-sm-4"
+            class="mb-4"
           />
 
           <h6 v-if="locationsActiveInLastMonth.length" class="h4 mb-3">
@@ -334,7 +334,7 @@ const updateLocationName = async (payload: {
             @show-rename-hint="showRenameHint"
             @hide-rename-hint="hideRenameHint"
             @updated-location-name="updateLocationName"
-            class="mb-3 mb-sm-4"
+            class="mb-4"
           />
 
           <h6 v-if="locationsActiveInLastYear.length" class="h4 mb-3">
@@ -349,7 +349,7 @@ const updateLocationName = async (payload: {
             @show-rename-hint="showRenameHint"
             @hide-rename-hint="hideRenameHint"
             @updated-location-name="updateLocationName"
-            class="mb-3 mb-sm-4"
+            class="mb-4"
           />
 
           <h6 v-if="locationsNotActiveInLastYear.length" class="h4 mb-3">
@@ -364,7 +364,7 @@ const updateLocationName = async (payload: {
             @show-rename-hint="showRenameHint"
             @hide-rename-hint="hideRenameHint"
             @updated-location-name="updateLocationName"
-            class="mb-3 mb-sm-4"
+            class="mb-4"
           />
           <h6 v-if="retiredLocations.length" class="h4 mb-3">Retired</h6>
           <locations-overview-table
@@ -376,7 +376,7 @@ const updateLocationName = async (payload: {
             @show-rename-hint="showRenameHint"
             @hide-rename-hint="hideRenameHint"
             @updated-location-name="updateLocationName"
-            class="mb-3 mb-sm-4"
+            class="mb-4"
           />
         </div>
         <div

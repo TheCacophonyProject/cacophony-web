@@ -1216,24 +1216,28 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         <b-button
           @click.prevent="starredLabel = !starredLabel"
           variant="outline-secondary"
-          class="w-100"
+          class="w-100 d-flex flex-wrap align-items-center justify-content-center gap-2"
         >
-          <font-awesome-icon
-            :icon="starredLabel ? ['fas', 'star'] : ['far', 'star']"
-            :color="starredLabel ? 'goldenrod' : ''"
+          <material-symbol
+            name="star"
+            size="1.25rem"
+            :style="starredLabel ? `color:goldenrod` : ''"
+            :filled="starredLabel"
           />
-          <span class="ms-2">Starred</span>
+          <span>Starred</span>
         </b-button>
         <b-button
           @click.prevent="flaggedLabel = !flaggedLabel"
           variant="outline-secondary"
-          class="w-100"
+          class="w-100 d-flex flex-wrap align-items-center justify-content-center gap-2"
         >
-          <font-awesome-icon
-            :icon="flaggedLabel ? ['fas', 'flag'] : ['far', 'flag']"
-            :color="flaggedLabel ? '#ad0707' : ''"
+          <material-symbol
+            name="flag"
+            size="1.25rem"
+            :style="flaggedLabel ? `color:#ad0707` : ''"
+            :filled="flaggedLabel"
           />
-          <span class="ms-2">Flagged</span>
+          <span>Flagged</span>
         </b-button>
       </div>
       <multiselect

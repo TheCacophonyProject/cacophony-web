@@ -2028,7 +2028,7 @@ onBeforeUnmount(() => {
     >
       <div class="search-results-toggle position-fixed d-md-none d-block">
         <b-button @click="toggleOffcanvasSearch">
-          <font-awesome-icon icon="sliders" />
+          <material-symbol name="search_gear" size="1.25rem" class="py-1" />
         </b-button>
       </div>
       <b-offcanvas

@@ -123,11 +123,11 @@ const doAddNote = async () => {
     >
       <template #_deleteAction="{ cell }">
         <button
-          class="btn text-secondary"
+          class="btn btn-icon"
           v-if="cell.value.id !== -1"
           @click.prevent="() => removeNote(cell.value.id)"
         >
-          <font-awesome-icon icon="trash-can" />
+          <material-symbol name="delete" size="1.25rem" />
         </button>
         <span v-else></span>
       </template>
@@ -144,10 +144,10 @@ const doAddNote = async () => {
             v-if="
               card._deleteAction.value && card._deleteAction.value.id !== -1
             "
-            class="btn text-secondary"
+            class="btn btn-icon"
             @click.prevent="() => removeNote(card._deleteAction.value.id)"
           >
-            <font-awesome-icon icon="trash-can" />
+            <material-symbol name="delete" size="1.25rem" />
           </button>
         </div>
       </template>

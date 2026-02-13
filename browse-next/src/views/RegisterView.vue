@@ -17,6 +17,7 @@ import {
 } from "@apiClient/types";
 import type { FormInputValue, FormInputValidationState } from "@/utils";
 import { useRouter } from "vue-router";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 // ---------- userName ------------
 const userName: FormInputValue = formFieldInputText();
@@ -293,7 +294,10 @@ const register = async () => {
             class="input-group-text toggle-password-visibility-btn justify-content-center"
             @click.stop.prevent="togglePasswordVisibility"
           >
-            <font-awesome-icon :icon="showPassword ? 'eye-slash' : 'eye'" />
+            <material-symbol
+              :name="showPassword ? 'visibility_off' : 'visibility'"
+              size="1.25rem"
+            />
           </button>
         </div>
         <b-form-invalid-feedback :state="needsValidationAndIsValidPassword">

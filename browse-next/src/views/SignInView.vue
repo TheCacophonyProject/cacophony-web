@@ -17,6 +17,7 @@ import {
   BFormInvalidFeedback,
   BSpinner,
 } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const showPassword = ref(false);
 const togglePasswordVisibility = () => {
@@ -148,7 +149,10 @@ const signInFormIsFilledAndValid = computed<boolean>(
             class="input-group-text toggle-password-visibility-btn justify-content-center"
             @click.stop.prevent="togglePasswordVisibility"
           >
-            <font-awesome-icon :icon="showPassword ? 'eye-slash' : 'eye'" />
+            <material-symbol
+              :name="showPassword ? 'visibility_off' : 'visibility'"
+              size="1.25rem"
+            />
           </button>
         </div>
         <b-form-invalid-feedback :state="needsValidationAndIsValidPassword">

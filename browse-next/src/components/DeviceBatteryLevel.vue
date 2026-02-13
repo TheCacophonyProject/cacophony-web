@@ -5,6 +5,7 @@ import type { BatteryInfoEvent, LoadedResource } from "@apiClient/types.ts";
 import { ClientApi } from "@/api";
 import { resourceFailedLoading, resourceIsLoading } from "@/helpers/utils.ts";
 import { BSpinner } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const props = withDefaults(
   defineProps<{
@@ -88,8 +89,9 @@ watch(
       batteryLevelInfo.battery === 100
     "
     :class="{ active: deviceIsActive, inactive: !deviceIsActive }"
+    class="d-inline-flex align-items-center"
   >
-    <font-awesome-icon icon="plug" />
+    <material-symbol name="power" size="1.125rem" />
     <span v-if="props.showLevel" class="ms-1"
       >{{ (batteryLevelInfo as BatteryInfoEvent).battery }}%</span
     >

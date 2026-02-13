@@ -145,7 +145,7 @@
                   class="d-flex flex-wrap align-items-start gap-1"
                 >
                   <span
-                    class="visit-species-tag text-capitalize"
+                    class="visit-species-tag d-flex align-items-center text-capitalize"
                     :class="(tag.path && tag.path.split('.')) || ''"
                     :key="tag.what"
                     v-for="tag in canonicalTagsForRecording(item.data)"
@@ -154,25 +154,23 @@
                         tag.what,
                         tag.automatic && !tag.human,
                       )
-                    }}</span
-                    ><font-awesome-icon
-                      icon="check"
-                      size="xs"
+                    }}</span>
+                    <material-symbol
                       v-if="tag.human && tag.automatic"
-                      class="mx-1 align-middle"
-                      style="padding-bottom: 2px"
-                    /><font-awesome-icon
-                      icon="user"
-                      size="xs"
+                      name="check"
+                      size="1.125rem"
+                    />
+                    <material-symbol
                       v-else-if="tag.human"
-                      class="mx-1 align-middle"
-                      style="padding-bottom: 2px"
-                    /><font-awesome-icon
-                      icon="cog"
-                      size="xs"
+                      name="person"
+                      filled
+                      size="1rem"
+                    />
+                    <material-symbol
                       v-else-if="tag.automatic"
-                      class="mx-1 align-middle"
-                      style="padding-bottom: 2px"
+                      name="settings"
+                      filled
+                      size="0.875rem"
                     />
                   </span>
                 </span>
