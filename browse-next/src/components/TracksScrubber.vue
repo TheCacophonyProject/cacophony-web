@@ -303,7 +303,7 @@ const currentTrackIndex = computed<number>(() => {
 </template>
 <style scoped lang="less">
 .track-scrubber {
-  background: #2b333f;
+  background: var(--cp-player-toolbar-bg);
   min-height: 0;
   //transition: height 0.3s;
   /* Above the motion paths canvas if it exists */

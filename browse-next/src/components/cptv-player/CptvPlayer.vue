@@ -2489,7 +2489,7 @@ const playerHeight = computed(() => {
 .cptv-player {
   position: relative;
   user-select: none;
-  background: #202731;
+  background: color-mix(in srgb, var(--cp-player-toolbar-bg), var(--bs-black) 25%);
   .video-canvas {
     width: 100%;
     height: 100%;
@@ -2520,20 +2520,20 @@ const playerHeight = computed(() => {
   .temp,
   .value-tooltip {
     position: absolute;
-    right: 7px;
-    bottom: 7px;
-    font-size: 12px;
-    line-height: 12px;
-    color: white;
+    right: var(--cp-spacing-xs);
+    bottom: var(--cp-spacing-xs);
+    font-size: var(--cp-font-size-sm);
+    line-height: var(--cp-line-height-sm);
+    color: var(--bs-white);
     background: rgba(0, 0, 0, 0.3);
-    border-radius: 4px;
-    padding: 3px;
+    border-radius: var(--bs-border-radius-sm);
+    padding: var(--cp-spacing-xxxs) var(--cp-spacing-xxs);
     user-select: none;
     pointer-events: none;
   }
   .temp {
     //top: 7px;
-    left: 7px;
+    left: var(--cp-spacing-xs);
     right: unset;
     //bottom: unset;
   }
@@ -2585,9 +2585,9 @@ const playerHeight = computed(() => {
     right: 0;
     text-align: center;
     display: block;
-    bottom: 50px;
-    color: white;
-    font-size: 20px;
+    bottom: calc(var(--cp-grid-base) * 12); // 48px
+    color: var(--bs-white);
+    font-size: var(--cp-font-size-h2);
     opacity: 0;
     transform-origin: center;
     &.show {
@@ -2599,7 +2599,7 @@ const playerHeight = computed(() => {
   }
 
   .playback-controls {
-    color: white;
+    color: var(--bs-white);
     position: absolute;
     top: 0;
     right: 0;
@@ -2676,7 +2676,7 @@ const playerHeight = computed(() => {
   .playback-nav,
   .debug-tools {
     min-height: 44px;
-    background: #2b333f;
+    background: var(--cp-player-toolbar-bg);
     color: white;
     display: flex;
     position: relative;
@@ -2695,7 +2695,7 @@ const playerHeight = computed(() => {
       }
       &:active:not(:disabled),
       &.selected:not(:disabled) {
-        color: yellowgreen;
+        color: var(--cp-color-primary);
       }
       &:disabled {
         color: rgba(255, 255, 255, 0.1);
@@ -2733,7 +2733,7 @@ const playerHeight = computed(() => {
     }
   }
   .debug-tools {
-    background: darken(#2b333f, 2%);
+    background: color-mix(in srgb, var(--cp-player-toolbar-bg), var(--bs-black) 10%);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     min-height: 0;
     height: 0;
@@ -2792,7 +2792,7 @@ const playerHeight = computed(() => {
       justify-content: space-between;
       border-color: transparent;
       &.dragging {
-        background-color: #2b333f;
+        background-color: var(--cp-player-toolbar-bg);
       }
       &::after {
         position: unset;
@@ -2883,7 +2883,7 @@ const playerHeight = computed(() => {
   overflow: hidden;
   width: 0;
   transition: width 0.3s ease-in-out;
-  background: #2b333f;
+  background: var(--cp-player-toolbar-bg);
   border-radius: 1em 1em 0 0;
   .reference-opacity-toggle {
     width: 48px;
@@ -2935,14 +2935,14 @@ input[type="range"].reference-opacity-slider-el {
   -webkit-appearance: none;
   appearance: none;
   box-shadow: inset 0 1px 2px #000;
-  border-radius: 3.5px;
-  height: 9px;
+  border-radius: 4px;
+  height: 8px;
   pointer-events: auto;
   &::-webkit-slider-thumb {
     touch-action: manipulation;
     background: lighten(yellowgreen, 20%);
-    width: 15px;
-    height: 15px;
+    width: 14px;
+    height: 14px;
     outline: 0;
     border: 0;
     border-radius: 50%;
@@ -2955,8 +2955,8 @@ input[type="range"].reference-opacity-slider-el {
   }
   &::-moz-range-thumb {
     background: lighten(yellowgreen, 10%);
-    width: 15px;
-    height: 15px;
+    width: 14px;
+    height: 14px;
     outline: 0;
     border: 0;
     transition: background-color 0.2s ease-in-out;
@@ -2969,13 +2969,16 @@ input[type="range"].reference-opacity-slider-el {
   }
 }
 .video-footer {
-  -webkit-text-stroke-width: 1px;
-  -webkit-text-stroke-color: rgba(0, 0, 0, 0.5);
-  font-weight: 900;
-  font-family: sans-serif;
-  font-size: 13px;
+/*  -webkit-text-stroke-width: 1px;
+  -webkit-text-stroke-color: rgba(0, 0, 0, 0.5);*/
   user-select: none;
   pointer-events: none;
+  span {
+    font-weight: var(--cp-font-weight-medium);
+    font-size: var(--cp-font-size-sm);
+    // compounding of shadows is intentional, as there's no spread property for text shadow
+    text-shadow: 0px 0px 2px rgba(0,0,0,1), 0px 0px 2px rgba(0,0,0,1), 0px 0px 2px rgba(0,0,0,1), 0px 0px 2px rgba(0,0,0,1);
+  }
   //overlayContext.lineWidth = 4;
   //overlayContext.strokeStyle = "rgba(0, 0, 0, 0.5)";
   //overlayContext.lineJoin = "round";

@@ -143,17 +143,17 @@ watch(
   color: var(--bs-secondary-color);
 }
 .inactive {
-  color: rgba(0, 0, 0, 0.4);
+  color: var(--bs-tertiary-color);
   .voltage {
     color: inherit;
   }
 }
 
 .active > .battery-warning {
-  color: red;
+  color: var(--bs-danger);
 }
 
 .inactive > .battery-warning {
-  color: color-mix(in oklab, rgba(255, 0, 0, 0.6) 50%, #888 50%);
+  color: color-mix(in oklab, var(--bs-danger) 50%, var(--bs-secondary-color) 50%);
 }
 </style>

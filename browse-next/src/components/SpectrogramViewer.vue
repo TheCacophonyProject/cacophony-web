@@ -1762,7 +1762,7 @@ const isMobileView = computed<boolean>(() => {
 }
 .player-controls {
   min-height: 44px;
-  background: var(--bs-gray-900);
+  background: var(--cp-player-toolbar-bg);
   color: var(--bs-white);
   display: flex;
   position: relative;
