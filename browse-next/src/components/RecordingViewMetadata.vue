@@ -12,11 +12,13 @@ import { timezoneForLatLng } from "@models/visitsUtils.ts";
 import type { NamedPoint } from "@models/mapUtils.ts";
 import { RecordingType } from "@typedefs/api/consts.ts";
 import { useMediaQuery } from "@vueuse/core";
+import { useRoute } from "vue-router";
 
 const props = defineProps<{
   recording: LoadedResource<ApiRecordingResponse>;
 }>();
 
+const route = useRoute();
 const isMobile = useMediaQuery("(max-width: 991px)");
 const isDesktop = useMediaQuery("(min-width: 992px)");
 
@@ -24,7 +26,16 @@ const recordingType = computed<RecordingType | null>(() => {
   if (props.recording) {
     return (props.recording as ApiRecordingResponse).type;
   }
-  return null;
+  if (
+    ["dashboard-visit", "activity-visit"].includes(
+      route.meta.context as string,
+    ) ||
+    route.query["recording-mode"] === "cameras"
+  ) {
+    return RecordingType.ThermalRaw;
+  } else {
+    return RecordingType.Audio;
+  }
 });
 
 const currentLocationName = computed<string>(() => {

@@ -764,6 +764,7 @@ const loadRecording = async () => {
   if (currentRecordingId.value) {
     // Load the current recording, and then preload the next and previous recordings.
     // This behaviour will differ depending on whether we're viewing raw recordings or visits.
+    recording.value = null;
     const recordingResponse = await ClientApi.Recordings.getRecordingById(
       currentRecordingId.value,
     );
