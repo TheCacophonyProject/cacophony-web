@@ -2052,7 +2052,7 @@ onBeforeUnmount(() => {
           <b-button @click="showOffcanvasSearch = false">Search</b-button>
         </div>
       </b-offcanvas>
-      <div class="search-controls-scroll w-100 h-100 pb-3 me-xxl-3">
+      <div class="search-controls-scroll w-100 pb-3 me-xxl-3">
         <div class="search-controls" v-if="shouldShowSearchControlsInline">
           <activity-search-parameters
             :params="searchParams"
