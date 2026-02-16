@@ -13,7 +13,6 @@ const props = withDefaults(
     currentTrack?: ApiTrackResponse;
     sidePadding?: number;
     playbackTime: number;
-    scrollOffsetY?: number;
   }>(),
   { tracks: () => [], sidePadding: 1, playbackTime: 0 },
 );
@@ -31,36 +30,9 @@ const emit = defineEmits<{
 }>();
 
 const playhead = ref<HTMLCanvasElement | null>(null);
-
 const trackDimensions = ref<TrackDimensions[]>([]);
 const numUniqueYSlots = ref(0);
-const minScrubberHeight = 44;
 const scrubberWidth = ref(0);
-const { width: viewportWidth } = useWindowSize();
-
-const trackHeight = computed(() => {
-  const trackSlots = numUniqueYSlots.value;
-  const useShrink = trackSlots > 4;
-  const maxHeight = viewportWidth.value * 0.75;
-  const minHeight = 200;
-  const shrinkAmount = useShrink
-    ? Math.min(
-        1,
-        Math.max(0, (props.scrollOffsetY || 0) / (maxHeight - minHeight)),
-      )
-    : 0;
-  const maxScrollShrink = 4;
-  return 7 - maxScrollShrink * shrinkAmount;
-});
-
-const heightForTracks = computed((): number => {
-  if (props.tracks.length === 0) {
-    return minScrubberHeight;
-  }
-  let h = trackHeight.value * (numUniqueYSlots.value + 4); // + props.tracks.length - 1;
-  h = Math.max(44, h);
-  return h;
-});
 
 const getSlotYForTrack = (
   trackIndex: number,
@@ -124,7 +96,12 @@ const initTrackDimensions = (tracks: IntermediateTrack[]): void => {
     }
     trackDimensions.value = dimensions;
   }
-  numUniqueYSlots.value = Object.keys(uniqueYSlots).length;
+  const ySlots = Object.keys(uniqueYSlots).length;
+  numUniqueYSlots.value = ySlots;
+  document.documentElement.style.setProperty(
+    "--num-unique-y-slots",
+    ySlots.toString(),
+  );
 };
 
 onMounted(() => {
@@ -139,14 +116,6 @@ watch(
     updatePlayhead(props.playbackTime, scrubberWidth.value, pixelRatio.value);
   },
 );
-
-// watch(
-//     () => props.scrollOffsetY,
-//     () => {
-//       initTrackDimensions(props.tracks);
-//       updatePlayhead(props.playbackTime, scrubberWidth.value, pixelRatio.value);
-//     },
-// );
 
 watch(
   () => props.tracks,
@@ -262,14 +231,7 @@ const currentTrackIndex = computed<number>(() => {
     @scrub-end="() => emit('end-scrub')"
     v-slot="{ width }"
   >
-    <div
-      class="track-scrubber"
-      :style="{
-        // paddingTop: `${trackHeight / 2}px`,
-        // paddingBottom: `${trackHeight / 2}px`,
-        height: `${heightForTracks}px`,
-      }"
-    >
+    <div class="track-scrubber">
       <div
         v-for="index in Math.min(tracks.length, trackDimensions.length)"
         :key="index - 1"
@@ -285,8 +247,7 @@ const currentTrackIndex = computed<number>(() => {
           }%`,
           top: `calc(${
             ((trackDimensions[index - 1].top + 1) / (numUniqueYSlots + 1)) * 100
-          }% - ${trackHeight / 2}px)`,
-          height: `${trackHeight}px`,
+          }% - calc(var(--track-height) / 2))`,
         }"
         class="scrub-track"
       />
@@ -296,26 +257,19 @@ const currentTrackIndex = computed<number>(() => {
       class="playhead"
       :width="width * pixelRatio"
       height="1"
-      :style="{ height: `${heightForTracks}px` }"
     ></canvas>
     <div class="playhead"></div>
   </scrubber-wrapper>
 </template>
-<style scoped lang="less">
+<style lang="css">
 .track-scrubber {
   background: var(--cp-player-toolbar-bg);
-  min-height: 0;
   //transition: height 0.3s;
   /* Above the motion paths canvas if it exists */
   box-shadow: 0 1px 5px #000 inset;
   cursor: col-resize;
   position: relative;
-}
-.scrub-track {
-  transition: opacity 0.3s linear;
-  height: 12px;
-  border-radius: 5px;
-  position: absolute;
+  height: calc(var(--height-for-tracks));
 }
 .playhead {
   position: absolute;
@@ -324,7 +278,15 @@ const currentTrackIndex = computed<number>(() => {
   right: 0;
   bottom: 0;
   width: 100%;
-  min-height: 44px;
+  //min-height: 44px;
   pointer-events: none;
+  height: calc(var(--height-for-tracks));
+}
+
+.scrub-track {
+  transition: opacity 0.3s linear;
+  border-radius: 5px;
+  position: absolute;
+  height: calc(var(--track-height));
 }
 </style>

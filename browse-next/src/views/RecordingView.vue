@@ -81,7 +81,6 @@ const emit = defineEmits<{
   (e: "recording-updated", recordingId: RecordingId, action: string): void;
 }>();
 const inlineModalEl = ref<HTMLDivElement>();
-const stickyTabs = useTemplateRef("stickyTabs");
 const { height: inlineModalHeight } = useElementSize(inlineModalEl);
 watch(inlineModalHeight, (newHeight) => {
   if (inlineModalEl.value) {
@@ -959,6 +958,12 @@ const isMobileView = computed<boolean>(() => {
   return !isDesktop.value;
 });
 
+watch(isMobileView, (next) => {
+  if (!next) {
+    document.documentElement.style.setProperty("--scroll-y-offset", `0px`);
+  }
+});
+
 const recordingViewContext: string = (route.meta as Record<string, string>)
   .context;
 
@@ -1227,12 +1232,14 @@ const deleteRecording = async () => {
   }
 };
 const inlineModal = ref<boolean>(false);
-const scrollOffsetY = ref<number>(0);
 const onScroll = (e: Event) => {
   // So, when we make the player smaller, we're also *reducing* the scrollTop amount again.
   const scrollTop = (e.target as HTMLElement).scrollTop;
   if (playerContainer.value) {
-    scrollOffsetY.value = scrollTop;
+    document.documentElement.style.setProperty(
+      "--scroll-y-offset",
+      `${Math.max(0, scrollTop).toString()}px`,
+    );
   }
 };
 </script>
@@ -1312,10 +1319,8 @@ const onScroll = (e: Event) => {
           class="player-container bg-black"
           ref="playerContainer"
           :class="{ 'sticky-top': isMobileView }"
-          :style="{ 'margin-bottom': `${Math.min(200, scrollOffsetY)}px` }"
         >
           <cptv-player
-            :scroll-offset-y="scrollOffsetY"
             :recording="recording as ApiRecordingResponse"
             :recording-id="currentRecordingId"
             :download-progress="downloadProgress"
@@ -1345,9 +1350,7 @@ const onScroll = (e: Event) => {
           :recording="recording"
           :current-track="currentTrack"
           v-if="isMobileView"
-          class="sticky-top"
-          :style="{ top: `${playerHeight.height.value}px` }"
-          ref="stickyTabs"
+          class="sticky-top recording-tabs-mobile"
         />
         <div
           class="recording-info d-flex flex-column flex-fill"
@@ -1803,9 +1806,61 @@ const onScroll = (e: Event) => {
 .player-and-tagging {
   overscroll-behavior-y: none;
   .video-container {
+    height: var(--video-container-height);
+
     @media screen and (min-width: @breakpoint-lg) and (max-width: @breakpoint-lg-max) {
       max-width: 576px;
     }
   }
+}
+.player-container {
+  margin-bottom: min(var(--min-player-height), var(--scroll-y-offset));
+}
+:root {
+  --scroll-y-offset: 0px;
+  --num-unique-y-slots: 0;
+  --min-player-height: 150px;
+  --max-player-height: min(480px, 75svw);
+
+  --max-scroll-y-offset: calc(
+    var(--max-player-height) - var(--min-player-height)
+  );
+  // Shrink amount should be in the range 0..1
+  --scroll-ratio: calc(var(--scroll-y-offset) / var(--max-scroll-y-offset));
+  --shrink-amount: 1;
+  //calc(
+  //    min(
+  //        1,
+  //        max(
+  //            0,
+  //            var(--scroll-ratio)
+  //        )
+  //    )
+  //);
+  //--shrink-amount: calc(min(1, max(0, calc(0))));
+  --track-height: calc(7px - calc(4px * var(--shrink-amount)));
+  --min-height-for-tracks: 44px;
+  --player-chrome-height: 44px;
+  --height-for-tracks: calc(
+    max(
+      var(--min-height-for-tracks),
+      calc(var(--track-height, 0px) * calc(var(--num-unique-y-slots) + 4))
+    )
+  );
+  --video-container-height: calc(
+    min(
+      var(--max-player-height),
+      max(
+        var(--min-player-height),
+        calc(var(--max-player-height) - var(--scroll-y-offset))
+      )
+    )
+  );
+}
+.recording-tabs-mobile {
+  top: calc(
+    var(--video-container-height) + var(--height-for-tracks) +
+      var(--player-chrome-height)
+  );
 }
 </style>

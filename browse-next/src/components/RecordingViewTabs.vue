@@ -128,19 +128,19 @@ const isMobileView = computed<boolean>(() => {
       :class="[
         ...navLinkClasses,
         {
-          active: activeTabName === `${recordingViewContext}-location`,
+          active: activeTabName === `${recordingViewContext}-info`,
         },
       ]"
-      title="Location"
+      title="Info"
       :to="{
-        name: `${recordingViewContext}-location`,
+        name: `${recordingViewContext}-info`,
         params: {
           ...route.params,
           trackId: currentTrack?.id || tracks[0]?.id,
         },
         query: route.query,
       }"
-      >Location
+      >Info
     </router-link>
   </ul>
 </template>

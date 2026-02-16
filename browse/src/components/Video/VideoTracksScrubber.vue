@@ -219,6 +219,7 @@ export default {
   transition: opacity 0.3s linear;
   border-radius: 5px;
   position: absolute;
+  height: calc(1px - 1px);
 }
 .playhead {
   height: 100%;

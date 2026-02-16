@@ -562,7 +562,7 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
       recording &&
       recording.processingState === RecordingProcessingState.Tracking
     "
-    class="d-flex justify-content-center align-items-center mt-3"
+    class="d-flex justify-content-center flex-grow-1 align-items-center mt-3"
   >
     <div>
       <b-spinner variant="secondary" small class="me-2" />Track creation in
@@ -617,14 +617,14 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
   </div>
   <div
     v-else
-    class="d-flex justify-content-center align-items-center loading p-5 h-100"
+    class="d-flex justify-content-center flex-grow-1 align-items-center loading p-5 h-100"
   >
     <b-spinner variant="secondary" />
   </div>
 </template>
 <style scoped>
 .accordion {
-  //overflow: auto;
+  overflow: auto;
   transition: background-color 0.2s linear;
   //min-height: 100%;
   &.has-selected {

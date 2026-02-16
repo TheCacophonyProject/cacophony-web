@@ -39,6 +39,7 @@ import {
 } from "@api/classificationsUtils.ts";
 import { BSpinner } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import { useElementSize } from "@vueuse/core";
 
 const props = defineProps<{
   track: ApiTrackResponse;
@@ -68,6 +69,14 @@ const showClassificationSearch = ref<boolean>(false);
 const showTaggerDetails = ref<boolean>(false);
 const tagSelect = ref<typeof HierarchicalTagSelect>();
 const trackDetails = ref<HTMLDivElement>();
+
+const { width: trackDetailWidth } = useElementSize(trackDetails);
+watch(trackDetailWidth, () => {
+  if (expandedInternal.value) {
+    // Any time the width changes, if the accordion item is expanded, reevaluate the height.
+    handleExpansion(expandedInternal.value);
+  }
+});
 
 const currentSelectedProject = inject(currentProject) as Ref<SelectedProject>;
 const CurrentUser = inject(currentUser) as Ref<LoadedResource<LoggedInUser>>;
@@ -129,29 +138,20 @@ const expanded = computed<boolean>(() => {
 
 const handleExpansion = (isExpanding: boolean) => {
   if (isExpanding) {
-    if (trackDetails.value) {
-      (trackDetails.value as HTMLDivElement).style.height = `${
-        (trackDetails.value as HTMLDivElement).scrollHeight
-      }px`;
-    }
+    resizeElementToContents(trackDetails.value);
   } else {
     if (trackDetails.value) {
       (trackDetails.value as HTMLDivElement).style.height = "0";
     }
   }
   expandedInternal.value = isExpanding;
-  setTimeout(onMount, 200);
+  setTimeout(onMount, 150);
 };
 
 const onMount = () => {
   if (expandedInternal.value) {
-    if (trackDetails.value) {
-      (trackDetails.value as HTMLDivElement).style.height = `${
-        (trackDetails.value as HTMLDivElement).scrollHeight
-      }px`;
-    }
+    resizeElementToContents(trackDetails.value);
   }
-  mounting.value = false;
 };
 
 watch(expanded, handleExpansion);
@@ -163,12 +163,12 @@ watch(
     }
   },
 );
-const resizeElementToContents = (el: HTMLElement) => {
-  if (el.childNodes.length && expandedInternal.value) {
-    const top = el.getBoundingClientRect().top;
-    const bottom = (
-      el.childNodes[el.childNodes.length - 1] as HTMLElement
-    ).getBoundingClientRect().bottom;
+const resizeElementToContents = (el?: HTMLElement) => {
+  if (el && el.childNodes.length && expandedInternal.value) {
+    const firstEl = el.childNodes[0] as HTMLElement;
+    const lastEl = el.childNodes[el.childNodes.length - 1] as HTMLElement;
+    const top = firstEl.getBoundingClientRect().top;
+    const bottom = lastEl.getBoundingClientRect().bottom;
     el.style.height = `${bottom - top}px`;
   }
 };
@@ -536,14 +536,41 @@ const processingIsAnalysing = computed<boolean>(
 
 const row = ref<HTMLDivElement>();
 const show = () => {
-  if (row.value) {
-    row.value.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }
-  // setTimeout(() => {
-  //   if (row.value) {
-  //     row.value.scrollIntoView({ block: "center", behavior: "smooth" });
-  //   }
-  // }, 200);
+  setTimeout(() => {
+    if (row.value) {
+      if (trackDetails.value) {
+        // Check if everything is in scroll view.
+        const navBottom = document
+          .querySelector(".player-and-tagging .nav")
+          ?.getBoundingClientRect().bottom;
+        const footerTop = document
+          .querySelector(".recording-view-footer")
+          ?.getBoundingClientRect().top;
+        const bounds = trackDetails.value.getBoundingClientRect();
+        if (
+          navBottom &&
+          footerTop &&
+          (bounds.top < navBottom || bounds.bottom > footerTop)
+        ) {
+          const lastEl =
+            trackDetails.value.children[row.value.children.length - 1];
+          lastEl.scrollIntoView({
+            block: "end",
+            inline: "end",
+            behavior: "smooth",
+          });
+        } else {
+          // Already in view
+        }
+      } else {
+        row.value.scrollIntoView({
+          block: "end",
+          inline: "end",
+          behavior: "smooth",
+        });
+      }
+    }
+  }, 200);
 };
 
 onMounted(async () => {
@@ -796,11 +823,7 @@ onMounted(async () => {
         </button>
       </div>
     </div>
-    <div
-      :class="[{ expanded, mounting }]"
-      class="track-details px-2"
-      ref="trackDetails"
-    >
+    <div :class="[{ expanded }]" class="track-details px-2" ref="trackDetails">
       <div class="classification-btns">
         <button
           type="button"
@@ -949,9 +972,9 @@ onMounted(async () => {
     height: 0;
     overflow-y: hidden;
     container-type: inline-size; // needed for container queries below
-    &:not(.mounting) {
-      transition: height 0.2s ease-in-out;
-    }
+    //&:not(.mounting) {
+    transition: height 0.2s ease-in-out;
+    //}
   }
 }
 
