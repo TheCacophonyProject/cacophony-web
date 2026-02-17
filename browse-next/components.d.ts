@@ -35,7 +35,7 @@ declare module 'vue' {
     BInput: typeof import('bootstrap-vue-next')['BInput']
     BLink: typeof import('bootstrap-vue-next')['BLink']
     BlockingUserActionRequiredModal: typeof import('./src/components/BlockingUserActionRequiredModal.vue')['default']
-    BModal: typeof import('bootstrap-vue-next')['BModal']
+    BModal: typeof import('bootstrap-vue-next/components/BModal')['BModal']
     BOffcanvas: typeof import('bootstrap-vue-next')['BOffcanvas']
     BPopover: typeof import('bootstrap-vue-next/components/BPopover')['BPopover']
     BProgress: typeof import('bootstrap-vue-next')['BProgress']

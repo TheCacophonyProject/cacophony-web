@@ -66,6 +66,7 @@ import SpectrogramViewer from "@/components/SpectrogramViewer.vue";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import RecordingViewMetadata from "@/components/RecordingViewMetadata.vue";
 import RecordingViewTabs from "@/components/RecordingViewTabs.vue";
+import { BModal } from "bootstrap-vue-next";
 
 const selectedVisit = inject(
   "currentlySelectedVisit",
@@ -1248,11 +1249,19 @@ const onScroll = (e: Event) => {
   <div
     class="recording-view d-flex flex-column"
     :class="{
-      dimmed: inlineModal,
       'recording-type-audio':
         recordingType && recordingType === RecordingType.Audio,
     }"
   >
+    <div v-if="inlineModal" class="dimmed">
+      <b-modal v-model="inlineModal" no-backdrop no-footer no-header centered>
+        <div
+          class="inline-modal"
+          id="recording-status-modal"
+          ref="inlineModalEl"
+        />
+      </b-modal>
+    </div>
     <header
       class="recording-view-header d-flex justify-content-between ps-sm-3 pe-0 pe-sm-1 ps-2 py-sm-2"
     >
@@ -1637,12 +1646,6 @@ const onScroll = (e: Event) => {
       </nav>
     </footer>
   </div>
-  <div
-    v-if="inlineModal"
-    class="inline-modal"
-    id="recording-status-modal"
-    ref="inlineModalEl"
-  />
 </template>
 
 <style scoped lang="less">
@@ -1769,35 +1772,30 @@ const onScroll = (e: Event) => {
 
 // Video export modals
 .inline-modal {
-  // TODO - Max width for mobile breakpoints
-  @width: 400px;
-  @height: auto;
-  width: @width;
-  height: @height;
-  position: absolute;
-  top: 40%;
-  left: calc(50% - (@width / 2));
-  background: var(--bs-white);
-  z-index: 401;
-  border-radius: var(--bs-border-radius);
-  .standard-shadow();
+  //--modal-width: calc(min(calc(100svw - 20px), 400px));
+  //width: var(--modal-width);
+  //height: auto;
+  //max-height: calc(100svh - 30px);
+  //position: absolute;
+  //overflow-y: auto;
+  //top: 40%;
+  //left: calc(50% - (var(--modal-width) / 2));
+  //background: var(--bs-white);
+  //z-index: 2000;
+  //border-radius: var(--bs-border-radius);
+  //.standard-shadow();
 }
 
 .dimmed {
   user-select: none;
-  position: relative;
-
-  &::after {
-    content: "";
-    display: block;
-    background: rgba(0, 0, 0, 0.2);
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    z-index: 400;
-  }
+  // FIXME: This breaks at certain breakpoints because they are position fixed.
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  z-index: 2400;
+  background: rgba(0, 0, 0, 0.2);
 }
 </style>
 

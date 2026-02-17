@@ -182,9 +182,6 @@
           "display": "false trigger"
         },
         {
-          "label": "bunyip"
-        },
-        {
           "label": "noise"
         },
         {
@@ -238,9 +235,6 @@
         {
           "label": "unidentified",
           "display": "not identifiable"
-        },
-        {
-          "label": "drop bear"
         },
         {
           "label": "vehicle"
