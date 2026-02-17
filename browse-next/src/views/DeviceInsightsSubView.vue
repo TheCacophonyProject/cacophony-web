@@ -50,9 +50,8 @@ const device = computed<ApiDeviceResponse | null>(() => {
 });
 
 // TODO: Flow analysis would also be cool, showing the predominant motion vectors through the scene.
-
 const animalsAndBirds = ({ path }: { path: string }) => {
-  return path.startsWith("all.mammal") || path.startsWith("all.bird");
+  return path && (path.startsWith("all.mammal") || path.startsWith("all.bird"));
 };
 
 const selectedTag = ref<string | null>(null);
@@ -132,6 +131,7 @@ const getTracksForTag = async (tag: string | null) => {
       );
     const tracksHeatmapData = await (new Promise((resolve) => {
       if (tracksForSelectedTag.value) {
+        console.log(tracksForSelectedTag.value);
         const worker = new Worker(
           new URL("../components/Heatmap.worker.ts", import.meta.url),
           {

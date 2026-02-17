@@ -2,7 +2,7 @@
 import { pinSideNav } from "@models/LoggedInUser";
 import type { SelectedProject } from "@models/LoggedInUser";
 import { useRoute } from "vue-router";
-import { computed, inject } from "vue";
+import { Comment, computed, Fragment, inject, useSlots } from "vue";
 import type { Ref } from "vue";
 import { currentSelectedProject } from "@models/provides";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
@@ -19,6 +19,17 @@ const isDeviceChildRoute = computed<boolean>(() => {
   return !!route.params.deviceId;
 });
 
+const slots = useSlots();
+const defaultSlotHasContent = computed<boolean>(() => {
+  return (
+    ((slots.default && slots.default()) || []).filter(
+      (node) => node.type !== Comment && node.type !== Fragment,
+    ).length !== 0
+  );
+});
+if (slots.default) {
+  console.log(slots.default());
+}
 const isMobileView = useMediaQuery("(max-width: 575px)");
 </script>
 <template>
@@ -47,6 +58,7 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
         <material-symbol name="menu" />
       </button>
       <h1
+        v-if="defaultSlotHasContent"
         class="h1 m-0 ms-1 mb-sm-4 ms-sm-0 d-flex flex-row flex-fill justify-content-between"
       >
         <slot></slot>

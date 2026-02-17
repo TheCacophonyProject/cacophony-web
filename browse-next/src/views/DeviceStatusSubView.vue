@@ -55,7 +55,12 @@ const latestVersionInfoLoading = resourceIsLoading(versionInfo);
 const locationInfoLoading = resourceIsLoading(currentLocationForDevice);
 const nodeGroupInfoLoading = resourceIsLoading(saltNodeGroup);
 const lastUpdateWasUnsuccessful = ref<boolean>(true);
-
+const saltNodeGroupOrDefault = computed<string>(() => {
+  if (saltNodeGroup.value) {
+    return saltNodeGroup.value;
+  }
+  return "tc2-prod";
+});
 // Tooltip state
 const tooltipVisible = ref(false);
 const tooltipContent = ref("");
@@ -538,7 +543,7 @@ const getLatestVersion = (packageName: string, channel: string): string => {
 const versionInfoTable = computed<
   CardTableRows<string | { version: string; latestVersion: string }>
 >(() => {
-  const channel = saltNodeGroup.value || "";
+  const channel = saltNodeGroupOrDefault.value;
   return Object.entries(versionInfo.value || []).map(([software, version]) => {
     const latestVersion = getLatestVersion(software, channel as string);
     return {
