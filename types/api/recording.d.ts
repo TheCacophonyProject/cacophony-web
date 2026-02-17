@@ -124,5 +124,6 @@ export interface ApiRecordingUploadData {
   type?: RecordingType;
   recordingDateTime?: Date | IsoFormattedDateString;
   duration?: number;
+  metadata?: object;
   additionalMetadata?: Record<string, unknown>;
 }

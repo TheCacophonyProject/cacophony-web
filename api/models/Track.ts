@@ -159,13 +159,6 @@ export class Track extends ModelStaticCommon<Track> {
       if (existing) {
         await existing.update(userData);
       }
-      console.log(
-        "Creating TrackTAgUserData: ",
-        userData,
-        " for TrackTagId: ",
-        trackTagId,
-        "",
-      );
       await TrackTagUserData.create({
         TrackTagId: trackTagId,
         ...updatedData,

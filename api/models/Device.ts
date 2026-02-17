@@ -45,7 +45,6 @@ import { Event } from "@models/Event.js";
 import { Schedule } from "@models/Schedule.js";
 import { Alert } from "@models/Alert.js";
 import { DeviceHistorySetBy } from "@typedefs/api/device.js";
-import { updateRecordingTimeBookkeepingForBulkDeletedRecordings } from "@api/V1/recordingUtil.js";
 
 const Op = Sequelize.Op;
 export class Device extends ModelStaticCommon<Device> {

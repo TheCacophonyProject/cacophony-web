@@ -45,20 +45,9 @@ import { Station } from "@models/Station.js";
 import { Group } from "@models/Group.js";
 import { isLatLon } from "@models/util/validation.js";
 import { tryReadingM4aMetadata } from "@api/m4a-metadata-reader/m4a-metadata-reader.js";
-import { RawTrack } from "@typedefs/api/fileProcessing.js";
+import { RecordingDataSuppliedMetadata } from "@typedefs/api/fileProcessing.js";
 import { Fn } from "sequelize/lib/utils";
 import { Visit, VISITS_ADVISORY_LOCK_KEY } from "@models/Visit.js";
-import ISOLATION_LEVELS = Transaction.ISOLATION_LEVELS;
-
-const cameraTypes = [RecordingType.ThermalRaw, RecordingType.InfraredVideo];
-
-export interface RecordingDataSuppliedMetadata {
-  tracks?: RawTrack[];
-  metadata_source?: string;
-  algorithm: object;
-  models: { name: string; id: number }[];
-}
-
 interface RecordingData {
   duration?: number;
   status?: "test" | "startup" | "shutdown";

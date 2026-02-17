@@ -1,3 +1,5 @@
+import { RecordingType } from "@typedefs/api/consts.js";
+
 declare module "*.json";
 
 import type {
@@ -6,6 +8,7 @@ import type {
   Seconds,
   FloatZeroToOne,
   IsoFormattedDateString,
+  LatLng,
 } from "./common.ts";
 
 // type ClassificationClass =
@@ -46,9 +49,16 @@ export interface TrackFramePosition {
   in_trap?: boolean;
 }
 
+export interface RecordingDataSuppliedMetadata {
+  tracks?: RawTrack[];
+  metadata_source?: string;
+  algorithm: object;
+  models?: { name: string; id: number }[];
+}
+
 export interface RawTrack {
-  id: integer;
-  tracker_version: integer | string;
+  id?: integer;
+  tracker_version?: integer | string;
   start_s: Seconds;
   end_s: Seconds;
   num_frames: integer;

@@ -44,7 +44,10 @@ import type {
   UserId,
 } from "@typedefs/api/common.js";
 import { RecordingType } from "@typedefs/api/consts.js";
-import type { TrackFramePosition } from "@typedefs/api/fileProcessing.js";
+import type {
+  RecordingDataSuppliedMetadata,
+  TrackFramePosition,
+} from "@typedefs/api/fileProcessing.js";
 import type { ApiRecordingTagRequest } from "@typedefs/api/tag.js";
 import type { CptvFrame } from "../cptv-decoder/decoder.js";
 import { CptvDecoder } from "../cptv-decoder/decoder.js";
@@ -67,13 +70,11 @@ import type {
 } from "@typedefs/api/device.js";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
 import { Group } from "@models/Group.js";
-import { RecordingDataSuppliedMetadata } from "@api/fileUploaders/uploadGenericRecording.js";
 import type {
   ApiAudioRecordingMetadataResponse,
   ApiThermalRecordingMetadataResponse,
 } from "@typedefs/api/recording.js";
 import { Visit } from "@models/Visit.js";
-import { Duration } from "moment";
 
 const ffmpegPath = "/usr/bin/ffmpeg";
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -1471,6 +1472,10 @@ export const tracksFromMeta = async (
                       modelName = model.name;
                     }
                   }
+                } else if (prediction.model_used) {
+                  // This is really only true in testing, where we don't know the id up front of the "Master" model,
+                  // so we just say that we're using the "Master" model when we submit the test tracks.
+                  modelName = prediction.model_used;
                 }
 
                 // FIXME: Nail down what the classifier actually outputs, or just make this a generic black box.

@@ -714,9 +714,9 @@ export default function (app: Application, baseUrl: string) {
         for (const track of filteredTracks) {
           trackDatas.push(Track.getTrackData(track.id));
         }
-        await Promise.all(trackDatas);
+        const resolvedTrackDatas = await Promise.all(trackDatas);
         for (let i = 0; i < filteredTracks.length; i++) {
-          filteredTracks[i].data = trackDatas[i];
+          filteredTracks[i].data = resolvedTrackDatas[i];
         }
         const tracks = filteredTracks.map((x) => mapTrack(x));
         return successResponse(response, "Got tracks with tag", {

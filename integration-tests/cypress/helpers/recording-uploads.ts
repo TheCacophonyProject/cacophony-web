@@ -4,6 +4,7 @@ import { ApiRecordingUploadData } from "@shared/api/recording";
 import { RecordingType } from "@shared/api/consts";
 import { TestDeviceHandle, TestEntityHandle } from "@shared/client/types";
 import { TestApiImpl } from "@shared/client";
+import { RecordingDataSuppliedMetadata } from "@shared/api/fileProcessing";
 
 const extForUploadFileType = (type: RecordingType) => {
   switch (type) {
@@ -47,6 +48,7 @@ export const uploadRecording = async (
     deviceHandle?: TestDeviceHandle;
     recordingType?: "test" | "startup" | "shutdown";
     duration?: number;
+    metadata?: RecordingDataSuppliedMetadata;
     type: RecordingType;
     recordingDateTime: Date;
   },
@@ -72,6 +74,9 @@ export const uploadRecording = async (
   };
   if (recordingOptions.duration) {
     data.duration = recordingOptions.duration;
+  }
+  if (recordingOptions.metadata) {
+    data.metadata = recordingOptions.metadata;
   }
   if (
     recordingOptions.type === RecordingType.ThermalRaw &&
@@ -112,6 +117,7 @@ export const uploadRecordingFromDeviceForProject = async (options: {
   deviceHandle?: TestDeviceHandle;
   recordingType?: "test" | "startup" | "shutdown";
   duration?: number;
+  metadata?: RecordingDataSuppliedMetadata;
   type: RecordingType;
   recordingDateTime: Date;
 }): Promise<RecordingId | null> => {
@@ -126,6 +132,7 @@ export const uploadThermalRecordingFromDeviceForProject = async (options: {
   location?: LatLng;
   deviceHandle?: TestDeviceHandle;
   duration?: number; // Artifically set a duration for test purposes
+  metadata?: RecordingDataSuppliedMetadata;
   recordingDateTime: Date;
 }): Promise<RecordingId> => {
   return uploadRecordingFromDeviceForProject({
