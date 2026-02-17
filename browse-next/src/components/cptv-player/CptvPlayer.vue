@@ -2489,7 +2489,11 @@ const playerHeight = computed(() => {
 .cptv-player {
   position: relative;
   user-select: none;
-  background: color-mix(in srgb, var(--cp-player-toolbar-bg), var(--bs-black) 25%);
+  background: color-mix(
+    in srgb,
+    var(--cp-player-toolbar-bg),
+    var(--bs-black) 25%
+  );
   .video-canvas {
     width: 100%;
     height: 100%;
@@ -2733,7 +2737,11 @@ const playerHeight = computed(() => {
     }
   }
   .debug-tools {
-    background: color-mix(in srgb, var(--cp-player-toolbar-bg), var(--bs-black) 10%);
+    background: color-mix(
+      in srgb,
+      var(--cp-player-toolbar-bg),
+      var(--bs-black) 10%
+    );
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     min-height: 0;
     height: 0;
@@ -2969,7 +2977,7 @@ input[type="range"].reference-opacity-slider-el {
   }
 }
 .video-footer {
-/*  -webkit-text-stroke-width: 1px;
+  /*  -webkit-text-stroke-width: 1px;
   -webkit-text-stroke-color: rgba(0, 0, 0, 0.5);*/
   user-select: none;
   pointer-events: none;
@@ -2977,7 +2985,11 @@ input[type="range"].reference-opacity-slider-el {
     font-weight: var(--cp-font-weight-medium);
     font-size: var(--cp-font-size-sm);
     // compounding of shadows is intentional, as there's no spread property for text shadow
-    text-shadow: 0px 0px 2px rgba(0,0,0,1), 0px 0px 2px rgba(0,0,0,1), 0px 0px 2px rgba(0,0,0,1), 0px 0px 2px rgba(0,0,0,1);
+    text-shadow:
+      0px 0px 2px rgba(0, 0, 0, 1),
+      0px 0px 2px rgba(0, 0, 0, 1),
+      0px 0px 2px rgba(0, 0, 0, 1),
+      0px 0px 2px rgba(0, 0, 0, 1);
   }
   //overlayContext.lineWidth = 4;
   //overlayContext.strokeStyle = "rgba(0, 0, 0, 0.5)";

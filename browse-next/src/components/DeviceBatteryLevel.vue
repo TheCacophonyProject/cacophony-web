@@ -154,6 +154,10 @@ watch(
 }
 
 .inactive > .battery-warning {
-  color: color-mix(in oklab, var(--bs-danger) 50%, var(--bs-secondary-color) 50%);
+  color: color-mix(
+    in oklab,
+    var(--bs-danger) 50%,
+    var(--bs-secondary-color) 50%
+  );
 }
 </style>
