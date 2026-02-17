@@ -98,9 +98,9 @@ const signInFormIsFilledAndValid = computed<boolean>(
 <template>
   <div class="sign-in-form p-4">
     <img
-      src="../assets/logo-full.svg"
+      src="../assets/cacophony-monitoring-logo.svg"
       alt="The Cacophony Project logo"
-      width="232"
+      width="256"
       class="mx-auto d-block mb-5"
     />
     <h1 class="h4 text-center mb-4">Sign in</h1>

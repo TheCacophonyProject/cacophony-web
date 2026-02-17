@@ -71,7 +71,7 @@ watch(pinSideNav, (next) => {
   if (!next && isSmallScreen.value) {
     setTimeout(() => {
       hideNavBg.value = true;
-    }, 300);
+    }, 20);
   } else if (next && isSmallScreen.value) {
     hideNavBg.value = false;
   }
@@ -520,23 +520,23 @@ onMounted(() => {
   }
 }
 .nav-bg {
-  opacity: 0;
+  background: rgba(0, 0, 0, 0.5);
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1020;
   transition: opacity 0.2s linear;
   &.hidden {
-    display: none;
+    pointer-events: none;
+    opacity: 0;
   }
   &.visible {
-    background: rgba(0, 0, 0, 0.5);
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 1020;
     opacity: 1;
-    display: block;
   }
 }
+
 @keyframes show-nav-text {
   1% {
     width: 0;
@@ -560,7 +560,7 @@ onMounted(() => {
 <style lang="less">
 .global-side-nav {
   .cacophony-logo {
-    /*transform: scale(0.725);*/
+    transform: scale(1.08);
     transform-origin: 0 0;
 
     .text {
