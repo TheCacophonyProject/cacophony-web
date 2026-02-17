@@ -47,6 +47,7 @@ import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
 import LocationName from "@/components/LocationName.vue";
 import { BBadge, BButton, BFormCheckbox, BSpinner } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import { useMediaQuery } from "@vueuse/core";
 
 const activeProjectDevices = inject(selectedProjectDevices) as Ref<
   LoadedResource<ApiDeviceResponse[]>
@@ -521,56 +522,12 @@ cacophonyEpoch.setHours(0, 0, 0);
 const isDevicesRoot = computed(() => {
   return route.name === "devices";
 });
+const isMobileView = useMediaQuery("(max-width: 575px)");
 </script>
 <template>
   <section-header class="justify-content-between align-items-center">
-    <div
-      v-if="selectedDevice"
-      class="d-flex justify-content-between align-items-center flex-grow-1"
-    >
-      <b-button
-        class="ps-0 py-0 d-none d-md-flex"
-        variant="light"
-        :to="{
-          name: 'devices',
-          params: {
-            projectName: urlNormalisedCurrentProjectName,
-          },
-        }"
-      >
-        <material-symbol name="arrow_back" size="1.5rem" />
-      </b-button>
-      <div
-        class="d-flex flex-grow-1 justify-content-between align-items-center"
-      >
-        <device-name
-          :name="(selectedDevice as ApiDeviceResponse).deviceName"
-          :type="(selectedDevice as ApiDeviceResponse).type"
-        >
-          <b-button
-            class="ms-4 align-items-center d-none d-md-flex"
-            variant="outline-secondary"
-            :to="{
-              name: 'activity',
-              query: {
-                devices: [selectedDevice.id],
-                //locations: [deviceLocation.id],
-                until: (
-                  (selectedDeviceLatestRecordingDateTime || new Date()) as Date
-                ).toISOString(),
-                from: (
-                  (selectedDeviceActiveFrom || cacophonyEpoch) as Date
-                ).toISOString(),
-                'display-mode': 'recordings',
-                'recording-mode': deviceRecordingMode,
-              },
-            }"
-            ><span class="d-sm-block d-none">View Recordings</span>
-          </b-button>
-        </device-name>
-      </div>
-    </div>
-    <span v-else>Devices</span>
+    <span v-if="selectedDevice && isMobileView">Device</span>
+    <span v-if="!selectedDevice">Devices</span>
   </section-header>
   <!--  <h6>Things that need to appear here:</h6>-->
   <!--  <ul>-->
@@ -583,7 +540,40 @@ const isDevicesRoot = computed(() => {
   <!--    <li>Per device, could show include/exclude polygon</li>-->
   <!--    <li>Per device, could show current reference photo image</li>-->
   <!--  </ul>-->
-
+  <div
+    v-if="selectedDevice"
+    class="d-flex justify-content-between align-items-center"
+  >
+    <h1
+      class="h1 m-0 ms-1 mb-sm-1 mb-4 ms-sm-0 d-flex flex-row flex-fill justify-content-between"
+    >
+      <device-name
+        :name="(selectedDevice as ApiDeviceResponse).deviceName"
+        :type="(selectedDevice as ApiDeviceResponse).type"
+      >
+        <b-button
+          class="ms-4 align-items-center"
+          variant="outline-secondary"
+          :to="{
+            name: 'activity',
+            query: {
+              devices: [selectedDevice.id],
+              //locations: [deviceLocation.id],
+              until: (
+                (selectedDeviceLatestRecordingDateTime || new Date()) as Date
+              ).toISOString(),
+              from: (
+                (selectedDeviceActiveFrom || cacophonyEpoch) as Date
+              ).toISOString(),
+              'display-mode': 'recordings',
+              'recording-mode': deviceRecordingMode,
+            },
+          }"
+          ><span>View Recordings</span>
+        </b-button>
+      </device-name>
+    </h1>
+  </div>
   <div
     v-if="isDevicesRoot"
     class="d-flex flex-fill justify-content-center align-items-center"
