@@ -9,6 +9,7 @@ import {
 import { computed, onMounted, ref } from "vue";
 import type { ErrorResult } from "@apiClient/types";
 import {
+  BButton,
   BForm,
   BFormInput,
   BFormInvalidFeedback,
@@ -82,7 +83,7 @@ const createNewProject = async () => {
     <b-form @submit.stop.prevent="createNewProject">
       <b-form-input
         type="text"
-        placeholder="project name"
+        placeholder="Project name"
         data-cy="new project name"
         v-model="newProjectName.value"
         @blur="newProjectName.touched = true"
@@ -92,14 +93,20 @@ const createNewProject = async () => {
       />
       <b-form-invalid-feedback :state="needsValidationAndIsValidProjectName">
         <span v-if="newProjectName.value.trim().length === 0">
-          Project name cannot be blank
+          Project name can't be blank.
         </span>
         <span v-else-if="newProjectName.value.trim().length < 3">
-          Project name must be at least 3 characters
+          Project name must be at least 3 characters long.
         </span>
       </b-form-invalid-feedback>
     </b-form>
     <template #footer>
+      <b-button
+        variant="outline-secondary"
+        @click="creatingNewProject.visible = false"
+      >
+        Cancel
+      </b-button>
       <button
         class="btn btn-primary"
         type="submit"

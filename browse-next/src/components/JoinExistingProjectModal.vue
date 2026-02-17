@@ -11,6 +11,7 @@ import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group
 import { ClientApi } from "@/api";
 import type { LoadedResource } from "@apiClient/types.ts";
 import {
+  BAlert,
   BForm,
   BFormInput,
   BFormInvalidFeedback,
@@ -19,6 +20,7 @@ import {
   type ButtonVariant,
   BvTriggerableEvent,
 } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const projectAdminEmailAddress = formFieldInputText();
 const submittingJoinRequest = ref(false);
@@ -176,8 +178,8 @@ const disabledState = computed<boolean>(() => {
   >
     <b-form data-cy="join existing group form">
       <p>
-        To join an existing project, you need to know the email address of the
-        project administrator.
+        You need to know the email address of the project administrator to join
+        an existing project.
       </p>
       <div class="input-group mb-3">
         <b-form-input
@@ -186,23 +188,28 @@ const disabledState = computed<boolean>(() => {
           @blur="projectAdminEmailAddress.touched = true"
           :state="needsValidationAndIsValidEmailAddress"
           aria-label="project admin email address"
-          placeholder="project admin email address"
+          placeholder="Project administrator email address"
           data-cy="project admin email address"
           :disabled="submittingJoinRequest"
           @input="joinableProjects = null"
           required
         />
         <b-form-invalid-feedback :state="needsValidationAndIsValidEmailAddress">
-          <span>Enter a valid email address</span>
+          <span>Enter a valid email address.</span>
         </b-form-invalid-feedback>
       </div>
       <div v-if="joinableProjectsLoaded && !hasJoinableProjects">
-        <p>
-          This user is not the administrator of any projects that you can join.
-        </p>
+        <b-alert :model-value="true" variant="light" class="mb-0">
+          <div class="description d-flex">
+            <material-symbol name="info" class="me-2" size="1.25rem" />
+            <p class="mb-0">
+              This user doesn't manage any projects that you can join.
+            </p>
+          </div>
+        </b-alert>
       </div>
       <div v-else-if="hasMultipleJoinableProjects">
-        <p>Select the project you'd like to join.</p>
+        <p>Select the project you'd like to join:</p>
         <div>
           <b-form-radio-group
             stacked

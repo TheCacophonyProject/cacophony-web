@@ -33,7 +33,7 @@ declare module 'vue' {
     BFormTextarea: typeof import('bootstrap-vue-next')['BFormTextarea']
     BimodalSwitch: typeof import('./src/components/BimodalSwitch.vue')['default']
     BInput: typeof import('bootstrap-vue-next')['BInput']
-    BLink: typeof import('bootstrap-vue-next')['BLink']
+    BLink: typeof import('bootstrap-vue-next/components/BLink')['BLink']
     BlockingUserActionRequiredModal: typeof import('./src/components/BlockingUserActionRequiredModal.vue')['default']
     BModal: typeof import('bootstrap-vue-next')['BModal']
     BOffcanvas: typeof import('bootstrap-vue-next')['BOffcanvas']
