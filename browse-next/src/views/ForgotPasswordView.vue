@@ -10,6 +10,7 @@ import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState, FormInputValue } from "@/utils";
 
 import { ClientApi } from "@/api";
+import {MaterialSymbol} from "@dbetka/vue-material-symbols";
 
 const userEmailAddress: FormInputValue = formFieldInputText();
 const resetErrorMessage = ref<string | false>(false);
@@ -57,20 +58,31 @@ const resetPassword = async () => {
 <template>
   <div class="forgot-password-form p-4">
     <img
-      src="../assets/logo-full.svg"
+      src="../assets/cacophony-monitoring-logo.svg"
       alt="The Cacophony Project logo"
-      width="232"
+      width="256"
       class="mx-auto d-block mb-5"
     />
     <div v-if="resetSubmitted">
-      <p>
-        An email with a link to reset your password has been sent to
-        <span class="fw-medium">{{ userEmailAddress.value }}</span
-        >.
-      </p>
-      <p class="mb-4">
-        Check your spam folder if you don't receive an email within 5 minutes.
-      </p>
+      <b-alert
+        :model-value="true"
+        variant="light"
+        class="mb-4"
+      >
+        <div class="description d-flex">
+          <material-symbol name="info" class="me-2" size="1.25rem" />
+          <div>
+            <p>
+              An email with a link to reset your password has been sent to
+              <span class="fw-medium">{{ userEmailAddress.value }}</span
+              >.
+            </p>
+            <p class="mb-0">
+              Check your spam folder if you don't receive an email within 5 minutes.
+            </p>
+          </div>
+        </div>
+      </b-alert>
     </div>
     <div v-else>
       <h1 class="h4 text-center mb-4">Reset password</h1>
@@ -125,10 +137,13 @@ const resetPassword = async () => {
       </b-form>
     </div>
     <div class="alternate-action-links d-flex justify-content-between my-2">
-      <router-link :to="{ name: 'sign-in' }" class="small">
+      <router-link :to="{ name: 'sign-in' }" class="small text-decoration-none">
         Sign in to your account
       </router-link>
-      <router-link :to="{ name: 'register' }" class="small">
+      <router-link
+        :to="{ name: 'register' }"
+        class="small text-decoration-none"
+      >
         Create a new account
       </router-link>
     </div>

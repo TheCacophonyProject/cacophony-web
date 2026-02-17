@@ -127,9 +127,9 @@ const resetPassword = async () => {
 <template>
   <div class="reset-password-form px-4 pb-4 pt-5">
     <img
-      src="../assets/logo-full.svg"
+      src="../assets/cacophony-monitoring-logo.svg"
       alt="The Cacophony Project logo"
-      width="220"
+      width="256"
       class="mx-auto d-block mb-5"
     />
     <h1 class="h4 text-center mb-4">
@@ -143,10 +143,14 @@ const resetPassword = async () => {
     <div v-if="invalidResetToken">
       <div class="mb-3 text-danger">{{ invalidReason }}</div>
       <div class="alternate-action-links d-flex justify-content-between my-2">
-        <router-link :to="{ name: 'register' }" class="small"
+        <router-link
+          :to="{ name: 'register' }"
+          class="small text-decoration-none"
           >Create a new account</router-link
         >
-        <router-link :to="{ name: 'sign-in' }" class="small"
+        <router-link
+          :to="{ name: 'sign-in' }"
+          class="small text-decoration-none"
           >Sign in to your account</router-link
         >
       </div>
@@ -178,7 +182,7 @@ const resetPassword = async () => {
               @blur="userPassword.touched = true"
               :state="needsValidationAndIsValidPassword"
               aria-label="password"
-              placeholder="new password"
+              placeholder="New password"
               :disabled="resetInProgress"
               required
             />
@@ -210,8 +214,8 @@ const resetPassword = async () => {
             v-model="userPasswordConfirmation.value"
             @blur="userPasswordConfirmation.touched = true"
             :state="needsValidationAndIsValidPasswordConfirmation"
-            aria-label="re-enter password"
-            placeholder="re-enter new password"
+            aria-label="Confirm new password"
+            placeholder="Confirm new password"
             :disabled="resetInProgress"
             required
           />
@@ -251,22 +255,12 @@ const resetPassword = async () => {
   </div>
 </template>
 <style scoped lang="less">
+@import "../assets/less/breakpoints";
 .reset-password-form {
-  background: white;
   max-width: 360px;
   width: 100%;
-  @media (min-width: 768px) {
-    border-radius: 0.25rem;
-  }
 }
 .toggle-password-visibility-btn {
   min-width: 3rem;
-}
-.alternate-action-links a {
-  text-decoration: none;
-  text-align: center;
-  &:hover {
-    text-decoration: underline;
-  }
 }
 </style>
