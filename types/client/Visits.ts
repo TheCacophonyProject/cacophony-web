@@ -2,11 +2,8 @@ import {
   CacophonyApiClient,
   unwrapLoadedResource,
 } from "@typedefs/client/api.js";
-import {
-  DEFAULT_AUTH_ID,
-  type FetchResult,
-  TestHandle,
-} from "@typedefs/client/types.js";
+import { DEFAULT_AUTH_ID, TestHandle } from "@typedefs/client/types.js";
+import type { FetchResult } from "@typedefs/client/types.js";
 import type {
   GroupId as ProjectId,
   RecordingId,

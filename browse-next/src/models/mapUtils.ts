@@ -5,6 +5,7 @@ export interface NamedPoint {
   name: string;
   project: string;
   location: LatLng;
+  locationName?: string;
 
   color?: string;
   radius?: number;

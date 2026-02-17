@@ -683,30 +683,7 @@ order by hour;
           await DeviceHistory.create(newDeviceHistoryEntry, {
             transaction,
           });
-          // NOTE: Special case: If the device is moving out of the `new` group,
-          //  we delete the old device and all its recordings
-          const group = await Group.findByPk(this.GroupId, {
-            transaction,
-          });
-          if (group && group.groupName === "new") {
-            // FIXME: We may want to change this behaviour soon.
-            // Delete every recording properly
-            const deletedRecordings = await Recording.update(
-              { deletedAt: new Date() },
-              {
-                where: { DeviceId: this.id, deletedAt: { [Op.ne]: null } },
-                transaction,
-                returning: ["id", "DeviceId", "StationId", "GroupId", "type"],
-              },
-            );
-            if (deletedRecordings[0] !== 0) {
-              await updateRecordingTimeBookkeepingForBulkDeletedRecordings(
-                deletedRecordings[1],
-                transaction,
-              );
-            }
-            await this.destroy({ transaction });
-          } else if (shouldDeleteExistingDevice) {
+          if (shouldDeleteExistingDevice) {
             await this.destroy({ transaction });
           }
         },

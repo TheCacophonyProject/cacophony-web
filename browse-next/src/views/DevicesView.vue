@@ -322,6 +322,7 @@ const deviceLocations = computed<NamedPoint[]>(() => {
         name: deviceName,
         project: groupName,
         location: location as LatLng,
+        locationName: locationNameForDevice(device),
         id,
         color: colorForStatus(statusForDevice(device)),
         type: "device",
@@ -357,6 +358,7 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
       name: device.deviceName,
       project: device.groupName,
       location: device.location,
+      locationName: locationNameForDevice(device),
       id: device.id,
     };
   }

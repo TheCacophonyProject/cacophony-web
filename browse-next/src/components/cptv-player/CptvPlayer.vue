@@ -100,14 +100,12 @@ const props = withDefaults(
     displayHeaderInfo?: boolean;
     exportRequested?: boolean | "advanced" | "download";
     downloadProgress?: number;
-    scrollOffsetY?: number;
   }>(),
   {
     cptvSize: null,
     canSelectTracks: true,
     hasNext: false,
     hasPrev: false,
-    scrollOffsetY: 0,
     hasReferencePhoto: false,
     displayHeaderInfo: false,
   },
@@ -684,47 +682,47 @@ const renderFrame = (
     } else {
       [min, max] = minMaxForFrame(frameData);
     }
-    if (!silhouetteMode.value) {
-      // Example: #1284537 for dynamic range clamping
-      // #1284559 maybe not working?
-      const range = max - min;
-      const colourMapToUse = colourMap.value[1];
-      const fd = frameData.imageData;
-      const frameBufferView = new Uint32Array(frameBuffer.buffer);
-      const len = frameBufferView.length;
-      for (let i = 0; i < len; i++) {
-        const index = ((fd[i] - min) / range) * 255.0;
-        const n = Math.min(255, Math.max(0, index));
-        const f = n << 0;
-        const ff = f == n ? f : f + 1;
-        frameBufferView[i] = colourMapToUse[ff];
-      }
-    } else {
-      // Render silhouette mode
-      if (backgroundFrame.value) {
-        const [min, max] = minMaxForFrame(backgroundFrame.value as CptvFrame);
-        const range = max - min;
-        const colourMapToUse = colourMap.value[1];
-        const fd = frameData.imageData;
-        const bg = (backgroundFrame.value as CptvFrame).imageData;
-        const threshold = 45; // Should be scaled by range.
-        const frameBufferView = new Uint32Array(frameBuffer.buffer);
-        const len = frameBufferView.length;
-        const red = (255 << 24) | (0 << 16) | (0 << 8) | 255;
-        for (let i = 0; i < len; i++) {
-          const px = Math.abs(Number(fd[i]) - Number(bg[i]));
-          if (px < threshold) {
-            const index = ((fd[i] - min) / range) * 255.0;
-            const n = Math.min(255, Math.max(0, index));
-            const f = n << 0;
-            const ff = f == n ? f : f + 1;
-            frameBufferView[i] = colourMapToUse[ff];
-          } else {
-            frameBufferView[i] = red;
-          }
-        }
-      }
+    //if (!silhouetteMode.value) {
+    // Example: #1284537 for dynamic range clamping
+    // #1284559 maybe not working?
+    const range = max - min;
+    const colourMapToUse = colourMap.value[1];
+    const fd = frameData.imageData;
+    const frameBufferView = new Uint32Array(frameBuffer.buffer);
+    const len = frameBufferView.length;
+    for (let i = 0; i < len; i++) {
+      const index = ((fd[i] - min) / range) * 255.0;
+      const n = Math.min(255, Math.max(0, index));
+      const f = n << 0;
+      const ff = f == n ? f : f + 1;
+      frameBufferView[i] = colourMapToUse[ff];
     }
+    // } else {
+    //   // Render silhouette mode
+    //   if (backgroundFrame.value) {
+    //     const [min, max] = minMaxForFrame(backgroundFrame.value as CptvFrame);
+    //     const range = max - min;
+    //     const colourMapToUse = colourMap.value[1];
+    //     const fd = frameData.imageData;
+    //     const bg = (backgroundFrame.value as CptvFrame).imageData;
+    //     const threshold = 45; // Should be scaled by range.
+    //     const frameBufferView = new Uint32Array(frameBuffer.buffer);
+    //     const len = frameBufferView.length;
+    //     const red = (255 << 24) | (0 << 16) | (0 << 8) | 255;
+    //     for (let i = 0; i < len; i++) {
+    //       const px = Math.abs(Number(fd[i]) - Number(bg[i]));
+    //       if (px < threshold) {
+    //         const index = ((fd[i] - min) / range) * 255.0;
+    //         const n = Math.min(255, Math.max(0, index));
+    //         const f = n << 0;
+    //         const ff = f == n ? f : f + 1;
+    //         frameBufferView[i] = colourMapToUse[ff];
+    //       } else {
+    //         frameBufferView[i] = red;
+    //       }
+    //     }
+    //   }
+    // }
 
     cancelAnimationFrame(animationFrame.value);
     animationFrame.value = requestAnimationFrame(() => {
@@ -2061,21 +2059,10 @@ const updateSavedOpacity = (val: InputEvent) => {
     (val.target as HTMLInputElement).value,
   );
 };
-const isDesktop = useMediaQuery("(min-width: 992px)");
-const isMobileView = computed<boolean>(() => {
-  return !isDesktop.value;
-});
-const playerHeight = computed(() => {
-  if (isMobileView.value) {
-    return `min(min(480px, 75svw), calc(max(200px, calc(min(75svw, 480px) - ${Math.max(0, props.scrollOffsetY)}px)))`;
-  }
-  return "auto";
-});
 </script>
 <template>
   <div class="cptv-player position-relative">
     <div
-      :style="{ height: playerHeight }"
       class="video-container"
       :class="[{ 'no-reference': !hasReferencePhoto }]"
     >
@@ -2151,7 +2138,6 @@ const playerHeight = computed(() => {
     </div>
     <div
       class="video-footer position-absolute d-flex w-100 justify-content-between text-white"
-      :style="{ top: `calc(${playerHeight} - 25px)` }"
     >
       <span class="ps-2">{{ currentAbsoluteTime }}</span>
       <span class="pe-2">{{ elapsedTimeString }}</span>
@@ -2332,27 +2318,27 @@ const playerHeight = computed(() => {
           >
             <material-symbol name="ink_highlighter" size="1.25rem" />
           </button>
-          <button
-            class="d-none d-sm-inline-block d-inline-flex align-items-center justify-content-center"
-            @click.prevent="polygonEditMode = !polygonEditMode"
-            :class="{ selected: polygonEditMode }"
-            :data-tooltip="
-              polygonEditMode ? 'Disable polygon edit' : 'Edit polygons'
-            "
-          >
-            <material-symbol name="polyline" size="1.25rem" />
-            <!--         draw-polygon, bezier-curve, vector-square -->
-          </button>
-          <button
-            class="d-none d-sm-inline-block d-inline-flex align-items-center justify-content-center"
-            @click.prevent="silhouetteMode = !silhouetteMode"
-            :class="{ selected: silhouetteMode }"
-            :data-tooltip="
-              silhouetteMode ? 'Disable silhouettes' : 'Show silhouettes'
-            "
-          >
-            <material-symbol name="flare" size="1.25rem" />
-          </button>
+          <!--          <button-->
+          <!--            class="d-none d-sm-inline-block d-inline-flex align-items-center justify-content-center"-->
+          <!--            @click.prevent="polygonEditMode = !polygonEditMode"-->
+          <!--            :class="{ selected: polygonEditMode }"-->
+          <!--            :data-tooltip="-->
+          <!--              polygonEditMode ? 'Disable polygon edit' : 'Edit polygons'-->
+          <!--            "-->
+          <!--          >-->
+          <!--            <material-symbol name="polyline" size="1.25rem" />-->
+          <!--            &lt;!&ndash;         draw-polygon, bezier-curve, vector-square &ndash;&gt;-->
+          <!--          </button>-->
+          <!--          <button-->
+          <!--            class="d-none d-sm-inline-block d-inline-flex align-items-center justify-content-center"-->
+          <!--            @click.prevent="silhouetteMode = !silhouetteMode"-->
+          <!--            :class="{ selected: silhouetteMode }"-->
+          <!--            :data-tooltip="-->
+          <!--              silhouetteMode ? 'Disable silhouettes' : 'Show silhouettes'-->
+          <!--            "-->
+          <!--          >-->
+          <!--            <material-symbol name="flare" size="1.25rem" />-->
+          <!--          </button>-->
           <button
             @click.prevent="motionPathMode = !motionPathMode"
             :class="{ selected: motionPathMode }"
@@ -2380,7 +2366,6 @@ const playerHeight = computed(() => {
         :tracks="tracksIntermediate"
         :current-track="currentTrack"
         :total-frames="totalPlayableFrames"
-        :scroll-offset-y="scrollOffsetY"
         @change-playback-time="playbackTimeChanged"
         @start-scrub="startSeek"
         @end-scrub="endSeek"
@@ -2389,7 +2374,7 @@ const playerHeight = computed(() => {
     </div>
   </div>
   <teleport v-if="displayHeaderInfo" to="#recording-status-modal">
-    <div class="p-3">
+    <div>
       <pre v-if="header">{{ headerInfo }}</pre>
       <div class="d-flex">
         <button
@@ -2403,7 +2388,7 @@ const playerHeight = computed(() => {
     </div>
   </teleport>
   <teleport v-if="exportRequested" to="#recording-status-modal">
-    <div v-if="exportRequested === 'advanced' && !isExporting" class="p-3">
+    <div v-if="exportRequested === 'advanced' && !isExporting">
       <b-form-group
         label="Include tracks in exported timespan"
         label-class="fw-medium"
@@ -2455,11 +2440,11 @@ const playerHeight = computed(() => {
         </button>
       </div>
     </div>
-    <div v-else-if="exportRequested === 'download'" class="p-3">
+    <div v-else-if="exportRequested === 'download'">
       <p class="mb-1">Downloading...</p>
       <b-progress striped animated :value="downloadProgress"></b-progress>
     </div>
-    <div v-else class="p-3">
+    <div v-else>
       <p class="mb-1">Exporting...</p>
       <b-progress :value="exportProgress" striped animated></b-progress>
       <div class="d-flex">
@@ -2977,6 +2962,17 @@ input[type="range"].reference-opacity-slider-el {
   }
 }
 .video-footer {
+  top: calc(
+    min(
+        var(--max-player-height),
+        max(
+          var(--min-player-height),
+          calc(var(--max-player-height) - var(--scroll-y-offset))
+        )
+      ) -
+      25px
+  );
+
   /*  -webkit-text-stroke-width: 1px;
   -webkit-text-stroke-color: rgba(0, 0, 0, 0.5);*/
   user-select: none;

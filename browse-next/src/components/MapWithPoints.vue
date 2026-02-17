@@ -396,7 +396,10 @@ const addPoints = () => {
       markers[pointKey(point)] = marker;
 
       if (props.markersAreInteractive && isAnActivePoint) {
-        const tooltipText = `${point.name}`;
+        let tooltipText = `${point.name}`;
+        if (point.name && point.location) {
+          tooltipText = `${point.name} - ${point.locationName}`;
+        }
         marker.foregroundMarker
           .bindTooltip(tooltipText, {
             direction: "top",
