@@ -2027,8 +2027,11 @@ onBeforeUnmount(() => {
       ref="searchControls"
     >
       <div class="search-results-toggle position-fixed d-md-none d-block">
-        <b-button @click="toggleOffcanvasSearch">
-          <material-symbol name="search_gear" size="1.25rem" class="py-1" />
+        <b-button
+          @click="toggleOffcanvasSearch"
+          class="d-flex align-items-center p-2"
+        >
+          <material-symbol name="search_gear" size="1.5rem" />
         </b-button>
       </div>
       <b-offcanvas
