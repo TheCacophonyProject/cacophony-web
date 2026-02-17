@@ -1078,7 +1078,7 @@ watch(customRecordingWindowStop, async () => {
           </p>
           <div>
             <div class="d-flex">
-              <div style="width: 30px"></div>
+              <div style="width: 28px"></div>
               <div
                 class="rounded-2 overflow-hidden position-relative flex-grow-1"
               >
@@ -1119,7 +1119,7 @@ watch(customRecordingWindowStop, async () => {
                         :key="index"
                         v-for="(minute, index) in minutes"
                         :offset="`${(index / minutes.length) * 100}%`"
-                        :stop-color="`rgb(${minute.irradiance * 255}, ${minute.irradiance * 255}, ${minute.irradiance * 255})`"
+                        :stop-color="`rgb(${Math.max(30, minute.irradiance * 255)}, ${Math.max(30, minute.irradiance * 255)}, ${Math.max(30, minute.irradiance * 255)})`"
                       />
                     </linearGradient>
                   </defs>
@@ -1153,7 +1153,7 @@ watch(customRecordingWindowStop, async () => {
                     transform="translate(-2.2, 0)"
                     fill="white"
                   ></use>
-                  <rect x="0" y="15" fill="white" height="0.1" width="100" />
+                  <rect x="0" y="15" fill="#ddd" height="0.1" width="100" />
                   <rect x="0" y="20" width="100" height="10" fill="#ccc" />
                   <rect
                     v-for="hour in 23"
@@ -1209,7 +1209,7 @@ watch(customRecordingWindowStop, async () => {
             </div>
             <div>
               <div class="d-flex align-items-center mt-2">
-                <div style="min-width: 30px"></div>
+                <div style="min-width: 28px"></div>
                 <div
                   class="flex-grow-1 hours-container d-flex justify-content-between align-items-end"
                 >
@@ -1221,8 +1221,8 @@ watch(customRecordingWindowStop, async () => {
                 </div>
               </div>
               <div class="d-flex align-items-center mt-2">
-                <div class="align-items-center d-flex" style="min-width: 30px">
-                  <material-symbol name="videocam" />
+                <div class="align-items-center d-flex" style="min-width: 28px">
+                  <material-symbol name="videocam" size="1.25rem" />
                 </div>
                 <div
                   class="bars-container rounded-4 position-relative flex-grow-1"
@@ -1236,8 +1236,8 @@ watch(customRecordingWindowStop, async () => {
                 </div>
               </div>
               <div class="d-flex mt-2 align-items-center">
-                <div class="align-items-center d-flex" style="min-width: 30px">
-                  <material-symbol name="music_note" />
+                <div class="align-items-center d-flex" style="min-width: 28px">
+                  <material-symbol name="music_note" size="1.25rem" />
                 </div>
                 <div
                   class="bars-container rounded-4 position-relative flex-grow-1"
@@ -1258,7 +1258,7 @@ watch(customRecordingWindowStop, async () => {
                 </div>
               </div>
               <div class="d-flex mt-2 align-items-center">
-                <div style="min-width: 30px"></div>
+                <div style="min-width: 28px"></div>
                 <b-input type="range" min="1" max="365" v-model="dayOfYear" />
               </div>
             </div>
@@ -1365,7 +1365,7 @@ watch(customRecordingWindowStop, async () => {
               <b-form-radio value="default" class="mb-1">
                 <p class="fw-medium mb-1">
                   Ready to record from dusk until dawn
-                  <b-badge class="ms-1">Default</b-badge>
+                  <b-badge class="ms-1" variant="dark">Default</b-badge>
                 </p>
                 <p class="text-secondary">
                   The device will be actively monitoring and ready to make
@@ -1539,14 +1539,22 @@ watch(customRecordingWindowStop, async () => {
   }
 }
 .bars-container {
-  background: #ccc;
+  background: var(--bs-gray-400);
 }
 .thermal-bar,
 .audio-bar,
-.bars-container,
-.hours-container {
-  height: 15px;
+.bars-container {
+  @media (max-width: @breakpoint-sm-max) {
+    height: calc(var(--cp-grid-base) * 2); // 8px
+  }
+  @media (min-width: @breakpoint-md) {
+    height: calc(var(--cp-grid-base) * 3); // 12px
+  }
 }
+.hours-container {
+  height: calc(var(--cp-grid-base) * 2); // 8px
+}
+
 .hour-notch {
   min-width: 1px;
   height: 50%;
@@ -1561,12 +1569,12 @@ watch(customRecordingWindowStop, async () => {
   background-color: var(--cp-color-green-600);
 }
 .audio-bar {
-  background-color: color-mix(in oklch, green, transparent 10%);
+  background-color: var(--bs-success);
 }
 .audio-item {
   background-color: rgba(255, 255, 255, 0.5);
 }
 .sun-curve {
-  fill: var(--cp-color-green-500);
+  fill: var(--cp-color-primary);
 }
 </style>
