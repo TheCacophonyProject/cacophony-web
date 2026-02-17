@@ -10,7 +10,7 @@ import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState, FormInputValue } from "@/utils";
 
 import { ClientApi } from "@/api";
-import {MaterialSymbol} from "@dbetka/vue-material-symbols";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const userEmailAddress: FormInputValue = formFieldInputText();
 const resetErrorMessage = ref<string | false>(false);
@@ -64,11 +64,7 @@ const resetPassword = async () => {
       class="mx-auto d-block mb-5"
     />
     <div v-if="resetSubmitted">
-      <b-alert
-        :model-value="true"
-        variant="light"
-        class="mb-4"
-      >
+      <b-alert :model-value="true" variant="light" class="mb-4">
         <div class="description d-flex">
           <material-symbol name="info" class="me-2" size="1.25rem" />
           <div>
@@ -78,7 +74,8 @@ const resetPassword = async () => {
               >.
             </p>
             <p class="mb-0">
-              Check your spam folder if you don't receive an email within 5 minutes.
+              Check your spam folder if you don't receive an email within 5
+              minutes.
             </p>
           </div>
         </div>
