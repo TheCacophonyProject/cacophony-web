@@ -1,15 +1,25 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { BTooltip } from "bootstrap-vue-next";
-
-// TODO: this is broken. Check recording modal view, device name when it's longer
+const offsetWidth = ref(0);
+const scrollWidth = ref(0);
 const spanItem = ref<HTMLSpanElement>();
 const isTruncated = computed<boolean>(() => {
-  if (spanItem.value) {
-    return spanItem.value.offsetWidth < spanItem.value.scrollWidth;
-  }
-  return false;
+  return offsetWidth.value < scrollWidth.value;
 });
+
+watch(
+  () => spanItem.value?.offsetWidth,
+  (next) => {
+    offsetWidth.value = next || 0;
+  },
+);
+watch(
+  () => spanItem.value?.scrollWidth,
+  (next) => {
+    scrollWidth.value = next || 0;
+  },
+);
 
 const fullText = computed(() => {
   return spanItem.value?.innerText;
@@ -28,4 +38,4 @@ const fullText = computed(() => {
   </span>
 </template>
 
-<style scoped lang="less"></style>
+<style scoped></style>

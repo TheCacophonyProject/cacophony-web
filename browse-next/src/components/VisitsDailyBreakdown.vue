@@ -617,9 +617,6 @@ const isStillProcessing = computed<boolean>(() => {
   transition: background-color linear 0.2s;
   border-radius: var(--bs-border-radius-sm);
   cursor: pointer;
-  > * {
-    pointer-events: none;
-  }
   &:hover:not(&.sun) {
     background: var(--bs-gray-200);
   }

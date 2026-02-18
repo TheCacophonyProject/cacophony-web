@@ -285,7 +285,35 @@ interface DeviceTableItem {
 }
 
 //type DeviceTableItem = CardTableRow<string | boolean | (Date | null) | ApiDeviceResponse>;
-
+const lastRecordingTimeForDevice = (
+  device: ApiDeviceResponse,
+): Date | undefined => {
+  if (device.lastAudioRecordingTime && device.lastThermalRecordingTime) {
+    if (
+      new Date(device.lastThermalRecordingTime) >
+      new Date(device.lastAudioRecordingTime)
+    ) {
+      return new Date(device.lastThermalRecordingTime);
+    }
+    return new Date(device.lastAudioRecordingTime);
+  } else if (device.lastThermalRecordingTime) {
+    return new Date(device.lastThermalRecordingTime);
+  } else if (device.lastAudioRecordingTime) {
+    return new Date(device.lastAudioRecordingTime);
+  }
+  return;
+};
+const lastRecordingTimeForDeviceHumanReadable = (
+  device: ApiDeviceResponse,
+): string => {
+  const lastRecordingTime = lastRecordingTimeForDevice(device);
+  if (lastRecordingTime) {
+    return DateTime.fromJSDate(
+      new Date(lastRecordingTime),
+    ).toRelative() as string;
+  }
+  return "never";
+};
 const tableItems = computed<
   CardTableRows<string | boolean | (Date | null) | ApiDeviceResponse>
 >(() => {
@@ -299,7 +327,7 @@ const tableItems = computed<
             ? (DateTime.fromJSDate(
                 new Date(device.lastConnectionTime),
               ).toRelative() as string)
-            : "never (offline device)",
+            : `${lastRecordingTimeForDeviceHumanReadable(device)} (offline device)`,
         ),
         status: statusForDevice(device),
         __location: locationNameForDevice(device),
@@ -313,6 +341,7 @@ const tableItems = computed<
         __id: device.id.toString(),
         __lastConnectionTime:
           (device.lastConnectionTime && new Date(device.lastConnectionTime)) ||
+          lastRecordingTimeForDevice(device) ||
           null,
       };
     });
