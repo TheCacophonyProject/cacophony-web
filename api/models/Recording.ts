@@ -585,6 +585,7 @@ export class Recording extends ModelStaticCommon<Recording> {
     "type",
     "recordingDateTime",
     "rawMimeType",
+    "rawFileSize",
     "fileMimeType",
     "processingState",
     "duration",
@@ -605,6 +606,7 @@ export class Recording extends ModelStaticCommon<Recording> {
   static userGetAttributes = Object.freeze([
     "id",
     "rawMimeType",
+    "rawFileSize",
     "fileMimeType",
     "processingState",
     "duration",

@@ -86,17 +86,15 @@ export const streamS3Object = async (
   //  may have to attribute more bytes to the download than were actually used by the
   //  end-user browser request.
   response.setHeader("Content-disposition", `attachment; filename=${fileName}`);
-  console.log("$$$$$$$", fileSize);
+  // Set a custom header, so we can still know the total length of the streaming file
+  // and show a progress bar where we're streaming the whole file up front.
+  if (fileSize) {
+    // NOTE: This seems to be stripped out by nginx, so we're putting the filesize at the end of the mimeType.
+    response.setHeader("X-Fallback-Content-Length", fileSize);
+  }
   if (!request.headers.range) {
     // seems like this removes content-length header and breaks chrome for mp4
     response.setHeader("Transfer-Encoding", "chunked");
-
-    // Set a custom header, so we can still know the total length of the streaming file
-    // and show a progress bar where we're streaming the whole file up front.
-    if (fileSize) {
-      // NOTE: This seems to be stripped out by nginx, so we're putting the filesize at the end of the mimeType.
-      response.setHeader("Fallback-Content-Length", fileSize);
-    }
   }
   response.setHeader("Content-type", mimeType);
   const s3 = openS3();

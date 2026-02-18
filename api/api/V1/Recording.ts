@@ -1251,10 +1251,6 @@ export default (app: Application, baseUrl: string) => {
       const fileKey = recordingItem.rawFileKey;
       const fileMimeType = recordingItem.rawMimeType;
       const fileSize = recordingItem.rawFileSize;
-      console.log(
-        "^^^^^ Streaming recording",
-        JSON.stringify(recordingItem.get({ plain: true }), null, 2),
-      );
       if (!fileKey) {
         return next(new ClientError("Recording has no raw file key."));
       }

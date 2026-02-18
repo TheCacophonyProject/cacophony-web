@@ -1063,6 +1063,8 @@ const getRecordingRelationships = (
     "GroupId",
     "StationId",
     "rawFileKey",
+    "rawFileSize",
+    "fileSize",
     "fileKey",
     "additionalMetadata",
     "batteryLevel",
