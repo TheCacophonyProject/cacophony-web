@@ -367,7 +367,7 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
 @media screen and (max-width: 575px) {
   .filters {
     position: sticky;
-    top: 48px;
+    top: var(--cp-mobile-header-height);
   }
 }
 .container > .row:not(:last-child) {

@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
-import { computed, inject, onBeforeMount, onMounted, ref, watch } from "vue";
+import {
+  computed,
+  inject,
+  onBeforeMount,
+  ref,
+  useTemplateRef,
+  watch,
+} from "vue";
 import type { Ref, ComputedRef } from "vue";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { ClientApi } from "@/api";
@@ -47,7 +54,9 @@ import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
 import LocationName from "@/components/LocationName.vue";
 import { BBadge, BButton, BFormCheckbox, BSpinner } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
-import { useMediaQuery } from "@vueuse/core";
+import {
+  useMediaQuery,
+} from "@vueuse/core";
 
 const activeProjectDevices = inject(selectedProjectDevices) as Ref<
   LoadedResource<ApiDeviceResponse[]>
@@ -522,7 +531,9 @@ cacophonyEpoch.setHours(0, 0, 0);
 const isDevicesRoot = computed(() => {
   return route.name === "devices";
 });
+
 const isMobileView = useMediaQuery("(max-width: 575px)");
+
 </script>
 <template>
   <section-header class="justify-content-between align-items-center">
@@ -542,14 +553,16 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
   <!--  </ul>-->
   <div
     v-if="selectedDevice"
-    class="d-flex justify-content-between align-items-center"
+    class="device-name d-flex justify-content-between align-items-center"
   >
     <h1
-      class="h1 m-0 ms-1 mb-sm-1 mb-4 ms-sm-0 d-flex flex-row flex-fill justify-content-between"
+      class="h1 m-0 ms-1 mb-sm-2 mb-4 ms-sm-0 d-flex flex-row flex-fill justify-content-between"
     >
       <device-name
         :name="(selectedDevice as ApiDeviceResponse).deviceName"
         :type="(selectedDevice as ApiDeviceResponse).type"
+        :no-margin="true"
+        nameClass="ms-1"
       >
         <b-button
           class="ms-4 align-items-center"
@@ -817,6 +830,28 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
 </template>
 <style lang="less" scoped>
 @import "../assets/less/breakpoints";
+
+.device-name {
+  @media screen and (max-width: @breakpoint-xs-max) {
+    position: sticky;
+    top: var(--cp-mobile-header-height);
+    background: color-mix(in srgb, var(--app-bg-color), transparent 15%);
+    backdrop-filter: blur(8px);
+    margin-top: calc(var(--cp-spacing-xl) * -1);
+    padding-top: var(--cp-spacing-sm);
+    padding-bottom: var(--cp-spacing-sm);
+    z-index: 1001;
+    margin-left: -4px;
+    margin-right: -4px;
+    padding-left: 4px;
+    padding-right: 4px;
+    h1 {
+      margin-bottom: 0 !important;
+      font-size: var(--cp-font-size-h4);
+    }
+  }
+}
+
 .device-map {
   width: 100%;
   height: 40vh;

@@ -12,7 +12,7 @@ const activeTabName = computed(() => {
 const navLinkClasses = ["nav-item", "nav-link"];
 </script>
 <template>
-  <section-header>Manage project</section-header>
+  <section-header :shrink-bottom-spacing="true">Manage project</section-header>
   <div class="px-3 p-md-0">
     <!--    <b-alert :model-value="true" variant="light" class="mb-3">
       Add or remove users who have access to this project, change the default
@@ -100,3 +100,13 @@ const navLinkClasses = ["nav-item", "nav-link"];
     <router-view />
   </div>
 </template>
+
+
+<style scoped lang="less">
+@import "../assets/less/breakpoints";
+.tabs {
+  @media (min-width: @breakpoint-md) {
+    margin-top: -1rem;
+  }
+}
+</style>
