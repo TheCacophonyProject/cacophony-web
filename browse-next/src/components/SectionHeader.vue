@@ -27,9 +27,6 @@ const defaultSlotHasContent = computed<boolean>(() => {
     ).length !== 0
   );
 });
-if (slots.default) {
-  console.log(slots.default());
-}
 const isMobileView = useMediaQuery("(max-width: 575px)");
 </script>
 <template>

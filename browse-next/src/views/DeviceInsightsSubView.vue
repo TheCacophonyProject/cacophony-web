@@ -131,7 +131,6 @@ const getTracksForTag = async (tag: string | null) => {
       );
     const tracksHeatmapData = await (new Promise((resolve) => {
       if (tracksForSelectedTag.value) {
-        console.log(tracksForSelectedTag.value);
         const worker = new Worker(
           new URL("../components/Heatmap.worker.ts", import.meta.url),
           {

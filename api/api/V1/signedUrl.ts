@@ -97,7 +97,7 @@ export const streamS3Object = async (
       response.setHeader("Fallback-Content-Length", fileSize);
     }
   }
-  response.setHeader("Content-type", `${mimeType}__${fileSize}`);
+  response.setHeader("Content-type", mimeType);
   const s3 = openS3();
 
   try {
