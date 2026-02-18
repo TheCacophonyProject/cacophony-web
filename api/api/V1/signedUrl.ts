@@ -85,7 +85,8 @@ export const streamS3Object = async (
   //  So in terms of recording bytes transferred for billing purposes, we basically
   //  may have to attribute more bytes to the download than were actually used by the
   //  end-user browser request.
-  response.setHeader("Content-disposition", `attachment; filename=${fileSize}`);
+  response.setHeader("Content-disposition", `attachment; filename=${fileName}`);
+  console.log("$$$$$$$", fileSize);
   if (!request.headers.range) {
     // seems like this removes content-length header and breaks chrome for mp4
     response.setHeader("Transfer-Encoding", "chunked");
