@@ -283,8 +283,8 @@ const debugConfirmEmail = async () => {
               and have already checked your spam folder, please contact
               <a
                 href="mailto:support@cacophony.org.nz?subject=Account%20Confirmation%20Email%20Issue"
-                >support</a
-              >.a
+                >support@cacophony.org.nz</a
+              >
             </p>
           </div>
         </b-alert>
@@ -335,7 +335,7 @@ const debugConfirmEmail = async () => {
                   contact
                   <a
                     href="mailto:support@cacophony.org.nz?subject=Account%20Confirmation%20Email%20Issue"
-                    >support</a
+                    >support@cacophony.org.nz</a
                   >.
                 </p>
               </div>
