@@ -893,12 +893,11 @@ onMounted(async () => {
             class="ms-1"
           />
         </button>
-        <div class="px-sm-1 pb-1" v-if="showTaggerDetails && taggerDetails.length !== 0">
-          <card-table
-            :items="taggerDetails"
-            compact
-            :max-card-width="0"
-          >
+        <div
+          class="px-sm-1 pb-1"
+          v-if="showTaggerDetails && taggerDetails.length !== 0"
+        >
+          <card-table :items="taggerDetails" compact :max-card-width="0">
             <template
               #_deleteAction="{ cell }: { cell: Ref<ApiTrackTagResponse> }"
             >
@@ -906,12 +905,12 @@ onMounted(async () => {
                 v-if="userIsGroupAdmin && !cell.value.automatic"
                 class="btn btn-icon btn-sm d-flex align-items-center"
                 @click.prevent="
-                () =>
-                  emit('remove-tag', {
-                    trackId: track.id,
-                    trackTagId: cell.value.id,
-                  })
-              "
+                  () =>
+                    emit('remove-tag', {
+                      trackId: track.id,
+                      trackTagId: cell.value.id,
+                    })
+                "
               >
                 <material-symbol name="delete" size="1.125rem" />
               </button>

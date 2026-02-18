@@ -176,7 +176,12 @@ const otherLabels = computed<string[]>(
         >
           for
           <strong v-for="(device, index) in selectedDevices" :key="index">
-            <device-name :name="device.deviceName" :type="device.type" />
+            <device-name
+              :name="device.deviceName"
+              :type="device.type"
+              hide-icon
+              no-margin
+            />
             <span
               v-if="
                 selectedDevices.length > 1 && index < selectedDevices.length - 1

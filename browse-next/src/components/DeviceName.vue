@@ -1,6 +1,9 @@
 <template>
   <b-link class="d-inline-flex" v-if="to" :to="to" variant="secondary">
-    <span class="me-2 align-self-center position-relative">
+    <span
+      class="me-2 align-self-center position-relative d-none"
+      :class="{ 'd-none': props.hideIcon }"
+    >
       <material-symbol :name="deviceTypeIcon" size="1.125rem" class="me-2" />
       <material-symbol
         v-if="type === 'hybrid-thermal-audio'"
@@ -22,6 +25,7 @@
         'ms-1': !props.noMargin,
         'me-2': !props.noMargin,
         'me-1': props.noMargin,
+        'd-none': props.hideIcon,
       }"
     >
       <material-symbol :name="deviceTypeIcon" size="1.125rem" />
@@ -51,6 +55,7 @@ const props = defineProps<{
   noMargin?: boolean;
   truncate?: boolean;
   nameClass?: string;
+  hideIcon?: boolean;
 }>();
 const slots = useSlots();
 

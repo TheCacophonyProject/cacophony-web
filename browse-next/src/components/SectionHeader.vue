@@ -69,7 +69,7 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
       <h1
         v-if="defaultSlotHasContent"
         class="section-header__section-name h1 m-0 ms-1 mb-sm-4 ms-sm-0 d-flex flex-row flex-fill justify-content-between"
-        :class="{ 'short': shrinkBottomSpacing }"
+        :class="{ short: shrinkBottomSpacing }"
       >
         <slot></slot>
       </h1>

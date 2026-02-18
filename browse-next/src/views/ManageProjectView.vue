@@ -101,7 +101,6 @@ const navLinkClasses = ["nav-item", "nav-link"];
   </div>
 </template>
 
-
 <style scoped lang="less">
 @import "../assets/less/breakpoints";
 .tabs {

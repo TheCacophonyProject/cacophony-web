@@ -54,9 +54,7 @@ import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
 import LocationName from "@/components/LocationName.vue";
 import { BBadge, BButton, BFormCheckbox, BSpinner } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
-import {
-  useMediaQuery,
-} from "@vueuse/core";
+import { useMediaQuery } from "@vueuse/core";
 
 const activeProjectDevices = inject(selectedProjectDevices) as Ref<
   LoadedResource<ApiDeviceResponse[]>
@@ -533,7 +531,6 @@ const isDevicesRoot = computed(() => {
 });
 
 const isMobileView = useMediaQuery("(max-width: 575px)");
-
 </script>
 <template>
   <section-header class="justify-content-between align-items-center">
