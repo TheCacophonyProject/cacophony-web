@@ -397,7 +397,7 @@ const addPoints = () => {
 
       if (props.markersAreInteractive && isAnActivePoint) {
         let tooltipText = `${point.name}`;
-        if (point.name && point.location) {
+        if (point.name && point.locationName) {
           tooltipText = `${point.name} - ${point.locationName}`;
         }
         marker.foregroundMarker
