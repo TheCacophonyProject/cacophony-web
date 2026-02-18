@@ -725,7 +725,7 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
                 <span v-html="card.lastSeen"></span>
               </div>
             </div>
-            <div class="d-flex align-items-center">
+            <div class="d-flex align-items-center" v-if="isProjectAdmin">
               <two-step-action-button
                 v-if="card.__active"
                 :action="
@@ -748,6 +748,15 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
                     ? 'Set as inactive'
                     : 'Delete'
                 "
+              />
+              <two-step-action-button
+                v-else
+                :action="() => unarchiveDevice(card._deleteAction.value.id)"
+                icon="add_circle"
+                :confirmation-label="
+                  unarchiveConfirmationLabelForDevice(card._deleteAction.value)
+                "
+                :tooltip-label="`Set as active`"
               />
             </div>
           </div>
