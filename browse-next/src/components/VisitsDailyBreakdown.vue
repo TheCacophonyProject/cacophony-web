@@ -473,9 +473,9 @@ const isStillProcessing = computed<boolean>(() => {
             }}</span>
           </div>
           <div class="ps-2 ps-sm-3 overflow-hidden">
-            <div class="d-flex flex-wrap align-items-center">
+            <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
               <span
-                class="visit-species-tag mb-1 text-capitalize d-inline-flex align-items-center"
+                class="visit-species-tag text-capitalize d-inline-flex align-items-center"
                 :class="[
                   visit.name,
                   ...(
@@ -503,9 +503,9 @@ const isStillProcessing = computed<boolean>(() => {
               </span>
               <span
                 v-if="visit.data.userTagsConflict"
-                class="visit-species-tag mb-1 text-capitalize d-inline-flex align-items-center ms-1 bg-warning text-black"
+                class="visit-species-tag text-capitalize d-inline-flex align-items-center bg-warning text-black"
               >
-                <material-symbol name="warning" size="1.125rem" class="me-1" />
+                <material-symbol name="swords" size="1.125rem" class="me-1" />
                 Controversial
               </span>
             </div>

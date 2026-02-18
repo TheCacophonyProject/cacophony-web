@@ -620,12 +620,12 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
 @import "../assets/less/typography.less";
 @import "../assets/less/elevation.less";
 .header-container {
-  @media screen and (min-width: 576px) {
+  @media screen and (min-width: @breakpoint-sm) {
     position: relative;
   }
 }
 .dashboard-scope {
-  @media screen and (min-width: 576px) {
+  @media screen and (min-width: @breakpoint-sm) {
     position: absolute;
     top: 0;
     right: 0;

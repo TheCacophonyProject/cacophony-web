@@ -569,6 +569,17 @@ onMounted(() => {
       opacity: 0;
     }
   }
+  &.pinned {
+    @media screen and (min-width: 1651px) {
+      .cacophony-logo {
+        transition:
+          transform 0.1s linear,
+          margin-top 0.1s linear;
+        transform: scale(1.15);
+        margin-top: 2px;
+      }
+    }
+  }
 
   // Customised nav buttons. Needs to be global to be able to style the dropdown btn
   .btn-light {
