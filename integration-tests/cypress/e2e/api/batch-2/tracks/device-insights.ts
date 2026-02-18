@@ -51,10 +51,20 @@ describe("Tracks: insights", () => {
       );
     }
     await Promise.all(recordingUploads);
+    const uniqueTrackTagsForDevice =
+      await AdminUser.Devices.getUniqueTrackTagsForDeviceInProject(
+        project.deviceHandles[0].id,
+      );
+    expect(uniqueTrackTagsForDevice).to.be.an("array").and.to.have.lengthOf(1);
+    expect(
+      uniqueTrackTagsForDevice[0].what,
+      "bat tag exists in device unique track tags",
+    ).to.equal("bat");
+    expect(uniqueTrackTagsForDevice[0].count).to.equal(3);
     const insightsData =
       await AdminUser.Devices.getTracksWithTagForDeviceInProject(
         project.deviceHandles[0].id,
-        "bat",
+        uniqueTrackTagsForDevice[0].what,
         beforeStartDate,
       );
     expect(insightsData).to.have.length(3);

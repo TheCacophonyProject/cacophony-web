@@ -173,15 +173,24 @@ const resizeElementToContents = (el?: HTMLElement) => {
   }
 };
 
-const resizeDetails = () => {
+const resizeDetails = (why?: unknown) => {
   nextTick(() => {
     trackDetails.value && resizeElementToContents(trackDetails.value);
+    if (why === "options-changed") {
+      setTimeout(() => {
+        // Scroll 'add tag' picker into view
+        const picker = document.getElementById("hierarchical-tag-picker");
+        if (picker) {
+          picker.scrollIntoView({
+            behavior: "smooth",
+          });
+        }
+      }, 200);
+    }
   });
 };
 
 watch(showTaggerDetails, resizeDetails);
-watch(showClassificationSearch, resizeDetails);
-
 const selectAndMaybeToggleExpanded = (e: MouseEvent) => {
   expandedInternal.value = !expandedInternal.value;
   emit("expanded-changed", props.track.id, expandedInternal.value);
@@ -870,7 +879,7 @@ onMounted(async () => {
           v-if="currentlySelectedTagCanBePinned || showClassificationSearch"
           class="flex-grow-1"
           @pin="pinCustomTag"
-          @options-change="resizeDetails"
+          @options-change="() => resizeDetails('options-changed')"
           @deselected="showClassificationSearch = false"
           ref="tagSelect"
           v-model="selectedUserTagLabel"

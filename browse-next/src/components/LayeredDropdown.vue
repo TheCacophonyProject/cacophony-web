@@ -294,7 +294,11 @@ defineExpose({
 //
 </script>
 <template>
-  <div ref="optionsContainerRef" class="options-container">
+  <div
+    ref="optionsContainerRef"
+    class="options-container"
+    id="hierarchical-tag-picker"
+  >
     <div
       class="input-container d-flex flex-column fs-6"
       :class="{ open: showOptions }"

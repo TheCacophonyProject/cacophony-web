@@ -640,27 +640,34 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
       query("from-time").isISO8601().toDate().optional(),
       query("until-time").isISO8601().toDate().optional(),
+      query("type")
+        .default(RecordingType.ThermalRaw)
+        .isIn(Object.values(RecordingType)),
       booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, _next: NextFunction) => {
-      const fromTime =
+      const device = response.locals.device as Device;
+      const type = request.query.type as RecordingType;
+      const tag = request.params.tag;
+      const fromTime = device.minTimeForRecordingType(
+        type,
         request.query["from-time"] &&
-        (request.query["from-time"] as unknown as Date);
-      const untilTime =
-        (request.query["until-time"] &&
-          (request.query["until-time"] as unknown as Date)) ||
-        new Date();
-
+          (request.query["from-time"] as unknown as Date),
+      );
+      const untilTime = device.maxTimeForRecordingType(
+        type,
+        request.query["until-time"] &&
+          (request.query["until-time"] as unknown as Date),
+      );
       const timeWindow: Sequelize.WhereOptions = {};
       if (fromTime) {
         timeWindow.recordingDateTime = {
-          [Op.and]: [{ [Op.gt]: fromTime }, { [Op.lte]: untilTime }],
+          [Op.and]: [{ [Op.gte]: fromTime }, { [Op.lte]: untilTime }],
         };
       }
-      const tag = request.params.tag;
+
       const tracks = await Track.findAll({
-        raw: true,
         where: {
           archivedAt: { [Op.eq]: null },
         },
@@ -670,6 +677,8 @@ export default function (app: Application, baseUrl: string) {
             required: true,
             where: {
               used: true,
+              what: tag,
+              archivedAt: { [Op.eq]: null },
             },
             attributes: ["automatic", "what"],
           },
@@ -679,50 +688,40 @@ export default function (app: Application, baseUrl: string) {
             where: {
               DeviceId: response.locals.device.id,
               GroupId: response.locals.device.GroupId,
+              type,
+              deletedAt: { [Op.eq]: null },
               ...timeWindow,
             },
             attributes: [],
           },
         ],
-        order: [["id", "DESC"]],
+        attributes: ["id", "startSeconds", "endSeconds"],
       });
-
       const tracksById = new Map();
       for (const userTrack of tracks.filter(
-        (track) => !track["TrackTags.automatic"],
+        (track) => !track.TrackTags[0].automatic,
       )) {
         tracksById.set(userTrack.id, userTrack);
       }
       for (const autoTrack of tracks.filter(
-        (track) =>
-          track["TrackTags.automatic"] && track["TrackTags.what"] === tag,
+        (track) => track.TrackTags[0].automatic,
       )) {
-        if (
-          !(
-            tracksById.has(autoTrack.id) &&
-            tracksById.get(autoTrack.id)["TrackTags.what"] !== tag
-          )
-        ) {
+        if (!tracksById.has(autoTrack.id)) {
           tracksById.set(autoTrack.id, autoTrack);
         }
       }
-      const filteredTracks = Array.from(tracksById.values()).filter(
-        (track) => track["TrackTags.what"] === tag,
-      );
-      {
-        const trackDatas = [];
-        for (const track of filteredTracks) {
-          trackDatas.push(Track.getTrackData(track.id));
-        }
-        const resolvedTrackDatas = await Promise.all(trackDatas);
-        for (let i = 0; i < filteredTracks.length; i++) {
-          filteredTracks[i].data = resolvedTrackDatas[i];
-        }
-        const tracks = filteredTracks.map((x) => mapTrack(x));
-        return successResponse(response, "Got tracks with tag", {
-          tracks,
-        });
+      const filteredTracks = Array.from(tracksById.values());
+      const trackDatas = [];
+      for (const track of filteredTracks) {
+        trackDatas.push(Track.getTrackData(track.id));
       }
+      const resolvedTrackDatas = await Promise.all(trackDatas);
+      for (let i = 0; i < filteredTracks.length; i++) {
+        filteredTracks[i].data = resolvedTrackDatas[i];
+      }
+      return successResponse(response, "Got tracks with tag", {
+        tracks: filteredTracks.map((x) => mapTrack(x)),
+      });
     },
   );
 
@@ -735,28 +734,35 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
       query("from-time").isISO8601().toDate().optional(),
       query("until-time").isISO8601().toDate().optional(),
+      query("type")
+        .default(RecordingType.ThermalRaw)
+        .isIn(Object.values(RecordingType)),
       idOf(query("stationId")).optional(),
       booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, _next: NextFunction) => {
-      const fromTime =
+      const device = response.locals.device;
+      const type = request.query.type as RecordingType;
+      const fromTime = device.minTimeForRecordingType(
+        type,
         request.query["from-time"] &&
-        (request.query["from-time"] as unknown as Date);
-      const untilTime =
-        (request.query["until-time"] &&
-          (request.query["until-time"] as unknown as Date)) ||
-        new Date();
+          (request.query["from-time"] as unknown as Date),
+      );
+      const untilTime = device.maxTimeForRecordingType(
+        type,
+        request.query["until-time"] &&
+          (request.query["until-time"] as unknown as Date),
+      );
 
       // We only want to get tracks that are not falsified by a human.
       const timeWindow: Sequelize.WhereOptions = {};
       if (fromTime) {
         timeWindow.recordingDateTime = {
-          [Op.and]: [{ [Op.gt]: fromTime }, { [Op.lte]: untilTime }],
+          [Op.and]: [{ [Op.gte]: fromTime }, { [Op.lte]: untilTime }],
         };
       }
       const tracks = await Track.findAll({
-        raw: true,
         where: {
           archivedAt: { [Op.eq]: null },
         },
@@ -775,7 +781,7 @@ export default function (app: Application, baseUrl: string) {
             where: {
               DeviceId: response.locals.device.id,
               GroupId: response.locals.device.GroupId,
-              type: "thermalRaw",
+              type,
               ...timeWindow,
             },
             attributes: [],
@@ -785,18 +791,18 @@ export default function (app: Application, baseUrl: string) {
 
       const tracksById = new Map();
       for (const userTrack of tracks.filter(
-        (track) => !track["TrackTags.automatic"],
+        (track) => !track.TrackTags[0].automatic,
       )) {
         tracksById.set(userTrack.id, userTrack);
       }
       for (const autoTrack of tracks.filter(
-        (track) => track["TrackTags.automatic"],
+        (track) => track.TrackTags[0].automatic,
       )) {
         if (
           !(
             tracksById.has(autoTrack.id) &&
-            tracksById.get(autoTrack.id)["TrackTags.what"] !==
-              autoTrack["TrackTags.what"]
+            tracksById.get(autoTrack.id).TrackTags[0].what !==
+              autoTrack.TrackTags[0].what
           )
         ) {
           tracksById.set(autoTrack.id, autoTrack);
@@ -804,9 +810,9 @@ export default function (app: Application, baseUrl: string) {
       }
       const uniqueTags = {};
       for (const track of tracksById.values()) {
-        const what = track["TrackTags.what"];
+        const what = track.TrackTags[0].what;
         if (!uniqueTags[what]) {
-          uniqueTags[what] = { what, path: track["TrackTags.path"], count: 1 };
+          uniqueTags[what] = { what, path: track.TrackTags[0].path, count: 1 };
         } else {
           uniqueTags[what].count += 1;
         }

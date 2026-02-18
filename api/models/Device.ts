@@ -45,8 +45,39 @@ import { Event } from "@models/Event.js";
 import { Schedule } from "@models/Schedule.js";
 import { Alert } from "@models/Alert.js";
 import { DeviceHistorySetBy } from "@typedefs/api/device.js";
-
 const Op = Sequelize.Op;
+
+const maxDate = (a?: Date, b?: Date): Date | undefined => {
+  if (!a && !b) {
+    return undefined;
+  }
+  if (!a && b) {
+    return b;
+  }
+  if (!b && a) {
+    return a;
+  }
+  if (a > b) {
+    return a;
+  }
+  return b;
+};
+const minDate = (a?: Date, b?: Date): Date | undefined => {
+  if (!a && !b) {
+    return undefined;
+  }
+  if (!a && b) {
+    return b;
+  }
+  if (!b && a) {
+    return a;
+  }
+  if (a < b) {
+    return a;
+  }
+  return b;
+};
+
 export class Device extends ModelStaticCommon<Device> {
   declare id: CreationOptional<DeviceId>;
 
@@ -412,6 +443,31 @@ order by hour;
       id: this.id,
       _type: "device",
     };
+  }
+
+  minTimeForRecordingType(
+    type: RecordingType,
+    fromTime?: Date,
+  ): Date | undefined {
+    const cacophonyEpoch = new Date();
+    cacophonyEpoch.setFullYear(2010, 0, 0);
+    cacophonyEpoch.setHours(0, 0, 0);
+    const earliestDeviceTime =
+      type === RecordingType.ThermalRaw
+        ? this.earliestThermalRecordingTime
+        : this.earliestAudioRecordingTime;
+    return maxDate(fromTime || cacophonyEpoch, earliestDeviceTime);
+  }
+
+  maxTimeForRecordingType(
+    type: RecordingType,
+    untilTime?: Date,
+  ): Date | undefined {
+    const latestDeviceTime =
+      type === RecordingType.ThermalRaw
+        ? this.lastThermalRecordingTime
+        : this.lastAudioRecordingTime;
+    return minDate(untilTime || new Date(), latestDeviceTime);
   }
 
   comparePassword(password: string): Promise<boolean> {

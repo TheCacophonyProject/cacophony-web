@@ -190,7 +190,7 @@ export const mapTrack = (track: Track, minimal = false): ApiTrackResponse => {
   if (track.maxFreqHz !== null) {
     t.maxFreq = track.maxFreqHz;
   }
-  t.filtered = track.filtered;
+  t.filtered = track.filtered || false;
   if (
     !minimal &&
     track.data &&
