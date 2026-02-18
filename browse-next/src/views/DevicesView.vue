@@ -674,17 +674,15 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
             <two-step-action-button
               :action="() => deleteOrArchiveDevice(cell.value.id)"
               :icon="
-                cell.value.lastConnectionTime &&
-                (cell.value.lastThermalRecordingTime ||
-                  cell.value.lastAudioRecordingTime)
+                cell.value.lastThermalRecordingTime ||
+                cell.value.lastAudioRecordingTime
                   ? 'do_not_disturb_on'
                   : 'delete'
               "
               :confirmation-label="deleteConfirmationLabelForDevice(cell.value)"
               :tooltip-label="
-                cell.value.lastConnectionTime &&
-                (cell.value.lastThermalRecordingTime ||
-                  cell.value.lastAudioRecordingTime)
+                cell.value.lastThermalRecordingTime ||
+                cell.value.lastAudioRecordingTime
                   ? 'Set as inactive'
                   : 'Delete'
               "
@@ -742,9 +740,8 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
                   () => deleteOrArchiveDevice(card._deleteAction.value.id)
                 "
                 :icon="
-                  card._deleteAction.value.lastConnectionTime &&
-                  (card._deleteAction.value.lastThermalRecordingTime ||
-                    card._deleteAction.value.lastAudioRecordingTime)
+                  card._deleteAction.value.lastThermalRecordingTime ||
+                  card._deleteAction.value.lastAudioRecordingTime
                     ? 'do_not_disturb_on'
                     : 'delete'
                 "
@@ -752,9 +749,8 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
                   deleteConfirmationLabelForDevice(card._deleteAction.value)
                 "
                 :tooltip-label="
-                  card._deleteAction.value.lastConnectionTime &&
-                  (card._deleteAction.value.lastAudioRecordingTime ||
-                    card._deleteAction.value.lastThermalRecordingTime)
+                  card._deleteAction.value.lastAudioRecordingTime ||
+                  card._deleteAction.value.lastThermalRecordingTime
                     ? 'Set as inactive'
                     : 'Delete'
                 "
