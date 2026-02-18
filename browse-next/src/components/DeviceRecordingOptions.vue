@@ -987,14 +987,16 @@ watch(customRecordingWindowStop, async () => {
           </div>
         </b-alert>
         <div>
-          <dl class="settings-summary mb-0">
+          <dl class="settings-summary container mb-0">
             <div class="row">
               <dt
-                class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-1 pb-0 py-sm-2 fw-medium"
+                class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium"
               >
                 Synced with remote device
               </dt>
-              <dd class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 py-sm-2">
+              <dd
+                class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2"
+              >
                 <span
                   v-if="settings.synced"
                   class="d-flex d-inline-flex align-items-center align-self-center px-1 rounded bg-success-subtle text-success-emphasis"
@@ -1022,11 +1024,13 @@ watch(customRecordingWindowStop, async () => {
 
             <div class="row">
               <dt
-                class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-1 pb-0 py-sm-2 fw-medium"
+                class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium"
               >
                 Power profile
               </dt>
-              <dd class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 py-sm-2">
+              <dd
+                class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2"
+              >
                 <span v-if="useLowPowerMode">Low power mode</span>
                 <span v-else>High power mode</span>
               </dd>
@@ -1034,11 +1038,13 @@ watch(customRecordingWindowStop, async () => {
 
             <div class="row">
               <dt
-                class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-1 pb-0 py-sm-2 fw-medium"
+                class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium"
               >
                 Recording settings
               </dt>
-              <dd class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 py-sm-2">
+              <dd
+                class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2"
+              >
                 <span v-if="audioMode === AudioRecordingMode.Disabled"
                   >Thermal video only</span
                 >
@@ -1058,12 +1064,12 @@ watch(customRecordingWindowStop, async () => {
 
             <div v-if="audioMode !== AudioRecordingMode.AudioOnly" class="row">
               <dt
-                class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-0 pb-0 py-sm-2 fw-medium"
+                class="col-sm-4 d-sm-inline-flex mb-0 mb-sm-1 pb-0 ps-0 py-sm-2 fw-medium"
               >
                 Thermal video recording schedule
               </dt>
               <dd
-                class="col-sm-8 d-sm-inline-flex flex mb-3 mb-sm-0 pt-1 py-sm-2"
+                class="col-sm-8 d-sm-inline-flex mb-3 mb-sm-1 pt-1 px-0 py-sm-2"
               >
                 {{ recordingWindow }}
               </dd>

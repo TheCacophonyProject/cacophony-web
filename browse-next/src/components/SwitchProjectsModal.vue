@@ -490,7 +490,7 @@ watch(userToFilterProjects, (userId) => {
             <b-badge
               v-if="groupName === currentProjectName"
               class="ms-1"
-              variant="secondary"
+              variant="dark"
             >
               Selected
             </b-badge>
