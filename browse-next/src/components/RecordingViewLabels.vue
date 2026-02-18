@@ -237,7 +237,7 @@ const doAddLabel = async () => {
       <b-alert
         :model-value="labelToAdd !== null"
         variant="light"
-        class="mt-2 mb-0"
+        class="mt-3 mb-0"
       >
         <div class="description d-flex">
           <material-symbol name="info" class="me-2" size="1.25rem" />

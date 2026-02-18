@@ -1757,15 +1757,15 @@ const isMobileView = computed<boolean>(() => {
   background: var(--bs-gray-900);
   overflow: hidden;
 }
-.vr {
-  height: 24px;
-}
 .player-controls {
   min-height: 44px;
   background: var(--cp-player-toolbar-bg);
   color: var(--bs-white);
   display: flex;
   position: relative;
+  .vr {
+    height: 24px;
+  }
   button {
     touch-action: manipulation;
     user-select: none;

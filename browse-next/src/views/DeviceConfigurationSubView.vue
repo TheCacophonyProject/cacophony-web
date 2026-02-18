@@ -6,6 +6,7 @@ import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { LoadedResource } from "@apiClient/types.ts";
 import { BNav, BNavItem, BSpinner } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import { useMediaQuery } from "@vueuse/core";
 const route = useRoute();
 
 const emit = defineEmits<{
@@ -61,6 +62,9 @@ const loading = computed<boolean>(() => {
     latestMaskRegions.value === null
   );
 });
+
+const isMobileView = useMediaQuery("(max-width: 575px)");
+const isDesktopView = useMediaQuery("(min-width: 992px)");
 </script>
 <template>
   <div
@@ -82,32 +86,59 @@ const loading = computed<boolean>(() => {
   <div v-else>
     <div class="row d-flex flex-fill flex-column flex-lg-row">
       <div class="col col-12 col-lg-3 mt-3">
-        <b-nav pills vertical class="nav-device-config">
+        <b-nav
+          pills
+          class="nav-device-config"
+          fill
+          :vertical="isDesktopView"
+          :small="isMobileView"
+        >
           <b-nav-item
             :to="{ name: 'recording-options' }"
             :active="activeTabPath.includes('recording-options')"
+            :link-class="{ 'py-2': isMobileView }"
           >
-            <span class="d-flex">
+            <span
+              class="d-flex"
+              :class="{
+                'justify-content-center align-items-center': !isDesktopView,
+              }"
+            >
               <material-symbol name="tune" class="me-2" />
-              Recording options
+              <span class="d-md-none">Options</span>
+              <span class="d-none d-md-inline">Recording options</span>
             </span>
           </b-nav-item>
           <b-nav-item
             :to="{ name: 'reference-photo' }"
             :active="activeTabPath.includes('reference-photo')"
+            :link-class="{ 'py-2': isMobileView }"
           >
-            <span class="d-flex">
+            <span
+              class="d-flex"
+              :class="{
+                'justify-content-center align-items-center': !isDesktopView,
+              }"
+            >
               <material-symbol name="compare" class="me-2" />
-              Reference photo
+              <span class="d-md-none">Photo</span>
+              <span class="d-none d-md-inline">Reference photo</span>
             </span>
           </b-nav-item>
           <b-nav-item
             :to="{ name: 'define-masking' }"
             :active="activeTabPath.includes('define-masking')"
+            :link-class="{ 'py-2': isMobileView }"
           >
-            <span class="d-flex">
+            <span
+              class="d-flex"
+              :class="{
+                'justify-content-center align-items-center': !isDesktopView,
+              }"
+            >
               <material-symbol name="polyline" class="me-2" />
-              Mask regions
+              <span class="d-md-none">Masks</span>
+              <span class="d-none d-md-inline"> Mask regions</span>
             </span>
           </b-nav-item>
         </b-nav>
