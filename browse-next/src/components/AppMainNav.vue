@@ -27,9 +27,14 @@ import {
   type Ref,
   watch,
 } from "vue";
-import { currentSelectedProject, currentUser } from "@models/provides.ts";
+import {
+  allHistoricLocations,
+  currentSelectedProject,
+  currentUser,
+} from "@models/provides.ts";
 import type { LoadedResource } from "@apiClient/types.ts";
 import { BDropdown, BDropdownItemButton, BTooltip } from "bootstrap-vue-next";
+import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 
 const fallibleCurrentSelectedProject = inject(
   currentSelectedProject,
@@ -39,6 +44,16 @@ const selectedProject = computed<SelectedProject>(() => {
   return fallibleCurrentSelectedProject.value as SelectedProject;
 });
 const globalSideNav = ref<HTMLDivElement>();
+const allLocations: Ref<LoadedResource<ApiLocationResponse[]>> | undefined =
+  inject(allHistoricLocations);
+const someLocationsNeedRenaming = computed<boolean>(() => {
+  if (allLocations?.value) {
+    return (allLocations.value as ApiLocationResponse[]).some(
+      (location) => !location.retiredAt && location.needsRename,
+    );
+  }
+  return false;
+});
 
 const someDeviceNeedsAttention = computed<boolean>(() => {
   if (DevicesForCurrentProject.value) {
@@ -220,26 +235,6 @@ onMounted(() => {
       <li class="nav-item w-100">
         <router-link
           :to="{
-            name: 'locations',
-            params: {
-              projectName: urlNormalisedCurrentProjectName,
-            },
-          }"
-          class="nav-link py-3 d-flex flex-row align-items-center"
-          title=""
-          data-bs-toggle="tooltip"
-          data-bs-placement="right"
-          data-bs-original-title="Locations"
-        >
-          <span class="nav-icon-wrapper d-flex">
-            <material-symbol name="pin_drop" />
-          </span>
-          <span class="nav-text ms-3">Locations</span>
-        </router-link>
-      </li>
-      <li class="nav-item w-100">
-        <router-link
-          :to="{
             name: 'activity',
             params: {
               projectName: urlNormalisedCurrentProjectName,
@@ -286,6 +281,38 @@ onMounted(() => {
             </svg>
           </span>
           <span class="nav-text ms-3">Devices</span>
+        </router-link>
+      </li>
+      <li class="nav-item w-100">
+        <router-link
+          :to="{
+            name: 'locations',
+            params: {
+              projectName: urlNormalisedCurrentProjectName,
+            },
+          }"
+          class="nav-link py-3 d-flex flex-row align-items-center"
+          title=""
+          data-bs-toggle="tooltip"
+          data-bs-placement="right"
+          data-bs-original-title="Locations"
+        >
+          <span class="nav-icon-wrapper d-flex">
+            <material-symbol name="pin_drop" />
+            <svg
+              class="warning-icon"
+              height="16px"
+              width="16px"
+              viewBox="0 -960 960 960"
+              xmlns="http://www.w3.org/2000/svg"
+              v-if="someLocationsNeedRenaming"
+            >
+              <path
+                d="M120.91-153q-10.41 0-18.13-4.7-7.71-4.7-12.28-12.3-5-7.5-4.25-16.75t5.25-17.75l360-598.5q4.5-8.5 12.28-12 7.77-3.5 16.25-3.5 8.47 0 16.22 3.5 7.75 3.5 12.25 12l360 598.5q4.5 8.5 5.25 17.75T869.5-170q-5 7.5-12.5 12.25T839.09-153H120.91ZM504-278.79q10-9.79 10-24T504.21-327q-9.79-10-24-10T456-327.21q-10 9.79-10 24t9.79 24.21q9.79 10 24 10t24.21-9.79Zm0-115.06q10-9.85 10-23.65v-122q0-13.8-9.79-23.65-9.79-9.85-23.5-9.85T457-563.15q-10 9.85-10 23.65v122q0 13.8 9.79 23.65 9.79 9.85 23.5 9.85t23.71-9.85Z"
+              />
+            </svg>
+          </span>
+          <span class="nav-text ms-3">Locations</span>
         </router-link>
       </li>
       <!--        NOTE: remove Report until we know what to do with it. -->
@@ -365,7 +392,6 @@ onMounted(() => {
             height="12"
             xmlns="http://www.w3.org/2000/svg"
           >
-            >
             <path
               d="M2.99.8C3.9.27 4.9 0 6 0a5.97 5.97 0 0 1 5.2 9.01 5.97 5.97 0 0 1-8.21 2.19A5.97 5.97 0 0 1 .8 2.99 5.97 5.97 0 0 1 3 .8Zm3.94 9.13A.26.26 0 0 0 7 9.74V8.26a.26.26 0 0 0-.07-.19.23.23 0 0 0-.17-.07h-1.5a.25.25 0 0 0-.18.08.25.25 0 0 0-.08.18v1.48c0 .07.03.13.08.18.05.05.11.08.18.08h1.5c.07 0 .12-.02.17-.07ZM6.9 7.19a.2.2 0 0 0 .08-.14l.14-4.85c0-.06-.02-.1-.07-.14a.3.3 0 0 0-.2-.06h-1.7a.3.3 0 0 0-.2.06.15.15 0 0 0-.08.14l.14 4.85c0 .06.02.1.08.14a.3.3 0 0 0 .18.06h1.45c.07 0 .13-.02.18-.06Z"
             />
@@ -460,11 +486,17 @@ onMounted(() => {
     .nav-icon-wrapper {
       position: relative;
 
-      .alert-icon {
+      .alert-icon,
+      .warning-icon {
         position: absolute;
         right: calc(var(--cp-spacing-xs) * -1);
         top: calc(var(--cp-spacing-xxs) * -1);
+      }
+      .alert-icon {
         fill: var(--bs-danger);
+      }
+      .warning-icon {
+        fill: var(--bs-warning);
       }
     }
 

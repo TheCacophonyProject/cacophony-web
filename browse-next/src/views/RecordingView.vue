@@ -23,7 +23,6 @@ import type {
 import {
   formatDuration,
   timeAtLocation,
-  timezoneForLatLng,
   visitDuration,
 } from "@models/visitsUtils";
 import type {
@@ -1293,7 +1292,6 @@ const onScroll = (e: Event) => {
             >{{ visitForRecording }}</span
           >
           <span
-            v-if="recordingHasRealDuration"
             v-html="recordingDurationString"
             class="recording-header-time text-muted"
             :class="{

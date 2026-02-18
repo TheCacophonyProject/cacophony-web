@@ -265,7 +265,9 @@ export const formatDuration = (
         : minsSecs.toFormat("m'm''&nbsp;'ss's'");
     }
     return longForm
-      ? minsSecs.toFormat("m 'minutes'")
+      ? minsSecs.minutes === 1
+        ? minsSecs.toFormat("m 'minute'")
+        : minsSecs.toFormat("m 'minutes'")
       : minsSecs.toFormat("m'm'");
   }
   return longForm
