@@ -440,16 +440,16 @@ const deleteConfirmationLabelForDevice = (
     !!device.lastAudioRecordingTime &&
     !!device.lastThermalRecordingTime
   ) {
-    return `Set <strong><em>${device.deviceName}</em></strong> inactive`;
+    return `Set <strong>${device.deviceName}</strong> inactive`;
   } else {
-    return `Delete <strong><em>${device.deviceName}</em></strong>`;
+    return `Delete <strong>${device.deviceName}</strong>`;
   }
 };
 
 const unarchiveConfirmationLabelForDevice = (
   device: ApiDeviceResponse,
 ): string => {
-  return `Set <strong><em>${device.deviceName}</em></strong> active`;
+  return `Set <strong>${device.deviceName}</strong> active`;
 };
 
 const selectedDevice = computed<ApiDeviceResponse | null>(() => {

@@ -398,7 +398,7 @@ const changePassword = async () => {
         <span v-else-if="!isValidName(userName.value.trim())">
           Username must contain at least one letter (either case). It can also
           contain numbers, underscores and hyphens, and spaces but must
-          <em>begin</em> with a letter or number.
+          <strong>begin</strong> with a letter or number.
         </span>
         <span v-else-if="userNameInUse">
           {{ userNameFieldValidationErrorMessage }}

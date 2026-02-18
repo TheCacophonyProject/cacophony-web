@@ -125,10 +125,12 @@ const otherLabels = computed<string[]>(
     <div class="description d-flex">
       <material-symbol name="info" class="me-2" size="1.25rem" />
       <div>
-        <em v-if="hasStarred"> Starred</em
+        <strong v-if="hasStarred"> Starred</strong
         ><span v-if="hasStarred && hasFlagged"> or </span
-        ><em v-if="hasFlagged">{{ hasStarred ? "flagged" : "Flagged" }}</em>
-        <strong class="fw-medium">{{
+        ><strong v-if="hasFlagged">{{
+          hasStarred ? "flagged" : "Flagged"
+        }}</strong>
+        <strong>{{
           !hasFlagged && !hasStarred
             ? upperFirst(searchParams.displayMode)
             : ` ${searchParams.displayMode}`
@@ -140,16 +142,14 @@ const otherLabels = computed<string[]>(
         >
           <span v-if="locationsInSelectedTimespan.length === 1">
             at
-            <strong class="fw-medium">{{
-              locationsInSelectedTimespan[0].name
-            }}</strong>
+            <strong>{{ locationsInSelectedTimespan[0].name }}</strong>
           </span>
           <span v-else> across all locations</span>
         </span>
         <span v-else>
           <span v-if="selectedLocations.length === 1">
             at
-            <strong class="fw-medium">{{
+            <strong>{{
               (selectedLocations as ApiLocationResponse[])[0].name
             }}</strong>
           </span>
@@ -159,7 +159,7 @@ const otherLabels = computed<string[]>(
               :key="index"
               v-for="(loc, index) in selectedLocations as ApiLocationResponse[]"
             >
-              <strong class="fw-medium">{{ loc.name }}</strong
+              <strong>{{ loc.name }}</strong
               ><span v-if="index === selectedLocations.length - 2"> and </span
               ><span v-else-if="index < selectedLocations.length - 1"
                 >,
@@ -230,7 +230,7 @@ const otherLabels = computed<string[]>(
                 (t) => t !== 'any',
               )"
             >
-              <strong class="fw-medium"
+              <strong
                 ><span class="text-capitalize">{{
                   displayLabelForClassificationLabel(
                     tag,
@@ -257,12 +257,12 @@ const otherLabels = computed<string[]>(
                 searchParams.tagMode == TagMode.NoHuman)
             "
             >, excluding those with no tracks, or that are only tagged as
-            <strong class="fw-medium text-capitalize">false trigger</strong>
+            <strong class="text-capitalize">false trigger</strong>
           </span>
           <span v-if="otherLabels.length"
             >, labelled with
             <span :key="index" v-for="(label, index) in otherLabels">
-              <strong class="fw-medium"
+              <strong
                 ><span class="text-capitalize">{{ label }}</span></strong
               ><span v-if="index === otherLabels.length - 2"> or </span
               ><span
