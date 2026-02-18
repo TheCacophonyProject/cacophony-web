@@ -89,7 +89,6 @@ export const streamS3Object = async (
   // Set a custom header, so we can still know the total length of the streaming file
   // and show a progress bar where we're streaming the whole file up front.
   if (fileSize) {
-    // NOTE: This seems to be stripped out by nginx, so we're putting the filesize at the end of the mimeType.
     response.setHeader("X-Fallback-Content-Length", fileSize);
   }
   if (!request.headers.range) {

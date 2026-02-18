@@ -1085,15 +1085,12 @@ const requestedDownload = async () => {
       // eslint-disable-next-line no-undef
       request as RequestInit,
     );
-    let mimeType =
+    const mimeType =
       downloadedFileResponse.headers.get("Content-Type") ||
       "application/octet-stream";
-    let downloadSize = 0;
-    if (mimeType.includes("__")) {
-      // We've shoved some fileSize info into the mime type, since this is the only header that seems to get through.
-      downloadSize = Number(mimeType.split("__")[1]);
-      mimeType = mimeType.split("__")[0];
-    }
+    const downloadSize =
+      Number(downloadedFileResponse.headers.get("X-Fallback-Content-Length")) ||
+      0;
     const chunks = [];
     if (downloadSize && downloadedFileResponse.body) {
       let loaded = 0;
