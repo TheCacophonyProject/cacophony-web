@@ -293,6 +293,7 @@ type SunItem = { type: "sunset" | "sunrise"; data: string };
 const processingInProgress = [
   RecordingProcessingState.Analyse,
   RecordingProcessingState.Tracking,
+  RecordingProcessingState.TrackAndAnalyse,
 ];
 
 const props = withDefaults(
