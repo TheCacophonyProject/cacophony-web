@@ -199,13 +199,17 @@ const notImplemented = () => {
       center
       variant="light"
       id="export"
-      aria-label="Download record"
+      aria-label="Download recording"
       toggle-class="dropdown-btn btn-icon"
       v-if="currentRecordingType === 'cptv'"
       strategy="fixed"
     >
       <template #button-content>
-        <material-symbol name="download" size="1.25rem" />
+        <material-symbol
+          class="d-flex align-items-center justify-content-center"
+          name="download"
+          size="1.25rem"
+        />
       </template>
       <b-dropdown-item-button @click="() => emit('requested-export')">
         Export Video
@@ -223,7 +227,7 @@ const notImplemented = () => {
       type="button"
       class="btn btn-icon d-flex align-items-center"
       id="export"
-      aria-label="Download record"
+      aria-label="Download recording"
       :disabled="!recordingReady"
       @click="() => emit('requested-download')"
     >
