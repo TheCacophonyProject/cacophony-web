@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RouteParams } from "vue-router";
+import type { RouteLocationRaw, RouteParams } from "vue-router";
 import { useRoute } from "vue-router";
 import {
   computed,
@@ -959,9 +959,17 @@ const isMobileView = computed<boolean>(() => {
   return !isDesktop.value;
 });
 
-watch(isMobileView, (next) => {
+watch(isMobileView, async (next, prev) => {
   if (!next) {
     document.documentElement.style.setProperty("--scroll-y-offset", `0px`);
+    if (((route.name || "") as string).endsWith("info")) {
+      // Redirect
+      const routeName = (route.name as string).replace("info", "tracks");
+      await router.push({
+        ...route,
+        name: routeName as string,
+      } as RouteLocationRaw);
+    }
   }
 });
 
