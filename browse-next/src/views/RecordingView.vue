@@ -1814,6 +1814,7 @@ const onScroll = (e: Event) => {
 
     @media screen and (min-width: @breakpoint-lg) and (max-width: @breakpoint-lg-max) {
       max-width: 576px;
+      max-height: 432px;
     }
   }
 }
