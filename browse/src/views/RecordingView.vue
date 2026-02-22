@@ -512,7 +512,4 @@ export default {
   color: $gray-600;
   min-width: 1rem;
 }
-.recording-time {
-  outline: 1px solid red;
-}
 </style>

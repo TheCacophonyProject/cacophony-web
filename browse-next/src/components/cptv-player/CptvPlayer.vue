@@ -2023,12 +2023,14 @@ const moveRevealHandle = (event: PointerEvent) => {
       ),
       parentBounds.width - handleBounds.width / 2,
     );
+    const xx = (x / parentBounds.width) * 100;
     if (revealSlider.value) {
-      (revealSlider.value as HTMLDivElement).style.width = `${
-        x + handleBounds.width / 2
-      }px`;
+      (revealSlider.value as HTMLDivElement).style.width = `calc(${
+        xx
+      }% + ${handleBounds.width / 2}px
+      )`;
     }
-    target.style.left = `${x}px`;
+    target.style.left = `${(x / parentBounds.width) * 100}%`;
   }
 };
 watch(
@@ -2079,7 +2081,7 @@ const updateSavedOpacity = (val: InputEvent) => {
         v-html="playerMessage"
       />
       <div
-        class="position-absolute top-0 h-100 w-100 reference-image"
+        class="reference-image"
         :class="{ hide: atEndOfPlayback }"
         ref="referenceImageContainer"
         v-if="showingReferencePhoto && hasReferencePhoto"
@@ -2813,10 +2815,13 @@ const updateSavedOpacity = (val: InputEvent) => {
   position: absolute;
   top: 0;
   left: 0;
+  height: 100%;
   width: 100%;
+  //outline: 1px solid red;
   z-index: 1;
   user-select: none;
-  overflow: hidden; /* ensures we don’t show anything outside the container */
+  //aspect-ratio: 3 / 4;
+  overflow: hidden;
   &.hide {
     display: none;
   }
@@ -2834,7 +2839,7 @@ const updateSavedOpacity = (val: InputEvent) => {
 
   > img {
     display: block; /* removes inline spacing gaps */
-    height: 480px;
+    height: 100%;
     object-fit: cover; /* critical to maintain aspect ratio but cover fully */
     object-position: center; /* center the image as it covers */
     pointer-events: none; /* so the handle can receive pointer events */
@@ -2868,6 +2873,7 @@ const updateSavedOpacity = (val: InputEvent) => {
   &:hover {
     opacity: 1;
   }
+  display: none;
 }
 
 .reference-opacity-container {
