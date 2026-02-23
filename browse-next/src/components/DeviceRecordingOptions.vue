@@ -1270,7 +1270,6 @@ watch(customRecordingWindowStop, async () => {
           </div>
         </div>
       </section-card>
-      {{ audioTimes({ x0: 31.58155208333333, x1: 82.64172106481482 }).length }}
       <section-card v-if="isTc2Device" class="mb-3 mb-lg-4">
         <template #header-title> Power profile </template>
         <template #header-action>
