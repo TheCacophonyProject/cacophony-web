@@ -193,9 +193,6 @@ const pollFrameTimes = () => {
 @import "./assets/less/base.less";
 
 :root {
-  // Multiselect tag colour
-  --ms-tag-bg: var(--bs-secondary);
-  --ms-option-bg-selected: var(--bs-secondary);
   --global-side-nav-collapsed-width: calc(var(--cp-grid-base) * 19); // 76px
   --global-side-nav-expanded-width: calc(var(--cp-grid-base) * 68); // 272px
 }

@@ -628,7 +628,7 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
   transition: background-color 0.2s linear;
   //min-height: 100%;
   &.has-selected {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: rgba(0, 10, 0, 0.05);
   }
 }
 </style>

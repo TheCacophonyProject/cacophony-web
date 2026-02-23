@@ -495,9 +495,10 @@ defineExpose({
 
 .options-container:focus-within {
   color: rgb(46, 46, 46);
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+  box-shadow: 0 0 0 0.25rem
+    color-mix(in oklch, var(--cp-color-green-600), transparent 80%);
   border-radius: 0.375rem;
-  border-color: #86b7fe;
+  border-color: var(--cp-color-green-300);
 }
 
 .input-container {

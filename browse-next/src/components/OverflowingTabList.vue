@@ -140,6 +140,12 @@ const activeItemTitle = ref<string>("");
   &.nav-underline {
     border-bottom: 1px solid var(--bs-border-color);
     .nav-link {
+      color: color-mix(
+        in oklch,
+        var(--cp-color-green-600),
+        var(--bs-gray-700) 50%
+      );
+      //color: var(--cp-color-green-700);
       min-height: calc(var(--cp-grid-base) * 11); // 44px
       @media (min-width: @breakpoint-sm) {
         padding-top: var(--cp-spacing-md);
@@ -152,6 +158,9 @@ const activeItemTitle = ref<string>("");
         font-weight: var(--cp-font-weight-medium);
         border-bottom-color: var(--cp-color-primary);
         color: var(--cp-color-green-800);
+      }
+      &:hover {
+        color: var(--cp-color-green-700);
       }
     }
     .dropdown-item {

@@ -3,6 +3,26 @@
   --bs-font-sans-serif: var(--cp-font-family);
   --bs-body-font-size: var(--cp-font-size-md);
   --bs-body-font-weight: var(--cp-font-weight-regular);
+
+  --bs-gray-100: #f9faf8;
+  --bs-gray-200: #edefea;
+  --bs-gray-300: #e0e3dd;
+  --bs-gray-400: #d7dad3;
+  --bs-gray-500: #bbbdb7;
+  --bs-gray-600: #787a74;
+  --bs-gray-700: #52554f;
+  --bs-gray-800: #393e37;
+  --bs-gray-900: #20221e;
+
+  --bs-body-color: #252921;
+  --bs-light-text-emphasis: #464c44;
+  --bs-secondary: #757674;
+  --bs-secondary-rgb: 119, 120, 117;
+  --bs-secondary-bg-subtle: #e1e3e1;
+  --bs-tertiary-color: rgba(33, 34, 32, 0.5);
+
+  --bs-border-color: #dbddd8;
+
   --bs-btn-disabled-border-color: transparent;
   --bs-btn-focus-border-color: transparent;
   --bs-btn-active-border-color: transparent;
@@ -49,11 +69,14 @@ hr {
   --bs-btn-bg: var(--bs-gray-900);
   --bs-btn-border-color: transparent;
   --bs-btn-hover-bg: var(--bs-gray-700);
+  --bs-btn-disabled-bg: var(--bs-gray-600)
 }
 
 .btn-outline-secondary {
-  --bs-btn-border-color: var(--bs-gray-400);
+  --bs-btn-color: #686a66;
+  --bs-btn-border-color: #c9cdc5;
   --bs-btn-bg: var(--bs-white);
+  --bs-btn-hover-bg: #767873;
   &:disabled {
     border-color: var(--bs-gray-400);
   }
@@ -106,6 +129,10 @@ hr {
 // Font size of inputs
 .form-control {
   font-size: var(--cp-font-size-md);
+  &:focus {
+    border-color: var(--cp-color-green-300);
+    box-shadow: 0 0 0 0.25rem  color-mix(in oklch, var(--cp-color-green-600), transparent 80%);
+  }
 }
 
 .form-select {
