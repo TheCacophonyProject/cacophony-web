@@ -762,12 +762,11 @@ const audioTimes = (offset: {
   const times = [];
   for (let i = 0; i < recordingsInPeriod; i++) {
     const timeCenter =
-      (percentageCovered / recordingsInPeriod) * i +
-      (Math.random() - 0.5) * 2.5;
+      (100 / recordingsInPeriod) * i + (Math.random() - 0.5) * 2.5;
     const timeWidth = 0.9;
     times.push({
-      x0: offset.x0 + (timeCenter - timeWidth / 2),
-      x1: offset.x0 + (timeCenter + timeWidth / 2),
+      x0: timeCenter - timeWidth / 2,
+      x1: timeCenter + timeWidth / 2,
     });
   }
   return times;
@@ -1271,7 +1270,7 @@ watch(customRecordingWindowStop, async () => {
           </div>
         </div>
       </section-card>
-
+      {{ audioTimes({ x0: 31.58155208333333, x1: 82.64172106481482 }).length }}
       <section-card v-if="isTc2Device" class="mb-3 mb-lg-4">
         <template #header-title> Power profile </template>
         <template #header-action>

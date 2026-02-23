@@ -1223,7 +1223,7 @@ const audioRecordingScheduleDescription = computed<string>(() => {
           <b-spinner small class="me-2" />
           Loading channel info
         </span>
-        <span v-else>{{ saltNodeGroup }}</span>
+        <span v-else>{{ saltNodeGroup || "unknown" }}</span>
       </div>
 
       <!-- Software info -->
