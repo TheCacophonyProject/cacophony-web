@@ -356,7 +356,7 @@ const addPoints = () => {
       const isFocusedPoint =
         props.focusedPoint && pointKey(props.focusedPoint) === thisPointKey;
       if (!point.color && !isAnActivePoint) {
-        colour.fillColor = "#666";
+        colour.fillColor = "#52554f";
       } else if (point.color) {
         colour.fillColor = point.color;
       }
@@ -445,7 +445,7 @@ const addPoints = () => {
       // TODO: Try and get the contrast with the markers looking better
       map.eachLayer((layer) => {
         if ((layer as TileLayer).options.attribution) {
-          (layer as TileLayer).setOpacity(0.15);
+          (layer as TileLayer).setOpacity(0.25);
         }
       });
     }
@@ -657,11 +657,10 @@ const leavePoint = () => {
 .map {
   position: relative;
   overflow: hidden;
-  background: radial-gradient(
-    circle,
-    rgba(230, 230, 230, 1) 0%,
-    rgba(188, 188, 188, 1) 100%
-  );
+}
+
+.leaflet-tile-pane {
+  filter: grayscale(20%) sepia(10%);
 }
 .loading-overlay {
   position: absolute;
@@ -669,10 +668,10 @@ const leavePoint = () => {
   left: 0;
   right: 0;
   bottom: 0;
-  color: #666;
+  color: var(--bs-gray-600);
 }
 .map.loading {
-  background: rgba(140, 140, 140, 0.5);
+  background: rgba(119, 120, 117, 0.5);
 }
 .pulse {
   animation: pulsate 1s ease-out;

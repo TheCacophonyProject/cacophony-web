@@ -306,46 +306,54 @@ const changePassword = async () => {
     <div class="col-lg-9">
       <section-card>
         <template #header-title> My details </template>
-        <div class="account-settings-list row py-2 d-flex align-items-center">
-          <span class="col-sm-3 fw-medium">Name</span>
-          <div class="d-flex align-items-center col-sm-9">
-            <span data-cy="user display name">{{ currentUser?.userName }}</span>
-            <button
-              type="button"
-              class="btn btn-icon d-flex justify-content-center ms-2"
-              data-cy="change display name button"
-              @click="() => (changeDisplayNameModal = true)"
-            >
-              <material-symbol name="edit" size="1.25rem" />
-            </button>
+        <div class="container">
+          <div class="account-settings-list row py-2 d-flex align-items-center">
+            <span class="col-sm-3 ps-0 fw-medium">Name</span>
+            <div class="d-flex align-items-center col-sm-9 ps-0">
+              <span data-cy="user display name">{{
+                currentUser?.userName
+              }}</span>
+              <button
+                type="button"
+                class="btn btn-icon d-flex justify-content-center ms-2"
+                data-cy="change display name button"
+                @click="() => (changeDisplayNameModal = true)"
+              >
+                <material-symbol name="edit" size="1.25rem" />
+              </button>
+            </div>
           </div>
-        </div>
-        <div class="account-settings-list row py-2 d-flex align-items-center">
-          <span class="col-sm-3 fw-medium">Email address</span>
-          <div class="col-sm-9 d-flex align-items-center">
-            <span cy-data="user email">{{ currentUser?.email }}</span>
-            <button
-              type="button"
-              class="btn btn-icon d-flex justify-content-center ms-2"
-              data-cy="change email address button"
-              @click.prevent="() => (changeEmailModal = true)"
-            >
-              <material-symbol name="edit" size="1.25rem" />
-            </button>
+          <div class="account-settings-list row py-2 d-flex align-items-center">
+            <span class="col-sm-3 fw-medium ps-0">Email address</span>
+            <div class="col-sm-9 d-flex align-items-center ps-0">
+              <span cy-data="user email">{{ currentUser?.email }}</span>
+              <button
+                type="button"
+                class="btn btn-icon d-flex justify-content-center ms-2"
+                data-cy="change email address button"
+                @click.prevent="() => (changeEmailModal = true)"
+              >
+                <material-symbol name="edit" size="1.25rem" />
+              </button>
+            </div>
           </div>
-        </div>
-        <!-- New password change section -->
-        <div class="account-settings-list py-2 d-flex align-items-center">
-          <span class="col-sm-3 fw-medium">Password</span>
-          <div class="col-sm-9 d-flex align-items-center">
-            <button
-              type="button"
-              class="btn btn-light ms-2 d-flex justify-content-center"
-              data-cy="change password button"
-              @click="() => (changePasswordModal = true)"
-            >
-              <material-symbol name="edit" size="1.25rem" class="me-2" />Change
-            </button>
+          <!-- New password change section -->
+          <div class="account-settings-list row py-2 d-flex align-items-center">
+            <span class="col-sm-3 fw-medium ps-0">Password</span>
+            <div class="col-sm-9 d-flex align-items-center ps-0">
+              <button
+                type="button"
+                class="btn btn-light d-flex justify-content-center mt-2 mt-sm-0"
+                data-cy="change password button"
+                @click="() => (changePasswordModal = true)"
+              >
+                <material-symbol
+                  name="edit"
+                  size="1.25rem"
+                  class="me-2"
+                />Change
+              </button>
+            </div>
           </div>
         </div>
       </section-card>

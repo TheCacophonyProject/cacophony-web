@@ -55,6 +55,7 @@ import LocationName from "@/components/LocationName.vue";
 import { BBadge, BButton, BFormCheckbox, BSpinner } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import { useMediaQuery } from "@vueuse/core";
+import type { IconsProp } from "@dbetka/vue-material-symbols/dist/jscache/icons-names";
 
 const activeProjectDevices = inject(selectedProjectDevices) as Ref<
   LoadedResource<ApiDeviceResponse[]>
@@ -258,13 +259,13 @@ const locationNameForDevice = (device: ApiDeviceResponse): string => {
 const colorForStatus = (status: DeviceStatus): string => {
   switch (status) {
     case "-":
-      return "#666";
+      return "#6c757d";
     case "standby":
-      return "#e7bc0b";
+      return "#5a872f";
     case "stopped or offline":
       return "#be0000";
     case "online":
-      return "#6dbd4b";
+      return "#579e02";
   }
 };
 
@@ -560,6 +561,19 @@ const isDevicesRoot = computed(() => {
 });
 
 const isMobileView = useMediaQuery("(max-width: 575px)");
+
+const iconForPowerStatus = (powerStatus: DeviceStatus): IconsProp => {
+  switch (powerStatus) {
+    case "online":
+      return "power_settings_new";
+    case "standby":
+      return "mode_standby";
+    case "stopped or offline":
+      return "hide_source";
+    case "-":
+      return "check_indeterminate_small";
+  }
+};
 </script>
 <template>
   <section-header class="justify-content-between align-items-center">
@@ -635,7 +649,7 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
         @hover-point="highlightPoint"
         @leave-point="highlightPoint"
         @select-point="selectPoint"
-        :can-change-base-map="false"
+        :can-change-base-map="true"
       />
       <div class="d-flex align-items-center justify-content-end my-2">
         <b-form-checkbox
@@ -674,8 +688,8 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
               :class="[cell]"
             >
               <material-symbol
-                name="power_settings_new"
-                size="1rem"
+                :name="iconForPowerStatus(cell)"
+                size="1.25rem"
                 v-if="cell !== '-'"
               />
             </span>
@@ -803,8 +817,8 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
                 :class="[card.status]"
               >
                 <material-symbol
-                  name="power_settings_new"
-                  size="1rem"
+                  :name="iconForPowerStatus(card.status)"
+                  size="1.25rem"
                   v-if="card.status !== '-'"
                 />
               </span>
@@ -896,18 +910,22 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
 }
 .power-status-icon {
   border-radius: 50%;
-  min-width: 22px;
-  width: 22px;
-  height: 22px;
+  min-width: 24px;
+  width: 24px;
+  height: 24px;
   color: var(--bs-white);
   &.stopped {
-    background-color: darkred;
+    background-color: #be0000;
   }
   &.standby {
-    background-color: #6dbd4b;
+    background-color: color-mix(
+      in oklch,
+      var(--cp-color-green-600),
+      var(--bs-gray-700) 30%
+    );
   }
   &.online {
-    background-color: #6dbd4b;
+    background-color: var(--cp-color-green-600);
     animation-name: pulse-color;
     animation-duration: 2s;
     animation-iteration-count: infinite;
@@ -915,13 +933,13 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
 }
 @keyframes pulse-color {
   0% {
-    background-color: #6dbd4b;
+    background-color: var(--cp-color-green-600);
   }
   50% {
-    background-color: #4ada10;
+    background-color: var(--cp-color-green-400);
   }
   100% {
-    background-color: #6dbd4b;
+    background-color: var(--cp-color-green-600);
   }
 }
 </style>

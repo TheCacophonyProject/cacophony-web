@@ -86,7 +86,7 @@ const hasVisits = computed<boolean>(() => {
         :radius="30"
         :is-interactive="false"
         :zoom="false"
-        :can-change-base-map="false"
+        :can-change-base-map="true"
         :loading="loading"
       />
       <visits-timeline
