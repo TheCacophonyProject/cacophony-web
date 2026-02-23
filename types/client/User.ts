@@ -95,7 +95,7 @@ const validateEmailConfirmationToken =
       }>
     >;
 
-const changePassword =
+const changePasswordUsingResetToken =
   (api: CacophonyApiClient, authKey: TestHandle | null = null) =>
   (token: string, newPassword: string) =>
     api.patch(authKey, "/api/v1/users/change-password", {
@@ -107,6 +107,13 @@ const changePassword =
         token: JwtToken<UserId>;
       }>
     >;
+
+const changePasswordWhileLoggedIn =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (newPassword: string) =>
+    api.patch(authKey, "/api/v1/users", {
+      password: newPassword,
+    }) as Promise<FetchResult<void>>;
 
 const resendAccountActivationEmail =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
@@ -271,7 +278,8 @@ export default (api: CacophonyApiClient) => {
     sendPasswordResetRequest: sendPasswordResetRequest(api),
     debugGetEmailConfirmationToken: debugGetEmailConfirmationToken(api),
     resendAccountActivationEmail: resendAccountActivationEmail(api),
-    changePassword: changePassword(api),
+    changePasswordUsingResetToken: changePasswordUsingResetToken(api),
+    changePasswordWhileLoggedIn: changePasswordWhileLoggedIn(api),
     validateEmailConfirmationToken: validateEmailConfirmationToken(api),
     login: login(api),
     loginDev: login(api, "dev"),
@@ -299,7 +307,11 @@ export default (api: CacophonyApiClient) => {
         authKey,
       ),
       resendAccountActivationEmail: resendAccountActivationEmail(api, authKey),
-      changePassword: changePassword(api, authKey),
+      changePasswordUsingResetToken: changePasswordUsingResetToken(
+        api,
+        authKey,
+      ),
+      changePasswordWhileLoggedIn: changePasswordWhileLoggedIn(api, authKey),
       validateEmailConfirmationToken: validateEmailConfirmationToken(
         api,
         authKey,

@@ -19,6 +19,7 @@ import {
   BFormInput,
   BFormInvalidFeedback,
   BModal,
+  type BvTriggerableEvent,
 } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
@@ -154,13 +155,6 @@ const passwordsMatch = computed<boolean>(() => {
   return newPassword.value === confirmPassword.value;
 });
 
-const isPasswordValid = computed<boolean>(() => {
-  if (newPassword.value.trim() === "") {
-    return true;
-  }
-  return isValidPassword.value && passwordsMatch.value;
-});
-
 const resetFormFields = () => {
   userEmailAddress.value = "";
   userEmailAddress.touched = false;
@@ -235,15 +229,12 @@ const updateUserEmailAddress = async () => {
   userUpdateInProgress.value = false;
 };
 
-const changePassword = async () => {
+const changePassword = async (e: BvTriggerableEvent) => {
   // Validate that all fields are filled
-  if (
-    !currentPassword.value.trim() ||
-    !newPassword.value.trim() ||
-    !confirmPassword.value.trim()
-  ) {
+  if (!newPassword.value.trim() || !confirmPassword.value.trim()) {
     passwordError.value = "All fields are required";
     showPasswordErrors.value = true;
+    e.preventDefault();
     return;
   }
 
@@ -251,18 +242,14 @@ const changePassword = async () => {
   if (newPassword.value.trim().length < 8) {
     passwordError.value = "New password must be at least 8 characters long";
     showPasswordErrors.value = true;
+    e.preventDefault();
     return;
   }
-
-  // Check for required character types
-  const hasUpper = /[A-Z]/.test(newPassword.value);
-  const hasLower = /[a-z]/.test(newPassword.value);
-  const hasDigit = /\d/.test(newPassword.value);
-
-  if (!(hasUpper && hasLower && hasDigit)) {
+  if (!isValidPassword.value) {
     passwordError.value =
       "New password must contain uppercase, lowercase and digit";
     showPasswordErrors.value = true;
+    e.preventDefault();
     return;
   }
 
@@ -270,6 +257,7 @@ const changePassword = async () => {
   if (newPassword.value !== confirmPassword.value) {
     passwordError.value = "Passwords do not match";
     showPasswordErrors.value = true;
+    e.preventDefault();
     return;
   }
 
@@ -279,18 +267,18 @@ const changePassword = async () => {
   showPasswordErrors.value = false;
 
   userUpdateInProgress.value = true;
-
-  // Note: This is a placeholder implementation - you would need to implement the actual API call for password change
-  // const updatedUserResponse = await updatePassword({
-  //   currentPassword: currentPassword.value,
-  //   newPassword: newPassword.value
-  // });
-
-  // For now, just simulate success
-  // If you were implementing this properly, you'd handle the API response here
+  const updatedUserResponse = await ClientApi.Users.changePasswordWhileLoggedIn(
+    newPassword.value,
+  );
+  if (updatedUserResponse.success) {
+    changePasswordModal.value = false; // Close modal after successful change
+    await router.push({ name: "sign-out" });
+  } else {
+    passwordError.value = "Something went wrong, please try again later";
+    e.preventDefault();
+  }
 
   userUpdateInProgress.value = false;
-  changePasswordModal.value = false; // Close modal after successful change
 };
 </script>
 <template>
@@ -469,11 +457,11 @@ const changePassword = async () => {
     @hidden="resetFormFields"
     ok-title="Save"
   >
-    <b-form
-      class="d-flex flex-column"
-      @submit.stop.prevent="changePassword"
-      novalidate
-    >
+    <p>
+      You will be logged out after changing your password and will need to sign
+      in again using your new password.
+    </p>
+    <b-form class="d-flex flex-column" novalidate>
       <b-alert
         v-model="hasNonValidationError"
         variant="danger"
@@ -483,21 +471,6 @@ const changePassword = async () => {
       >
         {{ userUpdateErrorMessagesDisplay }}
       </b-alert>
-
-      <!-- Current password field -->
-      <b-form-group label="Current Password">
-        <b-form-input
-          type="password"
-          v-model="currentPassword.value"
-          @blur="() => (currentPassword.touched = true)"
-          aria-label="Current password"
-          placeholder="Current password"
-          data-cy="current-password"
-          :disabled="userUpdateInProgress"
-          required
-          class="mb-3"
-        />
-      </b-form-group>
 
       <!-- New password field -->
       <b-form-group label="New Password">

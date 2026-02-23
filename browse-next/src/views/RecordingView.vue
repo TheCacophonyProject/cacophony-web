@@ -761,6 +761,8 @@ const isNightTime = (date: Date, location: LatLng): boolean => {
 };
 
 const loadRecording = async () => {
+  // Reset scroll offset when new recording loads
+  document.documentElement.style.setProperty("--scroll-y-offset", `0px`);
   if (currentRecordingId.value) {
     // Load the current recording, and then preload the next and previous recordings.
     // This behaviour will differ depending on whether we're viewing raw recordings or visits.
@@ -1812,6 +1814,7 @@ const onScroll = (e: Event) => {
 
     @media screen and (min-width: @breakpoint-lg) and (max-width: @breakpoint-lg-max) {
       max-width: 576px;
+      max-height: 432px;
     }
   }
 }
@@ -1840,7 +1843,9 @@ const onScroll = (e: Event) => {
   //    )
   //);
   //--shrink-amount: calc(min(1, max(0, calc(0))));
-  --track-height: calc(7px - calc(4px * var(--shrink-amount)));
+  //--track-height: calc(7px - calc(4px * var(--shrink-amount)));
+  //--track-height: calc(3px + calc(10px / var(--num-unique-y-slots) * 0.5));
+  --track-height: min(7px, calc(3px + calc(10px / var(--num-unique-y-slots))));
   --min-height-for-tracks: 44px;
   --player-chrome-height: 44px;
   --height-for-tracks: calc(
