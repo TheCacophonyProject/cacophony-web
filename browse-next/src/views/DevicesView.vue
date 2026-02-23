@@ -274,7 +274,7 @@ interface DeviceTableItem {
   lastSeen: string;
   __active: boolean;
   status: string | boolean;
-  __location: string;
+  location: string;
   batteryLevel: ApiDeviceResponse;
 
   __id: string;
@@ -330,7 +330,7 @@ const tableItems = computed<
             : `${lastRecordingTimeForDeviceHumanReadable(device)} (offline device)`,
         ),
         status: statusForDevice(device),
-        __location: locationNameForDevice(device),
+        location: locationNameForDevice(device),
         batteryLevel: device,
         _deleteAction: {
           value: device,
@@ -660,11 +660,11 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
       >
         <template #deviceName="{ cell, row }">
           <div class="d-flex align-items-center">
-            <device-name :name="cell" :type="row['__type']" /><b-badge
-              class="ms-2"
-              v-if="!row['__active']"
-              >Inactive</b-badge
-            >
+            <device-name
+              :name="cell"
+              :type="row['__type']"
+              :name-class="'text-nowrap'"
+            /><b-badge class="ms-2" v-if="!row['__active']">Inactive</b-badge>
           </div>
         </template>
         <template #status="{ cell }">
@@ -679,11 +679,14 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
                 v-if="cell !== '-'"
               />
             </span>
-            <span class="ms-2" v-if="cell !== '-'">{{ cell }}</span>
+            <span class="ms-2 text-nowrap" v-if="cell !== '-'">{{ cell }}</span>
           </div>
         </template>
         <template #batteryLevel="{ cell }">
           <device-battery-level :device="cell" />
+        </template>
+        <template #location="{ cell }">
+          <location-name :name="cell" />
         </template>
         <template #_deleteAction="{ cell }">
           <div
@@ -752,8 +755,8 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
                     highlightedDeviceInternal = card;
                   }
                 "
-                v-if="card.__location !== ''"
-                :name="card.__location"
+                v-if="card.location !== ''"
+                :name="card.location"
                 class="mt-2"
               />
               <div class="mt-2 d-flex align-items-center">
