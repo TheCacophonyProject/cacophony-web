@@ -167,6 +167,7 @@ export class Visit extends ModelStaticCommon<Visit> {
       const recs = await Recording.findAll({
         attributes: ["recordingDateTime", "duration"],
         where: {
+          StationId: stationId,
           recordingDateTime: {
             [Op.and]: [
               {
