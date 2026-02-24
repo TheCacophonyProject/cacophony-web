@@ -1836,7 +1836,6 @@ export default (app: Application, baseUrl: string) => {
           return successResponse(response, "Tag already exists.");
         }
       } catch (e) {
-        console.log(e, JSON.stringify(request.body));
         return next(new FatalError("Server error replacing tag."));
       }
     },
@@ -2760,7 +2759,6 @@ export default (app: Application, baseUrl: string) => {
             );
         }
       } catch (e) {
-        console.log(e);
         return successResponse(response, "Got recordings", {
           recordings: [],
         });

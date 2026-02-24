@@ -151,14 +151,6 @@ export class Visit extends ModelStaticCommon<Visit> {
 
     const recStart = new Date(recording.recordingDateTime);
     const recEnd = this.recordingEndTime(recording);
-
-    console.log(
-      "$$$$$$$$$$$$$$$$$$$$$$$$$$",
-      recStart,
-      recEnd,
-      recording.recordingDateTime,
-      JSON.stringify(recording, null, 2),
-    );
     // We really want to greedily expand the visit window until the start/end are not intersecting our bounds - i.e.
     // until we find a 10 minute gap.
     // So, start with recording padded out with 10 minutes of buffer on either side.

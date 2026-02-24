@@ -186,7 +186,6 @@ export class Alert extends ModelStaticCommon<Alert> {
         },
       ];
     }
-    console.log("Alerts", whereClause);
     const alerts: Alert[] = (await Alert.findAll<Alert>(whereClause)).filter(
       (alert) => {
         return !(
