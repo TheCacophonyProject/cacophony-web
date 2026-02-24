@@ -65,7 +65,7 @@ import SpectrogramViewer from "@/components/SpectrogramViewer.vue";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import RecordingViewMetadata from "@/components/RecordingViewMetadata.vue";
 import RecordingViewTabs from "@/components/RecordingViewTabs.vue";
-import { BModal } from "bootstrap-vue-next";
+import { BModal, BTooltip } from "bootstrap-vue-next";
 
 const selectedVisit = inject(
   "currentlySelectedVisit",
@@ -1347,14 +1347,10 @@ const onScroll = (e: Event) => {
             :display-header-info="showHeaderInfo"
             :has-reference-photo="deviceHasReferencePhotoAtRecordingTime"
             @export-completed="exportCompleted"
-            @request-next-recording="
-              async () => await gotoNextRecordingOrVisit()
-            "
-            @request-prev-recording="
-              async () => await gotoPreviousRecordingOrVisit()
-            "
-            @request-next-visit="async () => await gotoNextVisit()"
-            @request-prev-visit="async () => await gotoPreviousVisit()"
+            @request-next-recording="gotoNextRecordingOrVisit"
+            @request-prev-recording="gotoPreviousRecordingOrVisit"
+            @request-next-visit="gotoNextVisit"
+            @request-prev-visit="gotoPreviousVisit"
             @request-header-info-display="requestedHeaderInfoDisplay"
             @dismiss-header-info="dismissHeaderInfo"
             @track-selected="selectedTrackWrap"
@@ -1499,70 +1495,94 @@ const onScroll = (e: Event) => {
             />
           </button>
           <!-- Desktop only button, advances through visits -->
-          <button
-            type="button"
-            class="btn d-none d-md-flex flex-row-reverse align-items-center position-relative"
-            :disabled="!hasPreviousVisit"
-            @click.prevent="gotoPreviousVisit"
+          <b-tooltip
+            placement="bottom"
+            teleport-to="body"
+            :delay="{ show: 1000, hide: 100 }"
             v-if="isInGreaterVisitContext && hasPreviousVisit"
-            title="alt+shift &larr;"
           >
-            <span class="d-none d-md-flex ps-2 flex-column align-items-start">
-              <span class="fs-6 text-body-secondary"
-                >Prev<span class="d-none d-lg-inline">ious</span> visit</span
+            <template #target>
+              <button
+                type="button"
+                class="btn d-none d-md-flex flex-row-reverse align-items-center position-relative"
+                :disabled="!hasPreviousVisit"
+                @click.prevent="gotoPreviousVisit"
               >
-              <span v-if="previousVisit" class="text-capitalize fw-medium fs-6">
-                {{
-                  displayLabelForClassificationLabel(
-                    previousVisit.classification as string,
-                  )
-                }}
-              </span>
-            </span>
-            <material-symbol
-              name="keyboard_double_arrow_left"
-              size="1.25rem"
-              class="me-1"
-            />
-          </button>
-          <!-- Desktop only button, advances through recordings -->
-          <button
-            type="button"
-            class="btn d-none d-md-flex flex-row-reverse align-items-center position-relative"
-            v-if="hasPreviousRecording"
-            @click.prevent="gotoPreviousRecording"
-            title="alt &larr;"
-          >
-            <span class="d-none d-md-flex ps-2 flex-column align-items-start">
-              <span class="fs-6 text-body-secondary"
-                >Prev<span
-                  class=""
-                  :class="{
-                    'd-none': hasPreviousVisit,
-                    'd-lg-inline': hasPreviousVisit,
-                  }"
-                  >ious</span
+                <span
+                  class="d-none d-md-flex ps-2 flex-column align-items-start"
                 >
-                rec<span
-                  :class="{
-                    'd-sm-none': hasPreviousVisit,
-                    'd-lg-inline': hasPreviousVisit,
-                  }"
-                  >ording</span
-                ></span
+                  <span class="fs-6 text-body-secondary"
+                    >Prev<span class="d-none d-lg-inline">ious</span>
+                    visit</span
+                  >
+                  <span
+                    v-if="previousVisit"
+                    class="text-capitalize fw-medium fs-6"
+                  >
+                    {{
+                      displayLabelForClassificationLabel(
+                        previousVisit.classification as string,
+                      )
+                    }}
+                  </span>
+                </span>
+                <material-symbol
+                  name="keyboard_double_arrow_left"
+                  size="1.25rem"
+                  class="me-1"
+                />
+              </button>
+            </template>
+            alt + shift + left arrow
+          </b-tooltip>
+          <!-- Desktop only button, advances through recordings -->
+          <b-tooltip
+            placement="bottom"
+            teleport-to="body"
+            :delay="{ show: 1000, hide: 100 }"
+            v-if="hasPreviousRecording"
+          >
+            <template #target>
+              <button
+                type="button"
+                class="btn d-none d-md-flex flex-row-reverse align-items-center position-relative"
+                @click.prevent="gotoPreviousRecording"
               >
-              <span class="fs-6 fw-medium"
-                >{{ (previousRecordingIndex as number) + 1 }}/{{
-                  currentRecordingCount || allRecordingIds.length
-                }}</span
-              >
-            </span>
-            <material-symbol
-              name="keyboard_arrow_left"
-              size="1.25rem"
-              class="me-1"
-            />
-          </button>
+                <span
+                  class="d-none d-md-flex ps-2 flex-column align-items-start"
+                >
+                  <span class="fs-6 text-body-secondary"
+                    >Prev<span
+                      class=""
+                      :class="{
+                        'd-none': hasPreviousVisit,
+                        'd-lg-inline': hasPreviousVisit,
+                      }"
+                      >ious</span
+                    >
+                    rec<span
+                      :class="{
+                        'd-sm-none': hasPreviousVisit,
+                        'd-lg-inline': hasPreviousVisit,
+                      }"
+                      >ording</span
+                    ></span
+                  >
+                  <span class="fs-6 fw-medium"
+                    >{{ (previousRecordingIndex as number) + 1 }}/{{
+                      currentRecordingCount || allRecordingIds.length
+                    }}</span
+                  >
+                </span>
+                <material-symbol
+                  name="keyboard_arrow_left"
+                  size="1.25rem"
+                  class="me-1"
+                />
+              </button>
+            </template>
+            alt + left arrow
+          </b-tooltip>
         </div>
         <recording-view-action-buttons
           class="action-buttons ms-auto me-auto"
@@ -1576,67 +1596,83 @@ const onScroll = (e: Event) => {
           @delete-recording="deleteRecording"
         />
         <div class="next-button d-flex justify-content-end">
-          <!-- Desktop only button, advances through recordings -->
-          <button
-            type="button"
-            class="btn d-none d-md-flex align-items-center position-relative"
+          <b-tooltip
+            placement="bottom"
+            teleport-to="body"
+            :delay="{ show: 1000, hide: 100 }"
             v-if="hasNextRecording"
-            @click.prevent="gotoNextRecording"
-            title="alt &rarr;"
           >
-            <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
-              <span class="fs-6 text-body-secondary"
-                >Next rec<span
-                  :class="{
-                    'd-sm-none': hasNextVisit,
-                    'd-lg-inline': hasNextVisit,
-                  }"
-                  >ording</span
-                ></span
+            <!-- Desktop only button, advances through recordings -->
+            <template #target>
+              <button
+                type="button"
+                class="btn d-none d-md-flex align-items-center position-relative"
+                @click.prevent="gotoNextRecording"
               >
-              <span class="fs-6 fw-medium"
-                >{{ (nextRecordingIndex as number) + 1 }}/{{
-                  currentRecordingCount || allRecordingIds.length
-                }}</span
-              >
-            </span>
-            <material-symbol
-              name="keyboard_arrow_right"
-              size="1.25rem"
-              class="ms-1"
-            />
-          </button>
-          <!-- Desktop only button, advances through visits -->
-          <button
-            type="button"
-            class="btn d-none d-md-flex align-items-center position-relative"
-            :disabled="!hasNextVisit"
-            @click.prevent="gotoNextVisit"
+                <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
+                  <span class="fs-6 text-body-secondary"
+                    >Next rec<span
+                      :class="{
+                        'd-sm-none': hasNextVisit,
+                        'd-lg-inline': hasNextVisit,
+                      }"
+                      >ording</span
+                    ></span
+                  >
+                  <span class="fs-6 fw-medium"
+                    >{{ (nextRecordingIndex as number) + 1 }}/{{
+                      currentRecordingCount || allRecordingIds.length
+                    }}</span
+                  >
+                </span>
+                <material-symbol
+                  name="keyboard_arrow_right"
+                  size="1.25rem"
+                  class="ms-1"
+                />
+              </button>
+            </template>
+            alt + right arrow
+          </b-tooltip>
+          <b-tooltip
+            placement="bottom"
+            teleport-to="body"
+            :delay="{ show: 1000, hide: 100 }"
             v-if="isInGreaterVisitContext && hasNextVisit"
-            title="alt+shift &rarr;"
           >
-            <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
-              <span class="fs-6 text-body-secondary">Next visit</span>
-              <span v-if="nextVisit" class="text-capitalize fw-medium fs-6">
-                {{
-                  displayLabelForClassificationLabel(
-                    nextVisit.classification as string,
-                  )
-                }}
-              </span>
-            </span>
-            <material-symbol
-              name="keyboard_double_arrow_right"
-              size="1.25rem"
-              class="ms-1"
-            />
-          </button>
+            <!-- Desktop only button, advances through visits -->
+            <template #target>
+              <button
+                type="button"
+                class="btn d-none d-md-flex align-items-center position-relative"
+                :disabled="!hasNextVisit"
+                @click.prevent="gotoNextVisit"
+              >
+                <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
+                  <span class="fs-6 text-body-secondary">Next visit</span>
+                  <span v-if="nextVisit" class="text-capitalize fw-medium fs-6">
+                    {{
+                      displayLabelForClassificationLabel(
+                        nextVisit.classification as string,
+                      )
+                    }}
+                  </span>
+                </span>
+                <material-symbol
+                  name="keyboard_double_arrow_right"
+                  size="1.25rem"
+                  class="ms-1"
+                />
+              </button>
+            </template>
+            alt + shift + right arrow
+          </b-tooltip>
           <!-- Mobile only button without labels, advances through recordings and visits -->
           <button
             type="button"
             class="btn btn-icon d-flex d-md-none align-items-center"
             :disabled="!hasNextRecording && !hasNextVisit"
-            @click.prevent="async () => await gotoNextRecordingOrVisit()"
+            @click.prevent="gotoNextRecordingOrVisit"
           >
             <material-symbol
               v-if="hasNextRecording"

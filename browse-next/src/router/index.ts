@@ -666,7 +666,7 @@ router.beforeEach(async (to, from, next) => {
 
   // Finally, go to the route asked for
   pinSideNav.value = false;
-  console.warn(`Navigating to '${String(to.name)}'`, to.fullPath, to);
+  // console.warn(`Navigating to '${String(to.name)}'`, to.fullPath, to);
   return next();
 });
 

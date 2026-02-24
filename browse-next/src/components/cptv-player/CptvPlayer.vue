@@ -1666,12 +1666,14 @@ const pollFrameTimes = () => {
   }
 };
 
-const handleKeyboardControls = (event: KeyboardEvent) => {
+const handleKeyboardControls = async (event: KeyboardEvent) => {
+  event.preventDefault();
+  event.stopImmediatePropagation();
   if (event.code === "Space" && !event.repeat) {
-    togglePlayback();
+    await togglePlayback();
   } else if (event.code === "ArrowRight") {
     if (!event.altKey) {
-      stepForward();
+      await stepForward();
     } else if (!event.shiftKey) {
       requestNextRecording();
     } else {
@@ -1679,7 +1681,7 @@ const handleKeyboardControls = (event: KeyboardEvent) => {
     }
   } else if (event.code === "ArrowLeft") {
     if (!event.altKey) {
-      stepBackward();
+      await stepBackward();
     } else if (!event.shiftKey) {
       requestPrevRecording();
     } else {

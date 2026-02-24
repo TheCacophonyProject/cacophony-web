@@ -162,7 +162,10 @@ const currentProject = inject(currentActiveProject) as ComputedRef<
 
 watch(
   selectedVisit,
-  (visit: ApiVisitResponse | null, prevVisit: ApiVisitResponse | null) => {
+  async (
+    visit: ApiVisitResponse | null,
+    prevVisit: ApiVisitResponse | null,
+  ) => {
     if (visit && !prevVisit) {
       // Set route so that modal shows up
 
@@ -204,7 +207,7 @@ watch(
       if (recordingIds.length) {
         params.recordingIds = recordingIds.map(({ recId }) => recId).join(",");
       }
-      router.push({
+      await router.push({
         name: "dashboard-visit",
         params,
         query: route.query,
@@ -543,7 +546,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   >
     <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
     <div
-      class="species-summary d-flex gap-sm-3 flex-sm-nowrap mb-3 mb-sm-0"
+      class="species-summary d-flex gap-3 flex-sm-nowrap mb-3 mb-sm-0"
       v-if="!isLoading && hasVisitsForSelectedTimePeriod"
     >
       <location-visit-summary

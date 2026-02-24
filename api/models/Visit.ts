@@ -168,6 +168,7 @@ export class Visit extends ModelStaticCommon<Visit> {
         attributes: ["recordingDateTime", "duration"],
         where: {
           StationId: stationId,
+          // FIXME: Test with GroupId constraint also
           recordingDateTime: {
             [Op.and]: [
               {
