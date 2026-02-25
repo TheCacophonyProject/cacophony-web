@@ -43,7 +43,10 @@ import {
   deviceScheduledPowerOffTime,
   deviceScheduledPowerOnTime,
 } from "@/components/DeviceUtils";
-import type { ApiStationResponse } from "@typedefs/api/station";
+import type {
+  ApiStationResponse as ApiLocationResponse,
+  ApiStationResponse,
+} from "@typedefs/api/station";
 import type { LoadedResource } from "@apiClient/types.ts";
 import {
   latestRecordingTimeForDeviceAtLocation,
@@ -348,11 +351,36 @@ const tableItems = computed<
     });
 });
 
-const deviceLocations = computed<NamedPoint[]>(() => {
+const cacophonyHq = { lat: -43.5339514, lng: 172.6467213 };
+const locIsInCacophonyHq = (location: LatLng): boolean => {
+  return latLngApproxDistance(cacophonyHq, location) < 2000;
+};
+
+const projectIsAroundCacophonyHq = computed<boolean>(() => {
+  // All locations are around cacophony hq
+  if (validDeviceLocations.value) {
+    return validDeviceLocations.value.every(
+      ({ location }) =>
+        latLngApproxDistance(cacophonyHq, location as LatLng) < 50000,
+    );
+  }
+  return false;
+});
+
+const validDeviceLocations = computed(() => {
   return devices.value
     .filter((device) => device.location !== undefined)
     .filter(
       (device) => device.location?.lat !== 0 && device.location?.lng !== 0,
+    );
+});
+
+const deviceLocations = computed<NamedPoint[]>(() => {
+  return validDeviceLocations.value
+    .filter(({ location }) =>
+      projectIsAroundCacophonyHq.value
+        ? true
+        : !locIsInCacophonyHq(location as LatLng),
     )
     .map((device) => {
       const { deviceName, location, groupName, id } = device;

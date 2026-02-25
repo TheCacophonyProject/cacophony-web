@@ -42,9 +42,12 @@ import {
 } from "@models/provides";
 import type { LoadedResource } from "@apiClient/types";
 import BimodalSwitch from "@/components/BimodalSwitch.vue";
-import { canonicalLatLngForLocations } from "@/helpers/Location";
+import {
+  canonicalLatLngForLocations,
+  latLngApproxDistance,
+} from "@/helpers/Location";
 import { sortTagPrecedence } from "@models/visitsUtils";
-import type { StationId as LocationId } from "@typedefs/api/common";
+import type { LatLng, StationId as LocationId } from "@typedefs/api/common";
 import { DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS } from "@/consts.ts";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
@@ -302,13 +305,22 @@ onBeforeMount(async () => {
   await getClassifications();
 });
 
-const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
-  ApiLocationResponse[]
->(() => {
-  // NOTE: - Use this to show which stations *could* have had recordings, but may have had no activity.
-  // const visitLocations = dashboardVisits.value.map(
-  //   (visit: ApiVisitResponse) => visit.stationId
-  // );
+const cacophonyHq = { lat: -43.5339514, lng: 172.6467213 };
+const locIsInCacophonyHq = (location: LatLng): boolean => {
+  return latLngApproxDistance(cacophonyHq, location) < 2000;
+};
+
+const projectIsAroundCacophonyHq = computed<boolean>(() => {
+  // All locations are around cacophony hq
+  if (validLocations.value) {
+    return validLocations.value.every(
+      ({ location }) => latLngApproxDistance(cacophonyHq, location) < 50000,
+    );
+  }
+  return false;
+});
+
+const validLocations = computed(() => {
   if (locations.value) {
     return (locations.value as ApiLocationResponse[])
       .filter(({ location }) => location.lng !== 0 && location.lat !== 0)
@@ -329,11 +341,20 @@ const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
           );
         }
       });
-    // .filter((location: ApiLocationResponse) =>
-    //   visitLocations.includes(location.id)
-    // );
   }
   return [];
+});
+
+const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
+  ApiLocationResponse[]
+>(() => {
+  // NOTE: - Use this to show which stations *could* have had recordings, but may have had no activity.
+  // const visitLocations = dashboardVisits.value.map(
+  //   (visit: ApiVisitResponse) => visit.stationId
+  // );
+  return validLocations.value.filter(({ location }) =>
+    projectIsAroundCacophonyHq.value ? true : !locIsInCacophonyHq(location),
+  );
 });
 
 provide(
