@@ -45,8 +45,6 @@ const latestVersionInfo =
 
 const deviceConfig = ref<LoadedResource<DeviceConfigDetail>>(null);
 const currentLocationForDevice = ref<LoadedResource<ApiLocationResponse>>(null);
-const lastPowerOffTime = ref<LoadedResource<Date>>(null);
-const lastPowerOnTime = ref<LoadedResource<Date>>(null);
 const settings = ref<LoadedResource<ApiDeviceHistorySettings>>(null);
 const saltNodeGroup = ref<LoadedResource<string>>(null);
 const configInfoLoading = resourceIsLoading(deviceConfig);
@@ -502,15 +500,8 @@ const init = async () => {
     loadResource(versionInfo, () =>
       ClientApi.Devices.getDeviceVersionInfo(deviceId),
     );
-
     loadResource(currentLocationForDevice, () =>
       ClientApi.Devices.getDeviceLocationAtTime(deviceId, true),
-    );
-    loadResource(lastPowerOffTime, () =>
-      ClientApi.Devices.getDeviceLastPoweredOff(deviceId),
-    );
-    loadResource(lastPowerOnTime, () =>
-      ClientApi.Devices.getDeviceLastPoweredOn(deviceId),
     );
     loadResource(saltNodeGroup, () =>
       ClientApi.Devices.getDeviceNodeGroup(deviceId),

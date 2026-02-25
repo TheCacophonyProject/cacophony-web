@@ -1404,9 +1404,6 @@ export default function (app: Application, baseUrl: string) {
       const atTime =
         (request.query["at-time"] as unknown as Date) ?? new Date();
       const device = response.locals.device as Device;
-
-      logger.warning("@@@@@@ %s, %s", atTime, typeof atTime);
-
       const deviceSettings: DeviceHistory | null = await DeviceHistory.latest(
         device.id,
         device.GroupId,
