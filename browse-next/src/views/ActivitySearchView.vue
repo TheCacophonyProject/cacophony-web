@@ -41,6 +41,7 @@ import {
 } from "@typedefs/api/consts.ts";
 import type {
   DeviceId,
+  LatLng,
   RecordingId,
   StationId as LocationId,
 } from "@typedefs/api/common";
@@ -54,7 +55,10 @@ import {
   timezoneForLatLng,
   visitDuration,
 } from "@models/visitsUtils";
-import { canonicalLatLngForLocations } from "@/helpers/Location";
+import {
+  canonicalLatLngForLocations,
+  latLngApproxDistance,
+} from "@/helpers/Location";
 import * as sunCalc from "suncalc";
 import {
   type LocationQuery,
@@ -668,18 +672,38 @@ const locationHasRecordings = (location: ApiLocationResponse) => {
   );
 };
 
-const locationsForMap = computed<NamedPoint[]>(() => {
+const validLocations = computed(() => {
   if (locations.value) {
-    return (locations.value as ApiLocationResponse[])
-      .filter(
-        (location) =>
-          locationHasRecordings(location) &&
-          location.location &&
-          (location.location.lat !== 0 || location.location.lng !== 0),
-      )
-      .map(mapLocationForMap);
+    return (locations.value as ApiLocationResponse[]).filter(
+      (location) =>
+        locationHasRecordings(location) &&
+        location.location &&
+        (location.location.lat !== 0 || location.location.lng !== 0),
+    );
   }
   return [];
+});
+const cacophonyHq = { lat: -43.5339514, lng: 172.6467213 };
+const locIsInCacophonyHq = (location: LatLng): boolean => {
+  return latLngApproxDistance(cacophonyHq, location) < 2000;
+};
+
+const projectIsAroundCacophonyHq = computed<boolean>(() => {
+  // All locations are around cacophony hq
+  if (validLocations.value) {
+    return validLocations.value.every(
+      ({ location }) => latLngApproxDistance(cacophonyHq, location) < 50000,
+    );
+  }
+  return false;
+});
+
+const locationsForMap = computed<NamedPoint[]>(() => {
+  return validLocations.value
+    .filter(({ location }) =>
+      projectIsAroundCacophonyHq.value ? true : !locIsInCacophonyHq(location),
+    )
+    .map(mapLocationForMap);
 });
 const highlightedPoint = computed<NamedPoint | null>(() => {
   return (
@@ -748,6 +772,9 @@ const locationsInSelectedTimespanForMap = computed<NamedPoint[]>(() => {
         }
       }
     })
+    .filter(({ location }) =>
+      projectIsAroundCacophonyHq.value ? true : !locIsInCacophonyHq(location),
+    )
     .map(mapLocationForMap);
 });
 
