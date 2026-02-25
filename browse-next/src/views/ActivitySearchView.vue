@@ -1399,8 +1399,9 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           gotUntilDate.setMilliseconds(gotUntilDate.getMilliseconds() - 1);
           currentQueryCursor.value.untilDateTime = gotUntilDate;
           const reachedMinDateForSelectedLocations =
+            !!currentQueryCursor.value.fromDateTime &&
             (currentQueryCursor.value.fromDateTime as Date).getTime() ===
-            minDateForSelectedLocations.value.getTime();
+              minDateForSelectedLocations.value.getTime();
           if (loadedFewerItemsThanRequested) {
             if (reachedMinDateForSelectedLocations) {
               currentObserver && currentObserver.stop();

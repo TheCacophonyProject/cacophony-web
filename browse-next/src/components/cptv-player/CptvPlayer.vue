@@ -267,7 +267,7 @@ const animationFrame = ref<number>(0);
 
 const motionPaths = computed<MotionPath[]>(() => {
   return (
-    (props.recording?.tracks
+    (tracksIntermediate.value
       .map((track) => motionPathForTrack(track, scale.value))
       .filter((m) => m !== null) as MotionPath[]) || []
   );

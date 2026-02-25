@@ -953,7 +953,7 @@ const recordingDurationString = computed<string>(() => {
     }
     return `${visitStart}&ndash;${visitEnd} (${duration})`;
   }
-  return "";
+  return "&nbsp;";
 });
 
 const isDesktop = useMediaQuery("(min-width: 992px)");
@@ -1862,7 +1862,9 @@ const onScroll = (e: Event) => {
   --num-unique-y-slots: 0;
   --min-player-height: 150px;
   --max-player-height: min(480px, 75svw);
-
+  @media screen and (min-width: @breakpoint-lg) and (max-width: @breakpoint-lg-max) {
+    --max-player-height: min(432px, 75svw);
+  }
   --max-scroll-y-offset: calc(
     var(--max-player-height) - var(--min-player-height)
   );

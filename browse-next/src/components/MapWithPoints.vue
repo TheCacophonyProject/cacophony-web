@@ -260,7 +260,7 @@ const mapBounds = computed<LatLngBounds | null>(() => {
     (props.points &&
       props.points.length &&
       latLngBounds(
-        props.points.flatMap(({ location }) => {
+        props.points.flatMap(({ location }: NamedPoint) => {
           const pBounds = latLng(location).toBounds(boundsPaddingInMeters);
           return [pBounds.getNorthWest(), pBounds.getSouthEast()];
         }),

@@ -2,10 +2,9 @@
 import SectionHeader from "@/components/SectionHeader.vue";
 import { computed, inject, onMounted, ref } from "vue";
 import type { Ref } from "vue";
-import type { StationId as LocationId } from "@typedefs/api/common";
+import type { LatLng, StationId as LocationId } from "@typedefs/api/common";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import MapWithPoints from "@/components/MapWithPoints.vue";
-import type { LatLng } from "leaflet";
 import type { NamedPoint } from "@models/mapUtils";
 import { lastActiveLocationTime, locationsAreEqual } from "@/utils";
 import LocationsOverviewTable from "@/components/LocationsOverviewTable.vue";
@@ -19,6 +18,7 @@ import { ClientApi } from "@/api";
 import { useElementBounding, useWindowSize } from "@vueuse/core";
 import { BPopover, BSpinner } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import { latLngApproxDistance } from "@/helpers/Location.ts";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
@@ -39,21 +39,45 @@ const loadLocations = async () => {
   );
 };
 
+const cacophonyHq = { lat: -43.5339514, lng: 172.6467213 };
+const locIsInCacophonyHq = (location: LatLng): boolean => {
+  return latLngApproxDistance(cacophonyHq, location) < 2000;
+};
+
+const projectIsAroundCacophonyHq = computed<boolean>(() => {
+  // All locations are around cacophony hq
+  if (validLocations.value) {
+    return validLocations.value.every(
+      ({ location }) => latLngApproxDistance(cacophonyHq, location) < 50000,
+    );
+  }
+  return false;
+});
+
+const validLocations = computed(() => {
+  if (!locations.value) {
+    return [];
+  }
+  return (locations.value as ApiLocationResponse[]).filter((location) => {
+    const {
+      location: loc,
+      lastThermalRecordingTime,
+      lastAudioRecordingTime,
+    } = location;
+    return (
+      loc.lng !== 0 &&
+      loc.lat !== 0 &&
+      (!!lastThermalRecordingTime || !!lastAudioRecordingTime)
+    );
+  });
+});
+
 const locationsForMap = computed<NamedPoint[]>(() => {
   if (locations.value) {
-    return (locations.value as ApiLocationResponse[])
-      .filter((location) => {
-        const {
-          location: loc,
-          lastThermalRecordingTime,
-          lastAudioRecordingTime,
-        } = location;
-        return (
-          loc.lng !== 0 &&
-          loc.lat !== 0 &&
-          (!!lastThermalRecordingTime || !!lastAudioRecordingTime)
-        );
-      })
+    return validLocations.value
+      .filter(({ location }) =>
+        projectIsAroundCacophonyHq.value ? true : !locIsInCacophonyHq(location),
+      )
       .map(({ name, groupName, location }) => ({
         name,
         project: groupName,
