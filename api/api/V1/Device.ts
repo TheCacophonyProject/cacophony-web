@@ -1546,7 +1546,6 @@ export default function (app: Application, baseUrl: string) {
         const newLocation = request.body.location;
         const newKind = request.body.type;
         const setBy = response.locals.requestUser?.id ? "user" : "automatic";
-        logger.warning("HERE");
         const latestDeviceHistoryEntry = await DeviceHistory.latest(
           device.id,
           device.GroupId,

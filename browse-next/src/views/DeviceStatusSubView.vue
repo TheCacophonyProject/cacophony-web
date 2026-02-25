@@ -696,7 +696,7 @@ const audioRecordingSchedule = computed<string>(() => {
       return "Audio recording disabled";
     case AudioRecordingMode.AudioAndThermal:
     default:
-      return "Set to record 24/7, but thermal recording is prioritised";
+      return "Set to record at random times throughout the day and night";
   }
 });
 
