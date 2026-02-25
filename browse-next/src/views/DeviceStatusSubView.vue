@@ -689,22 +689,21 @@ const audioRecordingModeDescription = computed<string>(() => {
 const audioRecordingSchedule = computed<string>(() => {
   switch (audioRecordingMode.value) {
     case AudioRecordingMode.AudioOrThermal:
-      return "Set to record 24/7, but thermal recording is prioritised";
+      return "Record outside of the thermal recording schedule";
     case AudioRecordingMode.AudioOnly:
       return "Set to record 24/7";
     case AudioRecordingMode.Disabled:
       return "Audio recording disabled";
     case AudioRecordingMode.AudioAndThermal:
     default:
-      return "Record outside of the thermal recording schedule";
+      return "Set to record 24/7, but thermal recording is prioritised";
   }
 });
 
 const audioRecordingScheduleDescription = computed<string>(() => {
   switch (audioRecordingMode.value) {
     case AudioRecordingMode.AudioOrThermal:
-      return `<p class="mb-2">Records a one-minute clip of audio 32 times a day, at random intervals during the day.</p>
-      <p class="mb-0">The device won't be able to record thermal video while the audio is being recorded.</p>`;
+      return `<p class="mb-0">Records a one-minute clip of audio outside of the thermal video recording schedule.</p>`;
     case AudioRecordingMode.AudioOnly:
       return `<p class="mb-0">Records a one-minute clip of audio 32 times a day, at random intervals during the day.</p>`;
     case AudioRecordingMode.Disabled:
@@ -715,7 +714,8 @@ const audioRecordingScheduleDescription = computed<string>(() => {
       }
     case AudioRecordingMode.AudioAndThermal:
     default:
-      return `<p class="mb-0">Records a one-minute clip of audio outside of the thermal video recording schedule.</p>`;
+      return `<p class="mb-2">Records a one-minute clip of audio 32 times a day, at random intervals during the day.</p>
+      <p class="mb-0">The device won't be able to record thermal video while the audio is being recorded.</p>`;
   }
 });
 </script>
