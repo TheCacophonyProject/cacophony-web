@@ -92,7 +92,7 @@ export interface TrackClassification {
   message?: string;
   model_id?: integer;
   model_used?: string;
-  rat_thresh_version?: string;
+  rat_thresh_version?: number;
   threshold_used?: FloatZeroToOne;
 
   // Used in api when calculating good tags
