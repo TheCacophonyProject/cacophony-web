@@ -47,6 +47,7 @@ import { Recording } from "@models/Recording.js";
 import type {
   MinimalTrackRequestData,
   MinimalTrack,
+  MinimalTracksRequestData,
 } from "@/../types/api/fileProcessing.js";
 import { Visit } from "@models/Visit.js";
 
@@ -399,7 +400,7 @@ export default function (app: Application, baseUrl: string) {
           ),
         );
       }
-      const data = response.locals.data;
+      const data = response.locals.data as MinimalTracksRequestData;
       const trackIds: number[] = [];
       const tracks = [];
 
@@ -409,7 +410,7 @@ export default function (app: Application, baseUrl: string) {
 
       const mask = await getMask(deviceId, groupId, atTime);
       for (const trackData of data) {
-        const isMasked = mask && maskMatch(mask, trackData);
+        const isMasked = mask && maskMatch(mask, trackData.positions);
 
         if (isMasked) {
           continue;
