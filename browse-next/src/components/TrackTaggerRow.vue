@@ -89,6 +89,13 @@ const userIsGroupAdmin = computed<boolean>(() => {
   );
 });
 
+const mapConfidences = (confidence: number) => {
+  if (confidence <= 1) {
+    return Math.round(confidence * 100);
+  }
+  return confidence;
+};
+
 const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
   () => {
     const tags: ApiTrackTagResponse[] = [...humanTags.value];
@@ -113,7 +120,9 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
           " ",
           "&nbsp;",
         ),
-        confidence: tag.automatic ? tag.confidence.toString() + "%" : "",
+        confidence: tag.automatic
+          ? mapConfidences(tag.confidence).toString() + "%"
+          : "",
       };
       if (userIsGroupAdmin.value) {
         item._deleteAction = {

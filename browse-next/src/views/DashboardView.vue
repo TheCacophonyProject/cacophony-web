@@ -32,6 +32,7 @@ import {
   getClassifications,
   displayLabelForClassificationLabel,
   getClassificationForLabel,
+  flatClassifications,
 } from "@api/classificationsUtils.ts";
 import TagImage from "@/components/TagImage.vue";
 import {
@@ -63,6 +64,10 @@ const currentVisitsFilter = ref<((visit: ApiVisitResponse) => boolean) | null>(
 
 const visitIsTombstoned = (visit: ApiVisitResponse): boolean => {
   return visit.hasOwnProperty("tombstoned");
+};
+
+const pathForTag = (tag: string): string => {
+  return flatClassifications.value[tag]?.path || tag;
 };
 
 const currentVisitsFilterComputed = computed<
@@ -518,8 +523,12 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
         class="species-summary__item d-flex flex-row align-items-center gap-2 gap-sm-3"
         @click="showVisitsForTag(key)"
       >
-        <div class="species-summary__item__icon p-1 p-md-2" :class="key">
-          <tag-image :tag="key" width="24" height="24" />
+        <div
+          class="species-summary__item__icon p-1 p-md-2"
+          :class="[...pathForTag(key).split('.')]"
+          :key="`d_${key}`"
+        >
+          <tag-image :tag="key" :key="`i_${key}`" width="24" height="24" />
         </div>
         <div
           class="d-flex justify-content-evenly flex-sm-column align-items-center align-items-sm-start"
