@@ -389,7 +389,7 @@ describe("Device mask regions", () => {
     cy.apiTracksCheck(user, recording, []);
   });
 
-  it.only("Mask regions mask out tracks that are entirely contained within the region using bulk api endpoint. ", () => {
+  it("Mask regions mask out tracks that are entirely contained within the region using bulk api endpoint. ", () => {
     // - Upload a recording with a location.
     // - Add a mask region
     // - Add a track to the recording
