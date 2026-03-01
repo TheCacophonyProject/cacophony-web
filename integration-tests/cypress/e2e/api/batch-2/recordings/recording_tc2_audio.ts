@@ -34,6 +34,7 @@ describe("Recordings - audio recording parameter tests", () => {
     let expectedRecording1: ApiAudioRecordingResponse;
     recording1.duration = 10.08;
     recording1.location = [-43.5339, 172.64731];
+    templateExpectedRecording.status = "test";
     recording1.recordingDateTime = "2026-02-01T20:23:09.103Z";
     cy.log("Add recording as device");
     cy.apiRecordingAdd(

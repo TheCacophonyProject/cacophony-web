@@ -339,6 +339,7 @@ export interface ApiRecordingSet {
   cacophonyIndex?: CacophonyIndex[];
   additionalMetadata?: ApiThermalAdditionalMetadata | unknown;
   comment?: string;
+  status?: "test" | "startup" | "shutdown";
   processingState?: RecordingProcessingState;
 }
 

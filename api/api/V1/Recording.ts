@@ -288,7 +288,7 @@ export const mapRecordingResponse = async (
     const redacted = ifNotNull(recording.redacted);
     const fileHash = ifNotNull(recording.rawFileHash);
     const mimeType = ifNotNull(recording.rawMimeType);
-    const status = ifNotNull(recording.additionalMetadata.status);
+    const status = recording.additionalMetadata?.status;
     if (comment) {
       commonRecording.comment = comment;
     }

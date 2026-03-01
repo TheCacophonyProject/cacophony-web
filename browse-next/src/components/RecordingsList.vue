@@ -141,7 +141,7 @@
                   ></span
                 >
                 <span
-                  v-else-if="item && item.data"
+                  v-else-if="item && item.data && item.data.tracks.length > 0"
                   class="d-flex flex-wrap align-items-start gap-1"
                 >
                   <span
