@@ -604,7 +604,9 @@ const removeMarginBottom = (
     &.hedgehog {
       background: var(--cp-tag-priority-badge-3);
     }
-    &.test-recording {
+    &.test-recording,
+    &.startup-recording,
+    &.shutdown-recording {
       background: #6a8bd5;
     }
     &.redacted-for-privacy {
