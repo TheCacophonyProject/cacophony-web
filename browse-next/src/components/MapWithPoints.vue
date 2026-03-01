@@ -445,7 +445,7 @@ const addPoints = () => {
       // TODO: Try and get the contrast with the markers looking better
       map.eachLayer((layer) => {
         if ((layer as TileLayer).options.attribution) {
-          (layer as TileLayer).setOpacity(0.25);
+          (layer as TileLayer).setOpacity(0.5);
         }
       });
     }
