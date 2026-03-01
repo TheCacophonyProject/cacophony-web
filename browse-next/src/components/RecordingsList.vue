@@ -146,7 +146,10 @@
                 >
                   <span
                     class="visit-species-tag d-flex align-items-center text-capitalize"
-                    :class="(tag.path && tag.path.split('.')) || ''"
+                    :class="
+                      (tag.path && tag.path.split('.')) ||
+                      (pathForTag(tag.what) || '').split('.')
+                    "
                     :key="tag.what"
                     v-for="tag in canonicalTagsForRecording(item.data)"
                     ><span class="me-1">{{
@@ -257,7 +260,11 @@
 </template>
 
 <script lang="ts" setup>
-import { displayLabelForClassificationLabel } from "@/api/classificationsUtils.ts";
+import {
+  displayLabelForClassificationLabel,
+  flatClassifications,
+  getClassifications,
+} from "@/api/classificationsUtils.ts";
 import { formatDuration, timeAtLocation } from "@/models/visitsUtils";
 import { DateTime } from "luxon";
 import type {
@@ -267,7 +274,7 @@ import type {
   StationId as LocationId,
 } from "@typedefs/api/common";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { ref } from "vue";
+import { onBeforeMount, onMounted, ref } from "vue";
 import ImageLoader from "@/components/ImageLoader.vue";
 import {
   DeviceType,
@@ -416,6 +423,14 @@ const deviceTypeFor = (deviceId: DeviceId): DeviceType => {
   }
   return DeviceType.Thermal;
 };
+
+const pathForTag = (tag: string): string => {
+  return flatClassifications.value[tag]?.path || tag;
+};
+
+onBeforeMount(async () => {
+  await getClassifications();
+});
 
 const removeMarginBottom = (
   items: (RecordingItem | SunItem)[],
