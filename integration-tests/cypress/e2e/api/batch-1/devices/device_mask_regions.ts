@@ -389,6 +389,86 @@ describe("Device mask regions", () => {
     cy.apiTracksCheck(user, recording, []);
   });
 
+  it("Mask regions mask out tracks that are entirely contained within the region using bulk api endpoint. ", () => {
+    // - Upload a recording with a location.
+    // - Add a mask region
+    // - Add a track to the recording
+    // - The track should be entirely contained in the region.
+    // - That track should not actually get created, and returns a fake trackId of 1
+    const user = "Mark";
+    const group = "Marks-Team";
+    const camera = "CameraWithMask";
+    const recording = "rec2";
+    const maskedTrack = "maskedTrack2";
+    cy.testCreateUserGroupAndDevice(user, group, camera);
+
+    cy.testUploadRecording(
+      camera,
+      {
+        ...TestGetLocation(1),
+        time: new Date(),
+        noTracks: true,
+      },
+      recording,
+    );
+    cy.apiDeviceAddMaskRegions(user, camera, {
+      maskRegions: {
+        Water: {
+          regionData: [
+            { x: 0, y: 0 },
+            { x: 0.1, y: 0.0 },
+            { x: 0.1, y: 0.1 },
+            { x: 0.0, y: 0.1 },
+            { x: 0, y: 0.0 },
+          ],
+        },
+      },
+    });
+    const superuser = getCreds("superuser")["email"];
+    const suPassword = getCreds("superuser")["password"];
+    cy.apiSignInAs(null, superuser, suPassword);
+
+    cy.log("Look up algorithm and then post tracks");
+    cy.processingApiAlgorithmPost(superuser, {
+      "tracking-format": 42,
+      model_name: "Master",
+    }).then((algorithmId) => {
+      const tracksData = [];
+      tracksData.push({
+        start_s: 1,
+        end_s: 4,
+        positions: [
+          {
+            x: 0,
+            y: 0,
+            width: 5,
+            height: 5,
+            mass: 5,
+            frame_number: 1,
+            pixel_variance: 1.0,
+            blank: false,
+          },
+        ],
+        predictions: [
+          {
+            tag: "possum",
+            confidence: 90,
+            name: "Master",
+            confident: true,
+          },
+        ],
+      });
+      cy.processingApiTracksAndTagsPost(
+        superuser,
+        maskedTrack,
+        recording,
+        tracksData,
+        algorithmId,
+      );
+      cy.apiTracksCheck(user, recording, []);
+    });
+  });
+
   it.skip("A track that enters a mask region marked 'alertOnEnter' should trigger an email alert to the project member(s)", () => {
     return;
   });
