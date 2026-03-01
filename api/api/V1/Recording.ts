@@ -288,6 +288,7 @@ export const mapRecordingResponse = async (
     const redacted = ifNotNull(recording.redacted);
     const fileHash = ifNotNull(recording.rawFileHash);
     const mimeType = ifNotNull(recording.rawMimeType);
+    const status = ifNotNull(recording.additionalMetadata.status);
     if (comment) {
       commonRecording.comment = comment;
     }
@@ -299,6 +300,9 @@ export const mapRecordingResponse = async (
     }
     if (mimeType) {
       commonRecording.rawMimeType = mimeType;
+    }
+    if (status) {
+      commonRecording.status = status;
     }
 
     if (cameraTypes.includes(recording.type)) {
@@ -2739,7 +2743,7 @@ export default (app: Application, baseUrl: string) => {
               "location",
               "GroupId",
               "processingState",
-              [Sequelize.literal(`"additionalMetadata"->>'status'`), "status"],
+              "additionalMetadata",
               "StationId",
               "type",
               ...(types.length === 0 || types.includes(RecordingType.Audio)
