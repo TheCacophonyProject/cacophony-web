@@ -1169,9 +1169,7 @@ const appendRecordingsChunkedByDay = (recordings: ApiRecordingResponse[]) => {
       recording.status
     ) {
       let detail = "test recording";
-      if (
-        recording.status
-      ) {
+      if (recording.status) {
         detail = `${recording.status} recording`;
       }
       recording.tags.push({

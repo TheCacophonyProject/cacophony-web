@@ -59,7 +59,7 @@ import type { Application, NextFunction, Request, Response } from "express";
 import { body, param, query } from "express-validator";
 import type { JwtPayload } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
-import { Op } from "sequelize";
+import Sequelize, { Op } from "sequelize";
 import LabelPaths from "../../classifications/label_paths.json" with { type: "json" };
 
 import {
@@ -125,6 +125,7 @@ import { TrackTagUserData } from "@models/TrackTagUserData.js";
 import { Device } from "@models/Device.js";
 import { Station } from "@models/Station.js";
 import { Visit } from "@models/Visit.js";
+import logger from "@log";
 
 const sequelize = await initSequelize();
 
@@ -2631,7 +2632,6 @@ export default (app: Application, baseUrl: string) => {
             console.warn(
               "Aborting with some results to hit responsiveness deadline",
             );
-
             break;
           }
           if (recordings.length === 0 && fromDateTime <= fromDate) {
@@ -2654,6 +2654,10 @@ export default (app: Application, baseUrl: string) => {
               fromDate,
               dateTimeMinusThreeMonths(fromDateTime),
             );
+          }
+          if (fromDateTime.getTime() === untilDateTime.getTime()) {
+            // Reached limit, won't match on "recordingDateTime" ?= fromDateTime && "recordingDateTime" < untilDateTime
+            break;
           }
         }
         // NOTE: Finally, just query for the recordings we want by their ids.
@@ -2735,7 +2739,7 @@ export default (app: Application, baseUrl: string) => {
               "location",
               "GroupId",
               "processingState",
-              ["additionalMetadata.status", "status"],
+              [Sequelize.literal(`"additionalMetadata"->>'status'`), "status"],
               "StationId",
               "type",
               ...(types.length === 0 || types.includes(RecordingType.Audio)

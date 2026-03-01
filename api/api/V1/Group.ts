@@ -339,14 +339,14 @@ export default function (app: Application, baseUrl: string) {
         // Sidekick UA
         groups = mapLegacyGroupsResponse(groups);
       } else {
-        const oneWeekAgo = new Date(
-          new Date().setDate(new Date().getDate() - 7),
+        const oneYearAgo = new Date(
+          new Date().setDate(new Date().getDate() - 365),
         );
         const actualUser = await User.findByPk(response.locals.requestUser.id);
         if (!actualUser) {
           return next(new AuthorizationError("User not found"));
         }
-        if (actualUser.createdAt > oneWeekAgo) {
+        if (actualUser.createdAt > oneYearAgo) {
           // Check invites that haven't expired
           const invites = await GroupInvites.findAll({
             where: { email: actualUser.email },
