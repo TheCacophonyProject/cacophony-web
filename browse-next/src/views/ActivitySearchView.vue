@@ -1162,21 +1162,17 @@ const appendRecordingsChunkedByDay = (recordings: ApiRecordingResponse[]) => {
       (recording.type === ConcreteRecordingType.ThermalRaw &&
         recording.duration < 2.5 &&
         recording.duration > 1.8) ||
-      "status" in
-        ((recording as ApiThermalRecordingResponse).additionalMetadata || {}) ||
+      recording.status ||
       (recording.type === ConcreteRecordingType.Audio &&
         recording.duration < 11 &&
         recording.duration > 9.8) ||
-      "status" in
-        ((recording as ApiAudioRecordingResponse).additionalMetadata || {})
+      recording.status
     ) {
       let detail = "test recording";
       if (
-        "status" in
-        ((recording as ApiAudioRecordingResponse | ApiThermalRecordingResponse)
-          .additionalMetadata || {})
+        recording.status
       ) {
-        detail = `${((recording as ApiAudioRecordingResponse).additionalMetadata as ApiAudioRecordingMetadataResponse).status} recording`;
+        detail = `${recording.status} recording`;
       }
       recording.tags.push({
         id: -1,

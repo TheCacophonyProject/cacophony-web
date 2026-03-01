@@ -30,6 +30,7 @@ export interface ApiRecordingResponse {
   stationId?: StationId;
   stationName?: string;
   comment?: string;
+  status?: string;
   rawMimeType?: string;
   redacted?: boolean;
 }

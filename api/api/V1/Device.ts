@@ -1815,6 +1815,7 @@ export default function (app: Application, baseUrl: string) {
           returning: [
             "id",
             "StationId",
+            "GroupId",
             "recordingDateTime",
             "deletedAt",
             "duration",

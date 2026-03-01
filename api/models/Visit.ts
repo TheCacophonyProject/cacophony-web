@@ -168,6 +168,7 @@ export class Visit extends ModelStaticCommon<Visit> {
         attributes: ["recordingDateTime", "duration"],
         where: {
           StationId: stationId,
+          type: RecordingType.ThermalRaw,
           // FIXME: Test with GroupId constraint also
           recordingDateTime: {
             [Op.and]: [
@@ -284,6 +285,8 @@ export class Visit extends ModelStaticCommon<Visit> {
       const queryFrom = new Date(from.getTime() - VISIT_GAP_SECONDS * 1000);
       const queryUntil = new Date(until.getTime() + VISIT_GAP_SECONDS * 1000);
       // Gaps & islands: derive visit_group, then aggregate each group into visit bounds + membership.
+
+      // FIXME: Also add GroupId in where clause
       const [islands] = (await this.sequelize.query(
         `
 WITH ordered AS (
