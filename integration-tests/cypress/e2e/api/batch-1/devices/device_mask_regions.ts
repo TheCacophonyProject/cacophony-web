@@ -394,9 +394,9 @@ describe("Device mask regions", () => {
     // - Add a mask region
     // - Add a track to the recording
     // - The track should be entirely contained in the region.
-    // - That track should not actually get created, and returns a fake trackId of 1
-    const user = "Mark";
-    const group = "Marks-Team";
+    // - No tracks should actually be created
+    const user = "Mary";
+    const group = "Marys-Team";
     const camera = "CameraWithMask";
     const recording = "rec2";
     const maskedTrack = "maskedTrack2";
