@@ -288,7 +288,7 @@ const renderMotionPath = (
 
   const curve = path.curve;
   context.strokeStyle = color;
-  context.lineWidth = 2 * pixelRatio;
+  context.lineWidth = 2 * Math.min(1.5, pixelRatio);
   context.globalAlpha = 0.6;
   context.beginPath();
   context.moveTo(curve[0].startPoint.x, curve[0].startPoint.y);
