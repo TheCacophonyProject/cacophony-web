@@ -100,6 +100,7 @@ const props = withDefaults(
     displayHeaderInfo?: boolean;
     exportRequested?: boolean | "advanced" | "download";
     downloadProgress?: number;
+    inTextEditMode?: boolean;
   }>(),
   {
     cptvSize: null,
@@ -108,6 +109,7 @@ const props = withDefaults(
     hasPrev: false,
     hasReferencePhoto: false,
     displayHeaderInfo: false,
+    inTextEditMode: false,
   },
 );
 const PlaybackSpeeds = Object.freeze([0.5, 1, 2, 4, 6]);
@@ -1667,25 +1669,27 @@ const pollFrameTimes = () => {
 };
 
 const handleKeyboardControls = async (event: KeyboardEvent) => {
-  event.preventDefault();
-  event.stopImmediatePropagation();
-  if (event.code === "Space" && !event.repeat) {
-    await togglePlayback();
-  } else if (event.code === "ArrowRight") {
-    if (!event.altKey) {
-      await stepForward();
-    } else if (!event.shiftKey) {
-      requestNextRecording();
-    } else {
-      requestNextVisit();
-    }
-  } else if (event.code === "ArrowLeft") {
-    if (!event.altKey) {
-      await stepBackward();
-    } else if (!event.shiftKey) {
-      requestPrevRecording();
-    } else {
-      requestPrevVisit();
+  if (!props.inTextEditMode) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (event.code === "Space" && !event.repeat) {
+      await togglePlayback();
+    } else if (event.code === "ArrowRight") {
+      if (!event.altKey) {
+        await stepForward();
+      } else if (!event.shiftKey) {
+        requestNextRecording();
+      } else {
+        requestNextVisit();
+      }
+    } else if (event.code === "ArrowLeft") {
+      if (!event.altKey) {
+        await stepBackward();
+      } else if (!event.shiftKey) {
+        requestPrevRecording();
+      } else {
+        requestPrevVisit();
+      }
     }
   }
 };

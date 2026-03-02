@@ -23,6 +23,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   (e: "added-recording-label", label: ApiRecordingTagResponse): void;
   (e: "removed-recording-label", label: TagId): void;
+  (e: "text-edit-mode-change", enabled: boolean): void;
 }>();
 
 const notes = computed<ApiRecordingTagResponse[]>(() => {
@@ -64,11 +65,13 @@ const addingNoteInProgress = ref<boolean>(false);
 const removingNoteInProgress = ref<boolean>(false);
 const addNote = () => {
   addingNote.value = true;
+  emit("text-edit-mode-change", true);
 };
 const reset = () => {
   note.value = "";
   touchedNoteField.value = false;
   addingNote.value = false;
+  emit("text-edit-mode-change", false);
 };
 
 const removeNote = async (id: TagId) => {

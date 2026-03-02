@@ -68,18 +68,18 @@ const recordingDateTime = computed<DateTime | null>(() => {
 });
 
 const recordingDate = computed<string>(() => {
-  return recordingDateTime.value?.toFormat("dd/MM/yyyy") || "&ndash;";
+  return (
+    recordingDateTime.value?.toLocaleString({ dateStyle: "short" }) || "&ndash;"
+  );
 });
 const recordingStartTime = computed<string>(() => {
   return (
-    recordingDateTime.value
-      ?.toLocaleString({
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hourCycle: "h12",
-      })
-      .replace(/ /g, "") || "&ndash;"
+    recordingDateTime.value?.toLocaleString({
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hourCycle: "h12",
+    }) || "&ndash;"
   );
 });
 

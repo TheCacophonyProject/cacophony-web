@@ -23,6 +23,7 @@ import type {
 import {
   formatDuration,
   timeAtLocation,
+  timezoneForLatLng,
   visitDuration,
 } from "@models/visitsUtils";
 import type {
@@ -66,6 +67,7 @@ import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import RecordingViewMetadata from "@/components/RecordingViewMetadata.vue";
 import RecordingViewTabs from "@/components/RecordingViewTabs.vue";
 import { BModal, BTooltip } from "bootstrap-vue-next";
+import LocationName from "@/components/LocationName.vue";
 
 const selectedVisit = inject(
   "currentlySelectedVisit",
@@ -681,6 +683,11 @@ const removedRecordingLabel = (labelId: TagId) => {
   }
 };
 
+const inTextEditMode = ref<boolean>(false);
+const textEditModeChanged = (enabled: boolean) => {
+  inTextEditMode.value = enabled;
+};
+
 const locationContext: ComputedRef<LatLng> | undefined = inject(
   latLngForActiveLocations,
 );
@@ -920,11 +927,18 @@ const visitDurationString = computed<string>(() => {
   }
 
   const now = new Date();
+  if (locationContext && locationContext.value) {
+    const zone = timezoneForLatLng(locationContext.value);
+    date = date.setZone(zone);
+  }
   let dateString;
   if (date.year != now.getFullYear()) {
-    dateString = date.toFormat("d MMM yy");
+    dateString = `${date.toFormat("d MMM yy")}, `;
   } else {
-    dateString = date.toFormat("d MMM");
+    dateString = `${date.toFormat("d MMM")}, `;
+  }
+  if (!isMobileView.value) {
+    dateString = "";
   }
   if (selectedVisit.value && locationContext && locationContext.value) {
     const visit = selectedVisit.value as ApiVisitResponse;
@@ -932,15 +946,15 @@ const visitDurationString = computed<string>(() => {
     let visitStart = timeAtLocation(visit.timeStart, locationContext.value);
     const visitEnd = timeAtLocation(visit.timeEnd, locationContext.value);
     if (visitStart === visitEnd) {
-      return `${visitStart} (${duration})`;
+      return `${dateString}${visitStart} (${duration})`;
     }
     if (visitStart.slice(-2) === visitEnd.slice(-2)) {
       // If visitStart has the same suffix as visitEnd, omit it.
-      visitStart = visitStart.replace("am", "").replace("pm", "");
+      visitStart = visitStart.replace(/ am/i, "").replace(/ pm/i, "");
     }
-    return `<strong>${dateString}</strong>, ${visitStart}&ndash;${visitEnd} (${duration})`;
+    return `${dateString}${visitStart}&ndash;${visitEnd} (${duration})`;
   }
-  return `<strong>${dateString}</strong>`;
+  return `${dateString.replace(", ", "")}`;
 });
 
 const recordingDurationString = computed<string>(() => {
@@ -952,11 +966,20 @@ const recordingDurationString = computed<string>(() => {
   }
 
   const now = new Date();
+  if (recording.value && locationContext && locationContext.value) {
+    const zone = timezoneForLatLng(
+      recording.value.location || locationContext.value,
+    );
+    date = date.setZone(zone);
+  }
   let dateString;
   if (date.year != now.getFullYear()) {
-    dateString = date.toFormat("d MMM yy");
+    dateString = `${date.toFormat("d MMM yy")}, `;
   } else {
-    dateString = date.toFormat("d MMM");
+    dateString = `${date.toFormat("d MMM")}, `;
+  }
+  if (!isMobileView.value) {
+    dateString = "";
   }
   if (recording.value && locationContext && locationContext.value) {
     const rec = recording.value as ApiRecordingResponse;
@@ -973,15 +996,15 @@ const recordingDurationString = computed<string>(() => {
       rec.location || locationContext.value,
     );
     if (visitStart === visitEnd) {
-      return `${visitStart} (${duration})`;
+      return `${dateString}${visitStart} (${duration})`;
     }
     if (visitStart.slice(-2) === visitEnd.slice(-2)) {
       // If visitStart has the same suffix as visitEnd, omit it.
-      visitStart = visitStart.replace("am", "").replace("pm", "");
+      visitStart = visitStart.replace(/ am/i, "").replace(/ pm/i, "");
     }
-    return `<strong>${dateString}</strong>, ${visitStart}&ndash;${visitEnd} (${duration})`;
+    return `${dateString}${visitStart}&ndash;${visitEnd} (${duration})`;
   }
-  return `<strong>${dateString}</strong>`;
+  return "";
 });
 
 const isDesktop = useMediaQuery("(min-width: 992px)");
@@ -1300,7 +1323,26 @@ const onScroll = (e: Event) => {
       class="recording-view-header d-flex justify-content-between ps-sm-3 pe-0 pe-sm-1 ps-2 py-sm-2"
     >
       <div v-if="isInVisitContext">
-        <span class="recording-header-type fs-6 fw-medium">Visit</span>
+        <span
+          class="recording-header-type fs-6 align-items-center d-inline-flex"
+          ><span class="fw-medium"
+            >Visit<span v-if="(selectedVisit || recording) && isMobileView"
+              >&nbsp;</span
+            ></span
+          >
+          <location-name
+            :icon="false"
+            class="text-secondary"
+            truncate
+            v-if="isMobileView && (selectedVisit || recording)"
+            :name="
+              (
+                (selectedVisit || recording) as
+                  | ApiVisitResponse
+                  | ApiRecordingResponse
+              ).stationName || ''
+            "
+        /></span>
         <div class="recording-header-details mb-1 mb-sm-0">
           <span class="recording-header-label fw-semibold text-capitalize">{{
             displayLabelForClassificationLabel(visitLabel)
@@ -1310,19 +1352,37 @@ const onScroll = (e: Event) => {
             v-html="visitDurationString"
             class="recording-header-time ms-2 ms-sm-2 text-secondary"
           />
-          <span class="recording-header-time ms-2 ms-sm-2 text-secondary" v-else v-html="visitDurationString"></span>
+          <span
+            class="recording-header-time ms-2 ms-sm-2 text-secondary"
+            v-else
+            v-html="visitDurationString"
+          ></span>
         </div>
       </div>
       <div v-else>
-        <span class="recording-header-type fs-6 fw-medium">
-          <span
-            v-if="recordingType && recordingType === RecordingType.ThermalRaw"
-            >Thermal Recording</span
+        <span
+          class="recording-header-type fs-6 align-items-center d-inline-flex"
+        >
+          <span>
+            <span
+              class="fw-medium"
+              v-if="recordingType && recordingType === RecordingType.ThermalRaw"
+              >Thermal Recording</span
+            >
+            <span
+              class="fw-medium"
+              v-else-if="recordingType && recordingType === RecordingType.Audio"
+              >Audio recording</span
+            >
+            <span v-if="isMobileView">&nbsp;</span></span
           >
-          <span
-            v-else-if="recordingType && recordingType === RecordingType.Audio"
-            >Audio recording</span
-          >
+          <location-name
+            class="text-secondary"
+            :icon="false"
+            truncate
+            v-if="isMobileView && recording"
+            :name="recording.stationName || ''"
+          />
         </span>
         <div class="recording-header-details mb-1 mb-sm-0">
           <span
@@ -1366,6 +1426,7 @@ const onScroll = (e: Event) => {
         >
           <cptv-player
             :recording="recording as ApiRecordingResponse"
+            :in-text-edit-mode="inTextEditMode"
             :recording-id="currentRecordingId"
             :download-progress="downloadProgress"
             :current-track="currentTrack"
@@ -1425,6 +1486,7 @@ const onScroll = (e: Event) => {
               @track-removed="trackRemoved"
               @added-recording-label="addedRecordingLabel"
               @removed-recording-label="removedRecordingLabel"
+              @text-edit-mode-change="textEditModeChanged"
               @delete-recording="deleteRecording"
             />
           </div>

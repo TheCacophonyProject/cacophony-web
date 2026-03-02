@@ -288,13 +288,11 @@ export const timeAtLocation = (
 ): string => {
   const zone = timezoneForLatLng(location);
   const localTime = DateTime.fromISO(timeIsoString, { zone });
-  return localTime
-    .toLocaleString({
-      hour: "numeric",
-      minute: "2-digit",
-      hourCycle: "h12",
-    })
-    .replace(/ /g, "");
+  return localTime.toLocaleString({
+    hour: "numeric",
+    minute: "2-digit",
+    hourCycle: "h12",
+  });
 };
 
 export const dayAndTimeAtLocation = (

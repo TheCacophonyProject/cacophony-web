@@ -62,6 +62,7 @@ const emit = defineEmits<{
     e: "add-or-remove-user-tag",
     payload: { trackId: TrackId; tag: string },
   ): void;
+  (e: "text-edit-mode-change", enabled: boolean): void;
 }>();
 
 const expandedInternal = ref<boolean>(false);
@@ -180,6 +181,10 @@ const resizeElementToContents = (el?: HTMLElement) => {
     const bottom = lastEl.getBoundingClientRect().bottom;
     el.style.height = `${bottom - top}px`;
   }
+};
+const closedHierarchicalTagSelect = () => {
+  showClassificationSearch.value = false;
+  emit("text-edit-mode-change", false);
 };
 
 const resizeDetails = (why?: unknown) => {
@@ -544,6 +549,7 @@ const currentlySelectedTagCanBePinned = computed<boolean>(() => {
 const addCustomTag = () => {
   showClassificationSearch.value = true;
   tagSelect.value && (tagSelect.value as typeof HierarchicalTagSelect).open();
+  emit("text-edit-mode-change", true);
 };
 
 const processingIsAnalysing = computed<boolean>(
@@ -889,7 +895,7 @@ onMounted(async () => {
           class="flex-grow-1"
           @pin="pinCustomTag"
           @options-change="() => resizeDetails('options-changed')"
-          @deselected="showClassificationSearch = false"
+          @deselected="closedHierarchicalTagSelect"
           ref="tagSelect"
           v-model="selectedUserTagLabel"
           :can-be-pinned="currentlySelectedTagCanBePinned"

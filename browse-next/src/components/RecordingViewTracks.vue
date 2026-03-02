@@ -85,6 +85,7 @@ const emit = defineEmits<{
   (e: "track-removed", track: { trackId: TrackId }): void;
   (e: "added-recording-label", label: ApiRecordingTagResponse): void;
   (e: "delete-recording"): void;
+  (e: "text-edit-mode-change", enabled: boolean): void;
 }>();
 
 const getTrackById = (trackId: TrackId): ApiTrackResponse | null => {
@@ -269,6 +270,9 @@ const mapTrack = (track: ApiTrackResponse): ApiTrackDataRequest => {
     automatic: false,
   };
   return mappedTrack as ApiTrackDataRequest;
+};
+const textEditModeChanged = (enabled: boolean) => {
+  emit("text-edit-mode-change", enabled);
 };
 const addOrRemoveUserTag = async ({
   tag,
@@ -605,6 +609,7 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
       @selected-track="selectedTrack"
       @removed-track="removedTrack"
       @add-or-remove-user-tag="addOrRemoveUserTag"
+      @text-edit-mode-change="textEditModeChanged"
       @remove-tag="removeTag"
       :selected="
         (currentTrack && currentTrack.id === track.id) ||
