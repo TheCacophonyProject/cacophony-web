@@ -1720,6 +1720,9 @@ export async function sendAlerts(recId: RecordingId, debug = false) {
             matchingCondition = alert.conditions.find((condition) =>
               matchedTag.path.split(".").includes(condition.tag),
             );
+            if (!matchingCondition) {
+              return;
+            }
           }
 
           const alertClassification = matchingCondition.tag;
