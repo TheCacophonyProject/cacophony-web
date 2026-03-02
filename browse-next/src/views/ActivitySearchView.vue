@@ -1469,12 +1469,15 @@ const exportProgressZeroOneHundred = computed<number>(
   () => exportProgress.value * 100,
 );
 const doSearch = async () => {
-  searching.value = true;
-  await getClassifications();
-  await loadActiveAndInactiveDevices();
-  const success = await getRecordingsOrVisitsForCurrentQuery();
-  if (success) {
-    searching.value = false;
+  if (!searching.value) {
+    searching.value = true;
+    await getClassifications();
+    await loadActiveAndInactiveDevices();
+    const success = await getRecordingsOrVisitsForCurrentQuery();
+
+    if (success) {
+      searching.value = false;
+    }
   }
 };
 
