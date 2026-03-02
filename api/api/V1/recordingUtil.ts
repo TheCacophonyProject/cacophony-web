@@ -1665,6 +1665,10 @@ export async function sendAlerts(recId: RecordingId, debug = false) {
 
   const matchedTrack: Track = bestTrack.track;
   const matchedTag: TrackTag = bestTrack.trackTag;
+  if (!matchedTag.path) {
+    matchedTag.path = "";
+    log.error("Path missing for matched tag %s", matchedTag.what);
+  }
   // Find the hierarchy for the matchedTag
 
   // FIXME: Don't calculate best track thumbnail etc if there are no possible alerts for recording?
