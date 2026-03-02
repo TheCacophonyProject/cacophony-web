@@ -94,6 +94,12 @@ export class TrackTag extends ModelStaticCommon<TrackTag> {
     );
   }
 
+  static addPaths(trackTags: TrackTag[]) {
+    for (const trackTag of trackTags) {
+      TrackTag.addPath(trackTag);
+    }
+  }
+
   static filteredTags = Object.freeze(["false-positive", "noise"]);
 
   static addAssociations() {
@@ -139,6 +145,7 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
     hooks: {
       afterUpdate: TrackTag.addPath,
       afterCreate: TrackTag.addPath,
+      afterBulkCreate: TrackTag.addPaths,
     },
   });
   return TrackTag;

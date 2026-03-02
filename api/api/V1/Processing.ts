@@ -436,7 +436,7 @@ export default function (app: Application, baseUrl: string) {
           const used = modelName === AI_MASTER;
           let confidence = pred.confidence;
           // confidence will always be over 50 if it was already put in the 0-100 range
-          if (confidence < 1) {
+          if (confidence <= 1) {
             confidence = Math.round(100 * confidence);
           }
           const predData = pred as TrackTagData;
@@ -455,7 +455,6 @@ export default function (app: Application, baseUrl: string) {
             used,
           } as TrackTag;
           trackTags.push(tag);
-
           trackTagData.push(predData);
         }
 
