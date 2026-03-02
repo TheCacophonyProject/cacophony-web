@@ -912,6 +912,20 @@ onMounted(async () => {
 });
 
 const visitDurationString = computed<string>(() => {
+  let date;
+  if (recording.value) {
+    date = DateTime.fromJSDate(new Date(recording.value.recordingDateTime));
+  } else {
+    date = DateTime.fromJSDate(new Date());
+  }
+
+  const now = new Date();
+  let dateString;
+  if (date.year != now.getFullYear()) {
+    dateString = date.toFormat("d MMM yy");
+  } else {
+    dateString = date.toFormat("d MMM");
+  }
   if (selectedVisit.value && locationContext && locationContext.value) {
     const visit = selectedVisit.value as ApiVisitResponse;
     const duration = visitDuration(visit, !!isDesktop.value);
@@ -924,12 +938,26 @@ const visitDurationString = computed<string>(() => {
       // If visitStart has the same suffix as visitEnd, omit it.
       visitStart = visitStart.replace("am", "").replace("pm", "");
     }
-    return `${visitStart}&ndash;${visitEnd} (${duration})`;
+    return `<strong>${dateString}</strong>, ${visitStart}&ndash;${visitEnd} (${duration})`;
   }
-  return "";
+  return `<strong>${dateString}</strong>`;
 });
 
 const recordingDurationString = computed<string>(() => {
+  let date;
+  if (recording.value) {
+    date = DateTime.fromJSDate(new Date(recording.value.recordingDateTime));
+  } else {
+    date = DateTime.fromJSDate(new Date());
+  }
+
+  const now = new Date();
+  let dateString;
+  if (date.year != now.getFullYear()) {
+    dateString = date.toFormat("d MMM yy");
+  } else {
+    dateString = date.toFormat("d MMM");
+  }
   if (recording.value && locationContext && locationContext.value) {
     const rec = recording.value as ApiRecordingResponse;
     const durationMs = rec.duration * 1000;
@@ -951,9 +979,9 @@ const recordingDurationString = computed<string>(() => {
       // If visitStart has the same suffix as visitEnd, omit it.
       visitStart = visitStart.replace("am", "").replace("pm", "");
     }
-    return `${visitStart}&ndash;${visitEnd} (${duration})`;
+    return `<strong>${dateString}</strong>, ${visitStart}&ndash;${visitEnd} (${duration})`;
   }
-  return "&nbsp;";
+  return `<strong>${dateString}</strong>`;
 });
 
 const isDesktop = useMediaQuery("(min-width: 992px)");
@@ -1282,6 +1310,7 @@ const onScroll = (e: Event) => {
             v-html="visitDurationString"
             class="recording-header-time ms-2 ms-sm-2 text-secondary"
           />
+          <span class="recording-header-time ms-2 ms-sm-2 text-secondary" v-else v-html="visitDurationString"></span>
         </div>
       </div>
       <div v-else>

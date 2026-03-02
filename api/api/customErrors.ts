@@ -46,15 +46,19 @@ function errorHandler(
       // FIXME - leave this in for sidekick etc, since currently it expects a 'message' error response.
       delete error.message;
     }
-    return someResponse(
-      response,
-      (err as CustomError).statusCode,
-      err.message,
-      {
-        ...error,
-        requestId,
-      },
-    );
+    try {
+      return someResponse(
+        response,
+        (err as CustomError).statusCode,
+        err.message,
+        {
+          ...error,
+          requestId,
+        },
+      );
+    } catch (error) {
+      log.error(error);
+    }
   }
   return serverErrorResponse(
     request,

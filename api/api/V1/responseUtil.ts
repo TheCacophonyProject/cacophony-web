@@ -192,12 +192,16 @@ export const serverErrorResponse = async (
       error.stack,
     );
   }
-  return someResponse(
-    response,
-    HttpStatusCode.ServerError,
-    messageOrData,
-    data,
-  );
+  try {
+    return someResponse(
+      response,
+      HttpStatusCode.ServerError,
+      messageOrData,
+      data,
+    );
+  } catch (e) {
+    log.error(e);
+  }
 };
 
 export default {
