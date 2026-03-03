@@ -9,10 +9,12 @@ const props = withDefaults(
     to?: RouteLocationRaw;
     icon?: boolean;
     truncate?: boolean;
+    iconSize?: number;
   }>(),
   {
     icon: true,
     truncate: false,
+    iconSize: 1.125,
   },
 );
 </script>
@@ -28,7 +30,7 @@ const props = withDefaults(
     >
       <material-symbol
         name="location_on"
-        size="1.125rem"
+        :size="`${iconSize}rem`"
         class="me-1"
         v-if="icon"
       />

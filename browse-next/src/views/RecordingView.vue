@@ -1327,7 +1327,7 @@ const onScroll = (e: Event) => {
           class="recording-header-type fs-6 align-items-center d-inline-flex"
           ><span class="fw-medium me-2">Visit</span
           ><location-name
-            :icon="false"
+            :icon-size="1"
             class="text-secondary"
             truncate
             v-if="isMobileView && (selectedVisit || recording)"
@@ -1371,7 +1371,7 @@ const onScroll = (e: Event) => {
           >
           <location-name
             class="text-secondary"
-            :icon="false"
+            :icon-size="1"
             truncate
             v-if="isMobileView && recording"
             :name="recording.stationName || ''"
