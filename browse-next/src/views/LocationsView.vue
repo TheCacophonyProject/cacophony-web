@@ -424,11 +424,14 @@ const updateLocationName = async (payload: {
 </template>
 <style lang="less" scoped>
 @import "../assets/less/breakpoints";
+@import "../assets/less/elevation";
 .map {
   @media screen and (max-width: @breakpoint-md-max) {
     height: 40vh;
     max-height: calc(var(--cp-grid-base) * 100); // 400px
     border-radius: var(--bs-border-radius);
+    .standard-shadow-inset();
+    border: 1px solid var(--border-color-light);
   }
   @media screen and (min-width: @breakpoint-lg) {
     position: absolute !important;

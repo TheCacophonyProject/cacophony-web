@@ -1380,7 +1380,11 @@ const audioRecordingScheduleDescription = computed<string>(() => {
     }
   }
 }
-
+.location-map {
+  .standard-shadow-inset();
+  border: 1px solid var(--border-color-light);
+  border-radius: var(--bs-border-radius);
+}
 @media (min-width: @breakpoint-md) {
   .location-map {
     &.map {

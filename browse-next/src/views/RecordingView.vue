@@ -1325,12 +1325,8 @@ const onScroll = (e: Event) => {
       <div v-if="isInVisitContext">
         <span
           class="recording-header-type fs-6 align-items-center d-inline-flex"
-          ><span class="fw-medium"
-            >Visit<span v-if="(selectedVisit || recording) && isMobileView"
-              >&nbsp;</span
-            ></span
-          >
-          <location-name
+          ><span class="fw-medium me-2">Visit</span
+          ><location-name
             :icon="false"
             class="text-secondary"
             truncate
@@ -1359,22 +1355,19 @@ const onScroll = (e: Event) => {
           ></span>
         </div>
       </div>
-      <div v-else>
+      <div v-else class="d-flex flex-column">
         <span
           class="recording-header-type fs-6 align-items-center d-inline-flex"
         >
-          <span>
-            <span
-              class="fw-medium"
-              v-if="recordingType && recordingType === RecordingType.ThermalRaw"
-              >Thermal Recording</span
-            >
-            <span
-              class="fw-medium"
-              v-else-if="recordingType && recordingType === RecordingType.Audio"
-              >Audio recording</span
-            >
-            <span v-if="isMobileView">&nbsp;</span></span
+          <span
+            class="fw-medium me-2 text-nowrap"
+            v-if="recordingType && recordingType === RecordingType.ThermalRaw"
+            >Thermal Recording</span
+          >
+          <span
+            class="fw-medium me-2 text-nowrap"
+            v-else-if="recordingType && recordingType === RecordingType.Audio"
+            >Audio recording</span
           >
           <location-name
             class="text-secondary"

@@ -525,12 +525,17 @@ const remapLocationOptions = (nextOptions: LocationOption[]) => {
 };
 watch(locationsInSelectedTimespanOptions, remapLocationOptions);
 
-const recordingMode = ref<ActivitySearchRecordingMode>(
-  ActivitySearchRecordingMode.Cameras,
-);
-const displayMode = ref<ActivitySearchDisplayMode>(
-  ActivitySearchDisplayMode.Visits,
-);
+const savedRecordingMode =
+  (window.localStorage.getItem(
+    "activity-recording-mode",
+  ) as ActivitySearchRecordingMode) || ActivitySearchRecordingMode.Cameras;
+const savedDisplayMode =
+  (window.localStorage.getItem(
+    "activity-display-mode",
+  ) as ActivitySearchDisplayMode) || ActivitySearchDisplayMode.Visits;
+
+const recordingMode = ref<ActivitySearchRecordingMode>(savedRecordingMode);
+const displayMode = ref<ActivitySearchDisplayMode>(savedDisplayMode);
 
 const computedDisplayMode = computed<ActivitySearchDisplayMode>({
   get: () => {

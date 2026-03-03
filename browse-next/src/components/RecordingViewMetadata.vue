@@ -181,6 +181,7 @@ const mapPointForRecording = computed<NamedPoint[]>(() => {
 <style scoped lang="less">
 @import "../assets/less/breakpoints.less";
 @import "../assets/less/spacing.less";
+@import "../assets/less/elevation.less";
 
 .device-name,
 .station-name {
@@ -194,6 +195,8 @@ const mapPointForRecording = computed<NamedPoint[]>(() => {
   }
   &.recording-type-video {
     .recording-location-map {
+      .standard-shadow-inset();
+      border: 1px solid var(--border-color-light);
       @media (max-width: @breakpoint-md-max) {
         width: 100%;
         height: calc(var(--cp-grid-base) * 44);

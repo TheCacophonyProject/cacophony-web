@@ -1,24 +1,15 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
-import {
-  computed,
-  inject,
-  onBeforeMount,
-  ref,
-  useTemplateRef,
-  watch,
-} from "vue";
+import { computed, inject, onBeforeMount, ref, watch } from "vue";
 import type { Ref, ComputedRef } from "vue";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { ClientApi } from "@/api";
 import {
   DevicesForCurrentProject,
   type SelectedProject,
-  urlNormalisedCurrentProjectName,
 } from "@models/LoggedInUser";
 import type {
   CardTableItem,
-  CardTableRow,
   CardTableRows,
   GenericCardTableValue,
 } from "@/components/CardTableTypes";
@@ -906,6 +897,7 @@ const iconForPowerStatus = (powerStatus: DeviceStatus): IconsProp => {
 </template>
 <style lang="less" scoped>
 @import "../assets/less/breakpoints";
+@import "../assets/less/elevation";
 
 .device-name {
   @media screen and (max-width: @breakpoint-xs-max) {
@@ -938,6 +930,8 @@ const iconForPowerStatus = (powerStatus: DeviceStatus): IconsProp => {
   @media screen and (min-width: @breakpoint-lg) {
     border-radius: var(--bs-border-radius-lg);
   }
+  .standard-shadow-inset();
+  border: 1px solid var(--border-color-light);
 }
 .power-status-icon {
   border-radius: 50%;
