@@ -301,7 +301,9 @@ const defaultFalseTriggerMode = () => {
   if (userPreference) {
     try {
       return JSON.parse(userPreference);
-    } catch (e) {}
+    } catch (e) {
+      //
+    }
     return false;
   }
 };
