@@ -1320,14 +1320,14 @@ const onScroll = (e: Event) => {
       </b-modal>
     </div>
     <header
-      class="recording-view-header d-flex justify-content-between ps-sm-3 pe-0 pe-sm-1 ps-2 py-sm-2"
+      class="recording-view-header d-flex align-items-center justify-content-between ps-sm-3 pe-0 pe-sm-1 ps-2 py-sm-2"
     >
-      <div v-if="isInVisitContext">
+      <div v-if="isInVisitContext" class="overflow-hidden w-100">
         <span
-          class="recording-header-type fs-6 align-items-center d-inline-flex"
+          class="recording-header-type w-100 fs-6 align-items-center d-inline-flex"
           ><span class="fw-medium me-2">Visit</span
           ><location-name
-            :icon-size="1"
+            :icon-size="0.85"
             class="text-secondary"
             truncate
             v-if="isMobileView && (selectedVisit || recording)"
@@ -1339,7 +1339,9 @@ const onScroll = (e: Event) => {
               ).stationName || ''
             "
         /></span>
-        <div class="recording-header-details mb-1 mb-sm-0">
+        <div
+          class="recording-header-details d-flex align-items-baseline mb-1 mb-sm-0"
+        >
           <span class="recording-header-label fw-semibold text-capitalize">{{
             displayLabelForClassificationLabel(visitLabel)
           }}</span>
@@ -1355,9 +1357,9 @@ const onScroll = (e: Event) => {
           ></span>
         </div>
       </div>
-      <div v-else class="d-flex flex-column">
+      <div v-else class="overflow-hidden w-100">
         <span
-          class="recording-header-type fs-6 align-items-center d-inline-flex"
+          class="recording-header-type w-100 fs-6 align-items-center d-inline-flex"
         >
           <span
             class="fw-medium me-2 text-nowrap"
@@ -1371,7 +1373,7 @@ const onScroll = (e: Event) => {
           >
           <location-name
             class="text-secondary"
-            :icon-size="1"
+            :icon-size="0.85"
             truncate
             v-if="isMobileView && recording"
             :name="recording.stationName || ''"
