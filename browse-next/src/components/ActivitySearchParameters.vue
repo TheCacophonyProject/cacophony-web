@@ -552,6 +552,10 @@ const persistAudioMode = () => {
     "activity-recording-mode",
     ActivitySearchRecordingMode.Audio,
   );
+  window.localStorage.setItem(
+    "activity-display-mode",
+    ActivitySearchDisplayMode.Recordings,
+  );
 };
 
 const persistFalseTriggerMode = () => {
