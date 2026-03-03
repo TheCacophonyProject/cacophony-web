@@ -61,7 +61,8 @@ const openHttpServer = (app): Promise<void> => {
     }
     try {
       log.notice("Starting http server on %d", config.server.http.port);
-      http.createServer(app).listen(config.server.http.port);
+      const server = http.createServer(app).listen(config.server.http.port);
+      server.setTimeout(60 * 5 * 1000);
       resolve();
     } catch (err) {
       reject(err);
