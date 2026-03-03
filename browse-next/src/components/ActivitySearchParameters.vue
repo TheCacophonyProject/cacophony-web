@@ -20,10 +20,7 @@ import {
 } from "@models/provides.ts";
 import type { SelectedProject } from "@models/LoggedInUser.ts";
 import type { LoadedResource } from "@apiClient/types.ts";
-import type {
-  ApiGroupResponse as ApiProjectResponse,
-  RecordingLabel,
-} from "@typedefs/api/group";
+import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { timezoneForLatLng } from "@models/visitsUtils.ts";
 import { canonicalLatLngForLocations } from "@/helpers/Location.ts";
@@ -420,7 +417,21 @@ const selectedTags = ref<string[]>([]);
 const selectedLabels = ref<string[]>([]);
 const starredLabel = ref<boolean>(false);
 const flaggedLabel = ref<boolean>(false);
-const showFilteredFalsePositivesAndNones = ref<boolean>(false);
+
+const defaultFalseTriggerMode = () => {
+  const userPreference = window.localStorage.getItem(
+    "activity-search-false-triggers",
+  );
+  if (userPreference) {
+    try {
+      return JSON.parse(userPreference);
+    } catch (e) {}
+    return false;
+  }
+};
+const showFilteredFalsePositivesAndNones = ref<boolean>(
+  defaultFalseTriggerMode(),
+);
 const showUntaggedOnly = ref<boolean>(false);
 const showUntaggedByHumanOnly = ref<boolean>(false);
 const FLAG = "requires review";
@@ -533,6 +544,45 @@ const savedDisplayMode =
   (window.localStorage.getItem(
     "activity-display-mode",
   ) as ActivitySearchDisplayMode) || ActivitySearchDisplayMode.Visits;
+
+const persistAudioMode = () => {
+  window.localStorage.setItem(
+    "activity-recording-mode",
+    ActivitySearchRecordingMode.Audio,
+  );
+};
+
+const persistFalseTriggerMode = () => {
+  const waitForChange = watch(showFilteredFalsePositivesAndNones, (next) => {
+    window.localStorage.setItem(
+      "activity-search-false-triggers",
+      JSON.stringify(next),
+    );
+    waitForChange();
+  });
+};
+
+const persistCameraMode = () => {
+  window.localStorage.setItem(
+    "activity-recording-mode",
+    ActivitySearchRecordingMode.Cameras,
+  );
+};
+
+const persistVisitsDisplayMode = () => {
+  window.localStorage.setItem(
+    "activity-display-mode",
+    ActivitySearchDisplayMode.Visits,
+  );
+};
+
+const persistRecordingsDisplayMode = () => {
+  window.localStorage.setItem(
+    "activity-display-mode",
+    ActivitySearchDisplayMode.Recordings,
+  );
+  showFilteredFalsePositivesAndNones.value = defaultFalseTriggerMode();
+};
 
 const recordingMode = ref<ActivitySearchRecordingMode>(savedRecordingMode);
 const displayMode = ref<ActivitySearchDisplayMode>(savedDisplayMode);
@@ -848,7 +898,7 @@ const hasAdvancedFiltersSet = computed<boolean>(() => {
   );
 });
 
-onBeforeMount(() => {
+onBeforeMount(async () => {
   watchProps.value = watch(props.params, syncParams, {
     deep: true,
     immediate: false,
@@ -968,6 +1018,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         id="recording-mode-cameras"
         autocomplete="off"
         v-model="recordingMode"
+        @click="persistCameraMode"
         value="cameras"
       />
       <label
@@ -984,6 +1035,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         id="recording-mode-audio"
         autocomplete="off"
         v-model="recordingMode"
+        @click="persistAudioMode"
         value="audio"
       />
       <label
@@ -1008,6 +1060,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         id="display-mode-visits"
         autocomplete="off"
         v-model="computedDisplayMode"
+        @click="persistVisitsDisplayMode"
         :value="'visits'"
       />
       <label class="btn btn-radio-group btn-sm w-50" for="display-mode-visits"
@@ -1020,6 +1073,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         id="display-mode-recordings"
         autocomplete="off"
         v-model="computedDisplayMode"
+        @click="persistRecordingsDisplayMode"
         :value="'recordings'"
       />
       <label
@@ -1091,6 +1145,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
     <div class="d-flex align-items-center">
       <b-form-checkbox
         v-model="showFilteredFalsePositivesAndNones"
+        @click="persistFalseTriggerMode"
         switch
         :disabled="showUntaggedOnly"
         size="lg"

@@ -67,7 +67,7 @@ const isMobileView = computed<boolean>(() => {
         name: `${recordingViewContext}-tracks`,
         params: {
           ...route.params,
-          trackId: currentTrack?.id || tracks[0]?.id,
+          trackId: currentTrack?.id,
         },
         query: route.query,
       }"
@@ -89,7 +89,7 @@ const isMobileView = computed<boolean>(() => {
         name: `${recordingViewContext}-labels`,
         params: {
           ...route.params,
-          trackId: currentTrack?.id || tracks[0]?.id,
+          trackId: currentTrack?.id,
         },
         query: route.query,
       }"
@@ -111,7 +111,7 @@ const isMobileView = computed<boolean>(() => {
         name: `${recordingViewContext}-notes`,
         params: {
           ...route.params,
-          trackId: currentTrack?.id || tracks[0]?.id,
+          trackId: currentTrack?.id,
         },
         query: route.query,
       }"
@@ -136,7 +136,7 @@ const isMobileView = computed<boolean>(() => {
         name: `${recordingViewContext}-info`,
         params: {
           ...route.params,
-          trackId: currentTrack?.id || tracks[0]?.id,
+          trackId: currentTrack?.id,
         },
         query: route.query,
       }"

@@ -62,7 +62,9 @@ function send(
   const statusCode = data.statusCode;
   data.success = 200 <= statusCode && statusCode <= 299;
   delete data.statusCode;
-  return response.status(statusCode).json(data);
+  if (!response.headersSent) {
+    return response.status(statusCode).json(data);
+  }
 }
 
 function invalidDatapointUpload(response: Response, message: string) {
@@ -140,6 +142,10 @@ export const someResponse = (
   data: Record<string, unknown> = {},
 ) => {
   const dataMessages: string[] = (data.messages as string[]) || [];
+  if (response.headersSent) {
+    log.warn(`Response headers already sent, can't send error response`);
+    return;
+  }
   if (typeof messageOrData === "string" || Array.isArray(messageOrData)) {
     const serverError =
       statusCode === HttpStatusCode.ServerError ? ["Server error. Sorry!"] : [];

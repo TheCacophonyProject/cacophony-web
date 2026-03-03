@@ -190,10 +190,12 @@ watch(
         recordingTracksPossiblyFiltered.value.length !== 0 &&
         nextRecording.type !== RecordingType.Audio
       ) {
-        emit("track-selected", {
-          trackId: recordingTracksPossiblyFiltered.value[0].id,
-          automatically: true,
-        });
+        // NOTE: This used to automatically select and seek to the first track in a recording,
+        //  but we are disabling that for now.
+        // emit("track-selected", {
+        //   trackId: recordingTracksPossiblyFiltered.value[0].id,
+        //   automatically: true,
+        // });
       }
     }
   },
@@ -204,10 +206,12 @@ onMounted(() => {
   if (route.params.trackId) {
     currentTrack.value = getTrackById(currentTrackId.value);
   } else if (recordingTracksPossiblyFiltered.value.length !== 0) {
-    emit("track-selected", {
-      trackId: recordingTracksPossiblyFiltered.value[0].id,
-      automatically: true,
-    });
+    // NOTE: This used to automatically select and seek to the first track in a recording,
+    //  but we are disabling that for now.
+    // emit("track-selected", {
+    //   trackId: recordingTracksPossiblyFiltered.value[0].id,
+    //   automatically: true,
+    // });
   }
   initialised.value = true;
 });

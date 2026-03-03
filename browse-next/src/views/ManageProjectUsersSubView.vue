@@ -355,6 +355,7 @@ const permissionsOptions = computed(() => [
               :confirmation-label="`Accept`"
               label="Approve request"
               class="mt-2"
+              placement="top"
               :confirmation-btn-variant-class="`btn-secondary`"
               :classes="['ms-auto']"
             />
@@ -408,6 +409,7 @@ const permissionsOptions = computed(() => [
                 tooltip-label="Approve"
                 alignment="centered"
                 class="text-nowrap"
+                :confirmation-btn-variant-class="`btn-secondary`"
               />
               <b-tooltip placement="right">
                 <template #target>

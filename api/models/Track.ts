@@ -46,6 +46,7 @@ import config from "@config";
 import { DetailSnapshot, DetailSnapshotId } from "@models/DetailSnapshot.js";
 import { ApiTrackDataRequest } from "@typedefs/api/track.js";
 import { TrackTagUserData } from "@models/TrackTagUserData.js";
+import LabelPaths from "@/classifications/label_paths.json" with { type: "json" };
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
@@ -257,8 +258,11 @@ export class Track extends ModelStaticCommon<Track> {
     if (confidence < 1) {
       confidence = Math.round(100 * confidence);
     }
+    const path =
+      what in LabelPaths ? LabelPaths[what] : `all.${what.replace(" ", "_")}`;
     const tag = (await this.createTrackTag({
       what,
+      path,
       confidence,
       automatic,
       model: modelName,

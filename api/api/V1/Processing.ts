@@ -50,6 +50,7 @@ import type {
   MinimalTracksRequestData,
 } from "@/../types/api/fileProcessing.js";
 import { Visit } from "@models/Visit.js";
+import LabelPaths from "@/classifications/label_paths.json" with { type: "json" };
 
 const NULL_TRACK_ID = 1;
 
@@ -444,12 +445,17 @@ export default function (app: Application, baseUrl: string) {
             predData.raw_tag = pred.tag;
             pred.tag = "unidentified";
           }
-
+          const what = pred.tag;
+          const path =
+            what in LabelPaths
+              ? LabelPaths[what]
+              : `all.${what.replace(" ", "_")}`;
           const tag = {
             TrackId: modelTracks[i].id,
-            what: pred.tag,
+            what,
             confidence: pred.confidence,
             automatic: true,
+            path,
             model: modelName,
             UserId: null,
             used,
@@ -737,9 +743,15 @@ export default function (app: Application, baseUrl: string) {
             pred.tag = "unidentified";
           }
 
+          const what = pred.tag;
+          const path =
+            what in LabelPaths
+              ? LabelPaths[what]
+              : `all.${what.replace(" ", "_")}`;
           const tag = {
             TrackId: response.locals.track.id,
-            what: pred.tag,
+            what,
+            path,
             confidence: pred.confidence,
             automatic: true,
             model: modelName,

@@ -107,10 +107,8 @@ import {
 } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import type {
-  ApiAudioRecordingMetadataResponse,
   ApiAudioRecordingResponse,
   ApiRecordingResponse,
-  ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
 
 const mapBuffer = ref<HTMLDivElement>();
@@ -224,26 +222,18 @@ const diffChanges = (next: LocationQuery, prev: LocationQuery) => {
 };
 
 const defaultSearchParams = computed(() => {
-  const hasCameraRecordings = locations.value.some((location) =>
-    locationHasCameraRecordings(location),
-  );
-  const hasAudioRecordings = locations.value.some((location) =>
-    locationHasAudioRecordings(location),
-  );
-  if (hasAudioRecordings && !hasCameraRecordings) {
-    return {
-      "display-mode": ActivitySearchDisplayMode.Recordings,
-      "recording-mode": ActivitySearchRecordingMode.Audio,
-      locations: "any",
-      from: "24-hours-ago",
-    };
-  }
-  return {
-    "display-mode": ActivitySearchDisplayMode.Visits,
-    "recording-mode": ActivitySearchRecordingMode.Cameras,
+  const params: Record<string, string> = {
+    "display-mode": defaultDisplayMode.value,
+    "recording-mode": defaultRecordingMode.value,
     locations: "any",
     from: "24-hours-ago",
   };
+  if (defaultDisplayMode.value === ActivitySearchDisplayMode.Recordings) {
+    if (defaultFalseTriggerMode()) {
+      params["no-false-positives"] = "false";
+    }
+  }
+  return params;
 });
 
 const locationHasAudioRecordings = (location: ApiLocationResponse) => {
@@ -253,6 +243,16 @@ const locationHasCameraRecordings = (location: ApiLocationResponse) => {
   return !!location.lastThermalRecordingTime;
 };
 const route = useRoute();
+
+const savedRecordingMode =
+  (window.localStorage.getItem(
+    "activity-recording-mode",
+  ) as ActivitySearchRecordingMode) || ActivitySearchRecordingMode.Cameras;
+const savedDisplayMode =
+  (window.localStorage.getItem(
+    "activity-display-mode",
+  ) as ActivitySearchDisplayMode) || ActivitySearchDisplayMode.Visits;
+
 const defaultDisplayMode = computed<ActivitySearchDisplayMode>(() => {
   if (route && route.query["display-mode"]) {
     if (route.query["display-mode"] === "recordings") {
@@ -263,13 +263,14 @@ const defaultDisplayMode = computed<ActivitySearchDisplayMode>(() => {
   } else if (
     locations.value.some((location) => locationHasCameraRecordings(location))
   ) {
-    return ActivitySearchDisplayMode.Visits;
+    return savedDisplayMode;
   } else if (
-    locations.value.some((location) => locationHasAudioRecordings(location))
+    locations.value.some((location) => locationHasAudioRecordings(location)) &&
+    !locations.value.some((location) => locationHasCameraRecordings(location))
   ) {
     return ActivitySearchDisplayMode.Recordings;
   }
-  return ActivitySearchDisplayMode.Visits;
+  return savedDisplayMode;
 });
 
 const defaultRecordingMode = computed<ActivitySearchRecordingMode>(() => {
@@ -280,21 +281,35 @@ const defaultRecordingMode = computed<ActivitySearchRecordingMode>(() => {
       return ActivitySearchRecordingMode.Cameras;
     }
   } else if (
-    locations.value.some((location) => locationHasCameraRecordings(location))
+    locations.value.some((location) => locationHasCameraRecordings(location)) &&
+    !locations.value.some((location) => locationHasAudioRecordings(location))
   ) {
     return ActivitySearchRecordingMode.Cameras;
   } else if (
-    locations.value.some((location) => locationHasAudioRecordings(location))
+    locations.value.some((location) => locationHasAudioRecordings(location)) &&
+    !locations.value.some((location) => locationHasCameraRecordings(location))
   ) {
     return ActivitySearchRecordingMode.Audio;
   }
-  return ActivitySearchRecordingMode.Cameras;
+  return savedRecordingMode;
 });
+
+const defaultFalseTriggerMode = () => {
+  const userPreference = window.localStorage.getItem(
+    "activity-search-false-triggers",
+  );
+  if (userPreference) {
+    try {
+      return JSON.parse(userPreference);
+    } catch (e) {}
+    return false;
+  }
+};
 
 const initSearchParams = (): ActivitySearchParams => ({
   devices: "all",
   duration: "any",
-  includeFalsePositives: false,
+  includeFalsePositives: defaultFalseTriggerMode(),
   labelledWith: null,
   offset: new Date(),
   tagMode: TagMode.Any,
@@ -1263,6 +1278,7 @@ const typesForRecordingMode = computed<ConcreteRecordingType[]>(() => {
 });
 
 const firstLoad = ref<boolean>(true);
+const loadingQuery = ref<string | null>(null);
 const getRecordingsOrVisitsForCurrentQuery = async () => {
   // NOTE: We try to load at most one month at a time.
   let succeededWithoutAbort = true;
@@ -1291,7 +1307,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       // We need to narrow the already loaded search range
       isNewQuery = true;
     }
-
+    loadingQuery.value = queryHash;
     let earliestRecord = null;
     if (inRecordingsMode.value) {
       if (filteredLoadedRecordings.value.length) {
@@ -1377,15 +1393,28 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             recordings: ApiRecordingResponse[];
           }>;
           const recordings = recordingsResponse.result.recordings;
-          loadedRecordings.value.push(...recordings);
-          loadedFewerItemsThanRequested = recordings.length < twoPagesWorth;
-          loadedRecordingIds.value.push(...recordings.map(({ id }) => id));
-          appendRecordingsChunkedByDay(recordings);
-          currentQueryLoaded.value += recordings.length;
-          if (recordings.length !== 0) {
-            gotUntilDate = new Date(
-              recordings[recordings.length - 1].recordingDateTime,
-            );
+          if (
+            recordings &&
+            recordings.length &&
+            (!loadedRecordings.value.length ||
+              (loadedRecordings.value.length &&
+                new Date(recordings[0].recordingDateTime).getTime() >
+                  new Date(
+                    loadedRecordings.value[loadedRecordings.value.length - 1]
+                      .recordingDateTime,
+                  ).getTime()))
+          ) {
+            // Don't append duplicate recordings
+            loadedRecordings.value.push(...recordings);
+            loadedFewerItemsThanRequested = recordings.length < twoPagesWorth;
+            loadedRecordingIds.value.push(...recordings.map(({ id }) => id));
+            appendRecordingsChunkedByDay(recordings);
+            currentQueryLoaded.value += recordings.length;
+            if (recordings.length !== 0) {
+              gotUntilDate = new Date(
+                recordings[recordings.length - 1].recordingDateTime,
+              );
+            }
           }
         } else if (inVisitsMode.value) {
           const visitsResponse = response.result as VisitsQueryResult;
@@ -1409,7 +1438,26 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           }
           // NOTE: Append new visits.
           // Keep loading visits in the time-range selected until we fill up the page.
-          appendVisitsChunkedByDay(visits);
+          if (visits.length) {
+            const firstVisit = visits[0];
+            let prevVisit;
+            if (prefilteredChunkedVisits.value.length) {
+              prevVisit =
+                prefilteredChunkedVisits.value[
+                  prefilteredChunkedVisits.value.length - 1
+                ];
+            }
+            //console.log(JSON.stringify(prevVisit, null, 2), JSON.stringify(firstVisit, null, 2));
+            if (
+              !prevVisit ||
+              new Date(firstVisit.timeEnd).getTime() <
+                new Date(prevVisit.timeEnd).getTime()
+            ) {
+              appendVisitsChunkedByDay(visits);
+            } else {
+              console.warn("Not appending duplicate visits");
+            }
+          }
           if (visits.length === 0) {
             //debugger;
           }
@@ -1469,11 +1517,11 @@ const exportProgressZeroOneHundred = computed<number>(
   () => exportProgress.value * 100,
 );
 const doSearch = async () => {
-  if (!searching.value) {
+  if (!searching.value || getCurrentQueryHash() !== loadingQuery.value) {
     searching.value = true;
     await getClassifications();
     await loadActiveAndInactiveDevices();
-    await getRecordingsOrVisitsForCurrentQuery();
+    const succeededWithoutAbort = await getRecordingsOrVisitsForCurrentQuery();
     searching.value = false;
   }
 };

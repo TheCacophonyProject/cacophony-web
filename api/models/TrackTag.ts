@@ -31,6 +31,7 @@ export const AI_MASTER = "Master";
 export type TrackTagId = number;
 import { Track } from "@models/Track.js";
 import { User } from "@models/User.js";
+import log from "@log";
 
 export interface TrackTagData {
   name: string;
@@ -84,19 +85,21 @@ export class TrackTag extends ModelStaticCommon<TrackTag> {
   }
 
   static addPath(trackTag: TrackTag) {
-    // All paths are lower case, and spaces are replaced with underscores. eg. all.path_name.example
-    const what = (trackTag.what as string).toLowerCase();
-    const path =
-      what in LabelPaths ? LabelPaths[what] : `all.${what.replace(" ", "_")}`;
-    this.sequelize.query(
-      `UPDATE "TrackTags" SET "path" = text2ltree(:path) WHERE "id" = :id`,
-      { replacements: { path, id: trackTag.id } },
-    );
-  }
-
-  static addPaths(trackTags: TrackTag[]) {
-    for (const trackTag of trackTags) {
-      TrackTag.addPath(trackTag);
+    if (
+      (trackTag.path === null && trackTag.what) ||
+      (trackTag.path && trackTag.what && !trackTag.path.endsWith(trackTag.what))
+    ) {
+      log.warning("ADD PATH");
+      // All paths are lower case, and spaces are replaced with underscores. eg. all.path_name.example
+      const what = (trackTag.what as string).toLowerCase();
+      const path =
+        what in LabelPaths ? LabelPaths[what] : `all.${what.replace(" ", "_")}`;
+      this.sequelize.query(
+        `UPDATE "TrackTags"
+           SET "path" = text2ltree(:path)
+           WHERE "id" = :id`,
+        { replacements: { path, id: trackTag.id } },
+      );
     }
   }
 
@@ -145,7 +148,6 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
     hooks: {
       afterUpdate: TrackTag.addPath,
       afterCreate: TrackTag.addPath,
-      afterBulkCreate: TrackTag.addPaths,
     },
   });
   return TrackTag;

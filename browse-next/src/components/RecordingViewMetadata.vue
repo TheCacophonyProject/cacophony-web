@@ -69,7 +69,8 @@ const recordingDateTime = computed<DateTime | null>(() => {
 
 const recordingDate = computed<string>(() => {
   return (
-    recordingDateTime.value?.toLocaleString({ dateStyle: "short" }) || "&ndash;"
+    recordingDateTime.value?.toLocaleString({ dateStyle: "medium" }) ||
+    "&ndash;"
   );
 });
 const recordingStartTime = computed<string>(() => {

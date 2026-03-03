@@ -62,7 +62,18 @@ const openHttpServer = (app): Promise<void> => {
     try {
       log.notice("Starting http server on %d", config.server.http.port);
       const server = http.createServer(app).listen(config.server.http.port);
-      server.setTimeout(60 * 5 * 1000);
+      server.on("error", (err: Error) => {
+        log.warning("Server error: %s", err);
+      });
+      server.on("timeout", (socket) => {
+        log.warning("Connection timeout for socket");
+        socket.destroy();
+      });
+      server.on("dropRequest", (socket) => {
+        log.warning("Connection dropped for stream socket");
+        socket.destroy();
+      });
+      //server.setTimeout(60 * 5 * 1000);
       resolve();
     } catch (err) {
       reject(err);

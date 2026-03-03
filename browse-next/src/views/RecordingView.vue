@@ -920,22 +920,23 @@ onMounted(async () => {
 
 const visitDurationString = computed<string>(() => {
   let date;
-  if (recording.value) {
-    date = DateTime.fromJSDate(new Date(recording.value.recordingDateTime));
-  } else {
-    date = DateTime.fromJSDate(new Date());
-  }
-
   const now = new Date();
-  if (locationContext && locationContext.value) {
+  if (selectedVisit.value) {
+    date = DateTime.fromISO(selectedVisit.value.timeStart);
+  } else {
+    //date = DateTime.fromJSDate(new Date());
+  }
+  if (date && locationContext && locationContext.value) {
     const zone = timezoneForLatLng(locationContext.value);
     date = date.setZone(zone);
   }
-  let dateString;
-  if (date.year != now.getFullYear()) {
-    dateString = `${date.toFormat("d MMM yy")}, `;
-  } else {
-    dateString = `${date.toFormat("d MMM")}, `;
+  let dateString = "";
+  if (date) {
+    if (date.year != now.getFullYear()) {
+      dateString = `${date.toFormat("d MMM yy")}, `;
+    } else {
+      dateString = `${date.toFormat("d MMM")}, `;
+    }
   }
   if (!isMobileView.value) {
     dateString = "";
@@ -959,24 +960,26 @@ const visitDurationString = computed<string>(() => {
 
 const recordingDurationString = computed<string>(() => {
   let date;
+  const now = new Date();
   if (recording.value) {
     date = DateTime.fromJSDate(new Date(recording.value.recordingDateTime));
   } else {
-    date = DateTime.fromJSDate(new Date());
+    //date = DateTime.fromJSDate(now);
   }
 
-  const now = new Date();
-  if (recording.value && locationContext && locationContext.value) {
+  if (date && recording.value && locationContext && locationContext.value) {
     const zone = timezoneForLatLng(
       recording.value.location || locationContext.value,
     );
     date = date.setZone(zone);
   }
-  let dateString;
-  if (date.year != now.getFullYear()) {
-    dateString = `${date.toFormat("d MMM yy")}, `;
-  } else {
-    dateString = `${date.toFormat("d MMM")}, `;
+  let dateString = "";
+  if (date) {
+    if (date.year != now.getFullYear()) {
+      dateString = `${date.toFormat("d MMM yy")}, `;
+    } else {
+      dateString = `${date.toFormat("d MMM")}, `;
+    }
   }
   if (!isMobileView.value) {
     dateString = "";
@@ -1004,7 +1007,7 @@ const recordingDurationString = computed<string>(() => {
     }
     return `${dateString}${visitStart}&ndash;${visitEnd} (${duration})`;
   }
-  return "";
+  return "&nbsp;";
 });
 
 const isDesktop = useMediaQuery("(min-width: 992px)");
@@ -1472,6 +1475,7 @@ const onScroll = (e: Event) => {
             :current-track="currentTrack"
             v-if="isDesktop"
           />
+
           <div class="tags-overflow d-flex flex-grow-1" ref="scrollContainer">
             <!-- RecordingViewTracks, RecordingViewLabels, RecordingViewNotes, RecordingViewMetadata (mobile) -->
             <router-view
@@ -1567,7 +1571,7 @@ const onScroll = (e: Event) => {
           <!-- Mobile only button without labels, advances through recordings and visits -->
           <button
             type="button"
-            class="btn d-flex d-md-none flex-row-reverse align-items-center btn-hi position-relative"
+            class="btn btn-icon d-flex d-md-none flex-row-reverse align-items-center position-relative"
             :disabled="!hasPreviousRecording && !hasPreviousVisit"
             @click.prevent="gotoPreviousRecordingOrVisit"
           >
