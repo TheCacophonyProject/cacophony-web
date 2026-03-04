@@ -59,7 +59,7 @@ import type { Application, NextFunction, Request, Response } from "express";
 import { body, param, query } from "express-validator";
 import type { JwtPayload } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
-import Sequelize, { Op } from "sequelize";
+import { Op } from "sequelize";
 import LabelPaths from "../../classifications/label_paths.json" with { type: "json" };
 
 import {
@@ -125,7 +125,6 @@ import { TrackTagUserData } from "@models/TrackTagUserData.js";
 import { Device } from "@models/Device.js";
 import { Station } from "@models/Station.js";
 import { Visit } from "@models/Visit.js";
-import logger from "@log";
 
 const sequelize = await initSequelize();
 
@@ -1846,7 +1845,7 @@ export default (app: Application, baseUrl: string) => {
           // FIXME - should probably not be success
           return successResponse(response, "Tag already exists.");
         }
-      } catch (e) {
+      } catch (_e) {
         return next(new FatalError("Server error replacing tag."));
       }
     },
@@ -2773,7 +2772,7 @@ export default (app: Application, baseUrl: string) => {
               ),
             );
         }
-      } catch (e) {
+      } catch (_e) {
         return successResponse(response, "Got recordings", {
           recordings: [],
         });

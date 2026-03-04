@@ -343,8 +343,11 @@ const processFilePart = async (
           // TODO: The file could be corrupt, but we could still get a valid CPTV header out.
           //  test this case.
           const header = await decoder.getHeader();
-          if (header) {
-            console.log("Header found in corrupt CPTV file", header);
+          if (header && typeof header !== "string") {
+            log.info(
+              "Header found in corrupt CPTV file: %s",
+              JSON.stringify(header),
+            );
             embeddedMetadata = header;
           }
         }
