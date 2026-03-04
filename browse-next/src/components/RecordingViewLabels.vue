@@ -170,7 +170,7 @@ const doAddLabel = async () => {
       :items="tableItems"
       compact
       class="flex-fill flex-grow-1"
-      :class="{ 'mb-3': tableItems.length }"
+      :class="{ 'p-1 p-md-0 mb-3': tableItems.length }"
     >
       <template #_deleteAction="{ cell }">
         <button

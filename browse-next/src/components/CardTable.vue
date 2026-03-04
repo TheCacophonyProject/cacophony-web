@@ -2,7 +2,7 @@
   <div ref="cardTableContainer">
     <table
       v-if="shouldRenderAsRows && hasItems"
-      class="card-table card-table-table my-2"
+      class="card-table card-table-table"
       :class="{ compact, 'rounded-3 shadow-sm bg-white': standalone }"
     >
       <thead>

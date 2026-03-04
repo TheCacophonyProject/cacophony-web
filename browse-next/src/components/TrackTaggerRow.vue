@@ -944,7 +944,7 @@ onMounted(async () => {
         </div>
         <div
           v-else-if="showTaggerDetails && taggerDetails.length === 0"
-          class="mb-2"
+          class="p-2 text-center text-muted fs-6"
         >
           No tags have been added yet.
         </div>
