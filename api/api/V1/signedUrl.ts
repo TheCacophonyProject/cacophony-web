@@ -31,6 +31,7 @@ import fs from "fs/promises";
 import { GroupUsers } from "@models/GroupUsers.js";
 import { User } from "@models/User.js";
 import { JwtPayload } from "jsonwebtoken";
+import { once } from "events";
 
 export const streamS3Object = async (
   request: Request,
@@ -98,9 +99,67 @@ export const streamS3Object = async (
   response.setHeader("Content-type", mimeType);
   const s3 = openS3();
 
+  let canceled = false;
+  let webStream: ReadableStream | null = null;
+  let nodeStream: {
+    destroy: (error?: Error) => void;
+  } | null = null;
+
+  const cancelStreaming = (error?: Error) => {
+    if (canceled) {
+      return;
+    }
+    canceled = true;
+
+    try {
+      if (webStream && typeof webStream.cancel === "function") {
+        void webStream.cancel(error).catch(() => {
+          return;
+        });
+      }
+    } catch {
+      // ignore cleanup errors
+    }
+
+    try {
+      if (nodeStream && typeof nodeStream.destroy === "function") {
+        nodeStream.destroy(error);
+      }
+    } catch {
+      // ignore cleanup errors
+    }
+  };
+
+  const onRequestAborted = () => {
+    cancelStreaming(
+      new Error("Client aborted request while streaming S3 object"),
+    );
+  };
+  const onRequestClosed = () => {
+    if (!response.writableEnded) {
+      cancelStreaming(new Error("Request closed before S3 stream completed"));
+    }
+  };
+  const onResponseClosed = () => {
+    if (!response.writableEnded) {
+      cancelStreaming(new Error("Response closed before S3 stream completed"));
+    }
+  };
+  const onResponseError = (err: Error) => {
+    cancelStreaming(err);
+  };
+
+  request.once("aborted", onRequestAborted);
+  request.once("close", onRequestClosed);
+  response.once("close", onResponseClosed);
+  response.once("error", onResponseError);
+
   try {
     const s3Request = await s3.getObject(key);
-    const webStream = s3Request.Body as unknown as ReadableStream;
+    webStream = s3Request.Body as unknown as ReadableStream;
+    nodeStream = s3Request.Body as unknown as {
+      destroy: (error?: Error) => void;
+    };
     let dataStreamed = 0;
     if (request.headers.range) {
       // without this seeking mp4s in chrome does not work
@@ -119,10 +178,23 @@ export const streamS3Object = async (
       response.setHeader("Accept-Ranges", "bytes");
     }
     for await (const chunk of webStream) {
+      if (canceled) {
+        break;
+      }
       dataStreamed += chunk.length;
-      response.write(chunk);
+      if (!response.write(chunk)) {
+        await once(response, "drain");
+        if (canceled) {
+          break;
+        }
+      }
     }
-    if (userId && groupId && !config.processingUserIds.includes(userId)) {
+    if (
+      !canceled &&
+      userId &&
+      groupId &&
+      !config.processingUserIds.includes(userId)
+    ) {
       // Log out to the DB how much we streamed for this user.
       const [_rows, affectedCount] = await GroupUsers.increment(
         {
@@ -152,9 +224,18 @@ export const streamS3Object = async (
         );
       }
     }
-    response.end();
+    if (!canceled && !response.writableEnded) {
+      response.end();
+    }
   } catch (err) {
-    return serverErrorResponse(request, response, err);
+    if (!canceled) {
+      return serverErrorResponse(request, response, err);
+    }
+  } finally {
+    request.off("aborted", onRequestAborted);
+    request.off("close", onRequestClosed);
+    response.off("close", onResponseClosed);
+    response.off("error", onResponseError);
   }
   // TODO: We may want to support HTTP range requests, and if we do, we should be able to
   //  pass that through to our s3 providers.  It may not be supported for minio though,

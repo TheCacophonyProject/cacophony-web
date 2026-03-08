@@ -1930,8 +1930,7 @@ export const updateRecordingTimeBookkeeping = async (
        AND r."StationId" = :stationId
      GROUP BY r."StationId"
    ) agg
-    WHERE s."id" = agg."StationId"
-    AND :isNewUploadFromDevice = true;
+    WHERE s."id" = agg."StationId";
   `,
         {
           replacements: {

@@ -67,6 +67,9 @@ const openHttpServer = (app): Promise<void> => {
       });
       server.on("timeout", (socket) => {
         log.warning("Connection timeout for socket");
+        if (socket.request && socket.request.destroy) {
+          socket.request.destroy();
+        }
         socket.destroy();
       });
       server.on("dropRequest", (socket) => {
