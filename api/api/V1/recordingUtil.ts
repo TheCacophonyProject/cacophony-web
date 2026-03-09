@@ -342,7 +342,6 @@ export async function getCPTVFrames(
     );
     if (typeof result === "string") {
       log.warning("CPTV Error '%s'", result);
-      await decoder.close();
       return;
     }
     let finished = false;
@@ -355,7 +354,6 @@ export async function getCPTVFrames(
       const frame: CptvFrame | null | string = await decoder.getNextFrame();
       if (typeof frame === "string") {
         log.warning("CPTV Error '%s'", frame);
-        await decoder.close();
         // FIXME: Do we want to return any frames here?
         return;
       }
@@ -374,15 +372,13 @@ export async function getCPTVFrames(
       }
       currentFrame++;
     }
-    await decoder.close();
     return frames;
   } catch (_err) {
-    if (decoder) {
-      await decoder.close();
-    }
     return;
   } finally {
-    await decoder.close();
+    if (decoder && decoder.close) {
+      await decoder.close();
+    }
   }
 }
 interface ThumbnailData {

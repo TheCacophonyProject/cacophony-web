@@ -40,17 +40,17 @@ import { isLatLon } from "@models/util/validation.js";
 import { NodeHttpHandler } from "@aws-sdk/node-http-handler";
 import * as https from "node:https";
 
+const providers = {
+  s3Local: null,
+  s3Archive: null,
+};
+
 export function openS3() {
   // This is a shim around the s3 compatible object store provider.
   // Based on the bucket passed in the params if there is no object key provided,
   // pick the correct s3 provider.  If there is a key provided, pick the provider
   // based on the prefix of the key `a_` prefix for backblaze, otherwise use the
   // local minio storage.
-
-  const providers = {
-    s3Local: null,
-    s3Archive: null,
-  };
 
   const getProviderForParams = (params: {
     Key?: string;
