@@ -93,6 +93,9 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
     }
   }
   &__section-name {
+    @media (max-width: @breakpoint-xs-max) {
+      margin-bottom: var(--cp-spacing-xxxs) !important;
+    }
     @media (min-width: @breakpoint-xxl) {
       margin-bottom: var(--cp-spacing-xxl) !important;
     }
