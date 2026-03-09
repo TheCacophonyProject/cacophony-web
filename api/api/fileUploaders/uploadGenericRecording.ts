@@ -64,6 +64,7 @@ interface RecordingData {
 const mergeEmbeddedDataWithSuppliedRecordingData = (
   data: RecordingData,
   recordingUploadData: RecordingFileUploadResult,
+  deviceId: DeviceId,
 ): RecordingData => {
   const mergedData: RecordingData = {
     ...recordingUploadData.embeddedMetadata,
@@ -146,7 +147,9 @@ const mergeEmbeddedDataWithSuppliedRecordingData = (
       mergedData.additionalMetadata.totalFrames = metadata.totalFrames;
     }
   } else if (!("recordingDateTime" in mergedData)) {
-    throw new UnprocessableError("recordingDateTime not supplied");
+    throw new UnprocessableError(
+      `recordingDateTime not supplied for device ${deviceId}`,
+    );
   }
   if (mergedData.status) {
     if (!mergedData.additionalMetadata) {
@@ -377,6 +380,7 @@ const processFilePart = async (
   }
   if (mightBeTc2AudioFile && (!mightBeCptvFile || !wasValidCptvFile)) {
     const metadata = await tryReadingM4aMetadata(m4aDecodeStream);
+    // FIXME: Cancel stream on error?  Put this into a worker so that it's cleaned up better?
     if (typeof metadata === "string") {
       log.warning("Failed parsing m4a metadata: %s", metadata);
       wasValidM4aFile = false;
@@ -587,6 +591,7 @@ export const uploadGenericRecording =
         data = mergeEmbeddedDataWithSuppliedRecordingData(
           data as RecordingData,
           rawFileUploadResult,
+          recordingDeviceId,
         );
       } catch (error) {
         if (error instanceof CustomError && !canceledRequest.canceled) {

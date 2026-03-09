@@ -37,6 +37,8 @@ import type { LatLng } from "@typedefs/api/common.js";
 import { DataTypes } from "sequelize";
 import { canonicalLatLng } from "@models/util/locationUtils.js";
 import { isLatLon } from "@models/util/validation.js";
+import { NodeHttpHandler } from "@aws-sdk/node-http-handler";
+import * as https from "node:https";
 
 export function openS3() {
   // This is a shim around the s3 compatible object store provider.
@@ -73,6 +75,12 @@ export function openS3() {
     if (chooseProvider === "s3Archive") {
       if (!providers.s3Archive) {
         const clientConfig: S3ClientConfig = {
+          requestHandler: new NodeHttpHandler({
+            httpsAgent: new https.Agent({
+              keepAlive: true,
+              maxSockets: 50,
+            }),
+          }),
           region: "dummy-region",
           endpoint: config.s3Archive.endpoint,
           credentials: {
@@ -90,6 +98,12 @@ export function openS3() {
     } else {
       if (!providers.s3Local) {
         const clientConfig: S3ClientConfig = {
+          requestHandler: new NodeHttpHandler({
+            httpsAgent: new https.Agent({
+              keepAlive: true,
+              maxSockets: 50,
+            }),
+          }),
           region: "dummy-region",
           endpoint: config.s3Local.endpoint,
           credentials: {

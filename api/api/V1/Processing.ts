@@ -243,6 +243,8 @@ export default function (app: Application, baseUrl: string) {
             tracks = (await recording.getTracks()) || [];
             for (const track of tracks) {
               track.data = await Track.getTrackData(track.id);
+              // FIXME: Ideally we'd do this when bulk-adding tracks in the first place, so that we don't need to pull
+              //  out all the track datas
               await track.updateIsFiltered();
             }
           }

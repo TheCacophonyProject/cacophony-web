@@ -105,7 +105,7 @@ export const streamS3Object = async (
     destroy: (error?: Error) => void;
   } | null = null;
 
-  const cancelStreaming = (error?: Error) => {
+  const cancelStreaming = (error: Error) => {
     if (canceled) {
       return;
     }
@@ -158,7 +158,7 @@ export const streamS3Object = async (
     const s3Request = await s3.getObject(key);
     webStream = s3Request.Body as unknown as ReadableStream;
     nodeStream = s3Request.Body as unknown as {
-      destroy: (error?: Error) => void;
+      destroy: (error: Error) => void;
     };
     let dataStreamed = 0;
     if (request.headers.range) {
@@ -183,23 +183,23 @@ export const streamS3Object = async (
       }
       dataStreamed += chunk.length;
       if (!response.write(chunk)) {
-        await once(response, "drain");
-        if (canceled) {
+        await Promise.race([
+          once(response, "drain"),
+          once(response, "close"),
+          once(response, "error"),
+        ]);
+
+        if (canceled || response.destroyed || response.writableEnded) {
           break;
         }
       }
     }
-    if (
-      !canceled &&
-      userId &&
-      groupId &&
-      !config.processingUserIds.includes(userId)
-    ) {
+    if (userId && groupId && !config.processingUserIds.includes(userId)) {
       // Log out to the DB how much we streamed for this user.
       const [_rows, affectedCount] = await GroupUsers.increment(
         {
           transferredBytes: dataStreamed,
-          transferredItems: 1,
+          transferredItems: canceled ? 0 : 1,
         },
         {
           where: {
@@ -214,7 +214,7 @@ export const streamS3Object = async (
         await User.increment(
           {
             transferredBytes: dataStreamed,
-            transferredItems: 1,
+            transferredItems: canceled ? 0 : 1,
           },
           {
             where: {

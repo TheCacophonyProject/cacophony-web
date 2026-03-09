@@ -351,23 +351,23 @@ export async function getCPTVFrames(
     log.info(`Extracting  ${frameNumbers.size} frames for thumbnails `);
     const header = await decoder.getHeader();
     const totalFrames = header.totalFrames || null;
-    let numFrames = 0;
     while (!finished) {
       const frame: CptvFrame | null | string = await decoder.getNextFrame();
       if (typeof frame === "string") {
         log.warning("CPTV Error '%s'", frame);
         await decoder.close();
+        // FIXME: Do we want to return any frames here?
         return;
       }
       if (frame && frame.isBackgroundFrame) {
         // Skip over background frame without incrementing counter.
         continue;
       }
-      finished = frame === null || (totalFrames && numFrames === totalFrames);
+      finished =
+        frame === null || (totalFrames && currentFrame - 1 === totalFrames);
       if (frameNumbers.has(currentFrame)) {
         frameNumbers.delete(currentFrame);
         frames[currentFrame] = frame;
-        numFrames = Object.values(frames).length;
       }
       if (frameNumbers.size === 0) {
         break;
@@ -381,6 +381,8 @@ export async function getCPTVFrames(
       await decoder.close();
     }
     return;
+  } finally {
+    await decoder.close();
   }
 }
 interface ThumbnailData {
