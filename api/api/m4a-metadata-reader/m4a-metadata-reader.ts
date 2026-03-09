@@ -48,10 +48,8 @@ export const tryReadingM4aMetadata = async (
         result.duration = parseFloat(result.duration.toString());
       }
     }
-    readerContext.free();
     return result;
   } catch (_e) {
-    readerContext.free();
     return "Error reading metadata";
   } finally {
     readerContext.free();
