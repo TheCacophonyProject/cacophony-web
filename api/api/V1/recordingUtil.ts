@@ -354,7 +354,6 @@ export async function getCPTVFrames(
       const frame: CptvFrame | null | string = await decoder.getNextFrame();
       if (typeof frame === "string") {
         log.warning("CPTV Error '%s'", frame);
-        // FIXME: Do we want to return any frames here?
         return;
       }
       if (frame && frame.isBackgroundFrame) {
@@ -374,6 +373,7 @@ export async function getCPTVFrames(
     }
     return frames;
   } catch (_err) {
+    log.warning(`CPTV thumbnail read error: ${_err}`);
     return;
   } finally {
     if (decoder && decoder.close) {

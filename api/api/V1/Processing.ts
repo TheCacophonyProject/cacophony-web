@@ -727,7 +727,7 @@ export default function (app: Application, baseUrl: string) {
         next();
       }
     },
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       if (!response.locals.skip) {
         const trackTags: TrackTag[] = [];
         const trackTagData = [];

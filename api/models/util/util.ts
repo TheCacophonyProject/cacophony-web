@@ -78,7 +78,7 @@ export function openS3() {
           requestHandler: new NodeHttpHandler({
             httpsAgent: new https.Agent({
               keepAlive: true,
-              maxSockets: 50,
+              maxSockets: 75,
             }),
           }),
           region: "dummy-region",
@@ -101,7 +101,7 @@ export function openS3() {
           requestHandler: new NodeHttpHandler({
             httpsAgent: new https.Agent({
               keepAlive: true,
-              maxSockets: 50,
+              maxSockets: 75,
             }),
           }),
           region: "dummy-region",
