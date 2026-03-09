@@ -78,8 +78,12 @@ export function openS3() {
           requestHandler: new NodeHttpHandler({
             httpsAgent: new https.Agent({
               keepAlive: true,
-              maxSockets: 75,
+              maxSockets: 100,
+              maxFreeSockets: 10,
+              timeout: 60000,
             }),
+            connectionTimeout: 5000,
+            requestTimeout: 60000,
           }),
           region: "dummy-region",
           endpoint: config.s3Archive.endpoint,
@@ -101,8 +105,12 @@ export function openS3() {
           requestHandler: new NodeHttpHandler({
             httpsAgent: new https.Agent({
               keepAlive: true,
-              maxSockets: 75,
+              maxSockets: 100,
+              maxFreeSockets: 10,
+              timeout: 60000,
             }),
+            connectionTimeout: 5000,
+            requestTimeout: 60000,
           }),
           region: "dummy-region",
           endpoint: config.s3Local.endpoint,
