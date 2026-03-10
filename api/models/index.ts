@@ -44,9 +44,10 @@ export class ModelStaticCommon<
   declare static publicFields: NonAttribute<readonly string[]>;
 }
 let sequelize: Sequelize.Sequelize;
-
+let sequelizeInited = false;
 export const initSequelize = async () => {
-  if (!sequelize) {
+  if (!sequelizeInited) {
+    sequelizeInited = true;
     const Op = Sequelize.Op;
 
     // If we're running in debug mode, we want to be able to see requestIds with every

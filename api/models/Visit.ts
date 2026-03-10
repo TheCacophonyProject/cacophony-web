@@ -52,6 +52,7 @@ interface VisitRow {
 
 const VISIT_GAP_SECONDS = 10 * 60; // rolling window length / max gap allowed between recordings
 export const VISITS_ADVISORY_LOCK_KEY = 924_001; // arbitrary constant to namespace station locks
+export const VISITS_ADVISORY_LOCK_KEY_2 = 924_002; // arbitrary constant to namespace station locks
 
 const NEGATIVE_TAGS = new Set([
   "part",
@@ -131,6 +132,7 @@ export class Visit extends ModelStaticCommon<Visit> {
     recording: Recording,
     transaction?: Transaction,
   ): Promise<void> {
+    return;
     if (recording.type !== RecordingType.ThermalRaw) {
       return;
     }
