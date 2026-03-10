@@ -248,7 +248,7 @@ const processAndValidateDataPart = async (
 
 interface RecordingFileUploadResult {
   partName: string;
-  key: string | null;
+  key: string;
   isCorrupt: boolean;
   sha1Hash: string;
   fileLength: number;
@@ -298,10 +298,10 @@ const processFilePart = async (
 
   const transform = new TransformStream({
     transform(chunk, controller) {
+      length += chunk.length;
       if (canceledRequest.canceled) {
         upload.abort();
       }
-      length += chunk.length;
       sha1Hash.update(chunk, "binary");
       controller.enqueue(chunk);
     },
@@ -353,6 +353,7 @@ const processFilePart = async (
         }
         // If this is a zero-sized file, we will timeout when trying to upload it via the S3 API.
         if (length === 0) {
+          log.warning("Zero length file");
           await upload.abort().catch(() => {
             return;
           });
@@ -389,6 +390,7 @@ const processFilePart = async (
       isCorrupt = false;
     }
     if (length === 0) {
+      log.warning("Zero length file");
       await upload.abort().catch(() => {
         return;
       });
@@ -891,8 +893,15 @@ const deleteUploads = async (uploadResults: RecordingFileUploadResult[]) => {
         openS3()
           .deleteObject(uploadResult.key)
           .catch((err) => {
+            log.warning("Failed to delete upload: %s", err);
             return err;
           }),
+      );
+    } else {
+      log.warning(
+        "Could not delete upload without key: %s, length %d",
+        uploadResult.partName,
+        uploadResult.fileLength,
       );
     }
   }
