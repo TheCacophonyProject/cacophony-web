@@ -363,7 +363,7 @@ const processFilePart = async (
             if (error.name !== "AbortError") {
               log.error("Upload error: %s", error.toString());
               decoder.close().then(() => {
-                throw new Error(`Upload error: '${part.name}'`);
+                //throw new Error(`Upload error: '${part.name}'`);
               });
             }
           });
