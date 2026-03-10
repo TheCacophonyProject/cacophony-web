@@ -886,13 +886,15 @@ export const uploadGenericRecording =
 const deleteUploads = async (uploadResults: RecordingFileUploadResult[]) => {
   const deleteUploadPromises = [];
   for (const uploadResult of uploadResults) {
-    deleteUploadPromises.push(
-      openS3()
-        .deleteObject(uploadResult.key)
-        .catch((err) => {
-          return err;
-        }),
-    );
+    if (uploadResult.key) {
+      deleteUploadPromises.push(
+        openS3()
+          .deleteObject(uploadResult.key)
+          .catch((err) => {
+            return err;
+          }),
+      );
+    }
   }
   return Promise.allSettled(deleteUploadPromises);
 };
