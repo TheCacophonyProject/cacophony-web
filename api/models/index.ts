@@ -58,7 +58,12 @@ export const initSequelize = async () => {
     // want to do in production!  Having default pooling also makes the test suite run around 15% faster.
     // TODO: Is this even true anymore in latest NodeJS?
     //   It may have just been a bug in earlier versions of AsyncLocalStorage.
-    const poolOptions = {};
+    const poolOptions = {
+      max: 20,
+      min: 2,
+      acquire: 60000,
+      idle: 10000,
+    };
     // NOTE: If you're debugging requests, you may want to re-enable the limited pool options.
     // const poolOptions =
     //   IS_DEBUG && !IS_CI_ENV
