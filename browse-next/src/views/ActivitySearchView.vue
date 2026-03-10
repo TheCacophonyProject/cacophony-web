@@ -1291,14 +1291,12 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       // Date range not yet defined
       return;
     }
-    let queryHash = getCurrentQueryHash();
-    let query = getCurrentQuery();
+    const queryHash = getCurrentQueryHash();
+    const query = getCurrentQuery();
     const project = currentProject.value as SelectedProject;
     let isNewQuery;
     if (firstLoad.value) {
       firstLoad.value = false;
-      queryHash = getCurrentQueryHash();
-      query = getCurrentQuery();
       isNewQuery = true;
     } else {
       isNewQuery = queryHash !== currentQueryHash.value;
@@ -1309,7 +1307,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       // We need to narrow the already loaded search range
       isNewQuery = true;
     }
-    loadingQuery.value = queryHash;
+    //loadingQuery.value = queryHash;
     let earliestRecord = null;
     if (inRecordingsMode.value) {
       if (filteredLoadedRecordings.value.length) {
@@ -1395,27 +1393,29 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             recordings: ApiRecordingResponse[];
           }>;
           const recordings = recordingsResponse.result.recordings;
-          if (
-            recordings &&
-            recordings.length &&
-            (!loadedRecordings.value.length ||
+          if (recordings && recordings.length) {
+            const latest = new Date(recordings[0].recordingDateTime);
+            const earliest = new Date(
+              recordings[recordings.length - 1].recordingDateTime,
+            );
+            if (
+              !loadedRecordings.value.length ||
               (loadedRecordings.value.length &&
-                new Date(recordings[0].recordingDateTime).getTime() >
-                  new Date(
-                    loadedRecordings.value[loadedRecordings.value.length - 1]
-                      .recordingDateTime,
-                  ).getTime()))
-          ) {
-            // Don't append duplicate recordings
-            loadedRecordings.value.push(...recordings);
-            loadedFewerItemsThanRequested = recordings.length < twoPagesWorth;
-            loadedRecordingIds.value.push(...recordings.map(({ id }) => id));
-            appendRecordingsChunkedByDay(recordings);
-            currentQueryLoaded.value += recordings.length;
-            if (recordings.length !== 0) {
-              gotUntilDate = new Date(
-                recordings[recordings.length - 1].recordingDateTime,
-              );
+                latest.getTime() > earliest.getTime())
+            ) {
+              // Don't append duplicate recordings
+              loadedRecordings.value.push(...recordings);
+              loadedFewerItemsThanRequested = recordings.length < twoPagesWorth;
+              loadedRecordingIds.value.push(...recordings.map(({ id }) => id));
+              appendRecordingsChunkedByDay(recordings);
+              currentQueryLoaded.value += recordings.length;
+              if (recordings.length !== 0) {
+                gotUntilDate = new Date(
+                  recordings[recordings.length - 1].recordingDateTime,
+                );
+              }
+            } else {
+              console.warn("Duplicate recordings, not appending");
             }
           }
         } else if (inVisitsMode.value) {
@@ -1519,11 +1519,13 @@ const exportProgressZeroOneHundred = computed<number>(
   () => exportProgress.value * 100,
 );
 const doSearch = async () => {
-  if (!searching.value || getCurrentQueryHash() !== loadingQuery.value) {
+  const currentQueryHash = getCurrentQueryHash();
+  if (!searching.value || currentQueryHash !== loadingQuery.value) {
+    loadingQuery.value = currentQueryHash;
     searching.value = true;
     await getClassifications();
     await loadActiveAndInactiveDevices();
-    const succeededWithoutAbort = await getRecordingsOrVisitsForCurrentQuery();
+    const _succeededWithoutAbort = await getRecordingsOrVisitsForCurrentQuery();
     searching.value = false;
   }
 };
