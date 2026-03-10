@@ -381,7 +381,7 @@ export async function getCPTVFrames(
     }
   }
 }
-interface ThumbnailData {
+export interface ThumbnailData {
   data: Buffer;
   meta: { palette: string; region: string };
 }
@@ -466,7 +466,7 @@ export async function saveThumbnailInfo(
       }
       log.info("Saving clip thumbnail %s", `${fileKey}-thumb`);
       frameUploads.push(
-        await openS3()
+        openS3()
           .upload(`${fileKey}-thumb`, thumb.data, thumb.meta)
           .catch((err) => {
             return err;
@@ -477,52 +477,63 @@ export async function saveThumbnailInfo(
   return Promise.all(frameUploads);
 }
 
-//expands the smallest dimension of the region so that it is a square that fits inside resX and resY
+function distributeSize(
+  c: number,
+  size: number,
+  maxDim: number,
+): { left: number; right: number } {
+  let left;
+  let right;
+  const maxD = Math.floor(size / 2);
+  if (c <= maxDim / 2) {
+    // Distribute "left" first.
+    left = Math.max(0, c - maxD);
+    right = Math.min(maxDim, c + (size - (c - left)));
+  } else {
+    // Distribute "right" first
+    right = Math.min(maxDim, c + maxD);
+    left = Math.max(0, c - (size - (right - c)));
+  }
+  return {
+    left,
+    right,
+  };
+}
+// expands the smallest dimension of the region so that it is a square that fits inside resX and resY
 function squareRegion(
   thumbnail: TrackFramePosition,
   resX: number,
   resY: number,
 ) {
-  //  make a square
-  if (thumbnail.width < thumbnail.height) {
-    const diff = thumbnail.height - thumbnail.width;
-    const squarePadding = Math.ceil(diff / 2);
+  const size = Math.min(resY, Math.max(thumbnail.width, thumbnail.height));
+  // Get the center, and make the smallest possible square around it:
+  const centerX = Math.floor(thumbnail.x + thumbnail.width / 2);
+  const centerY = Math.floor(thumbnail.y + thumbnail.height / 2);
 
-    thumbnail.x -= squarePadding;
-    // noinspection JSSuspiciousNameCombination
-    thumbnail.width = thumbnail.height;
-    thumbnail.x = Math.max(0, thumbnail.x);
-    if (thumbnail.x + thumbnail.width > resX) {
-      thumbnail.x = resX - thumbnail.width;
-    }
-  } else if (thumbnail.width > thumbnail.height) {
-    const diff = thumbnail.width - thumbnail.height;
-    const squarePadding = Math.ceil(diff / 2);
-    thumbnail.y -= squarePadding;
-    // noinspection JSSuspiciousNameCombination
-    thumbnail.height = thumbnail.width;
-    thumbnail.y = Math.max(0, thumbnail.y);
-    if (thumbnail.y + thumbnail.height > resY) {
-      thumbnail.y = resY - thumbnail.height;
-    }
-  }
-  return thumbnail;
+  const x = distributeSize(centerX, size, resX);
+  const y = distributeSize(centerY, size, resY);
+  return {
+    x: x.left,
+    y: y.left,
+    width: x.right - x.left,
+    height: y.right - y.left,
+  };
 }
 
 // Create a png thumbnail image from this frame with thumbnail info
 // Expand the thumbnail region such that it is a square
 // Resize to THUMBNAIL_MIN_SIZE
 // render the png in THUMBNAIL_PALETTE
-async function createThumbnail(
+export async function createThumbnail(
   frame: CptvFrame,
   thumbnail: TrackFramePosition,
   colourPalette: string = THUMBNAIL_PALETTE,
 ): Promise<ThumbnailData> {
   const resX = 160;
   const resY = 120;
-  const size = Math.max(thumbnail.height, thumbnail.width);
-  const thumbnailData = new Uint8Array(size * size);
   thumbnail = squareRegion(thumbnail, resX, resY);
+  const size = Math.min(resY, Math.max(thumbnail.height, thumbnail.width));
+  const thumbnailData = new Uint8Array(size * size);
   // get min max for normalisation
   let min = 1 << 16;
   let max = 0;

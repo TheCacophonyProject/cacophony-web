@@ -229,16 +229,31 @@ class CptvDecoderInterface {
   }
 
   async getMetadata(): Promise<
-    (CptvHeaderMapped & { duration: number; totalFrames: number }) | string
+    | (CptvHeaderMapped & {
+        duration: number;
+        totalFrames: number;
+        firstFrame?: CptvFrame;
+      })
+    | string
   > {
     const header = await this.getHeader();
     let totalFrameCount = 0;
+    let firstFrame: CptvFrame | null = null;
     if (this.hasStreamError() && typeof header === "string") {
       return this.streamError;
     } else {
       const h = header as CptvHeaderMapped;
       if (h["totalFrames"]) {
         totalFrameCount = h["totalFrames"];
+        let frame: CptvFrame | null;
+        while (
+          (frame = await (this.playerContext as DecoderContext).nextFrame())
+        ) {
+          if (!frame.isBackgroundFrame) {
+            firstFrame = frame;
+            break;
+          }
+        }
       } else {
         let frame: CptvFrame | null;
         let num = 0;
@@ -246,6 +261,9 @@ class CptvDecoderInterface {
           (frame = await (this.playerContext as DecoderContext).nextFrame())
         ) {
           if (!frame.isBackgroundFrame) {
+            if (!firstFrame) {
+              firstFrame = frame;
+            }
             num++;
           }
         }
@@ -255,11 +273,19 @@ class CptvDecoderInterface {
         return this.streamError;
       }
       const duration = (1 / h.fps) * totalFrameCount;
-      return {
+      const payload: CptvHeaderMapped & {
+        duration: number;
+        totalFrames: number;
+        firstFrame?: CptvFrame;
+      } = {
         ...h,
         duration,
         totalFrames: totalFrameCount,
       };
+      if (firstFrame) {
+        payload.firstFrame = firstFrame;
+      }
+      return payload;
     }
   }
 

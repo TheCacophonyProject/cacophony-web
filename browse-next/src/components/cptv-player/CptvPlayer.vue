@@ -2683,6 +2683,9 @@ const updateSavedOpacity = (val: InputEvent) => {
       touch-action: manipulation;
       user-select: none;
       min-width: 48px;
+      @media screen and (max-width: 360px) {
+        min-width: 44px;
+      }
       padding: 0;
       min-height: 44px;
       background: transparent;
@@ -2706,6 +2709,9 @@ const updateSavedOpacity = (val: InputEvent) => {
 
     .advanced-controls {
       width: 48px;
+      @media screen and (max-width: 360px) {
+        width: 44px;
+      }
       height: 44px;
       overflow: hidden;
       user-select: none;
@@ -2713,12 +2719,18 @@ const updateSavedOpacity = (val: InputEvent) => {
       display: flex;
       &.open {
         width: 240px;
+        @media screen and (max-width: 360px) {
+          width: 220px;
+        }
         .advanced-controls-btn {
           position: relative;
           &::before {
             position: absolute;
             top: 11px;
             left: 12px;
+            @media screen and (max-width: 360px) {
+              left: 10px;
+            }
             content: "";
             background: rgba(255, 255, 255, 0.1);
             border-radius: 11px;

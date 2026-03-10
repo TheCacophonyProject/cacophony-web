@@ -184,6 +184,9 @@ export default function (app: Application, baseUrl: string) {
     ]),
     parseJSONField(body("result")),
     async (request: Request, response: Response, next: NextFunction) => {
+      // TODO: Find out which of these params are actually used currently; there's a lot of legacy stuff
+      //  here that should probably be pruned.
+      log.info("Processing PUT", JSON.stringify(request.body, null, 2));
       const recording = await Recording.findByPk(request.body.id);
       if (!recording) {
         return next(
@@ -245,11 +248,15 @@ export default function (app: Application, baseUrl: string) {
               track.data = await Track.getTrackData(track.id);
               // FIXME: Ideally we'd do this when bulk-adding tracks in the first place, so that we don't need to pull
               //  out all the track datas
+              // FIXME: Not even sure we need "filtered" anymore, it's not used on browse-next, is probably a legacy browse thing.
               await track.updateIsFiltered();
             }
           }
           if (complete && recording.type === RecordingType.Audio) {
             const group = await recording.getGroup();
+            // If unspecified in group settings, always hard delete audio recordings that have human speech detected.
+            // TODO: Probably worth logging this for false-positives, in the case where the user hasn't made a clear
+            //  choice?
             const shouldFilter = group.settings?.filterHuman ?? true;
             // If group filters out human audio, delete the file
             if (shouldFilter) {

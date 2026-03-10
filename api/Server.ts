@@ -62,12 +62,10 @@ const openHttpServer = (app): Promise<void> => {
     try {
       log.notice("Starting http server on %d", config.server.http.port);
       const server = http.createServer(app).listen(config.server.http.port);
-      // FIXME: Set global keep alive + timeout?
       server.on("error", (err: Error) => {
         log.warning("Server error: %s", err);
       });
       server.on("timeout", (socket) => {
-        log.warning("Connection timeout for socket");
         if (socket.request && socket.request.destroy) {
           socket.request.destroy();
         }
@@ -77,12 +75,6 @@ const openHttpServer = (app): Promise<void> => {
         log.warning("Connection dropped for stream socket");
         socket.destroy();
       });
-      // server.on("connection", (_socket) => {
-      //   server.getConnections((_err, count) => {
-      //     log.info("Connection count: %d", count);
-      //   });
-      // });
-      //server.setTimeout(60 * 5 * 1000);
       resolve();
     } catch (err) {
       reject(err);

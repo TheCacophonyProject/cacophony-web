@@ -1173,8 +1173,9 @@ Cypress.Commands.add(
           messages: string[];
         }>,
       ) => {
+        cy.log(JSON.stringify(response, null, 2));
         if (statusCode === 200) {
-          expect(response.body.rawSize).to.exist;
+          expect(response.body.rawSize, "rawSize").to.exist;
           expect(response.body.downloadRawJWT).to.exist;
           checkTreeStructuresAreEqualExcept(
             expectedRecording,

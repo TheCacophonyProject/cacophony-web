@@ -73,6 +73,19 @@ describe("Status and test recordings", () => {
     await checkActivity(project, requestTime, "device", uploadedRecording);
   });
 
+  it("Newly uploaded recordings should have a thumbnail available", async () => {
+    const project = await createProjectWithUserAndDevice();
+    const AdminUser = project.api();
+    const recordingId =
+      await uploadThermalShutdownRecordingFromDeviceForProject({
+        project,
+        recordingDateTime: new Date(),
+      });
+    const clipThumbnail = await AdminUser.Recordings.getThumbnail(recordingId);
+    expect(clipThumbnail.success).to.equal(true);
+    expect(clipThumbnail.result).to.be.an.instanceof(Blob);
+  });
+
   it("Device is able to upload a test audio recording, and have it marked as such", async () => {
     // Upload a test recording, and then check that the returned recording metadata has it marked as test.
     const project = await createProjectWithUserAndDevice();

@@ -79,7 +79,7 @@ export class CptvDecoder {
    */
   async getStreamMetadata(
     stream: ReadableStream,
-  ): Promise<CptvHeader | string> {
+  ): Promise<(CptvHeader & { firstFrame?: CptvFrame }) | string> {
     await this.init();
     const type = "getStreamMetadata";
     const thisStream = stream;

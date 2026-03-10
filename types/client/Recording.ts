@@ -68,6 +68,18 @@ const getRecordingById =
     );
   };
 
+const getThumbnail =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (recordingId: RecordingId, trackId?: TrackId) => {
+    let endPoint = `/api/v1/recordings/${recordingId}/thumbnail`;
+    if (trackId) {
+      const params = new URLSearchParams();
+      params.append("trackId", trackId.toString());
+      endPoint = `${endPoint}?${params}`;
+    }
+    return api.get(authKey, endPoint) as Promise<FetchResult<Blob>>;
+  };
+
 const replaceTrackTag =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (
@@ -538,8 +550,10 @@ export default (api: CacophonyApiClient) => {
     uploadRecordingOnBehalfOfDevice: uploadRecordingOnBehalfOfDevice(api),
     getRawRecording: getRawRecording(api),
     updateResizedTrack: updateResizedTrack(api),
+    getThumbnail: getThumbnail(api),
     withAuth: (authKey: TestHandle) => ({
       getRecordingById: getRecordingById(api, authKey),
+      getThumbnail: getThumbnail(api, authKey),
       replaceTrackTag: replaceTrackTag(api, authKey),
       removeTrackTag: removeTrackTag(api, authKey),
       createDummyTrack: createDummyTrack(api, authKey),

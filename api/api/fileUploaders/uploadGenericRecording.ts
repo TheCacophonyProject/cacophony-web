@@ -20,7 +20,7 @@ import { Recording } from "@models/Recording.js";
 import { openS3 } from "@models/util/util.js";
 import { Readable } from "stream";
 import { TransformStream } from "stream/web";
-import type { CptvHeader } from "@api/cptv-decoder/decoder.js";
+import type { CptvFrame, CptvHeader } from "@api/cptv-decoder/decoder.js";
 import { CptvDecoder } from "@api/cptv-decoder/decoder.js";
 import { Device } from "@models/Device.js";
 import type { User } from "@models/User.js";
@@ -34,10 +34,12 @@ import type {
   LatLng,
 } from "@typedefs/api/common.js";
 import {
+  createThumbnail,
   getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime,
   guessMimeType,
   maybeUpdateDeviceHistory,
   sendAlerts,
+  ThumbnailData,
   tracksFromMeta,
   updateRecordingTimeBookkeeping,
 } from "@api/V1/recordingUtil.js";
@@ -48,6 +50,7 @@ import { tryReadingM4aMetadata } from "@api/m4a-metadata-reader/m4a-metadata-rea
 import { RecordingDataSuppliedMetadata } from "@typedefs/api/fileProcessing.js";
 import { Fn } from "sequelize/lib/utils";
 import { Visit, VISITS_ADVISORY_LOCK_KEY } from "@models/Visit.js";
+
 interface RecordingData {
   duration?: number;
   status?: "test" | "startup" | "shutdown";
@@ -245,12 +248,13 @@ const processAndValidateDataPart = async (
 
 interface RecordingFileUploadResult {
   partName: string;
-  key: string;
+  key: string | null;
   isCorrupt: boolean;
   sha1Hash: string;
   fileLength: number;
   embeddedMetadata?: CptvHeader | Record<string, string | number>;
   fileName?: string;
+  interimClipThumbnail?: ThumbnailData;
 }
 
 const mapPartName = (partKey: string, partName: string): string => {
@@ -327,7 +331,10 @@ const processFilePart = async (
   //  If there have been recordings from this device previously, we can get the
   //  expected type from the device kind.
   let isCorrupt = false;
-  let embeddedMetadata: CptvHeader | string | Record<string, unknown>;
+  let embeddedMetadata:
+    | (CptvHeader & { firstFrame?: CptvFrame })
+    | string
+    | Record<string, unknown>;
   let cptvStreamError = "";
   let uploaded = false;
   let decoder: CptvDecoder;
@@ -343,44 +350,35 @@ const processFilePart = async (
           // NOTE: we don't abort corrupt files, we just mark them as corrupt and keep them.
           isCorrupt = true;
           wasValidCptvFile = false;
-          // TODO: The file could be corrupt, but we could still get a valid CPTV header out.
-          //  test this case.
-          const header = await decoder.getHeader();
-          if (header && typeof header !== "string") {
-            log.info(
-              "Header found in corrupt CPTV file: %s",
-              JSON.stringify(header),
-            );
-            embeddedMetadata = header;
-          }
         }
-        await upload.done().catch((error) => {
-          if (error.name !== "AbortError") {
-            log.error("Upload error: %s", error.toString());
-            decoder.close().then(() => {
-              part.emit(
-                "error",
-                new UnprocessableError(`Upload error: '${part.name}'`),
-              );
-            });
-          }
-        });
-        uploaded = true;
+        // If this is a zero-sized file, we will timeout when trying to upload it via the S3 API.
+        if (length === 0) {
+          await upload.abort().catch(() => {
+            return;
+          });
+        } else {
+          await upload.done().catch((error) => {
+            console.error(error);
+            if (error.name !== "AbortError") {
+              log.error("Upload error: %s", error.toString());
+              decoder.close().then(() => {
+                throw new Error(`Upload error: '${part.name}'`);
+              });
+            }
+          });
+          uploaded = true;
+        }
       }
-      await decoder.close();
-    } catch (_e) {
-      if (decoder) {
+    } catch (e) {
+      part.emit("error", new UnprocessableError(e));
+    } finally {
+      if (decoder && decoder.close) {
         await decoder.close();
       }
-      part.emit(
-        "error",
-        new UnprocessableError(`Upload error: '${part.name}'`),
-      );
     }
   }
   if (mightBeTc2AudioFile && (!mightBeCptvFile || !wasValidCptvFile)) {
     const metadata = await tryReadingM4aMetadata(m4aDecodeStream);
-    // FIXME: Cancel stream on error?  Put this into a worker so that it's cleaned up better?
     if (typeof metadata === "string") {
       log.warning("Failed parsing m4a metadata: %s", metadata);
       wasValidM4aFile = false;
@@ -390,13 +388,20 @@ const processFilePart = async (
       embeddedMetadata = metadata as Record<string, string>;
       isCorrupt = false;
     }
+    if (length === 0) {
+      await upload.abort().catch(() => {
+        return;
+      });
+    }
     if (!canceledRequest.canceled && !uploaded) {
       await upload.done().catch((error) => {
         if (error.name !== "AbortError") {
           log.error("Upload error: %s", error.toString());
           part.emit(
             "error",
-            new UnprocessableError(`Upload error: '${part.name}'`),
+            new UnprocessableError(
+              `Upload error: '${part.name}', ${error.toString()}'`,
+            ),
           );
         }
       });
@@ -412,7 +417,9 @@ const processFilePart = async (
         log.error("DONE? %s", error.toString());
         part.emit(
           "error",
-          new UnprocessableError(`Upload error: '${part.name}'`),
+          new UnprocessableError(
+            `Upload error: '${part.name}', ${error.toString()}`,
+          ),
         );
       }
     });
@@ -421,11 +428,20 @@ const processFilePart = async (
   const payload: RecordingFileUploadResult = {
     partName: part.name,
     isCorrupt,
-    key: partKey,
+    key: length ? partKey : null,
     sha1Hash: sha1Hash.digest("hex"),
     fileLength: length,
   };
+
   if (embeddedMetadata && typeof embeddedMetadata !== "string") {
+    if (embeddedMetadata.firstFrame) {
+      payload.interimClipThumbnail = await createThumbnail(
+        (embeddedMetadata as CptvHeader & { firstFrame?: CptvFrame })
+          .firstFrame,
+        { x: 0, y: 0, width: 160, height: 120 },
+      );
+      delete embeddedMetadata.firstFrame;
+    }
     payload.embeddedMetadata = embeddedMetadata as
       | CptvHeader
       | Record<string, number>;
@@ -584,6 +600,7 @@ export const uploadGenericRecording =
       const rawFileUploadResult = uploadResults.find(
         (part) => part.partName === "file",
       );
+
       const derivedUploadResult = uploadResults.find(
         (part) => part.partName === "derived",
       );
@@ -806,6 +823,24 @@ export const uploadGenericRecording =
         );
         await Visit.rebuildForRecording(recording, transaction);
       });
+
+      // If there was an interim clip thumbnail, save it
+      if (rawFileUploadResult.interimClipThumbnail) {
+        log.info(
+          "Saving interim clip thumbnail %s",
+          `${recording.rawFileKey}-thumb`,
+        );
+        await openS3()
+          .upload(
+            `${recording.rawFileKey}-thumb`,
+            rawFileUploadResult.interimClipThumbnail.data,
+            rawFileUploadResult.interimClipThumbnail.meta,
+          )
+          .catch((_err) => {
+            // Do nothing
+          });
+      }
+
       if (wouldHaveSuppliedTracks) {
         // TODO: If tracks are supplied, we need to recalculate the Visits
 

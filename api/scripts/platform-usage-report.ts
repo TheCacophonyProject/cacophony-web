@@ -512,11 +512,6 @@ async function main() {
   if (config.cronScriptProcessingHostname !== os.hostname()) {
     return;
   }
-
-  if (config.server.browseUrl !== "https://browse.cacophony.org.nz") {
-    log.info("Platform usage report only runs on production");
-    return;
-  }
   if (!config.smtpDetails) {
     throw "No SMTP details found in config/app.js";
   }

@@ -9,6 +9,9 @@ import config from "../config.js";
 const timeout = 1000;
 
 (async function main() {
+  if (config.cronScriptProcessingHostname !== os.hostname()) {
+    return;
+  }
   try {
     const pgClient = await pgConnect();
     const influx = await influxConnect();

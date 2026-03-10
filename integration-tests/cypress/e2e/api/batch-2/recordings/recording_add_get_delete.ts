@@ -664,7 +664,7 @@ describe("Recordings (thermal): add, get, delete", () => {
     cy.checkMonitoringWithFilter("raGroupAdmin", stationId, filter, []);
   });
 
-  it("Zero sized recordings are rejected", () => {
+  it("Zero sized recordings are accepted, and marked as corrupt", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     delete recording1.processingState;
     let expectedRecording1: ApiThermalRecordingResponse;

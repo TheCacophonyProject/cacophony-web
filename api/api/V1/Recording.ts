@@ -1120,9 +1120,9 @@ export default (app: Application, baseUrl: string) => {
       const recordingItem = response.locals.recording as Recording;
       const recording = await mapRecordingResponse(response.locals.recording);
       if (request.query["requires-signed-url"]) {
-        let rawJWT: string;
+        let rawJWT = "";
         let cookedJWT: string;
-        let rawSize: number;
+        let rawSize = 0;
         let cookedSize: number;
         if (recordingItem.fileKey) {
           cookedJWT = signedToken(
@@ -1351,19 +1351,20 @@ export default (app: Application, baseUrl: string) => {
       const rec = response.locals.recording;
       const fileKey = rec.rawFileKey;
       const mimeType = "image/png";
-      const ext = "png";
+      //const ext = "png";
 
       if (!fileKey) {
         return next(new ClientError("Rec has no raw file key."));
       }
       let trackId: TrackId;
-      let filename: string;
+      //let filename: string;
       if (request.query.trackId) {
         trackId = request.query.trackId as unknown as number;
-        filename = `${rec.id}-${trackId}-thumb.${ext}`;
-      } else {
-        filename = `${rec.id}-thumb.${ext}`;
+        //filename = `${rec.id}-${trackId}-thumb.${ext}`;
       }
+      // else {
+      //   filename = `${rec.id}-thumb.${ext}`;
+      // }
 
       /*
       NOTE: Enable to serve a dummy thumbnail in debug mode - but will cause tests to fail.
@@ -1384,7 +1385,8 @@ export default (app: Application, baseUrl: string) => {
       if (data) {
         response.setHeader(
           "Content-disposition",
-          "attachment; filename=" + filename,
+          //"attachment; filename=" + filename,
+          "inline",
         );
         response.setHeader("Content-type", mimeType);
         response.setHeader("Content-Length", data.length);
