@@ -386,8 +386,12 @@ context.addListener("message", async (data) => {
       break;
     case "getStreamMetadata":
       {
-        const result = await player.getStreamMetadata(data.streamReader);
-        context.postMessage({ type: data.type, data: result });
+        try {
+          const result = await player.getStreamMetadata(data.streamReader);
+          context.postMessage({ type: data.type, data: result });
+        } catch (error) {
+          context.postMessage({ type: data.type, data: error });
+        }
       }
       break;
     case "getNextFrame":

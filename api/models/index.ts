@@ -59,7 +59,7 @@ export const initSequelize = async () => {
     // TODO: Is this even true anymore in latest NodeJS?
     //   It may have just been a bug in earlier versions of AsyncLocalStorage.
     const poolOptions = {
-      max: 20,
+      max: 40,
       min: 2,
       acquire: 60000,
       idle: 10000,

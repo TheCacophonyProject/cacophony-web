@@ -1856,56 +1856,68 @@ export const updateRecordingTimeBookkeeping = async (
     // Update device
     Recording.sequelize.query(
       `
-    UPDATE "Devices" d
-    SET
-      "${earliestColName}"   = agg."${earliestColName}",
-      "${lastColName}"       = agg."${lastColName}"
-    FROM (
-     SELECT
-       r."DeviceId" AS "DeviceId",
-       MIN(r."recordingDateTime") FILTER (
-         WHERE r."type" = :type
+        UPDATE "Devices" d
+        SET
+          "${earliestColName}" = x."${earliestColName}",
+          "${lastColName}" = x."${lastColName}"
+        FROM (
+        SELECT
+         (
+           SELECT r."recordingDateTime"
+           FROM "Recordings" r
+           WHERE r."DeviceId" = :deviceId
+             AND r."deletedAt" IS NULL
+             AND r."type" = :type
+           ORDER BY r."recordingDateTime" ASC
+           LIMIT 1
          ) AS "${earliestColName}",
-       MAX(r."recordingDateTime") FILTER (
-         WHERE r."type" = :type
+         (
+           SELECT r."recordingDateTime"
+           FROM "Recordings" r
+           WHERE r."DeviceId" = :deviceId
+             AND r."deletedAt" IS NULL
+             AND r."type" = :type
+           ORDER BY r."recordingDateTime" DESC
+           LIMIT 1
          ) AS "${lastColName}"
-     FROM "Recordings" r
-     WHERE
-       r."deletedAt" IS NULL
-       AND r."DeviceId" = :deviceId
-     GROUP BY r."DeviceId"
-   ) agg
-    WHERE d."id" = agg."DeviceId";
+        ) x
+        WHERE d."id" = :deviceId
   `,
       {
         replacements: { deviceId: recording.DeviceId, type: recording.type },
         type: QueryTypes.UPDATE,
         transaction,
       },
-    ), // Update group
+    ),
     Recording.sequelize.query(
       `
-    UPDATE "Groups" g
-    SET
-      "${earliestColName}"   = agg."${earliestColName}",
-      "${lastColName}"       = agg."${lastColName}"   
-    FROM (
-     SELECT
-       r."GroupId" AS "GroupId",
-       MIN(r."recordingDateTime") FILTER (
-         WHERE r."type" = :type
-         ) AS "${earliestColName}",
-       MAX(r."recordingDateTime") FILTER (
-         WHERE r."type" = :type
-         ) AS "${lastColName}"
-     FROM "Recordings" r
-     WHERE
-       r."deletedAt" IS NULL
-       AND r."GroupId" = :groupId
-     GROUP BY r."GroupId"
-   ) agg
-    WHERE g."id" = agg."GroupId";
-  `,
+        UPDATE "Groups" g
+        SET
+          "${earliestColName}" = x."${earliestColName}",
+          "${lastColName}" = x."${lastColName}"
+        FROM (
+          SELECT
+            (
+              SELECT r."recordingDateTime"
+              FROM "Recordings" r
+              WHERE r."GroupId" = :groupId
+                AND r."deletedAt" IS NULL
+                AND r."type" = :type
+              ORDER BY r."recordingDateTime" ASC
+              LIMIT 1
+            ) AS "${earliestColName}",
+            (
+              SELECT r."recordingDateTime"
+              FROM "Recordings" r
+              WHERE r."GroupId" = :groupId
+                AND r."deletedAt" IS NULL
+                AND r."type" = :type
+              ORDER BY r."recordingDateTime" DESC
+              LIMIT 1
+            ) AS "${lastColName}"
+        ) x
+        WHERE g."id" = :groupId
+        `,
       {
         replacements: { groupId: recording.GroupId, type: recording.type },
         type: QueryTypes.UPDATE,
@@ -1919,33 +1931,38 @@ export const updateRecordingTimeBookkeeping = async (
     updates.push(
       Recording.sequelize.query(
         `
-    UPDATE "Stations" s
-    SET
-      "${earliestColName}"   = agg."${earliestColName}",
-      "${lastColName}"       = agg."${lastColName}",
-      "${lastActiveColName}" = NOW()
-    FROM (
-     SELECT
-       r."StationId" AS "StationId",
-       MIN(r."recordingDateTime") FILTER (
-         WHERE r."type" = :type
-         ) AS "${earliestColName}",
-       MAX(r."recordingDateTime") FILTER (
-         WHERE r."type" = :type
-         ) AS "${lastColName}"
-     FROM "Recordings" r
-     WHERE
-       r."deletedAt" IS NULL
-       AND r."StationId" = :stationId
-     GROUP BY r."StationId"
-   ) agg
-    WHERE s."id" = agg."StationId";
-  `,
+        UPDATE "Stations" s
+        SET
+          "${earliestColName}" = x."${earliestColName}",
+          "${lastColName}" = x."${lastColName}",
+          "${lastActiveColName}" = NOW()
+        FROM (
+          SELECT
+            (
+              SELECT r."recordingDateTime"
+              FROM "Recordings" r
+              WHERE r."StationId" = :stationId
+                AND r."deletedAt" IS NULL
+                AND r."type" = :type
+              ORDER BY r."recordingDateTime" ASC
+              LIMIT 1
+            ) AS "${earliestColName}",
+            (
+              SELECT r."recordingDateTime"
+              FROM "Recordings" r
+              WHERE r."StationId" = :stationId
+                AND r."deletedAt" IS NULL
+                AND r."type" = :type
+              ORDER BY r."recordingDateTime" DESC
+              LIMIT 1
+            ) AS "${lastColName}"
+        ) x
+        WHERE s."id" = :stationId
+        `,
         {
           replacements: {
             stationId: recording.StationId,
             type: recording.type,
-            isNewUploadFromDevice,
           },
           type: QueryTypes.UPDATE,
           transaction,
@@ -1953,31 +1970,36 @@ export const updateRecordingTimeBookkeeping = async (
       ),
     );
   } else {
-    // Update station
     updates.push(
       Recording.sequelize.query(
         `
-    UPDATE "Stations" s
-    SET
-      "${earliestColName}"   = agg."${earliestColName}",
-      "${lastColName}"       = agg."${lastColName}"
-    FROM (
-     SELECT
-       r."StationId" AS "StationId",
-       MIN(r."recordingDateTime") FILTER (
-         WHERE r."type" = :type
-         ) AS "${earliestColName}",
-       MAX(r."recordingDateTime") FILTER (
-         WHERE r."type" = :type
-         ) AS "${lastColName}"
-     FROM "Recordings" r
-     WHERE
-       r."deletedAt" IS NULL
-       AND r."StationId" = :stationId
-     GROUP BY r."StationId"
-   ) agg
-    WHERE s."id" = agg."StationId";
-  `,
+        UPDATE "Stations" s
+        SET
+          "${earliestColName}" = x."${earliestColName}",
+          "${lastColName}" = x."${lastColName}"
+        FROM (
+          SELECT
+            (
+              SELECT r."recordingDateTime"
+              FROM "Recordings" r
+              WHERE r."StationId" = :stationId
+                AND r."deletedAt" IS NULL
+                AND r."type" = :type
+              ORDER BY r."recordingDateTime" ASC
+              LIMIT 1
+            ) AS "${earliestColName}",
+            (
+              SELECT r."recordingDateTime"
+              FROM "Recordings" r
+              WHERE r."StationId" = :stationId
+                AND r."deletedAt" IS NULL
+                AND r."type" = :type
+              ORDER BY r."recordingDateTime" DESC
+              LIMIT 1
+            ) AS "${lastColName}"
+        ) x
+        WHERE s."id" = :stationId
+        `,
         {
           replacements: {
             stationId: recording.StationId,
