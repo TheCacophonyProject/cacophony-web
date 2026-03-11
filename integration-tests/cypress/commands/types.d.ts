@@ -312,7 +312,6 @@ export interface ApiRecordingForProcessing {
   recordingDateTime: string;
   duration: number;
   location: { type: "Point"; coordinates: number[] } | null;
-  hasAlert: boolean;
   processingStartTime: string;
   processingEndTime: string;
   processing: boolean;

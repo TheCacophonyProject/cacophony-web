@@ -772,6 +772,55 @@ export class Recording extends ModelStaticCommon<Recording> {
           include: includeQ,
           attributes: [
             "id",
+            [
+              Sequelize.literal(`case
+                when "Recording"."recordingDateTime" > now() - interval '1 day' then
+                  (
+                    exists (
+                      select 1
+                      from "Alerts" a
+                      where a."StationId" = "Recording"."StationId"
+                    )
+                    or exists (
+                      select 1
+                      from "Alerts" a
+                      where a."DeviceId" = "Recording"."DeviceId"
+                    )
+                  )
+                else false
+              end`),
+              "hasAlert",
+            ],
+            [
+              Sequelize.literal(
+                `"Recording"."recordingDateTime" > now() - interval '1 day'`,
+              ),
+              "isRecent",
+            ],
+          ],
+          order: [
+            Sequelize.literal(
+              `("Recording"."processing" is distinct from true) desc`,
+            ),
+            ["processingFailedCount", "ASC NULLS FIRST"], //only do these after all others
+            ["hasAlert", "DESC"], // We only care about hasAlert if the recording is less than 24 hours old
+            ["isRecent", "DESC"],
+            ["uploader", "DESC NULLS LAST"],
+            ["recordingDateTime", "asc"],
+            ["id", "asc"], // Adding another order is a "fix" for a bug in postgresql causing the query to be slow
+          ],
+          skipLocked: true,
+          lock: transaction.LOCK.UPDATE,
+          transaction,
+        });
+        if (recording === null) {
+          return recording;
+        }
+        const actualRecording = await this.findOne({
+          where: { id: recording.id },
+          include: includeQ,
+          attributes: [
+            "id",
             "type",
             "jobKey",
             "rawFileKey",
@@ -792,63 +841,28 @@ export class Recording extends ModelStaticCommon<Recording> {
               Sequelize.literal(`"additionalMetadata"->>'metadataSource'`),
               "metadataSource",
             ],
-            [
-              Sequelize.literal(`case
-                when "Recording"."recordingDateTime" > now() - interval '1 day' then
-                  (
-                    exists (
-                      select 1
-                      from "Alerts" a
-                      where a."StationId" = "Recording"."StationId"
-                    )
-                    or exists (
-                      select 1
-                      from "Alerts" a
-                      where a."DeviceId" = "Recording"."DeviceId"
-                    )
-                  )
-                else false
-              end`),
-              "hasAlert",
-            ],
           ],
-          order: [
-            ["processing", "DESC NULLS FIRST"],
-            ["processingFailedCount", "ASC NULLS FIRST"], //only do these after all others
-            Sequelize.literal(`"hasAlert" DESC`), // We only care about hasAlert if the recording is less than 24 hours old
-            Sequelize.literal(
-              `"Recording"."recordingDateTime" > now() - interval '1 day' DESC`,
-            ),
-            ["uploader", "DESC NULLS LAST"],
-            ["recordingDateTime", "asc"],
-            ["id", "asc"], // Adding another order is a "fix" for a bug in postgresql causing the query to be slow
-          ],
-          skipLocked: true,
-          lock: transaction.LOCK.UPDATE,
           transaction,
         });
-        if (recording === null) {
-          return recording;
-        }
         const now = new Date();
-        if (!recording.processingStartTime) {
-          recording.processingStartTime = now;
+        if (!actualRecording.processingStartTime) {
+          actualRecording.processingStartTime = now;
         }
-        if (recording.isFailed()) {
-          recording.unsetProcessingFailureState();
+        if (actualRecording.isFailed()) {
+          actualRecording.unsetProcessingFailureState();
         }
 
-        if (recording.processing) {
-          recording.processingFailedCount += 1;
+        if (actualRecording.processing) {
+          actualRecording.processingFailedCount += 1;
         }
-        recording.currentStateStartTime = now;
-        recording.processingEndTime = null;
-        recording.jobKey = uuidv4();
-        recording.processing = true;
-        await recording.save({
+        actualRecording.currentStateStartTime = now;
+        actualRecording.processingEndTime = null;
+        actualRecording.jobKey = uuidv4();
+        actualRecording.processing = true;
+        await actualRecording.save({
           transaction,
         });
-        return recording;
+        return actualRecording;
       })
       .then((result) => result)
       .catch(() => {

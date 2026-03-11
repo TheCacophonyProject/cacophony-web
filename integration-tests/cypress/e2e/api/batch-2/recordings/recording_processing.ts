@@ -613,7 +613,6 @@ describe("Recordings - processing tests", () => {
                 "rpRecording7",
                 recording7,
               );
-              expectedProcessing7.hasAlert = true;
               expectedProcessing7.processingState =
                 RecordingProcessingState.TrackAndAnalyse;
               const expectedProcessing8 = TestCreateExpectedProcessingData(
@@ -628,7 +627,6 @@ describe("Recordings - processing tests", () => {
                 "rpRecording9",
                 recording9,
               );
-              expectedProcessing9.hasAlert = true;
               expectedProcessing9.processingState =
                 RecordingProcessingState.TrackAndAnalyse;
 
@@ -1034,9 +1032,8 @@ describe("Recordings - processing tests", () => {
         );
         expectedProcessing20.processingState =
           RecordingProcessingState.TrackAndAnalyse;
-        expectedProcessing20.hasAlert = true;
 
-        cy.log("Send for processing and check is flagged as hasAlert");
+        cy.log("Send for processing ");
         cy.processingApiCheck(
           superuser,
           RecordingType.ThermalRaw,

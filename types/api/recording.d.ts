@@ -104,7 +104,6 @@ export interface ApiRecordingProcessingJob {
   jobKey: string;
   id: RecordingId;
   type: RecordingType;
-  hasAlert: boolean;
   updatedAt: IsoFormattedDateString;
   processingStartTime?: IsoFormattedDateString;
   processingEndTime?: IsoFormattedDateString;
