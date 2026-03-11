@@ -242,15 +242,15 @@ export default function (app: Application, baseUrl: string) {
           if (complete) {
             tracks = (await recording.getTracks()) || [];
           }
-          if (
-            complete &&
-            prevState !== RecordingProcessingState.TrackAndAnalyse
-          ) {
+          //prevState !== RecordingProcessingState.TrackAndAnalyse
+          if (complete) {
             // NOTE: If we already calculated "filtered" in trackAndAnalyse, we don't need to do it here.
             for (const track of tracks) {
               track.data = await Track.getTrackData(track.id);
               // FIXME: Not even sure we need "filtered" anymore, it's not used on browse-next, is probably a legacy browse thing.
-              await track.updateIsFiltered();
+              if (prevState !== RecordingProcessingState.TrackAndAnalyse) {
+                await track.updateIsFiltered();
+              }
             }
           }
           if (complete && recording.type === RecordingType.Audio) {
@@ -292,9 +292,9 @@ export default function (app: Application, baseUrl: string) {
           }
           await recording.save();
 
+          //prevState !== RecordingProcessingState.TrackAndAnalyse &&
           if (
             complete &&
-            prevState !== RecordingProcessingState.TrackAndAnalyse &&
             (recording.type === RecordingType.ThermalRaw ||
               recording.type === RecordingType.InfraredVideo)
           ) {
@@ -479,38 +479,38 @@ export default function (app: Application, baseUrl: string) {
         }
 
         delete trackData.predictions;
-        tracksAndData.push({
-          id: modelTracks[i].id,
-          data: trackData[i],
-        });
+        // tracksAndData.push({
+        //   id: modelTracks[i].id,
+        //   data: trackData[i],
+        // });
         trackDataPromises.push(
           Track.saveTrackData(modelTracks[i].id, trackData),
         );
       }
 
       const modelTrackTags = await TrackTag.bulkCreate(trackTags);
-      const results = await saveThumbnailInfo(
-        recording,
-        tracksAndData,
-        recording.additionalMetadata["thumbnail_region"] || {
-          frame_number: 1,
-          x: 0,
-          y: 0,
-          height: 120,
-          width: 160,
-        },
-      );
-      if (results) {
-        for (const result of results) {
-          if (result instanceof Error) {
-            log.warning(
-              "Failed to upload thumbnail for %s",
-              `${recording.rawFileKey}-thumb`,
-            );
-            log.error("Reason: %s", result.message);
-          }
-        }
-      }
+      // const results = await saveThumbnailInfo(
+      //   recording,
+      //   tracksAndData,
+      //   recording.additionalMetadata["thumbnail_region"] || {
+      //     frame_number: 1,
+      //     x: 0,
+      //     y: 0,
+      //     height: 120,
+      //     width: 160,
+      //   },
+      // );
+      // if (results) {
+      //   for (const result of results) {
+      //     if (result instanceof Error) {
+      //       log.warning(
+      //         "Failed to upload thumbnail for %s",
+      //         `${recording.rawFileKey}-thumb`,
+      //       );
+      //       log.error("Reason: %s", result.message);
+      //     }
+      //   }
+      // }
 
       for (let i = 0; i < modelTrackTags.length; i++) {
         const modelTrackTag = modelTrackTags[i];
