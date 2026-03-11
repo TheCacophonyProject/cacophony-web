@@ -152,7 +152,7 @@ const grafanaLabelRestart = async () => {
         body: JSON.stringify({
           time: Date.now(),
           tags: ["cacophony-web-restart"],
-          text: `${os.hostname()}} ${CACOPHONY_WEB_VERSION.version}`,
+          text: `${os.hostname()} ${CACOPHONY_WEB_VERSION.version}`,
         }),
       });
       if (response && response.status !== HttpStatusCode.Ok) {
@@ -186,8 +186,10 @@ const grafanaLabelRestart = async () => {
     asyncLocalStorage.enterWith(new Map());
     const store = asyncLocalStorage.getStore();
     store.set("requestId", uuidv4());
-    const startUsage = process.cpuUsage();
-    store.set("cpuUsage", startUsage);
+    if (config.rateLimitingEnabled) {
+      const startUsage = process.cpuUsage();
+      store.set("cpuUsage", startUsage);
+    }
     log.info("UA: %s", request.headers["user-agent"]);
     next();
   });
@@ -277,7 +279,13 @@ const grafanaLabelRestart = async () => {
             system: systemTimeMs,
           });
         }
-        return `${request.method} ${request.url}\n\t\t Status(${
+
+        // NOTE: We need to sanitize request.url here to prevent
+        // some kind of mustache template injection.
+        const safeUrl = request.url
+          .replaceAll("{", "%7B")
+          .replaceAll("}", "%7D");
+        return `${request.method} ${safeUrl}\n\t\t Status(${
           response.statusCode
         })\n\t\t ${
           dbQueryCount

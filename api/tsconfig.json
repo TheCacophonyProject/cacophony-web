@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
         "strictNullChecks": false,
-        "target": "es2020",
+        "target": "es2021",
         "sourceMap": false,
         "module": "nodenext",
         "outDir": "../",
