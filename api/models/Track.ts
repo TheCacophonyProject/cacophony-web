@@ -309,7 +309,7 @@ export class Track extends ModelStaticCommon<Track> {
         lock: transaction.LOCK.UPDATE,
         transaction,
       })) as TrackTag[];
-      await track.update({ filtered: isFiltered(tags) }, { transaction });
+      await track.update({ filtered: trackIsFiltered(tags) }, { transaction });
     });
   }
 
@@ -432,7 +432,7 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
   });
   return Track;
 };
-const isFiltered = (tags: TrackTag[]): boolean => {
+export const trackIsFiltered = (tags: TrackTag[]): boolean => {
   // any human tag that isn't filtered 2
   //  or any ai master tag that isn't filtered
 

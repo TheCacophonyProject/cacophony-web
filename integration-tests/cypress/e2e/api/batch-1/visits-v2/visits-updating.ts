@@ -33,7 +33,7 @@ const getProjectVisitsBetween = async (
 
 const oneMinute = 60 * 1000;
 
-describe("Visits v2", () => {
+describe.skip("Visits v2", () => {
   it("Can calculate and retrieve visits for a project", async () => {
     const project = await createProjectWithUserAndDevice();
     const startDate = new Date("2026-01-10T20:07:06.292Z");

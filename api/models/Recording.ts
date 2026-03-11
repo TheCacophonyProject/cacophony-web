@@ -723,35 +723,33 @@ export class Recording extends ModelStaticCommon<Recording> {
       [Op.or]: [
         {
           processingState: state,
-          processing: { [Op.or]: [null, false] },
-        },
-        {
           [Op.or]: [
+            {
+              processing: { [Op.is]: Sequelize.literal("distinct from true") },
+            },
             {
               currentStateStartTime: {
                 [Op.lt]: Sequelize.literal("NOW() - INTERVAL '30 minutes'"),
               },
-              processingState: state,
               processing: true,
               processingFailedCount: { [Op.lt]: MaxProcessingRetries },
             },
-
-            {
-              processingFailedCount: { [Op.lte]: MaxProcessingRetries },
-              //retry a failed recording
-              currentStateStartTime: {
-                [Op.lt]: Sequelize.literal("NOW() - INTERVAL '12 hours'"),
-              },
-              processingState: `${state}.failed`,
-            },
           ],
+        },
+        {
+          processingFailedCount: { [Op.lte]: MaxProcessingRetries },
+          //retry a failed recording
+          currentStateStartTime: {
+            [Op.lt]: Sequelize.literal("NOW() - INTERVAL '12 hours'"),
+          },
+          processingState: `${state}.failed`,
         },
       ],
     };
-    if (state == RecordingProcessingState.Finished) {
+    if (state === RecordingProcessingState.Finished) {
       //check if any tracks have been made in the last day by users that haven't had AI run against it
       where[Op.and] = Sequelize.literal(
-        `	 not exists( select 1 from "TrackTags" where "automatic" = true and "TrackId"= "Tracks"."id" limit 1)`,
+        ` not exists(select 1 from "TrackTags" where "automatic" = true and "TrackId"= "Tracks"."id" limit 1)`,
       );
       includeQ = [
         {
@@ -795,22 +793,29 @@ export class Recording extends ModelStaticCommon<Recording> {
               "metadataSource",
             ],
             [
-              Sequelize.literal(`exists(
-          	select
-          		1
-          	from
-          		"Alerts"
-          	where
-          		"StationId" = "Recording"."StationId" or
-          		"DeviceId" = "Recording"."DeviceId"
-          	limit 1)`),
+              Sequelize.literal(`case
+                when "Recording"."recordingDateTime" > now() - interval '1 day' then
+                  (
+                    exists (
+                      select 1
+                      from "Alerts" a
+                      where a."StationId" = "Recording"."StationId"
+                    )
+                    or exists (
+                      select 1
+                      from "Alerts" a
+                      where a."DeviceId" = "Recording"."DeviceId"
+                    )
+                  )
+                else false
+              end`),
               "hasAlert",
             ],
           ],
           order: [
             ["processing", "DESC NULLS FIRST"],
             ["processingFailedCount", "ASC NULLS FIRST"], //only do these after all others
-            Sequelize.literal(`"hasAlert" DESC`),
+            Sequelize.literal(`"hasAlert" DESC`), // We only care about hasAlert if the recording is less than 24 hours old
             Sequelize.literal(
               `"Recording"."recordingDateTime" > now() - interval '1 day' DESC`,
             ),

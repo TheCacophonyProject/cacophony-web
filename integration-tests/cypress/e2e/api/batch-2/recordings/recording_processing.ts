@@ -316,7 +316,7 @@ describe("Recordings - processing tests", () => {
                 start: 2,
                 end: 5,
                 id: 1,
-                filtered: false,
+                filtered: true,
               },
             ];
 
@@ -565,10 +565,18 @@ describe("Recordings - processing tests", () => {
       const recording7 = TestCreateRecordingData(templateRecording);
       const recording8 = TestCreateRecordingData(templateRecording);
       const recording9 = TestCreateRecordingData(templateRecording);
-      recording6.recordingDateTime = "2021-01-01T00:09:00.000Z";
-      recording7.recordingDateTime = "2021-01-01T00:08:00.000Z";
-      recording8.recordingDateTime = "2021-01-01T00:07:00.000Z";
-      recording9.recordingDateTime = "2021-01-01T00:06:00.000Z";
+      // We only care about alerts for recordings made in the last 24 hours, so make sure recordings
+      // newer than 1 day old.
+      const now = new Date();
+      const oneHourAgo = new Date(new Date().setHours(now.getHours() - 1));
+      const twoHoursAgo = new Date(new Date().setHours(now.getHours() - 2));
+      const threeHoursAgo = new Date(new Date().setHours(now.getHours() - 3));
+      const fourHoursAgo = new Date(new Date().setHours(now.getHours() - 4));
+
+      recording6.recordingDateTime = oneHourAgo.toISOString();
+      recording7.recordingDateTime = twoHoursAgo.toISOString();
+      recording8.recordingDateTime = threeHoursAgo.toISOString();
+      recording9.recordingDateTime = fourHoursAgo.toISOString();
       cy.apiRecordingAdd(
         "rpCamera1",
         recording6,

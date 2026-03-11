@@ -130,7 +130,7 @@
             >
               <div class="d-flex flex-wrap align-items-start gap-1">
                 <span
-                  class="d-flex align-items-center mb-1 bg-light rounded-1 p-1"
+                  class="visit-species-tag d-flex align-items-center bg-light text-dark rounded-1"
                   v-if="
                     processingInProgress.includes(
                       (item.data as ApiRecordingResponse).processingState,

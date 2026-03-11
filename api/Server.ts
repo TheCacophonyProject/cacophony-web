@@ -200,91 +200,90 @@ const grafanaLabelRestart = async () => {
         const store = asyncLocalStorage.getStore();
         const dbQueryCount = store?.get("queryCount");
         const dbQueryTime = store?.get("queryTime");
-        const cpuUsage = store?.get("cpuUsage");
-        const requestCpuUsage = process.cpuUsage(cpuUsage as NodeJS.CpuUsage);
-        const userTimeMs = requestCpuUsage.user / 1000;
-        const systemTimeMs = requestCpuUsage.system / 1000;
-        const requesterType =
-          response.locals.requestUser !== undefined
-            ? "user"
-            : response.locals.deviceUser !== undefined
-              ? "device"
-              : "unknown";
-        let requester = `u9999`;
-        if (requesterType === "user") {
-          requester = `u${response.locals.requestUser?.id}`;
-        } else if (requesterType === "device") {
-          requester = `d${response.locals.deviceUser?.id}`;
-        }
-        const wasRateLimited =
-          response.locals.requestUser?.wasRateLimited || false;
+        let wasRateLimited = false;
+        if (config.rateLimitingEnabled) {
+          const cpuUsage = store?.get("cpuUsage");
+          const requestCpuUsage = process.cpuUsage(cpuUsage as NodeJS.CpuUsage);
+          const userTimeMs = requestCpuUsage.user / 1000;
+          const systemTimeMs = requestCpuUsage.system / 1000;
+          const requesterType =
+            response.locals.requestUser !== undefined
+              ? "user"
+              : response.locals.deviceUser !== undefined
+                ? "device"
+                : "unknown";
+          let requester = `u9999`;
+          if (requesterType === "user") {
+            requester = `u${response.locals.requestUser?.id}`;
+          } else if (requesterType === "device") {
+            requester = `d${response.locals.deviceUser?.id}`;
+          }
+          wasRateLimited = response.locals.requestUser?.wasRateLimited || false;
 
-        const storeUser = RequesterStore.get(requester);
-        if (!storeUser) {
-          RequesterStore.set(requester, []);
-        }
-        {
-          const timings = RequesterStore.get(requester);
-          // Remove items for this user older than 5 minutes.
-          while (timings.length > 0) {
-            const elapsed = process.hrtime.bigint() - timings[0].time;
-            const elapsedMs = Number(elapsed / 1000000n);
-            if (elapsedMs > 60000 * 5) {
-              timings.shift();
-            } else {
-              break;
+          const storeUser = RequesterStore.get(requester);
+          if (!storeUser) {
+            RequesterStore.set(requester, []);
+          }
+          {
+            const timings = RequesterStore.get(requester);
+            // Remove items for this user older than 5 minutes.
+            while (timings.length > 0) {
+              const elapsed = process.hrtime.bigint() - timings[0].time;
+              const elapsedMs = Number(elapsed / 1000000n);
+              if (elapsedMs > 60000 * 5) {
+                timings.shift();
+              } else {
+                break;
+              }
             }
           }
-        }
-        RequesterStore.get(requester).push({
-          time: process.hrtime.bigint(),
-          user: userTimeMs,
-          system: systemTimeMs,
-        });
+          RequesterStore.get(requester).push({
+            time: process.hrtime.bigint(),
+            user: userTimeMs,
+            system: systemTimeMs,
+          });
 
-        const routeParts = [];
-        for (const part of (request.method + request.url.split("?")[0]).split(
-          "/",
-        )) {
-          if (Number(part).toString() === part) {
-            routeParts.push("XXX");
-          } else {
-            routeParts.push(part);
-          }
-        }
-        const routeKeyNormalised = routeParts.join("/");
-        const routeTimings = RouteStore.get(routeKeyNormalised);
-        if (!routeTimings) {
-          RouteStore.set(routeKeyNormalised, []);
-        }
-        {
-          const timings = RouteStore.get(routeKeyNormalised);
-          // Remove items for this user older than 5 minutes.
-          while (timings.length > 0) {
-            const elapsed = process.hrtime.bigint() - timings[0].time;
-            const elapsedMs = Number(elapsed / 1000000n);
-            if (elapsedMs > 60000 * 5) {
-              timings.shift();
+          const routeParts = [];
+          for (const part of (request.method + request.url.split("?")[0]).split(
+            "/",
+          )) {
+            if (Number(part).toString() === part) {
+              routeParts.push("XXX");
             } else {
-              break;
+              routeParts.push(part);
             }
           }
+          const routeKeyNormalised = routeParts.join("/");
+          const routeTimings = RouteStore.get(routeKeyNormalised);
+          if (!routeTimings) {
+            RouteStore.set(routeKeyNormalised, []);
+          }
+          {
+            const timings = RouteStore.get(routeKeyNormalised);
+            // Remove items for this user older than 5 minutes.
+            while (timings.length > 0) {
+              const elapsed = process.hrtime.bigint() - timings[0].time;
+              const elapsedMs = Number(elapsed / 1000000n);
+              if (elapsedMs > 60000 * 5) {
+                timings.shift();
+              } else {
+                break;
+              }
+            }
+          }
+          RouteStore.get(routeKeyNormalised).push({
+            time: process.hrtime.bigint(),
+            user: userTimeMs,
+            system: systemTimeMs,
+          });
         }
-        RouteStore.get(routeKeyNormalised).push({
-          time: process.hrtime.bigint(),
-          user: userTimeMs,
-          system: systemTimeMs,
-        });
-
         return `${request.method} ${request.url}\n\t\t Status(${
           response.statusCode
         })\n\t\t ${
           dbQueryCount
             ? `${dbQueryCount} DB queries taking ${dbQueryTime}ms `
             : ""
-        }[${
-          response["responseTime"] || 0
-        }ms total response time, ${userTimeMs}ms user, ${systemTimeMs}ms system${
+        }[${response["responseTime"] || 0}ms total response time${
           wasRateLimited ? ", was rate limited" : ""
         }]`;
       },

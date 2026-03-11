@@ -908,10 +908,17 @@ const deleteUploads = async (uploadResults: RecordingFileUploadResult[]) => {
   return Promise.allSettled(deleteUploadPromises);
 };
 
-const recordingUploadedState = (type: RecordingType) => {
+const recordingUploadedState = (type: RecordingType, recording: Recording) => {
   if (type === RecordingType.Audio) {
     return RecordingProcessingState.Analyse;
   } else if (type === RecordingType.ThermalRaw) {
+    if (
+      recording.additionalMetadata &&
+      ["startup", "shutdown"].includes(recording.additionalMetadata.status)
+    ) {
+      // NOTE: Skip processing for status recordings.
+      return RecordingProcessingState.Finished;
+    }
     return RecordingProcessingState.TrackAndAnalyse;
   } else if (type === RecordingType.InfraredVideo) {
     return RecordingProcessingState.Tracking;
@@ -947,7 +954,10 @@ const setInitialProcessingState = (
       ) {
         recordingTemplate.processingState = RecordingProcessingState.Analyse;
       } else {
-        recordingTemplate.processingState = recordingUploadedState(data.type);
+        recordingTemplate.processingState = recordingUploadedState(
+          data.type,
+          recordingTemplate,
+        );
       }
     }
   }

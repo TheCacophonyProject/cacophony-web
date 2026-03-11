@@ -34,6 +34,10 @@ import { DeviceHistory } from "@models/DeviceHistory.js";
 import { Tag } from "@models/Tag.js";
 import { Track } from "@models/Track.js";
 import { TrackTag } from "@models/TrackTag.js";
+import {
+  renderFrameIntoFrameBuffer,
+  ColourMaps,
+} from "@api/cptv-decoder/frameRenderUtils.js";
 import type {
   DeviceId,
   GroupId,
@@ -443,7 +447,7 @@ export async function saveThumbnailInfo(
     }
     log.info("Saving track thumbnail %s", `${fileKey}-${track.id}-thumb`);
     frameUploads.push(
-      await openS3()
+      openS3()
         .upload(`${fileKey}-${track.id}-thumb`, thumb.data, thumb.meta)
         .catch((err) => {
           return err;
@@ -580,9 +584,6 @@ export async function createThumbnail(
     greyScaleData = thumbnailData;
   }
   const frameBuffer = new Uint8ClampedArray(4 * greyScaleData.length);
-  const { renderFrameIntoFrameBuffer, ColourMaps } = await import(
-    "../cptv-decoder/frameRenderUtils.js"
-  );
   let palette = ColourMaps[0];
   for (const colourMap of ColourMaps) {
     if (colourMap[0] == colourPalette) {

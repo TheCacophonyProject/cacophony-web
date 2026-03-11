@@ -184,9 +184,6 @@ export default function (app: Application, baseUrl: string) {
     ]),
     parseJSONField(body("result")),
     async (request: Request, response: Response, next: NextFunction) => {
-      // TODO: Find out which of these params are actually used currently; there's a lot of legacy stuff
-      //  here that should probably be pruned.
-      log.info("Processing PUT", JSON.stringify(request.body, null, 2));
       const recording = await Recording.findByPk(request.body.id);
       if (!recording) {
         return next(
@@ -244,10 +241,14 @@ export default function (app: Application, baseUrl: string) {
           let tracks: Track[] | null = null;
           if (complete) {
             tracks = (await recording.getTracks()) || [];
+          }
+          if (
+            complete &&
+            prevState !== RecordingProcessingState.TrackAndAnalyse
+          ) {
+            // NOTE: If we already calculated "filtered" in trackAndAnalyse, we don't need to do it here.
             for (const track of tracks) {
               track.data = await Track.getTrackData(track.id);
-              // FIXME: Ideally we'd do this when bulk-adding tracks in the first place, so that we don't need to pull
-              //  out all the track datas
               // FIXME: Not even sure we need "filtered" anymore, it's not used on browse-next, is probably a legacy browse thing.
               await track.updateIsFiltered();
             }
@@ -432,11 +433,12 @@ export default function (app: Application, baseUrl: string) {
         );
         tracks.push(track);
       }
-      const modelTracks = await Track.bulkCreate(tracks);
-
       const trackTags = [];
       const trackTagData = [];
       const trackDataPromises = [];
+      // NOTE: We set whether the track is filtered up front:
+      const modelTracks = await Track.bulkCreate(tracks);
+
       for (let i = 0; i < modelTracks.length; i++) {
         const trackData = data[i];
         trackIds.push(modelTracks[i].id);
@@ -491,6 +493,10 @@ export default function (app: Application, baseUrl: string) {
       }
       await Promise.all(trackDataPromises);
       await Visit.rebuildForRecording(recording);
+
+      // TODO: Also set as "FINISHED", and create track thumbnails here?
+      //  Also send alerts?
+
       return successResponse(response, "Tracks added.", { trackIds });
     },
   );
@@ -516,6 +522,30 @@ export default function (app: Application, baseUrl: string) {
     trackData: MinimalTrackRequestData,
     algorithmId: number,
   ): MinimalTrack => {
+    let trackIsFiltered = true;
+    {
+      // Calculate up front if the track is filtered.
+      const tags = [];
+      for (const pred of trackData.predictions) {
+        const predData = pred as TrackTagData;
+        if (!pred.confident) {
+          predData.raw_tag = pred.tag;
+          pred.tag = "unidentified";
+        }
+        tags.push({
+          what: pred.tag,
+          modelName: pred.name,
+        });
+      }
+
+      const masterTag = tags.find((tag) => tag.modelName === AI_MASTER);
+      if (masterTag) {
+        trackIsFiltered = TrackTag.filteredTags.some(
+          (filteredTag) => filteredTag === masterTag.what,
+        );
+      }
+    }
+
     const newTrack = {
       AlgorithmId: algorithmId,
       startSeconds: trackData.start_s,
@@ -523,6 +553,7 @@ export default function (app: Application, baseUrl: string) {
       minFreqHz: null,
       maxFreqHz: null,
       RecordingId: recording.id,
+      filtered: trackIsFiltered,
     };
     if (recording.type === RecordingType.Audio) {
       newTrack.minFreqHz = trackData.minFreq || 0;
