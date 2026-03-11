@@ -1,7 +1,7 @@
 import { successResponse } from "../V1/responseUtil.js";
 import middleware, { validateFields } from "../middleware.js";
 import log from "@log";
-import { body, param, query, oneOf } from "express-validator";
+import { body, oneOf, param, query } from "express-validator";
 import _ from "lodash";
 import {
   saveThumbnailInfo,
@@ -10,7 +10,7 @@ import {
   updateMetadata,
 } from "../V1/recordingUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
-import { trackIsMasked, getMask, maskMatch } from "@api/V1/trackMasking.js";
+import { getMask, maskMatch, trackIsMasked } from "@api/V1/trackMasking.js";
 import ApiMinimalTracksRequestSchema from "@schemas/api/fileProcessing/MinimalTracksRequestData.schema.json" with { type: "json" };
 import ApiMinimalTrackRequestSchema from "@schemas/api/fileProcessing/MinimalTrackRequestData.schema.json" with { type: "json" };
 import ApiTrackClassifications from "@schemas/api/fileProcessing/TrackClassifications.schema.json" with { type: "json" };
@@ -27,11 +27,11 @@ import {
 } from "@typedefs/api/consts.js";
 import {
   extractJwtAuthorisedSuperAdminUser,
+  extractValFromRequest,
+  fetchAuthorizedRequiredDeviceById,
+  fetchUnauthorizedRequiredFlatRecordingById,
   fetchUnauthorizedRequiredTrackById,
   parseJSONField,
-  fetchAuthorizedRequiredDeviceById,
-  extractValFromRequest,
-  fetchUnauthorizedRequiredFlatRecordingById,
 } from "@api/extract-middleware.js";
 import { Track } from "@/models/Track.js";
 
@@ -41,12 +41,12 @@ import { openS3 } from "@models/util/util.js";
 
 import type { TrackTagData } from "@/../types/api/trackTag.js";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
-import { TrackTag, AI_MASTER } from "@models/TrackTag.js";
+import { AI_MASTER, TrackTag } from "@models/TrackTag.js";
 import { Recording } from "@models/Recording.js";
 
 import type {
-  MinimalTrackRequestData,
   MinimalTrack,
+  MinimalTrackRequestData,
   MinimalTracksRequestData,
 } from "@/../types/api/fileProcessing.js";
 import { Visit } from "@models/Visit.js";
@@ -242,15 +242,15 @@ export default function (app: Application, baseUrl: string) {
           if (complete) {
             tracks = (await recording.getTracks()) || [];
           }
-          //prevState !== RecordingProcessingState.TrackAndAnalyse
-          if (complete) {
+          if (
+            complete &&
+            prevState !== RecordingProcessingState.TrackAndAnalyse
+          ) {
             // NOTE: If we already calculated "filtered" in trackAndAnalyse, we don't need to do it here.
             for (const track of tracks) {
               track.data = await Track.getTrackData(track.id);
               // FIXME: Not even sure we need "filtered" anymore, it's not used on browse-next, is probably a legacy browse thing.
-              if (prevState !== RecordingProcessingState.TrackAndAnalyse) {
-                await track.updateIsFiltered();
-              }
+              await track.updateIsFiltered();
             }
           }
           if (complete && recording.type === RecordingType.Audio) {
@@ -292,9 +292,9 @@ export default function (app: Application, baseUrl: string) {
           }
           await recording.save();
 
-          //prevState !== RecordingProcessingState.TrackAndAnalyse &&
           if (
             complete &&
+            prevState !== RecordingProcessingState.TrackAndAnalyse &&
             (recording.type === RecordingType.ThermalRaw ||
               recording.type === RecordingType.InfraredVideo)
           ) {
@@ -479,38 +479,40 @@ export default function (app: Application, baseUrl: string) {
         }
 
         delete trackData.predictions;
-        // tracksAndData.push({
-        //   id: modelTracks[i].id,
-        //   data: trackData[i],
-        // });
+        tracksAndData.push({
+          id: modelTracks[i].id,
+          data: trackData[i],
+        });
         trackDataPromises.push(
           Track.saveTrackData(modelTracks[i].id, trackData),
         );
       }
 
       const modelTrackTags = await TrackTag.bulkCreate(trackTags);
-      // const results = await saveThumbnailInfo(
-      //   recording,
-      //   tracksAndData,
-      //   recording.additionalMetadata["thumbnail_region"] || {
-      //     frame_number: 1,
-      //     x: 0,
-      //     y: 0,
-      //     height: 120,
-      //     width: 160,
-      //   },
-      // );
-      // if (results) {
-      //   for (const result of results) {
-      //     if (result instanceof Error) {
-      //       log.warning(
-      //         "Failed to upload thumbnail for %s",
-      //         `${recording.rawFileKey}-thumb`,
-      //       );
-      //       log.error("Reason: %s", result.message);
-      //     }
-      //   }
-      // }
+      if (recording.type === RecordingType.ThermalRaw) {
+        const results = await saveThumbnailInfo(
+          recording,
+          tracksAndData,
+          recording.additionalMetadata["thumbnail_region"] || {
+            frame_number: 1,
+            x: 0,
+            y: 0,
+            height: 120,
+            width: 160,
+          },
+        );
+        if (results) {
+          for (const result of results) {
+            if (result instanceof Error) {
+              log.warning(
+                "Failed to upload thumbnail for %s",
+                `${recording.rawFileKey}-thumb`,
+              );
+              log.error("Reason: %s", result.message);
+            }
+          }
+        }
+      }
 
       for (let i = 0; i < modelTrackTags.length; i++) {
         const modelTrackTag = modelTrackTags[i];
@@ -524,8 +526,7 @@ export default function (app: Application, baseUrl: string) {
       await Promise.all(trackDataPromises);
       await Visit.rebuildForRecording(recording);
 
-      // TODO: Also set as "FINISHED", and create track thumbnails here?
-      //  Also send alerts?
+      // TODO: Also send alerts, since we have the thumbnails?
 
       return successResponse(response, "Tracks added.", { trackIds });
     },
