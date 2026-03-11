@@ -294,6 +294,7 @@ export default function (app: Application, baseUrl: string) {
 
           if (
             complete &&
+            prevState !== RecordingProcessingState.TrackAndAnalyse &&
             (recording.type === RecordingType.ThermalRaw ||
               recording.type === RecordingType.InfraredVideo)
           ) {
@@ -329,6 +330,8 @@ export default function (app: Application, baseUrl: string) {
             recording.uploader === "device" &&
             recordingAgeMs < twentyFourHoursMs
           ) {
+            // FIXME: Maybe since we *just* created thumbnails, we don't need to pull them out again to send the alert
+            //  we can just use what we already have in scope.
             await sendAlerts(recording.id);
           }
         } catch (e) {
@@ -438,7 +441,7 @@ export default function (app: Application, baseUrl: string) {
       const trackDataPromises = [];
       // NOTE: We set whether the track is filtered up front:
       const modelTracks = await Track.bulkCreate(tracks);
-
+      const tracksAndData = [];
       for (let i = 0; i < modelTracks.length; i++) {
         const trackData = data[i];
         trackIds.push(modelTracks[i].id);
@@ -476,12 +479,39 @@ export default function (app: Application, baseUrl: string) {
         }
 
         delete trackData.predictions;
+        tracksAndData.push({
+          id: modelTracks[i].id,
+          data: trackData[i],
+        });
         trackDataPromises.push(
           Track.saveTrackData(modelTracks[i].id, trackData),
         );
       }
 
       const modelTrackTags = await TrackTag.bulkCreate(trackTags);
+      const results = await saveThumbnailInfo(
+        recording,
+        tracksAndData,
+        recording.additionalMetadata["thumbnail_region"] || {
+          frame_number: 1,
+          x: 0,
+          y: 0,
+          height: 120,
+          width: 160,
+        },
+      );
+      if (results) {
+        for (const result of results) {
+          if (result instanceof Error) {
+            log.warning(
+              "Failed to upload thumbnail for %s",
+              `${recording.rawFileKey}-thumb`,
+            );
+            log.error("Reason: %s", result.message);
+          }
+        }
+      }
+
       for (let i = 0; i < modelTrackTags.length; i++) {
         const modelTrackTag = modelTrackTags[i];
         if (modelTrackTag.model) {
