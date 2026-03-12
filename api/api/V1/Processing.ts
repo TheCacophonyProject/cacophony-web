@@ -484,7 +484,7 @@ export default function (app: Application, baseUrl: string) {
         delete trackData.predictions;
         tracksAndData.push({
           id: modelTracks[i].id,
-          data: trackData[i],
+          data: trackData,
         });
         trackDataPromises.push(
           Track.saveTrackData(modelTracks[i].id, trackData),
