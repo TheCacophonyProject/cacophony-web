@@ -889,8 +889,13 @@ export class Recording extends ModelStaticCommon<Recording> {
     ) {
       nextState = RecordingProcessingState.Finished;
     } else {
-      const job_index = jobs.indexOf(this.processingState);
-      if (job_index == -1) {
+      const job_index = jobs.indexOf(
+        (this.processingState as string).replace(
+          ".failed",
+          "",
+        ) as RecordingProcessingState,
+      );
+      if (job_index === -1) {
         throw new Error(`Recording state unknown - ${this.processingState}`);
       } else if (job_index < jobs.length - 1) {
         nextState = jobs[job_index + 1];

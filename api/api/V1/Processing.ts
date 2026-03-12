@@ -298,6 +298,8 @@ export default function (app: Application, baseUrl: string) {
             (recording.type === RecordingType.ThermalRaw ||
               recording.type === RecordingType.InfraredVideo)
           ) {
+            // FIXME: Do we ever make a thumbnail that's not frame 1/First frame?
+            //  If not, just keep the one we make on upload.
             const results = await saveThumbnailInfo(
               recording,
               tracks,
@@ -446,6 +448,7 @@ export default function (app: Application, baseUrl: string) {
         const trackData = data[i];
         trackIds.push(modelTracks[i].id);
 
+        // FIXME: Check if this is correct for Audio
         for (const pred of trackData.predictions) {
           const modelName = pred.name;
           const used = modelName === AI_MASTER;
@@ -527,7 +530,6 @@ export default function (app: Application, baseUrl: string) {
       await Visit.rebuildForRecording(recording);
 
       // TODO: Also send alerts, since we have the thumbnails?
-
       return successResponse(response, "Tracks added.", { trackIds });
     },
   );
