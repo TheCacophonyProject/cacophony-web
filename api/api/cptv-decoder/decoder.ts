@@ -1,6 +1,7 @@
 import { Worker } from "worker_threads";
 import type { ReadableStream } from "stream/web";
 import * as worker_threads from "node:worker_threads";
+import logging from "@log";
 interface MessageData {
   type: string;
   data: unknown;
@@ -43,9 +44,22 @@ export class CptvDecoder {
         }
       };
 
-      this.decoder = new Worker(
+      const worker = new Worker(
         new URL("./decoder.worker.js", import.meta.url),
       );
+
+      worker.on("error", (err: Error) => {
+        logging.error(`CPTV Decoder worker error: ${err.message}`);
+        this.close();
+      });
+
+      worker.on("exit", (code) => {
+        if (code !== 0) {
+          logging.error(`CPTV Decoder worker stopped with exit code ${code}`);
+          this.close();
+        }
+      });
+      this.decoder = worker;
       this.decoder.addListener.bind(this.decoder)("message", onMessage);
       await this.waitForMessage("init");
 

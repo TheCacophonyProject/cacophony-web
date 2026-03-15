@@ -247,7 +247,9 @@ class CptvDecoderInterface {
         totalFrameCount = h["totalFrames"];
         let frame: CptvFrame | null;
         while (
-          (frame = await (this.playerContext as DecoderContext).nextFrame())
+          (frame = await (
+            this.playerContext as DecoderContext
+          ).nextFrameOwned())
         ) {
           if (!frame.isBackgroundFrame) {
             firstFrame = frame;
@@ -258,7 +260,9 @@ class CptvDecoderInterface {
         let frame: CptvFrame | null;
         let num = 0;
         while (
-          (frame = await (this.playerContext as DecoderContext).nextFrame())
+          (frame = await (
+            this.playerContext as DecoderContext
+          ).nextFrameOwned())
         ) {
           if (!frame.isBackgroundFrame) {
             if (!firstFrame) {

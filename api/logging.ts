@@ -17,7 +17,6 @@ export const consoleTransport = new winston.transports.Console({
       return info;
     })(),
     format.colorize(),
-
     format.splat(),
     format.simple(),
   ),
