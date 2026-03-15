@@ -51,6 +51,10 @@ import type {
 } from "@/../types/api/fileProcessing.js";
 import { Visit } from "@models/Visit.js";
 import LabelPaths from "@/classifications/label_paths.json" with { type: "json" };
+import {
+  ApiThermalRecordingMetadataResponse,
+  ApiThermalRecordingResponse,
+} from "@typedefs/api/recording.js";
 
 const NULL_TRACK_ID = 1;
 
@@ -239,7 +243,11 @@ export default function (app: Application, baseUrl: string) {
             }
           }
           let tracks: Track[] | null = null;
-          if (complete) {
+          if (
+            complete &&
+            (prevState !== RecordingProcessingState.TrackAndAnalyse ||
+              recording.type === RecordingType.Audio)
+          ) {
             tracks = (await recording.getTracks()) || [];
           }
           if (
@@ -298,18 +306,12 @@ export default function (app: Application, baseUrl: string) {
             (recording.type === RecordingType.ThermalRaw ||
               recording.type === RecordingType.InfraredVideo)
           ) {
-            // FIXME: Do we ever make a thumbnail that's not frame 1/First frame?
-            //  If not, just keep the one we make on upload.
+            // NOTE: If the clip_thumbnail isn't defined, we'll just use the
+            // existing clip thumbnail from the initial upload process.
             const results = await saveThumbnailInfo(
               recording,
               tracks,
-              recording.additionalMetadata["thumbnail_region"] || {
-                frame_number: 1,
-                x: 0,
-                y: 0,
-                height: 120,
-                width: 160,
-              },
+              recording.additionalMetadata?.thumbnail_region,
             );
             if (results) {
               for (const result of results) {
@@ -492,17 +494,16 @@ export default function (app: Application, baseUrl: string) {
       }
 
       const modelTrackTags = await TrackTag.bulkCreate(trackTags);
-      if (recording.type === RecordingType.ThermalRaw) {
+      if (
+        recording.type === RecordingType.ThermalRaw &&
+        recording.additionalMetadata
+      ) {
+        // NOTE: If the clip_thumbnail isn't defined, we'll just use the
+        // existing clip thumbnail from the initial upload process.
         const results = await saveThumbnailInfo(
           recording,
           tracksAndData,
-          recording.additionalMetadata["thumbnail_region"] || {
-            frame_number: 1,
-            x: 0,
-            y: 0,
-            height: 120,
-            width: 160,
-          },
+          recording.additionalMetadata["thumbnail_region"],
         );
         if (results) {
           for (const result of results) {
