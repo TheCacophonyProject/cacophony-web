@@ -89,7 +89,6 @@ export class TrackTag extends ModelStaticCommon<TrackTag> {
       (trackTag.path === null && trackTag.what) ||
       (trackTag.path && trackTag.what && !trackTag.path.endsWith(trackTag.what))
     ) {
-      log.warning("ADD PATH");
       // All paths are lower case, and spaces are replaced with underscores. eg. all.path_name.example
       const what = (trackTag.what as string).toLowerCase();
       const path =

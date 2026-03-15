@@ -53,11 +53,8 @@ export class CptvDecoder {
         this.close();
       });
 
-      worker.on("exit", (code) => {
-        if (code !== 0) {
-          logging.error(`CPTV Decoder worker stopped with exit code ${code}`);
-          this.close();
-        }
+      worker.on("exit", (_code) => {
+        this.close();
       });
       this.decoder = worker;
       this.decoder.addListener.bind(this.decoder)("message", onMessage);
