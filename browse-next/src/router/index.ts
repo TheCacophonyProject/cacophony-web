@@ -36,8 +36,9 @@ import type { ApiDeviceResponse } from "@typedefs/api/device";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { DeviceType } from "@typedefs/api/consts.ts";
 import { DEFAULT_AUTH_ID, type LoadedResource } from "@apiClient/types.ts";
-import { ClientApi, CurrentUser, CurrentViewAbortController } from "@/api";
+import { ClientApi, CurrentUser } from "@/api";
 import { decodeJWT } from "@apiClient/utils.ts";
+import { CurrentViewAbortController } from "@apiClient/api.ts";
 // import { CurrentViewAbortController } from "@api/fetch.ts";
 
 const cancelPendingRequests = (

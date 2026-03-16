@@ -981,7 +981,7 @@ onBeforeMount(async () => {
   watchFlagged.value = watch(flaggedLabel, updateRoute);
   watchSelectedLabels.value = watch(selectedLabels, updateLabelsRoute);
   showAdvanced.value = hasAdvancedFiltersSet.value;
-  emit("search-requested");
+  //emit("search-requested");
 });
 onBeforeUnmount(() => {
   watchProps.value && watchProps.value();

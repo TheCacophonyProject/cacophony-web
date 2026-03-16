@@ -8,7 +8,7 @@ import {
   type LoadedResource,
 } from "@apiClient/types";
 import { computed, reactive, ref, watch } from "vue";
-import { ClientApi, CurrentUser, CurrentViewAbortController } from "@/api";
+import { ClientApi, CurrentUser } from "@/api";
 import type { GroupId as ProjectId } from "@typedefs/api/common";
 import type {
   ApiGroupResponse,
@@ -20,6 +20,7 @@ import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/st
 import { urlNormaliseName } from "@/utils";
 import { useWindowSize } from "@vueuse/core";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
+import { CurrentViewAbortController } from "@apiClient/api.ts";
 
 export type LoggedInUser = ApiLoggedInUserResponse;
 

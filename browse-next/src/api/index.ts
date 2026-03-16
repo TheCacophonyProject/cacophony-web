@@ -26,15 +26,6 @@ import { StorageSerializers, useLocalStorage, useStorage } from "@vueuse/core";
 import User from "@apiClient/User.ts";
 import type { LoggedInUser } from "@models/LoggedInUser.ts";
 
-// Allows us to abort all pending fetch requests when switching between major views.
-export const CurrentViewAbortController = {
-  newView() {
-    this.controller && this.controller.abort();
-    this.controller = new AbortController();
-  },
-  controller: new AbortController(),
-};
-
 export const INITIAL_RETRY_INTERVAL = 3000;
 export const MAX_RETRY_COUNT = 30;
 

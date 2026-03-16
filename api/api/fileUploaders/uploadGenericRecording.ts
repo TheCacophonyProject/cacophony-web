@@ -269,6 +269,14 @@ const mapPartName = (partKey: string, partName: string): string => {
   return partKey;
 };
 
+const closeStreams = async (streams: ReadableStream[]) => {
+  for (const stream of streams) {
+    if (stream && stream.cancel && !stream.locked) {
+      await stream.cancel();
+    }
+  }
+};
+
 const processFilePart = async (
   partKey: string,
   part: MultipartFormPart,
@@ -323,7 +331,7 @@ const processFilePart = async (
   } else {
     uploaderStream = Readable.toWeb(part).pipeThrough(transform);
   }
-  // TODO: If there are multiple file uploads, and *any* fail or are prematurely aborted, we need to exit early.
+  const streams = [uploaderStream, cptvDecodeStream, m4aDecodeStream];
   // Upload part, while piping it through a transform that performs sha1 + checks length.
   const upload = uploadStream(partKey, uploaderStream as ReadableStream);
   // Special treatment for "file" part, since that is the "raw" file.
@@ -355,10 +363,12 @@ const processFilePart = async (
         if (length === 0) {
           log.warning("Zero length file");
           await upload.abort().catch(() => {
+            closeStreams(streams);
             return;
           });
         } else {
           await upload.done().catch((error) => {
+            closeStreams(streams);
             console.error(error);
             if (error.name !== "AbortError") {
               log.error("Upload error: %s", error.toString());
@@ -371,6 +381,8 @@ const processFilePart = async (
         }
       }
     } catch (e) {
+      // Close streams
+      await closeStreams(streams);
       part.emit("error", new UnprocessableError(e));
     } finally {
       if (decoder && decoder.close) {
@@ -392,11 +404,13 @@ const processFilePart = async (
     if (length === 0) {
       log.warning("Zero length file");
       await upload.abort().catch(() => {
+        closeStreams(streams);
         return;
       });
     }
     if (!canceledRequest.canceled && !uploaded) {
       await upload.done().catch((error) => {
+        closeStreams(streams);
         if (error.name !== "AbortError") {
           log.error("Upload error: %s", error.toString());
           part.emit(
@@ -415,6 +429,7 @@ const processFilePart = async (
   }
   if (!mightBeCptvFile && !mightBeTc2AudioFile && !uploaded) {
     await upload.done().catch((error) => {
+      closeStreams(streams);
       if (error.name !== "AbortError") {
         log.error("DONE? %s", error.toString());
         part.emit(
@@ -426,6 +441,7 @@ const processFilePart = async (
       }
     });
   }
+  await closeStreams(streams);
 
   const payload: RecordingFileUploadResult = {
     partName: part.name,

@@ -10,7 +10,7 @@ import type {
 } from "@typedefs/client/types.js";
 import type { UserId, DeviceId } from "@typedefs/api/common.js";
 
-const CurrentViewAbortController = {
+export const CurrentViewAbortController = {
   newView() {
     if (this.controller) {
       this.controller.abort();

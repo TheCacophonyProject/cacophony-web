@@ -95,7 +95,7 @@ import type {
   BulkRecordingsResponse,
   QueryRecordingsOptions,
 } from "@apiClient/Recording.ts";
-import { ClientApi, CurrentViewAbortController } from "@/api";
+import { ClientApi } from "@/api";
 import type { VisitsQueryResult } from "@apiClient/Monitoring.ts";
 import type { NonEmptyArray } from "@/helpers/utils.ts";
 import {
@@ -110,6 +110,7 @@ import type {
   ApiAudioRecordingResponse,
   ApiRecordingResponse,
 } from "@typedefs/api/recording";
+import { CurrentViewAbortController } from "@apiClient/api.ts";
 
 const mapBuffer = ref<HTMLDivElement>();
 const mapContainer = ref<HTMLDivElement>();
@@ -226,7 +227,7 @@ const defaultSearchParams = computed(() => {
     "display-mode": defaultDisplayMode.value,
     "recording-mode": defaultRecordingMode.value,
     locations: "any",
-    from: "24-hours-ago",
+    from: "3-days-ago",
   };
   if (defaultDisplayMode.value === ActivitySearchDisplayMode.Recordings) {
     if (defaultFalseTriggerMode()) {
@@ -290,6 +291,9 @@ const defaultRecordingMode = computed<ActivitySearchRecordingMode>(() => {
     !locations.value.some((location) => locationHasCameraRecordings(location))
   ) {
     return ActivitySearchRecordingMode.Audio;
+  }
+  if (route && route.query["display-mode"] === "visits") {
+    return ActivitySearchRecordingMode.Cameras;
   }
   return savedRecordingMode;
 });
@@ -1041,6 +1045,7 @@ onUpdated(() => {
 const getCurrentQueryHash = (): string => {
   // Keep track of the recordingState/cursor using a hash of the query,
   const untilDateTime = endOfDay(dateRange.value[1] as Date);
+  //const fromDateTime = endOfDay(dateRange.value[0] as Date);
   return JSON.stringify({
     ...getCurrentQuery(),
     displayMode: displayMode.value,
@@ -1058,7 +1063,6 @@ interface RecordingQueryBase {
   includeFilteredFalsePositivesAndNones: boolean;
 }
 const getCurrentQuery = (): QueryRecordingsOptions => {
-  // console.log("Search params", searchParams.value);
   const query: QueryRecordingsOptions = {
     types:
       searchParams.value.recordingMode === "cameras"
@@ -1323,7 +1327,6 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
     if (earliestRecord !== null && earliestRecord < (fromDateTime as Date)) {
       isNewQuery = true;
     }
-
     if (isNewQuery) {
       resetQuery(
         queryHash,
@@ -1519,13 +1522,11 @@ const exportProgressZeroOneHundred = computed<number>(
   () => exportProgress.value * 100,
 );
 const doSearch = async () => {
-  const currentQueryHash = getCurrentQueryHash();
-  if (!searching.value || currentQueryHash !== loadingQuery.value) {
-    loadingQuery.value = currentQueryHash;
-    searching.value = true;
-    await getClassifications();
-    await loadActiveAndInactiveDevices();
-    const _succeededWithoutAbort = await getRecordingsOrVisitsForCurrentQuery();
+  searching.value = true;
+  await getClassifications();
+  await loadActiveAndInactiveDevices();
+  const succeededWithoutAbort = await getRecordingsOrVisitsForCurrentQuery();
+  if (succeededWithoutAbort) {
     searching.value = false;
   }
 };
