@@ -208,80 +208,75 @@ export default function (app: Application, baseUrl: string) {
         endUserAgreement: request.body.endUserAgreement,
         lastActiveAt: now,
       });
-      // For now, we don't want to send welcome emails on browse, just browse-next
-      if (
-        !request.headers.host.includes("browse.cacophony.org.nz") &&
-        !request.headers.host.includes("browse-test.cacophony.org.nz")
-      ) {
-        // If the user is signing up from an email invitation, and the email
-        // address matches the invite email address, we can mark the user's email as confirmed
-        // and add them to any pending invited groups.
-        let sendEmailSuccess: boolean;
-        const token = response.locals.tokenInfo;
-        const isSigningUpFromEmailInvitation =
-          token &&
-          token.exp * 1000 > new Date().getTime() &&
-          token._type === "invite-new-user";
-        const addedToGroups = [];
-        if (isSigningUpFromEmailInvitation) {
-          const oneWeekAgo = new Date(
-            new Date().setDate(new Date().getDate() - 7),
-          );
-          // NOTE: Check if there are any pending non-expired group invites for this email address:
-          const pendingInvites = await GroupInvites.findAll({
-            where: {
-              email: user.email,
-              createdAt: { [Op.gt]: oneWeekAgo },
-            },
-          });
-          for (const invitation of pendingInvites) {
-            const group = await Group.findByPk(invitation.GroupId);
-            if (group) {
-              const { added } = await Group.addOrUpdateGroupUser(
-                group,
-                user,
-                invitation.admin,
-                invitation.owner,
-                null,
-              );
-              if (added) {
-                addedToGroups.push(group);
-              }
+      // If the user is signing up from an email invitation, and the email
+      // address matches the invite email address, we can mark the user's email as confirmed
+      // and add them to any pending invited groups.
+      let sendEmailSuccess: boolean;
+      const token = response.locals.tokenInfo;
+      const isSigningUpFromEmailInvitation =
+        token &&
+        token.exp * 1000 > new Date().getTime() &&
+        token._type === "invite-new-user";
+      const addedToGroups = [];
+      if (isSigningUpFromEmailInvitation) {
+        const oneWeekAgo = new Date(
+          new Date().setDate(new Date().getDate() - 7),
+        );
+        // NOTE: Check if there are any pending non-expired group invites for this email address:
+        const pendingInvites = await GroupInvites.findAll({
+          where: {
+            email: user.email,
+            createdAt: { [Op.gt]: oneWeekAgo },
+          },
+        });
+        for (const invitation of pendingInvites) {
+          const group = await Group.findByPk(invitation.GroupId);
+          if (group) {
+            const { added } = await Group.addOrUpdateGroupUser(
+              group,
+              user,
+              invitation.admin,
+              invitation.owner,
+              null,
+            );
+            if (added) {
+              addedToGroups.push(group);
             }
-            await invitation.destroy();
           }
-        }
-        if (addedToGroups.length) {
-          // NOTE: We can now confirm the users' email address, since they signed up via an email.
-          await user.update({ emailConfirmed: true });
-          sendEmailSuccess = await sendWelcomeEmailWithGroupsAdded(
-            request.headers.host,
-            user.email,
-            addedToGroups.map(({ groupName }) => groupName),
-          );
-        } else {
-          // NOTE Send a welcome email, with a requirement to validate the email address.
-          //  We won't send transactional emails until the address has been validated.
-          //  While the account is unvalidated, show a banner in the site, which allows to resend the validation email.
-          //  User alerts and group invitations would not be activated until the user has confirmed their email address.
-          sendEmailSuccess = await sendWelcomeEmailConfirmationEmail(
-            request.headers.host,
-            getEmailConfirmationToken(user.id, user.email),
-            user.email,
-          );
-        }
-
-        // NOTE: Only destroy users in a production env if emailing fails, since
-        //  otherwise we'd slow down tests too much by having to process emails for all
-        //  created users.
-        if (!sendEmailSuccess && config.productionEnv) {
-          // In this case, we don't want to create the user.
-          await user.destroy();
-          return next(
-            new FatalError("Failed to send welcome/email confirmation email."),
-          );
+          await invitation.destroy();
         }
       }
+      if (addedToGroups.length) {
+        // NOTE: We can now confirm the users' email address, since they signed up via an email.
+        await user.update({ emailConfirmed: true });
+        sendEmailSuccess = await sendWelcomeEmailWithGroupsAdded(
+          request.headers.host,
+          user.email,
+          addedToGroups.map(({ groupName }) => groupName),
+        );
+      } else {
+        // NOTE Send a welcome email, with a requirement to validate the email address.
+        //  We won't send transactional emails until the address has been validated.
+        //  While the account is unvalidated, show a banner in the site, which allows to resend the validation email.
+        //  User alerts and group invitations would not be activated until the user has confirmed their email address.
+        sendEmailSuccess = await sendWelcomeEmailConfirmationEmail(
+          request.headers.host,
+          getEmailConfirmationToken(user.id, user.email),
+          user.email,
+        );
+      }
+
+      // NOTE: Only destroy users in a production env if emailing fails, since
+      //  otherwise we'd slow down tests too much by having to process emails for all
+      //  created users.
+      if (!sendEmailSuccess && config.productionEnv) {
+        // In this case, we don't want to create the user.
+        await user.destroy();
+        return next(
+          new FatalError("Failed to send welcome/email confirmation email."),
+        );
+      }
+
       const { refreshToken, apiToken } = await generateAuthTokensForUser(
         sequelize,
         user,
@@ -358,24 +353,19 @@ export default function (app: Application, baseUrl: string) {
         // If the user has changed their email, we'll need to send
         // another confirmation email.
         dataToUpdate.emailConfirmed = false;
-        if (
-          !request.headers.host.includes("browse.cacophony.org.nz") &&
-          !request.headers.host.includes("browse-test.cacophony.org.nz")
-        ) {
-          const token = getEmailConfirmationToken(
-            requestUser.id,
-            dataToUpdate.email,
+        const token = getEmailConfirmationToken(
+          requestUser.id,
+          dataToUpdate.email,
+        );
+        const emailSuccess = await sendChangedEmailConfirmationEmail(
+          request.headers.host,
+          token,
+          dataToUpdate.email,
+        );
+        if (!emailSuccess && config.productionEnv) {
+          return next(
+            new FatalError("Failed to send email confirmation email."),
           );
-          const emailSuccess = await sendChangedEmailConfirmationEmail(
-            request.headers.host,
-            token,
-            dataToUpdate.email,
-          );
-          if (!emailSuccess && config.productionEnv) {
-            return next(
-              new FatalError("Failed to send email confirmation email."),
-            );
-          }
         }
       }
       await requestUser.update(dataToUpdate);
