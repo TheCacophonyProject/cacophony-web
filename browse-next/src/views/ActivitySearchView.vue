@@ -325,7 +325,7 @@ const initSearchParams = (): ActivitySearchParams => ({
   displayMode: defaultDisplayMode.value,
   recordingMode: defaultRecordingMode.value,
   locations: ["any"],
-  from: "24-hours-ago",
+  from: "3-days-ago",
 });
 
 const searchParams = ref<ActivitySearchParams>(initSearchParams());
