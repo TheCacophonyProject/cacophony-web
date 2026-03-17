@@ -10,7 +10,6 @@ export const server = {
     active: true,
     port: 1080,
   },
-  recordingUrlBase: "http://test.site/recording",
   browseUrl: "http://test.site",
   isLocalDev: true,
 };
