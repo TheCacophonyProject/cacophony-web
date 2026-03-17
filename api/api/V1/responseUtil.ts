@@ -143,7 +143,7 @@ export const someResponse = (
 ) => {
   const dataMessages: string[] = (data.messages as string[]) || [];
   if (response.headersSent) {
-    log.warn(`Response headers already sent, can't send error response`);
+    log.warning(`Response headers already sent, can't send error response`);
     return;
   }
   if (typeof messageOrData === "string" || Array.isArray(messageOrData)) {

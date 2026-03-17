@@ -11,9 +11,9 @@ import type {
 import type { UserId, DeviceId } from "@typedefs/api/common.js";
 
 export const CurrentViewAbortController = {
-  newView() {
+  newView(abortReason?: string) {
     if (this.controller) {
-      this.controller.abort();
+      this.controller.abort(abortReason);
     }
     this.controller = new AbortController();
   },
@@ -114,7 +114,6 @@ const getScreenOrientation = (): string => {
 const cacophonyFetchWrapper = async <T>(
   authKey: TestHandle | null,
   url: string,
-
   request: RequestInit = {},
   abortable = true,
   stateResolvers: RequestStateResolvers,

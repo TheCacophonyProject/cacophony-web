@@ -9,19 +9,19 @@ import { RecordingDataSuppliedMetadata } from "@shared/api/fileProcessing";
 const extForUploadFileType = (type: RecordingType) => {
   switch (type) {
     case RecordingType.Audio:
-      return ".m4a";
+      return "m4a";
     case RecordingType.InfraredVideo:
-      return ".mp4";
+      return "mp4";
     case RecordingType.ThermalRaw:
     default:
-      return ".cptv";
+      return "cptv";
   }
 };
 
 const getRecordingFixtureForType = (
   fixtures: Record<string, ArrayBuffer>,
   type: RecordingType,
-  variant?: "test" | "startup" | "shutdown",
+  variant?: "test" | "startup" | "shutdown" | "big-file",
 ) => {
   switch (type) {
     case RecordingType.Audio:
@@ -34,6 +34,8 @@ const getRecordingFixtureForType = (
         return fixtures["startup-status.cptv"];
       } else if (variant === "shutdown") {
         return fixtures["shutdown-status.cptv"];
+      } else if (variant === "big-file") {
+        return fixtures["small.cptv"];
       } else {
         return fixtures["oneframe.cptv"];
       }
@@ -46,7 +48,7 @@ export const uploadRecording = async (
     project: ProjectBundle;
     location?: LatLng;
     deviceHandle?: TestDeviceHandle;
-    recordingType?: "test" | "startup" | "shutdown";
+    recordingType?: "test" | "startup" | "shutdown" | "big-file";
     duration?: number;
     metadata?: RecordingDataSuppliedMetadata;
     type: RecordingType;
@@ -115,7 +117,7 @@ export const uploadRecordingFromDeviceForProject = async (options: {
   project: ProjectBundle;
   location?: LatLng;
   deviceHandle?: TestDeviceHandle;
-  recordingType?: "test" | "startup" | "shutdown";
+  recordingType?: "test" | "startup" | "shutdown" | "big-file";
   duration?: number;
   metadata?: RecordingDataSuppliedMetadata;
   type: RecordingType;
@@ -131,9 +133,10 @@ export const uploadThermalRecordingFromDeviceForProject = async (options: {
   project: ProjectBundle;
   location?: LatLng;
   deviceHandle?: TestDeviceHandle;
-  duration?: number; // Artifically set a duration for test purposes
+  duration?: number; // Artificially set a duration for test purposes
   metadata?: RecordingDataSuppliedMetadata;
   recordingDateTime: Date;
+  recordingType?: "test" | "startup" | "shutdown" | "big-file";
 }): Promise<RecordingId> => {
   return uploadRecordingFromDeviceForProject({
     ...options,

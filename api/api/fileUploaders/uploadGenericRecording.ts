@@ -254,7 +254,7 @@ interface RecordingFileUploadResult {
   fileLength: number;
   embeddedMetadata?: CptvHeader | Record<string, string | number>;
   fileName?: string;
-  interimClipThumbnail?: ThumbnailData;
+  clipThumbnail?: ThumbnailData;
 }
 
 const mapPartName = (partKey: string, partName: string): string => {
@@ -272,7 +272,11 @@ const mapPartName = (partKey: string, partName: string): string => {
 const closeStreams = async (streams: ReadableStream[]) => {
   for (const stream of streams) {
     if (stream && stream.cancel && !stream.locked) {
-      await stream.cancel();
+      try {
+        await stream.cancel();
+      } catch (_err) {
+        // Failed to cancel stream
+      }
     }
   }
 };
@@ -303,7 +307,6 @@ const processFilePart = async (
         part.filename === "file"));
   let wasValidCptvFile = true;
   let wasValidM4aFile = true;
-
   const transform = new TransformStream({
     transform(chunk, controller) {
       length += chunk.length;
@@ -369,12 +372,20 @@ const processFilePart = async (
         } else {
           await upload.done().catch((error) => {
             closeStreams(streams);
-            console.error(error);
-            if (error.name !== "AbortError") {
-              log.error("Upload error: %s", error.toString());
-              decoder.close().then(() => {
-                //throw new Error(`Upload error: '${part.name}'`);
-              });
+            if (!canceledRequest.canceled) {
+              if (
+                error.name !== "AbortError" &&
+                !error.toString().includes("Request aborted")
+              ) {
+                decoder.close().then(() => {
+                  part.emit(
+                    "error",
+                    new UnprocessableError(
+                      `Upload error: '${part.name}', ${error.toString()}'`,
+                    ),
+                  );
+                });
+              }
             }
           });
           uploaded = true;
@@ -412,7 +423,6 @@ const processFilePart = async (
       await upload.done().catch((error) => {
         closeStreams(streams);
         if (error.name !== "AbortError") {
-          log.error("Upload error: %s", error.toString());
           part.emit(
             "error",
             new UnprocessableError(
@@ -453,7 +463,7 @@ const processFilePart = async (
 
   if (embeddedMetadata && typeof embeddedMetadata !== "string") {
     if (embeddedMetadata.firstFrame) {
-      payload.interimClipThumbnail = await createThumbnail(
+      payload.clipThumbnail = await createThumbnail(
         (embeddedMetadata as CptvHeader & { firstFrame?: CptvFrame })
           .firstFrame,
         { x: 0, y: 0, width: 160, height: 120 },
@@ -842,17 +852,14 @@ export const uploadGenericRecording =
         await Visit.rebuildForRecording(recording, transaction);
       });
 
-      // If there was an interim clip thumbnail, save it
-      if (rawFileUploadResult.interimClipThumbnail) {
-        log.info(
-          "Saving interim clip thumbnail %s",
-          `${recording.rawFileKey}-thumb`,
-        );
+      // If there was a clip thumbnail, save it
+      if (rawFileUploadResult.clipThumbnail) {
+        log.info("Saving clip thumbnail %s", `${recording.rawFileKey}-thumb`);
         await openS3()
           .upload(
             `${recording.rawFileKey}-thumb`,
-            rawFileUploadResult.interimClipThumbnail.data,
-            rawFileUploadResult.interimClipThumbnail.meta,
+            rawFileUploadResult.clipThumbnail.data,
+            rawFileUploadResult.clipThumbnail.meta,
           )
           .catch((_err) => {
             // Do nothing
