@@ -7,6 +7,7 @@ import type { Recording } from "@models/Recording.js";
 import type { TrackTag } from "@models/TrackTag.js";
 import moment from "moment";
 import type { Alert } from "@models/Alert.js";
+import { urlNormaliseName } from "@/emails/htmlEmailUtils.js";
 
 export function alertBody(
   recording: Recording,
@@ -23,22 +24,22 @@ export function alertBody(
     ? `<b>${camera} has detected a ${tag.what} - ${dateTime}</b>`
     : `<b>${tag.what} detected at station ${station} - ${dateTime}</b>`;
   if (hasThumbnail) {
-    html += `<br> <a href="${config.server.recordingUrlBase}/${recording.id}/${tag.TrackId}">`;
+    html += `<br> <a href="${config.server.browseUrl}/${urlNormaliseName(recording.Group.groupName)}/recording/${recording.id}/tracks/${tag.TrackId}">`;
     html += `<img width="200" height ="200" src="cid:thumbnail" alt="recording thumbnail"></a><br>`;
   }
 
-  html += `<br><a href="${config.server.recordingUrlBase}/${recording.id}/${tag.TrackId}">View Recording</a>`;
+  html += `<br><a href="${config.server.browseUrl}/${urlNormaliseName(recording.Group.groupName)}/recording/${recording.id}/tracks/${tag.TrackId}">View Recording</a>`;
   if (station) {
-    html += `<br><br><a href="${config.server.browseUrl}/groups/${recording.Group.groupName}/station/${recording.Station.name}/${recording.Station.id}/alerts/${alert.id}">Remove this alert</a>`;
+    html += `<br><br><a href="${config.server.browseUrl}/${urlNormaliseName(recording.Group.groupName)}/my-settings">Remove this alert</a>`;
   }
   html += "<br><p>Thanks,<br> Cacophony Team</p>";
 
   let text = camera
     ? `${camera} has detected a ${tag.what} - ${dateTime}\r\n`
     : `${tag.what} detected at station ${station} - ${dateTime}\r\n`;
-  text += `Go to ${config.server.recordingUrlBase}/${recording.id}/${tag.TrackId} to view this recording\r\n`;
+  text += `Go to ${config.server.browseUrl}/${urlNormaliseName(recording.Group.groupName)}/recording/${recording.id}/tracks/${tag.TrackId} to view this recording\r\n`;
   if (station) {
-    text += `Go to ${config.server.browseUrl}/groups/${recording.Group.groupName}/station/${recording.Station.name}/${recording.Station.id}/alerts/${alert.id} to remove this alert\r\n`;
+    text += `Go to ${config.server.browseUrl}/${urlNormaliseName(recording.Group.groupName)}/my-settings to remove this alert\r\n`;
   }
   text += "Thanks, Cacophony Team";
   return [html, text];

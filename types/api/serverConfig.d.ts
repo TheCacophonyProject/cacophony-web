@@ -20,7 +20,6 @@ export interface LoadedServerConfig {
       active: true;
       port: number;
     };
-    recordingUrlBase: string;
     browseUrl: string;
     // Email addresses for admins of this installation
     adminEmails?: string[];
