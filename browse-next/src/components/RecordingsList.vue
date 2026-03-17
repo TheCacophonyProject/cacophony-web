@@ -349,7 +349,9 @@ const labelsForRecording = (recording: ApiRecordingResponse): TagItem[] => {
     }
     // Just take the human tags for the track, fall back to automatic.
   }
-  return Object.values(uniqueLabels);
+  return Object.values(uniqueLabels).sort((a, b) => {
+    return a.what > b.what ? 1 : -1;
+  });
 };
 
 const specialLabels = ["cool", "requires review", "note"];

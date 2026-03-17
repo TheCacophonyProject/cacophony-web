@@ -382,7 +382,7 @@ const alertItems = computed<AlertItem[]>(() => {
                   />
                 </div>
                 <div class="mt-2">
-                  <span class="text-muted">Last triggered:</span>
+                  <span class="text-muted">Last triggered: </span>
                   <strong v-html="card.lastTriggered"></strong>
                 </div>
                 <div class="mt-2">

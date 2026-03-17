@@ -476,7 +476,7 @@ const deserialiseAndValidateRouteValue = (
     } else {
       const date = new Date(value);
       if (!value || (value && value.trim() === "") || Number.isNaN(date)) {
-        return { replacement: availableDateRanges.value[0].from };
+        return { replacement: availableDateRanges.value[1].from }; // 3 days ago
       }
       dateRange.value = [date, dateRange.value[1]];
       searchParams.value.from = date;

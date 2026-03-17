@@ -329,7 +329,7 @@ watch(
       combinedDateRange.value[1] > maxDateForProject.value
     ) {
       console.warn("Should adjust range");
-      selectedDateRange.value = commonDateRanges.value[0] as DateRangeOption;
+      selectedDateRange.value = commonDateRanges.value[1] as DateRangeOption; // 3 days ago
       customDateRange.value = null;
     }
   },
@@ -846,7 +846,7 @@ const syncParams = (
     selectedDateRange.value = foundRange;
   } else if (next.from && !next.until) {
     // Try to match to the common date ranges and pick an option.
-    selectedDateRange.value = commonDateRanges.value[0];
+    selectedDateRange.value = commonDateRanges.value[1]; // 3 days ago
     updateDateRouteComponent(combinedDateRange.value, [now, now]);
   } else if (next.from && next.until) {
     selectedDateRange.value =
@@ -875,7 +875,7 @@ const syncParams = (
         updateDateRouteComponent(combinedDateRange.value, [now, now]);
       }
     } else {
-      selectedDateRange.value = commonDateRanges.value[0];
+      selectedDateRange.value = commonDateRanges.value[1]; // 3 days ago
     }
   }
 };

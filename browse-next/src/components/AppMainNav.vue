@@ -35,6 +35,10 @@ import {
 import type { LoadedResource } from "@apiClient/types.ts";
 import { BDropdown, BDropdownItemButton, BTooltip } from "bootstrap-vue-next";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
+import {
+  locationHasAudioRecordings,
+  locationHasThermalRecordings,
+} from "@/utils.ts";
 
 const fallibleCurrentSelectedProject = inject(
   currentSelectedProject,
@@ -48,9 +52,13 @@ const allLocations: Ref<LoadedResource<ApiLocationResponse[]>> | undefined =
   inject(allHistoricLocations);
 const someLocationsNeedRenaming = computed<boolean>(() => {
   if (allLocations?.value) {
-    return (allLocations.value as ApiLocationResponse[]).some(
-      (location) => !location.retiredAt && location.needsRename,
-    );
+    return (allLocations.value as ApiLocationResponse[])
+      .filter(
+        (location) =>
+          locationHasAudioRecordings(location) ||
+          locationHasThermalRecordings(location),
+      )
+      .some((location) => !location.retiredAt && location.needsRename);
   }
   return false;
 });
