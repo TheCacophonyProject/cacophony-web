@@ -1284,7 +1284,6 @@ const typesForRecordingMode = computed<ConcreteRecordingType[]>(() => {
 });
 
 const firstLoad = ref<boolean>(true);
-const loadingQuery = ref<string | null>(null);
 const getRecordingsOrVisitsForCurrentQuery = async () => {
   // NOTE: We try to load at most one month at a time.
   let succeededWithoutAbort = true;
@@ -1444,24 +1443,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           // NOTE: Append new visits.
           // Keep loading visits in the time-range selected until we fill up the page.
           if (visits.length) {
-            const firstVisit = visits[0];
-            let prevVisit;
-            if (prefilteredChunkedVisits.value.length) {
-              prevVisit =
-                prefilteredChunkedVisits.value[
-                  prefilteredChunkedVisits.value.length - 1
-                ];
-            }
-            //console.log(JSON.stringify(prevVisit, null, 2), JSON.stringify(firstVisit, null, 2));
-            if (
-              !prevVisit ||
-              new Date(firstVisit.timeEnd).getTime() <
-                new Date(prevVisit.timeEnd).getTime()
-            ) {
-              appendVisitsChunkedByDay(visits);
-            } else {
-              console.warn("Not appending duplicate visits");
-            }
+            appendVisitsChunkedByDay(visits);
           }
           if (visits.length === 0) {
             //debugger;
@@ -1857,7 +1839,7 @@ const adjustTimespanBackwards = async () => {
   // TODO - When we expand a search, we need to issue another count request for the span added, so we
   // can update the total.
   // console.log("adjustTimespanBackwards");
-  // await doSearch();
+  //await doSearch();
 };
 
 // FIXME: Handle recording closing etc, restoring route.
