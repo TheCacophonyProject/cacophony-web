@@ -248,6 +248,21 @@ export default function (app: Application, baseUrl: string) {
   app.post(
     apiUrl,
     extractJwtAuthorisedDevice,
+    async (request: Request, response: Response, next: NextFunction) => {
+      const device = response.locals.device;
+      if (
+        [1931, 1718, 1176, 2114, 1679, 1717, 1567, 1176, 1792].includes(
+          device.id,
+        )
+      ) {
+        if (!request.body.eventDetailId && !request.body.description) {
+          logger.warning(
+            `Event creation request missing eventDetailId and description for device ${device.id}, body contains ${Object.keys(request.body)}`,
+          );
+        }
+      }
+      next();
+    },
     validateFields(commonEventFields),
     // Extract required resources
     fetchUnAuthorizedOptionalEventDetailSnapshotById(body("eventDetailId")),
