@@ -250,20 +250,20 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorisedDevice,
     async (request: Request, response: Response, next: NextFunction) => {
       const device = response.locals.requestDevice;
-      if (
-        device &&
-        device.id &&
-        [1931, 1718, 1176, 2114, 1679, 1717, 1567, 1176, 1792].includes(
-          device.id,
-        )
-      ) {
-        if (!request.body.eventDetailId && !request.body.description) {
-          logger.warning(
-            `Event creation request missing eventDetailId and description for device ${device.id}, body contains ${Object.keys(request.body)}`,
-          );
-          logger.warning(`Request body: ${JSON.stringify(request.body)}`);
-        }
+      // if (
+      //   device &&
+      //   device.id &&
+      //   [1931, 1718, 1176, 2114, 1679, 1717, 1567, 1176, 1792].includes(
+      //     Number(device.id),
+      //   )
+      // ) {
+      if (!request.body.eventDetailId && !request.body.description) {
+        logger.warning(
+          `Event creation request missing eventDetailId and description for device ${device.id}, body contains ${Object.keys(request.body)}`,
+        );
+        logger.warning(`Request body: ${JSON.stringify(request.body)}`);
       }
+      //}
       next();
     },
     validateFields(commonEventFields),
