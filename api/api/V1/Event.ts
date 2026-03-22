@@ -249,7 +249,7 @@ export default function (app: Application, baseUrl: string) {
     apiUrl,
     extractJwtAuthorisedDevice,
     async (request: Request, response: Response, next: NextFunction) => {
-      const device = response.locals.requestUser;
+      const device = response.locals.requestDevice;
       if (
         device &&
         device.id &&
@@ -261,6 +261,7 @@ export default function (app: Application, baseUrl: string) {
           logger.warning(
             `Event creation request missing eventDetailId and description for device ${device.id}, body contains ${Object.keys(request.body)}`,
           );
+          logger.warning(`Request body: ${JSON.stringify(request.body)}`);
         }
       }
       next();
