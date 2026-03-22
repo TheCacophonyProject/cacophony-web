@@ -22,7 +22,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 24
           cache: 'npm'
           cache-dependency-path: '**/package-lock.json'
 
@@ -114,6 +114,7 @@ jobs:
       - name: Generate API docs
         run: |
           cd api
+          npm install -g npm@11.11.0
           npm update --loglevel=error apidoc-plugin-ts
           npm run apidoc
 
