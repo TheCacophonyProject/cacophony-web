@@ -249,8 +249,10 @@ export default function (app: Application, baseUrl: string) {
     apiUrl,
     extractJwtAuthorisedDevice,
     async (request: Request, response: Response, next: NextFunction) => {
-      const device = response.locals.device;
+      const device = response.locals.requestUser;
       if (
+        device &&
+        device.id &&
         [1931, 1718, 1176, 2114, 1679, 1717, 1567, 1176, 1792].includes(
           device.id,
         )
