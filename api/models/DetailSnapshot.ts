@@ -19,6 +19,7 @@ import Sequelize, { CreationOptional, DataTypes } from "sequelize";
 import { ModelStaticCommon } from "./index.js";
 import { Track } from "@models/Track.js";
 import { Event } from "@models/Event.js";
+import { JsonDocument } from "@typedefs/api/event.js";
 
 const Op = Sequelize.Op;
 export type DetailSnapshotId = number;
@@ -26,7 +27,7 @@ export type DetailSnapshotId = number;
 export class DetailSnapshot extends ModelStaticCommon<DetailSnapshot> {
   declare id: CreationOptional<DetailSnapshotId>;
   declare type: string;
-  declare details: object & {
+  declare details: JsonDocument & {
     unitName?: string;
     logs?: string[];
     nodegroup?: string;
@@ -38,7 +39,7 @@ export class DetailSnapshot extends ModelStaticCommon<DetailSnapshot> {
 
   static getOrCreateMatching = async (
     searchType: string,
-    searchDetails: object | Sequelize.WhereOptions,
+    searchDetails: JsonDocument | Sequelize.WhereOptions,
   ): Promise<DetailSnapshot> => {
     if (!searchDetails) {
       searchDetails = {

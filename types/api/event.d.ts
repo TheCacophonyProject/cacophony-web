@@ -3,9 +3,11 @@ import { AudioRecordingMode, EventEnv } from "./consts.ts";
 
 export type EventDates = IsoFormattedDateString[];
 
+export type JsonDocument = string | number | boolean | null | object;
+
 export interface EventDescription {
   type: string; // Name of the type of event (required if description is included).
-  details?: object; // Metadata of the event.
+  details?: JsonDocument; // Metadata of the event.
 }
 
 type IsoFormattedString = string;
@@ -73,4 +75,11 @@ export interface DeviceConfigDetail {
     "stop-recording"?: string;
     "start-recording"?: string;
   } | null;
+}
+
+export interface ApiSubmitEventsRequestBody {
+  Timestamp?: IsoFormattedDateString; // Deprecated, use 'dateTimes' instead
+  eventDetailId?: number; // ID of existing event details entry if known. Either eventDetailId or description are required.
+  description?: EventDescription; // Description of the event. Either eventDetailId or description are required.
+  dateTimes: IsoFormattedDateString[]; // Array of event times in ISO standard format, eg ["2017-11-13T00:47:51.160Z"]
 }

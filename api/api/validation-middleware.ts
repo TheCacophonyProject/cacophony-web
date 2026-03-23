@@ -196,9 +196,16 @@ export const anyOf = (
     message = `Expected one of ${fieldNames.map((f) => `'${f}'`).join(", ")}`;
   }
   const oneOfChain = oneOf(fields as ValidationChain[], {
-    message: (_nestedErrors, _opts) => {
-      // TODO: Maybe handle nested errors?
-      return message;
+    message: (nestedErrors, _opts) => {
+      const fieldErrors = [];
+      for (const nestedError of nestedErrors) {
+        for (const fieldError of nestedError) {
+          fieldErrors.push(
+            `'${fieldError.location}.${fieldError.path}': ${fieldError.msg} (${fieldError.value})`,
+          );
+        }
+      }
+      return `${message} :: ${fieldErrors.join(", ")}`;
     },
   });
   // Make the fieldNames available so that they can be added to the list of known allowed field names

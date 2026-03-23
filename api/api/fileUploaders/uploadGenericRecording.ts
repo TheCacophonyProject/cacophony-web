@@ -50,6 +50,7 @@ import { tryReadingM4aMetadata } from "@api/m4a-metadata-reader/m4a-metadata-rea
 import { RecordingDataSuppliedMetadata } from "@typedefs/api/fileProcessing.js";
 import { Fn } from "sequelize/lib/utils";
 import { Visit, VISITS_ADVISORY_LOCK_KEY } from "@models/Visit.js";
+import { DeviceHistory } from "@models/DeviceHistory.js";
 
 interface RecordingData {
   duration?: number;
@@ -646,6 +647,26 @@ export const uploadGenericRecording =
         }
       }
 
+      // NOTE: For uploads of old audio files without all embedded location metadata:
+      if (
+        data.type === RecordingType.Audio &&
+        !data.location &&
+        recordingDevice &&
+        recordingDevice.location
+      ) {
+        const deviceLocationAtTime =
+          await DeviceHistory.getDeviceLocationAtTime(
+            recordingDevice.id,
+            recordingDevice.GroupId,
+            data.recordingDateTime,
+          );
+        if (deviceLocationAtTime) {
+          data.location = deviceLocationAtTime;
+        } else {
+          data.location = recordingDevice.location;
+        }
+      }
+
       // Reject recordings with invalid locations
       if (
         !data.location ||
@@ -656,7 +677,7 @@ export const uploadGenericRecording =
           await deleteUploads(uploadResults);
           return next(
             new UnprocessableError(
-              `Invalid location '${JSON.stringify(data.location)}'`,
+              `Invalid location '${JSON.stringify(data.location)}' for device ${recordingDeviceId}, data: ${JSON.stringify(data)}`,
             ),
           );
         }
@@ -685,15 +706,6 @@ export const uploadGenericRecording =
         } else {
           return;
         }
-      }
-      // NOTE: Temporary until we get audio files with embedded location metadata:
-      if (
-        data.type === RecordingType.Audio &&
-        !data.location &&
-        recordingDevice &&
-        recordingDevice.location
-      ) {
-        data.location = recordingDevice.location;
       }
 
       const recordingTemplate = createRecording(

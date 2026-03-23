@@ -36,7 +36,7 @@ import {
 import { jsonSchemaOf } from "../schema-validation.js";
 import EventDatesSchema from "@schemas/api/event/EventDates.schema.json" with { type: "json" };
 import EventDescriptionSchema from "@schemas/api/event/EventDescription.schema.json" with { type: "json" };
-import type { EventDescription } from "@typedefs/api/event.js";
+import type { EventDescription, JsonDocument } from "@typedefs/api/event.js";
 import logger from "@log";
 import {
   anyOf,
@@ -79,7 +79,8 @@ const uploadEvent = async (
   if (!detailsId) {
     const description: EventDescription = request.body.description;
 
-    let details: Sequelize.WhereOptions | object = description.details || {};
+    let details: Sequelize.WhereOptions | JsonDocument =
+      description.details || {};
     if (typeof description.details === "string") {
       try {
         details = JSON.parse(description.details as string);
@@ -248,24 +249,6 @@ export default function (app: Application, baseUrl: string) {
   app.post(
     apiUrl,
     extractJwtAuthorisedDevice,
-    async (request: Request, response: Response, next: NextFunction) => {
-      const device = response.locals.requestDevice;
-      // if (
-      //   device &&
-      //   device.id &&
-      //   [1931, 1718, 1176, 2114, 1679, 1717, 1567, 1176, 1792].includes(
-      //     Number(device.id),
-      //   )
-      // ) {
-      if (!request.body.eventDetailId && !request.body.description) {
-        logger.warning(
-          `Event creation request missing eventDetailId and description for device ${device.id}, body contains ${Object.keys(request.body)}`,
-        );
-        logger.warning(`Request body: ${JSON.stringify(request.body)}`);
-      }
-      //}
-      next();
-    },
     validateFields(commonEventFields),
     // Extract required resources
     fetchUnAuthorizedOptionalEventDetailSnapshotById(body("eventDetailId")),

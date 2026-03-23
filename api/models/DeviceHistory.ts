@@ -195,6 +195,23 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
     }
     return null;
   }
+
+  static async getDeviceLocationAtTime(
+    deviceId: DeviceId,
+    groupId: GroupId,
+    atTime: Date = new Date(),
+  ): Promise<LatLng | null> {
+    const before = await this.findOne({
+      where: {
+        DeviceId: deviceId,
+        GroupId: groupId,
+        fromDateTime: { [Op.lte]: atTime },
+        location: { [Op.ne]: null },
+      },
+      order: [["fromDateTime", "DESC"]],
+    });
+    return before ? before.location : null;
+  }
 }
 export const init = (sequelizeInstance: Sequelize.Sequelize) => {
   const attributes = {

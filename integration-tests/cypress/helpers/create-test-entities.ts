@@ -16,7 +16,7 @@ export interface ProjectBundle {
   getAdmin: () => TestUserHandle;
   getOwner: () => TestUserHandle;
   getNonAdmin: () => TestUserHandle | null;
-  api: (user?: TestUserHandle) => TestApi;
+  api: (userOrDevice?: TestUserHandle | TestDeviceHandle) => TestApi;
 }
 
 const getTestName = (str: string) =>

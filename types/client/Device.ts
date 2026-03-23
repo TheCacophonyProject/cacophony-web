@@ -12,6 +12,7 @@ import type {
   ApiMaskRegionsData,
 } from "@typedefs/api/device.js";
 import type {
+  ApiSubmitEventsRequestBody,
   DeviceConfigDetail,
   DeviceEvent,
   IsoFormattedString,
@@ -739,6 +740,14 @@ const registerDevice =
     >;
   };
 
+const submitEvents =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (eventsPayload: ApiSubmitEventsRequestBody) => {
+    return api.post(authKey, "/api/v1/events", eventsPayload) as Promise<
+      FetchResult<{ success: boolean }>
+    >;
+  };
+
 const getDeviceHistoryInTest =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (deviceId: DeviceId) => {
@@ -795,6 +804,7 @@ export default (api: CacophonyApiClient) => {
     getDeviceModel: getDeviceModel(api),
     registerDevice: registerDevice(api),
     getDeviceHistoryInTest: getDeviceHistoryInTest(api),
+    submitEvents: submitEvents(api),
     withAuth: (authKey: TestHandle) => ({
       deleteDevice: deleteDevice(api, authKey),
       setDeviceActive: setDeviceActive(api, authKey),
@@ -856,6 +866,7 @@ export default (api: CacophonyApiClient) => {
       getDeviceModel: getDeviceModel(api, authKey),
       registerDevice: registerDevice(api, authKey),
       getDeviceHistoryInTest: getDeviceHistoryInTest(api, authKey),
+      submitEvents: submitEvents(api, authKey),
     }),
   };
 };
