@@ -153,7 +153,10 @@ const uploadEvent = async (
       }
     }
   }
-  const now = new Date();
+  // NOTE: Allow event dates to be a little in the future to account for clock drift.
+  const tenMinutesFromNow = new Date(
+    new Date().setMinutes(new Date().getMinutes() + 10),
+  );
   const eventList = request.body.dateTimes
     .map((dateTime: IsoFormattedDateString) => ({
       DeviceId: device.id,
@@ -162,7 +165,7 @@ const uploadEvent = async (
       env,
     }))
     .filter((event: { dateTime: Date }) => {
-      if (event.dateTime > now) {
+      if (event.dateTime > tenMinutesFromNow) {
         logger.warning(
           "Discarding event with invalid future dateTime %s.",
           JSON.stringify(event),
