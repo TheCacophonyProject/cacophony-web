@@ -17,18 +17,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 import mime from "mime";
 import moment from "moment-timezone";
-import {
+import Sequelize, {
   BelongsTo,
   CreationOptional,
   DataTypes,
+  FindAttributeOptions,
   ForeignKey,
   HasMany,
   HasManyCreateAssociationMixin,
   HasManyGetAssociationsMixin,
   NonAttribute,
+  Order,
   Transaction,
 } from "sequelize";
-import Sequelize from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 import config from "../config.js";
 import _ from "lodash";
@@ -66,6 +67,7 @@ import { DetailSnapshotId } from "@models/DetailSnapshot.js";
 import { locationField } from "@models/util/util.js";
 import type { ApiTrackPosition } from "@typedefs/api/track.js";
 import { User } from "@models/User.js";
+
 const maxQueryResults = 10000;
 class RecordingQueryBuilder {
   constructor() {
@@ -378,7 +380,6 @@ class RecordingQueryBuilder {
     tagTypeSql?: SqlString,
     exclusive?: boolean,
   ) {
-    // FIXME: How is this correct?  The database table is called "Recordings"
     let sql = `SELECT "Recording"."id" FROM "Tracks" INNER JOIN "TrackTags" AS "Tags" ON "Tracks"."id" = "Tags"."TrackId" WHERE "Tags".
     "archivedAt" IS NULL AND "Tracks"."RecordingId" = "Recording".id AND "Tracks"."archivedAt" IS NULL`;
     const tagsSql = tags
@@ -714,20 +715,21 @@ export class Recording extends ModelStaticCommon<Recording> {
    */
   static async getOneForProcessing(
     type: RecordingType,
-    state: RecordingProcessingState,
+    states: RecordingProcessingState[],
   ) {
-    let includeQ = [];
     const where = {
       type: type,
       deletedAt: { [Op.eq]: null },
       [Op.or]: [
         {
-          processingState: state,
+          processingState: { [Op.in]: states },
           [Op.or]: [
             {
+              // Ready to be processed
               processing: { [Op.is]: Sequelize.literal("distinct from true") },
             },
             {
+              // Set to processing but older than 30mins, means processing job was abandoned.
               currentStateStartTime: {
                 [Op.lt]: Sequelize.literal("NOW() - INTERVAL '30 minutes'"),
               },
@@ -737,43 +739,46 @@ export class Recording extends ModelStaticCommon<Recording> {
           ],
         },
         {
+          // Retry a failed recording, if failed more than 12 hours ago
           processingFailedCount: { [Op.lte]: MaxProcessingRetries },
-          //retry a failed recording
           currentStateStartTime: {
             [Op.lt]: Sequelize.literal("NOW() - INTERVAL '12 hours'"),
           },
-          processingState: `${state}.failed`,
+          processingState: {
+            [Op.in]: states.map((state) => `${state}.failed`),
+          },
         },
       ],
     };
-    if (state === RecordingProcessingState.Finished) {
-      //check if any tracks have been made in the last day by users that haven't had AI run against it
-      where[Op.and] = Sequelize.literal(
-        ` not exists(select 1 from "TrackTags" where "automatic" = true and "TrackId"= "Tracks"."id" limit 1)`,
-      );
-      includeQ = [
-        {
-          model: Track,
-          where: {
-            archivedAt: null,
-            createdAt: {
-              [Op.gt]: Sequelize.literal("NOW() - INTERVAL '1 day'"),
-            },
-          },
-          attributes: [],
-        },
+    let sortOrder: Order = [
+      Sequelize.literal(
+        `("Recording"."processing" is distinct from true) desc`,
+      ),
+      ["processingFailedCount", "ASC NULLS FIRST"], // only do these after all others
+      ["isRecent", "DESC"],
+      ["uploader", "DESC NULLS LAST"],
+      ["processingState", "asc"], // If we ask for 'analyse' or 'trackAndAnalyse', prioritise 'analyse'
+      ["recordingDateTime", "asc"],
+      ["id", "asc"], // Adding another order is a "fix" for a bug in postgresql causing the query to be slow
+    ];
+    const attributes: FindAttributeOptions = [
+      "id",
+      [
+        Sequelize.literal(
+          `"Recording"."recordingDateTime" > now() - interval '1 day'`,
+        ),
+        "isRecent",
+      ],
+    ];
+    if (type === RecordingType.ThermalRaw) {
+      sortOrder = [
+        ...sortOrder.slice(0, 2),
+        // We only care about hasAlert if the recording is less than 24 hours old, and only for thermal recordings.
+        ["hasAlert", "DESC"],
+        ...sortOrder.slice(2),
       ];
-    }
-    return this.sequelize
-      .transaction(async (transaction: Transaction) => {
-        const recording = await this.findOne({
-          subQuery: false,
-          where: where,
-          include: includeQ,
-          attributes: [
-            "id",
-            [
-              Sequelize.literal(`case
+      attributes.push([
+        Sequelize.literal(`case
                 when "Recording"."recordingDateTime" > now() - interval '1 day' then
                   (
                     exists (
@@ -789,36 +794,63 @@ export class Recording extends ModelStaticCommon<Recording> {
                   )
                 else false
               end`),
-              "hasAlert",
-            ],
-            [
-              Sequelize.literal(
-                `"Recording"."recordingDateTime" > now() - interval '1 day'`,
+        "hasAlert",
+      ]);
+    }
+    return await this.sequelize.transaction(
+      async (transaction: Transaction) => {
+        let recording: Recording | null;
+        if (states.includes(RecordingProcessingState.Finished)) {
+          // When there is a new user-created audio track, we want to pick it up and classify it, even though
+          // the user will be adding a human tag to it.
+          recording = await this.findOne({
+            subQuery: false,
+            where: {
+              ...where,
+              [Op.and]: Sequelize.literal(
+                ` not exists(select 1 from "TrackTags" where "automatic" = true and "TrackId"= "Tracks"."id" limit 1)`,
               ),
-              "isRecent",
+            },
+            include: [
+              {
+                model: Track,
+                where: {
+                  archivedAt: null,
+                  createdAt: {
+                    [Op.gt]: Sequelize.literal("NOW() - INTERVAL '1 day'"),
+                  },
+                },
+                attributes: [],
+              },
             ],
-          ],
-          order: [
-            Sequelize.literal(
-              `("Recording"."processing" is distinct from true) desc`,
-            ),
-            ["processingFailedCount", "ASC NULLS FIRST"], //only do these after all others
-            ["hasAlert", "DESC"], // We only care about hasAlert if the recording is less than 24 hours old
-            ["isRecent", "DESC"],
-            ["uploader", "DESC NULLS LAST"],
-            ["recordingDateTime", "asc"],
-            ["id", "asc"], // Adding another order is a "fix" for a bug in postgresql causing the query to be slow
-          ],
-          skipLocked: true,
-          lock: transaction.LOCK.UPDATE,
-          transaction,
-        });
+            attributes,
+            order: sortOrder,
+            skipLocked: true,
+            lock: transaction.LOCK.UPDATE,
+            transaction,
+          });
+        }
+        if (
+          !recording &&
+          (!states.includes(RecordingProcessingState.Finished) ||
+            states.length > 1)
+        ) {
+          // Look for regular recordings to be processed, *not* audio recordings that are finished with no track-tags
+          recording = await this.findOne({
+            subQuery: false,
+            where: where,
+            attributes,
+            order: sortOrder,
+            skipLocked: true,
+            lock: transaction.LOCK.UPDATE,
+            transaction,
+          });
+        }
         if (recording === null) {
           return recording;
         }
         const actualRecording = await this.findOne({
           where: { id: recording.id },
-          include: includeQ,
           attributes: [
             "id",
             "type",
@@ -863,11 +895,8 @@ export class Recording extends ModelStaticCommon<Recording> {
           transaction,
         });
         return actualRecording;
-      })
-      .then((result) => result)
-      .catch(() => {
-        return null;
-      });
+      },
+    );
   }
 
   //------------------

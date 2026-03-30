@@ -16,22 +16,23 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware from "../middleware.js";
+import { validateFields } from "../middleware.js";
 import config from "@config";
 import { ClientError } from "../customErrors.js";
-import type { Application, Request, Response } from "express";
+import type { Application, NextFunction, Request, Response } from "express";
 import type { GroupId, UserId } from "@typedefs/api/common.js";
 import { SuperUsers } from "@/Globals.js";
 import { Op } from "sequelize";
 import { openS3 } from "@models/util/util.js";
-import { signedUrl } from "@api/auth.js";
 import type { ReadableStream } from "stream/web";
 import { serverErrorResponse } from "@api/V1/responseUtil.js";
 import fs from "fs/promises";
 import { GroupUsers } from "@models/GroupUsers.js";
 import { User } from "@models/User.js";
-import { JwtPayload } from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import { once } from "events";
+import { body } from "express-validator";
+import { HttpStatusCode } from "@typedefs/api/consts.js";
 
 export const streamS3Object = async (
   request: Request,
@@ -303,8 +304,31 @@ export default function (app: Application, baseUrl: string) {
 
   app.get(
     `${baseUrl}/signedUrl`,
-    [signedUrl],
-    middleware.requestWrapper(async (request: Request, response: Response) => {
+    validateFields([body("jwt").exists().isString()]),
+    async (request: Request, response: Response, next: NextFunction) => {
+      // Validate the signed url JWT
+      const jwtParam: string = request.query["jwt"] as string;
+      let jwtDecoded: JwtPayload;
+      try {
+        jwtDecoded = jwt.verify(
+          jwtParam,
+          config.server.passportSecret,
+        ) as JwtPayload;
+      } catch (_e) {
+        return response
+          .status(HttpStatusCode.Forbidden)
+          .json({ messages: ["Failed to verify JWT."] });
+      }
+
+      if (jwtDecoded._type !== "fileDownload") {
+        return response
+          .status(HttpStatusCode.Forbidden)
+          .json({ messages: ["Incorrect JWT type."] });
+      }
+      response.locals.jwtDecoded = jwtDecoded;
+      next();
+    },
+    async (request: Request, response: Response) => {
       // TODO: If this signed url has a user, then we can attribute downloads + bandwidth
       //  to that user for billing purposes.
       const jwtDecoded: JwtPayload = response.locals.jwtDecoded;
@@ -326,6 +350,6 @@ export default function (app: Application, baseUrl: string) {
         userId,
         groupId,
       );
-    }),
+    },
   );
 }

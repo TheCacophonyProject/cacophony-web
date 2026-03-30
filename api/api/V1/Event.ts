@@ -16,11 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import {
-  expectedTypeOf,
-  validateFields,
-  requestWrapper,
-} from "../middleware.js";
+import { expectedTypeOf, validateFields } from "../middleware.js";
 import { initSequelize } from "@models/index.js";
 import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
@@ -95,7 +91,7 @@ const uploadEvent = async (
     }
 
     env = details["env"] || "unknown";
-    if (["tc2-dev", "tc2-test", "tc2-prod", "unknown"].includes(env)) {
+    if (!["tc2-dev", "tc2-test", "tc2-prod", "unknown"].includes(env)) {
       env = "unknown";
     }
     delete details["env"];
@@ -268,7 +264,7 @@ export default function (app: Application, baseUrl: string) {
       next();
     },
     // Finally, upload event(s)
-    requestWrapper(uploadEvent),
+    uploadEvent,
   );
 
   /**
@@ -419,7 +415,7 @@ export default function (app: Application, baseUrl: string) {
       next();
     },
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
-    requestWrapper(uploadEvent),
+    uploadEvent,
   );
 
   /**

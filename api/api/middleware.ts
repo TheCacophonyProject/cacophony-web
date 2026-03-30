@@ -300,37 +300,6 @@ export const parseBool = function (value: unknown): boolean {
   return false;
 };
 
-export const requestWrapper = (fn) => (request, response: Response, next) => {
-  let logMessage = format("%s %s", request.method, request.url);
-  if (request.user) {
-    logMessage = format(
-      "%s (user: %s)",
-      logMessage,
-      request.user.get("userName"),
-    );
-  } else if (request.device) {
-    logMessage = format(
-      "%s (device: %s)",
-      logMessage,
-      request.device.get("deviceName"),
-    );
-  }
-  log.info(logMessage);
-  const validationErrors = validationResult(request);
-  if (!validationErrors.isEmpty()) {
-    log.warning(
-      "%s",
-      validationErrors
-        .array()
-        .map((item) => JSON.stringify(item))
-        .join(", "),
-    );
-    throw new customErrors.ValidationError(validationErrors);
-  } else {
-    Promise.resolve(fn(request, response, next)).catch(next);
-  }
-};
-
 export const expectedTypeOf =
   (...type: string[]) =>
   (val) => {
@@ -513,7 +482,6 @@ export default {
   parseJSON,
   parseArray,
   parseBool,
-  requestWrapper,
   isDateArray,
   getUserByEmail,
   viewMode,

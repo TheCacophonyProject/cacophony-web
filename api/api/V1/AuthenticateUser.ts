@@ -366,7 +366,7 @@ export default function (app: Application, baseUrl: string) {
     "/token",
     validateFields([body("ttl").optional(), body("access").optional()]),
     authenticateUser(),
-    middleware.requestWrapper(async (request: Request, response: Response) => {
+    async (request: Request, response: Response) => {
       // FIXME - deprecate or remove this if not used anywhere?
       const expiry = ttlTypes[request.body.ttl] || ttlTypes["short"];
       const token = createEntityJWT(
@@ -375,7 +375,7 @@ export default function (app: Application, baseUrl: string) {
         request.body.access,
       );
       return successResponse(response, "Token generated.", { token });
-    }),
+    },
   );
 
   const resetPasswordOptions = [

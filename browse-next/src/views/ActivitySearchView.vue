@@ -735,7 +735,7 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
 });
 
 const selectedLocations = computed<(ApiLocationResponse | "any")[]>(() => {
-  if (searchParams.value.locations.includes("any")) {
+  if (searchParams.value.locations.includes("any") || searchParams.value.locations.length === 0) {
     return ["any"];
   }
   return searchParams.value.locations
@@ -1190,7 +1190,7 @@ const appendRecordingsChunkedByDay = (recordings: ApiRecordingResponse[]) => {
       recording.status
     ) {
       let detail = "test recording";
-      if (recording.status) {
+      if (recording.status && recording.status !== "true") {
         detail = `${recording.status} recording`;
       }
       recording.tags.push({

@@ -32,7 +32,7 @@ const credentialsResolvers = {
     if (!authKey) {
       return false;
     }
-    if (authKey.startsWith("user-")) {
+    if (authKey.startsWith("cy_user-")) {
       const loggedInUserCredentials = userCredentials.get(authKey);
       if (!loggedInUserCredentials) {
         return false;
@@ -74,7 +74,7 @@ const credentialsResolvers = {
       }
       return loggedInUserCredentials.apiToken;
       // If not expiring in the next few seconds, use, otherwise refresh.
-    } else if (authKey.startsWith("device-")) {
+    } else if (authKey.startsWith("cy_device-")) {
       const loggedInDeviceCredentials = deviceCredentials.get(authKey);
       if (!loggedInDeviceCredentials) {
         return false;
@@ -84,9 +84,9 @@ const credentialsResolvers = {
     }
   },
   forgetCredentials: (authKey: TestHandle) => {
-    if (authKey.startsWith("user-")) {
+    if (authKey.startsWith("cy_user-")) {
       userCredentials.delete(authKey);
-    } else if (authKey.startsWith("device-")) {
+    } else if (authKey.startsWith("cy_device-")) {
       deviceCredentials.delete(authKey);
     }
   },
@@ -94,9 +94,9 @@ const credentialsResolvers = {
     authKey: TestHandle,
     credentials: LoggedInUserAuth | LoggedInDeviceCredentials,
   ) => {
-    if (authKey.startsWith("user-")) {
+    if (authKey.startsWith("cy_user-")) {
       userCredentials.set(authKey, credentials as LoggedInUserAuth);
-    } else if (authKey.startsWith("device-")) {
+    } else if (authKey.startsWith("cy_device-")) {
       deviceCredentials.set(authKey, credentials as LoggedInDeviceCredentials);
     }
   },

@@ -9,7 +9,11 @@ import type {
 } from "@typedefs/api/common.js";
 import type { ApiRecordingResponse } from "@typedefs/api/recording.js";
 import type { ApiTrackTagRequest } from "@typedefs/api/trackTag.js";
-import { RecordingType, TagMode } from "@typedefs/api/consts.js";
+import {
+  RecordingProcessingState,
+  RecordingType,
+  TagMode,
+} from "@typedefs/api/consts.js";
 import type { ApiTrackDataRequest } from "@typedefs/api/track.js";
 import type {
   FetchResult,
@@ -22,6 +26,7 @@ import type { CacophonyApiClient } from "@typedefs/client/api.js";
 
 import { unwrapLoadedResource } from "@typedefs/client/api.js";
 import { ApiRecordingUploadData } from "@typedefs/api/recording.js";
+import { NonEmptyArray } from "@typedefs/client/utils.js";
 
 export interface QueryRecordingsOptions {
   devices?: DeviceId[];
@@ -525,6 +530,22 @@ const updateResizedTrack =
     ) as Promise<FetchResult<void>>;
   };
 
+const getOneRecordingForProcessing =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    type: RecordingType,
+    withStates: NonEmptyArray<RecordingProcessingState>,
+  ) => {
+    const params = new URLSearchParams();
+    params.append("type", type);
+    for (const state of withStates) {
+      params.append("state", state);
+    }
+    return api.get(authKey, `/api/v1/processing/?${params}`, false) as Promise<
+      FetchResult<{ recording: ApiRecordingResponse }>
+    >;
+  };
+
 export default (api: CacophonyApiClient) => {
   return {
     getRecordingById: getRecordingById(api),
@@ -551,6 +572,7 @@ export default (api: CacophonyApiClient) => {
     getRawRecording: getRawRecording(api),
     updateResizedTrack: updateResizedTrack(api),
     getThumbnail: getThumbnail(api),
+    getOneRecordingForProcessing: getOneRecordingForProcessing(api),
     withAuth: (authKey: TestHandle) => ({
       getRecordingById: getRecordingById(api, authKey),
       getThumbnail: getThumbnail(api, authKey),
@@ -586,6 +608,7 @@ export default (api: CacophonyApiClient) => {
       uploadRecordingFromDevice: uploadRecordingFromDevice(api, authKey),
       getRawRecording: getRawRecording(api, authKey),
       updateResizedTrack: updateResizedTrack(api, authKey),
+      getOneRecordingForProcessing: getOneRecordingForProcessing(api, authKey),
     }),
   };
 };

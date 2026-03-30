@@ -15,6 +15,7 @@ export interface ProjectBundle {
   testFixtures: Record<string, ArrayBuffer>;
   getAdmin: () => TestUserHandle;
   getOwner: () => TestUserHandle;
+  getTestSuperUser: () => TestUserHandle;
   getNonAdmin: () => TestUserHandle | null;
   api: (userOrDevice?: TestUserHandle | TestDeviceHandle) => TestApi;
 }
@@ -43,10 +44,35 @@ const getTestFixtures = async (
   return loadedFixtures;
 };
 
+export const createSuperAdminUser = async (
+  userName: string,
+  email: string,
+  password: string,
+): Promise<TestUserHandle | null> => {
+  const userHandle = getTestName(`cy_user-${userName}`);
+  const userResponse = await TestApiImpl.Users.login(email, password);
+  expect(userResponse.success, "login super admin user").to.be.true;
+  if (userResponse.success) {
+    TestApiImpl.registerCredentials(userHandle, {
+      userData: userResponse.result.userData,
+      refreshToken: userResponse.result.refreshToken,
+      apiToken: userResponse.result.token,
+    });
+    const userId = userResponse.result.userData.id;
+    cy.log(`Logged in test super admin user ${userHandle} with id ${userId}`);
+    return {
+      testId: userHandle,
+      id: userId,
+      type: "user",
+    };
+  }
+  return null;
+};
+
 export const createUser = async (
   userName: string,
 ): Promise<TestUserHandle | null> => {
-  const userHandle = getTestName(`user-${userName}`);
+  const userHandle = getTestName(`cy_user-${userName}`);
   const userResponse = await TestApiImpl.Users.register(
     userHandle,
     "password",
@@ -75,7 +101,7 @@ export const createProject = async (
   projectName: string,
   userHandle: TestUserHandle,
 ): Promise<TestProjectHandle | null> => {
-  const projectHandle = getTestName(`project-${projectName}`);
+  const projectHandle = getTestName(`cy_project-${projectName}`);
   const projectResponse = await TestApiImpl.Projects.withAuth(
     userHandle.testId,
   ).addNewProject(projectHandle);
@@ -98,7 +124,7 @@ export const addDeviceToProject = async (
   deviceName: string,
   projectHandle: TestProjectHandle,
 ): Promise<TestDeviceHandle | null> => {
-  const deviceHandle = getTestName(`device-${deviceName}`);
+  const deviceHandle = getTestName(`cy_device-${deviceName}`);
   const deviceResponse = await TestApiImpl.Devices.registerDevice(
     projectHandle.testId,
     deviceHandle,
@@ -137,7 +163,17 @@ export const createProjectWithUserAndDevice = async (options?: {
   const locationBase =
     (options && options.locationBase) || testLocation(-42.0, 172.0, 5.0);
 
+  const superUserLoginCredentials: {
+    name: string;
+    password: string;
+    email: string;
+  } = Cypress.env("testCreds")["superuser"];
   const userHandle = await createUser(nameBase);
+  const testSuperAdminHandle = await createSuperAdminUser(
+    superUserLoginCredentials.name,
+    superUserLoginCredentials.email,
+    superUserLoginCredentials.password,
+  );
   const projectHandle = await createProject(nameBase, userHandle);
   const deviceHandle = await addDeviceToProject(nameBase, projectHandle);
   return {
@@ -151,6 +187,9 @@ export const createProjectWithUserAndDevice = async (options?: {
     },
     getOwner: (): TestUserHandle => {
       return userHandle;
+    },
+    getTestSuperUser: (): TestUserHandle => {
+      return testSuperAdminHandle;
     },
     getNonAdmin: (): TestUserHandle | null => {
       // There may not be non-admin users.

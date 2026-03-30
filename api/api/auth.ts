@@ -290,39 +290,6 @@ export async function lookupEntity(jwtDecoded: DecodedJWTToken) {
   }
 }
 
-export function signedUrl(
-  request: Request,
-  response: Response,
-  next: NextFunction,
-) {
-  const jwtParam: string = request.query["jwt"] as string;
-  if (!jwtParam) {
-    return response
-      .status(HttpStatusCode.Forbidden)
-      .json({ messages: ["Could not find JWT token in query params."] });
-  }
-  let jwtDecoded: JwtPayload;
-  try {
-    jwtDecoded = jwt.verify(
-      jwtParam,
-      config.server.passportSecret,
-    ) as JwtPayload;
-  } catch (_e) {
-    return response
-      .status(HttpStatusCode.Forbidden)
-      .json({ messages: ["Failed to verify JWT."] });
-  }
-
-  if (jwtDecoded._type !== "fileDownload") {
-    return response
-      .status(HttpStatusCode.Forbidden)
-      .json({ messages: ["Incorrect JWT type."] });
-  }
-
-  response.locals.jwtDecoded = jwtDecoded;
-  next();
-}
-
 /*
  * Authenticate a JWT in the 'Authorization' header of the given type
  */

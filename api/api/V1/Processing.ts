@@ -1,5 +1,5 @@
 import { successResponse } from "../V1/responseUtil.js";
-import middleware, { validateFields } from "../middleware.js";
+import { validateFields } from "../middleware.js";
 import log from "@log";
 import { body, oneOf, param, query } from "express-validator";
 import _ from "lodash";
@@ -51,10 +51,6 @@ import type {
 } from "@/../types/api/fileProcessing.js";
 import { Visit } from "@models/Visit.js";
 import LabelPaths from "@/classifications/label_paths.json" with { type: "json" };
-import {
-  ApiThermalRecordingMetadataResponse,
-  ApiThermalRecordingResponse,
-} from "@typedefs/api/recording.js";
 
 const NULL_TRACK_ID = 1;
 
@@ -77,42 +73,45 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     apiUrl,
     extractJwtAuthorisedSuperAdminUser,
-    [
+    validateFields([
       oneOf([
         [
           query("type").equals(RecordingType.Audio),
-          query("state").isIn([
-            RecordingProcessingState.Reprocess,
-            RecordingProcessingState.Analyse,
-            RecordingProcessingState.Finished,
-          ]),
+          query("state")
+            .toArray()
+            .isIn([
+              RecordingProcessingState.Reprocess,
+              RecordingProcessingState.Analyse,
+              RecordingProcessingState.Finished,
+            ]),
         ],
         [
           query("type").isIn([
             RecordingType.InfraredVideo,
             RecordingType.ThermalRaw,
           ]),
-          query("state").isIn([
-            RecordingProcessingState.Reprocess,
-            RecordingProcessingState.AnalyseThermal,
-            RecordingProcessingState.TrackAndAnalyse,
-            RecordingProcessingState.Tracking,
-            RecordingProcessingState.ReTrack,
-          ]),
+          query("state")
+            .toArray()
+            .isIn([
+              RecordingProcessingState.Reprocess,
+              RecordingProcessingState.AnalyseThermal,
+              RecordingProcessingState.TrackAndAnalyse,
+              RecordingProcessingState.Tracking,
+              RecordingProcessingState.ReTrack,
+            ]),
         ],
       ]),
-    ],
-    middleware.requestWrapper(async (request: Request, response: Response) => {
+    ]),
+    async (request: Request, response: Response) => {
       const type = request.query.type as RecordingType;
-      const state = request.query.state as RecordingProcessingState;
-      const recording = await Recording.getOneForProcessing(type, state);
+      const states = request.query.state as RecordingProcessingState[];
+      const recording = await Recording.getOneForProcessing(type, states);
       if (recording === null) {
         log.debug(
-          "No file to be processed for '%s' in state '%s.",
+          "No file to be processed for '%s' in state(s) '%s'.",
           type,
-          state,
+          states.join("', '"),
         );
-        // FIXME - Do we really want this status code/response?
         return response.status(HttpStatusCode.OkNoContent).json();
       } else {
         const rawJWT = signedToken(
@@ -123,14 +122,14 @@ export default function (app: Application, baseUrl: string) {
         const rec = recording.dataValues;
         if (rec.location) {
           // Some versions of postgres seem to put this in.
-          delete rec.location.crs;
+          delete rec.location["crs"];
         }
         return successResponse(response, {
           recording: rec,
           rawJWT,
         });
       }
-    }),
+    },
   );
 
   /**

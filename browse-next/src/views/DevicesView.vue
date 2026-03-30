@@ -630,13 +630,13 @@ const iconForPowerStatus = (powerStatus: DeviceStatus): IconsProp => {
             name: 'activity',
             query: {
               devices: [selectedDevice.id],
-              //locations: [deviceLocation.id],
               until: (
                 (selectedDeviceLatestRecordingDateTime || new Date()) as Date
               ).toISOString(),
               from: (
                 (selectedDeviceActiveFrom || cacophonyEpoch) as Date
               ).toISOString(),
+              locations: 'any',
               'display-mode': 'recordings',
               'recording-mode': deviceRecordingMode,
             },
