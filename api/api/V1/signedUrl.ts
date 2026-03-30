@@ -31,7 +31,7 @@ import { GroupUsers } from "@models/GroupUsers.js";
 import { User } from "@models/User.js";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { once } from "events";
-import { body } from "express-validator";
+import { body, query } from "express-validator";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 
 export const streamS3Object = async (
@@ -304,7 +304,7 @@ export default function (app: Application, baseUrl: string) {
 
   app.get(
     `${baseUrl}/signedUrl`,
-    validateFields([body("jwt").exists().isString()]),
+    validateFields([query("jwt").exists().isString()]),
     async (request: Request, response: Response, next: NextFunction) => {
       // Validate the signed url JWT
       const jwtParam: string = request.query["jwt"] as string;
