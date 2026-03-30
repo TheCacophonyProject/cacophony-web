@@ -27,35 +27,20 @@ export const latestRecordingTimeForDeviceAtLocation = (
   device: ApiDeviceResponse,
   location: ApiLocationResponse,
 ): Date | null => {
-  if (location && device.type) {
-    if (
-      device.type === ConcreteDeviceType.Hybrid &&
-      (location.lastAudioRecordingTime || location.lastThermalRecordingTime)
-    ) {
-      if (
-        location.lastAudioRecordingTime &&
-        location.lastThermalRecordingTime
-      ) {
-        return new Date(
-          Math.max(
-            new Date(location.lastAudioRecordingTime).getTime(),
-            new Date(location.lastThermalRecordingTime).getTime(),
-          ),
-        );
-      } else if (location.lastAudioRecordingTime) {
-        return new Date(location.lastAudioRecordingTime);
-      } else if (location.lastThermalRecordingTime) {
-        return new Date(location.lastThermalRecordingTime);
-      }
-    } else if (
-      device.type === ConcreteDeviceType.Audio &&
-      location.lastAudioRecordingTime
-    ) {
+  if (
+    location &&
+    (location.lastAudioRecordingTime || location.lastThermalRecordingTime)
+  ) {
+    if (location.lastAudioRecordingTime && location.lastThermalRecordingTime) {
+      return new Date(
+        Math.max(
+          new Date(location.lastAudioRecordingTime).getTime(),
+          new Date(location.lastThermalRecordingTime).getTime(),
+        ),
+      );
+    } else if (location.lastAudioRecordingTime) {
       return new Date(location.lastAudioRecordingTime);
-    } else if (
-      device.type === ConcreteDeviceType.Thermal &&
-      location.lastThermalRecordingTime
-    ) {
+    } else if (location.lastThermalRecordingTime) {
       return new Date(location.lastThermalRecordingTime);
     }
   }

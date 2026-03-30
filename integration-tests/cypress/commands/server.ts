@@ -528,7 +528,7 @@ export function testRunOnApi(
 ) {
   if (Cypress.env("running_in_a_dev_environment") == true) {
     cy.exec(
-      `cd ../api && docker-compose exec -T server bash -lic ${command}`,
+      `cd ../api && docker exec cacophony-web bash -lic "${command}"`,
       options,
     ).then((val) => callback && callback(val));
   } else {
@@ -543,6 +543,12 @@ export function testRunOnApi(
     }
   }
 }
+
+export const testRunDockerCommand = async (command: string, options = {}) => {
+  return new Promise((resolve) => {
+    testRunOnApi(command, options, resolve);
+  });
+};
 
 export function checkMessages(
   response: Cypress.Response<{ messages: string[] }>,

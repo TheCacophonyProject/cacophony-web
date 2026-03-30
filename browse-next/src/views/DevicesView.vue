@@ -1,55 +1,41 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
-import { computed, inject, onBeforeMount, ref, watch } from "vue";
-import type { Ref, ComputedRef } from "vue";
-import type { ApiDeviceResponse } from "@typedefs/api/device";
-import { ClientApi } from "@/api";
-import {
-  DevicesForCurrentProject,
-  type SelectedProject,
-} from "@models/LoggedInUser";
-import type {
-  CardTableItem,
-  CardTableRows,
-  GenericCardTableValue,
-} from "@/components/CardTableTypes";
-import { DateTime } from "luxon";
+import type {ComputedRef, Ref} from "vue";
+import {computed, inject, onBeforeMount, ref, watch} from "vue";
+import type {ApiDeviceResponse} from "@typedefs/api/device";
+import {ClientApi} from "@/api";
+import {DevicesForCurrentProject, projectDevicesLoaded, type SelectedProject,} from "@models/LoggedInUser";
+import type {CardTableItem, CardTableRows, GenericCardTableValue,} from "@/components/CardTableTypes";
+import {DateTime} from "luxon";
 import MapWithPoints from "@/components/MapWithPoints.vue";
-import type { NamedPoint } from "@models/mapUtils";
-import type { DeviceId, LatLng } from "@typedefs/api/common";
+import type {NamedPoint} from "@models/mapUtils";
+import type {DeviceId, LatLng} from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
-import { DeviceType } from "@typedefs/api/consts.ts";
+import {DeviceType} from "@typedefs/api/consts.ts";
 import DeviceName from "@/components/DeviceName.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
-import { type RouteLocationRaw, useRoute, useRouter } from "vue-router";
-import { urlNormaliseName } from "@/utils";
+import {type RouteLocationRaw, useRoute, useRouter} from "vue-router";
+import {urlNormaliseName} from "@/utils";
 import {
   allHistoricLocations,
   currentSelectedProject,
   selectedProjectDevices,
   userIsProjectAdmin,
 } from "@models/provides";
-import { projectDevicesLoaded } from "@models/LoggedInUser";
+import {deviceScheduledPowerOffTime, deviceScheduledPowerOnTime,} from "@/components/DeviceUtils";
+import type {ApiStationResponse,} from "@typedefs/api/station";
+import type {LoadedResource} from "@apiClient/types.ts";
 import {
-  deviceScheduledPowerOffTime,
-  deviceScheduledPowerOnTime,
-} from "@/components/DeviceUtils";
-import type {
-  ApiStationResponse as ApiLocationResponse,
-  ApiStationResponse,
-} from "@typedefs/api/station";
-import type { LoadedResource } from "@apiClient/types.ts";
-import {
-  latestRecordingTimeForDeviceAtLocation,
   latLngApproxDistance,
   MAX_DISTANCE_FROM_STATION_FOR_RECORDING,
 } from "@/helpers/Location.ts";
 import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
 import LocationName from "@/components/LocationName.vue";
-import { BBadge, BButton, BFormCheckbox, BSpinner } from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
-import { useMediaQuery } from "@vueuse/core";
-import type { IconsProp } from "@dbetka/vue-material-symbols/dist/jscache/icons-names";
+import {BBadge, BButton, BFormCheckbox, BSpinner} from "bootstrap-vue-next";
+import {MaterialSymbol} from "@dbetka/vue-material-symbols";
+import {useMediaQuery} from "@vueuse/core";
+import type {IconsProp} from "@dbetka/vue-material-symbols/dist/jscache/icons-names";
+import {ActivitySearchRecordingMode} from "@/components/activitySearchUtils.ts";
 
 const activeProjectDevices = inject(selectedProjectDevices) as Ref<
   LoadedResource<ApiDeviceResponse[]>
@@ -268,7 +254,7 @@ interface DeviceTableItem {
   __type: DeviceType;
   lastSeen: string;
   __active: boolean;
-  status: string | boolean;
+  status: DeviceStatus;
   location: string;
   batteryLevel: ApiDeviceResponse;
 
@@ -548,27 +534,44 @@ const openSelectedDevice = async (device: ApiDeviceResponse) => {
 };
 
 const selectedDeviceLatestRecordingDateTime = computed<Date | null>(() => {
-  if (selectedDevice.value && deviceLocation.value) {
-    return latestRecordingTimeForDeviceAtLocation(
-      selectedDevice.value,
-      deviceLocation.value,
-    );
+  if (selectedDevice.value && deviceRecordingMode.value) {
+    if (deviceRecordingMode.value === ActivitySearchRecordingMode.Cameras && selectedDevice.value.lastThermalRecordingTime) {
+      return new Date(selectedDevice.value.lastThermalRecordingTime);
+    } else if (deviceRecordingMode.value === ActivitySearchRecordingMode.Audio && selectedDevice.value.lastAudioRecordingTime) {
+      return new Date(selectedDevice.value.lastAudioRecordingTime);
+    }
   }
   return null;
 });
 
 const selectedDeviceActiveFrom = computed<Date | null>(() => {
-  if (selectedDevice.value && deviceLocation.value) {
-    return new Date(deviceLocation.value.activeAt);
+  if (selectedDevice.value && deviceRecordingMode.value) {
+    if (deviceRecordingMode.value === ActivitySearchRecordingMode.Cameras && selectedDevice.value.earliestThermalRecordingTime) {
+      return new Date(selectedDevice.value.earliestThermalRecordingTime);
+    } else if (deviceRecordingMode.value === ActivitySearchRecordingMode.Audio && selectedDevice.value.earliestAudioRecordingTime) {
+      return new Date(selectedDevice.value.earliestAudioRecordingTime);
+    }
   }
   return null;
 });
 
-const deviceRecordingMode = computed<"cameras" | "audio">(() => {
-  if (selectedDevice.value && selectedDevice.value.type === DeviceType.Audio) {
-    return "audio";
+const deviceRecordingMode = computed<ActivitySearchRecordingMode>(() => {
+  const savedRecordingMode = (window.localStorage.getItem(
+      "activity-recording-mode",
+  ) as ActivitySearchRecordingMode);
+  if (savedRecordingMode) {
+    if (savedRecordingMode === ActivitySearchRecordingMode.Cameras && selectedDevice.value && selectedDevice.value.earliestThermalRecordingTime) {
+      return savedRecordingMode;
+    } else if (savedRecordingMode === ActivitySearchRecordingMode.Audio && selectedDevice.value && selectedDevice.value.earliestAudioRecordingTime) {
+      return savedRecordingMode;
+    }
   }
-  return "cameras";
+  if (!savedRecordingMode && selectedDevice.value) {
+    if (selectedDevice.value.earliestThermalRecordingTime) {
+      return ActivitySearchRecordingMode.Cameras;
+    }
+  }
+  return ActivitySearchRecordingMode.Audio;
 });
 
 const cacophonyEpoch = new Date();
@@ -590,6 +593,7 @@ const iconForPowerStatus = (powerStatus: DeviceStatus): IconsProp => {
     case "stopped or offline":
       return "hide_source";
     case "-":
+    default:
       return "check_indeterminate_small";
   }
 };

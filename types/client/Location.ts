@@ -11,7 +11,7 @@ import type {
 } from "@typedefs/client/types.js";
 import { DEFAULT_AUTH_ID } from "@typedefs/client/types.js";
 import type { CacophonyApiClient } from "@typedefs/client/api.js";
-import { ApiStationResponse } from "@typedefs/api/station.js";
+import type { ApiStationResponse } from "@typedefs/api/station.js";
 
 const createNewLocationForProject =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>

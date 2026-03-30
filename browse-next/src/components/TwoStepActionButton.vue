@@ -103,7 +103,7 @@ const computedConfirmationLabel = computed<string>(() => {
       <template #target>
         <button
           class="btn d-flex justify-content-center"
-          :class="[...classes, btnVariantClass]"
+          :class="[...(classes || []), btnVariantClass]"
           @click.stop.prevent="() => {}"
           ref="actionBtn"
           :aria-label="computedTooltipLabel"

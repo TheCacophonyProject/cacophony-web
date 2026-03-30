@@ -403,7 +403,7 @@ defineExpose({
             class="options-list-label btn text-start text-capitalize"
             v-if="option.label !== 'No results'"
             @click.prevent="addSelectedOption(option)"
-            :disabled="disabledTags.includes(option.label)"
+            :disabled="(disabledTags || []).includes(option.label)"
           >
             <span style="vertical-align: middle">{{
               displayLabelForClassificationLabel(

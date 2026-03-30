@@ -7,7 +7,7 @@ import type {
 import type { HttpStatusCode } from "@typedefs/api/consts.js";
 import type { ApiLoggedInUserResponse } from "../api/user.js";
 import type { IsoFormattedString } from "../api/event.js";
-import { ProjectId } from "../api/common.js";
+import type { ProjectId } from "../api/common.js";
 
 export type JwtToken<_T> = string;
 export type TestHandle = string;

@@ -25,8 +25,8 @@ import { DEFAULT_AUTH_ID } from "@typedefs/client/types.js";
 import type { CacophonyApiClient } from "@typedefs/client/api.js";
 
 import { unwrapLoadedResource } from "@typedefs/client/api.js";
-import { ApiRecordingUploadData } from "@typedefs/api/recording.js";
-import { NonEmptyArray } from "@typedefs/client/utils.js";
+import type { ApiRecordingUploadData } from "@typedefs/api/recording.js";
+import type { NonEmptyArray } from "@typedefs/client/utils.js";
 
 export interface QueryRecordingsOptions {
   devices?: DeviceId[];

@@ -112,7 +112,7 @@ onBeforeMount(async () => {
 });
 const resetPassword = async () => {
   resetInProgress.value = true;
-  const changePasswordResponse = await ClientApi.Users.changePassword(
+  const changePasswordResponse = await ClientApi.Users.changePasswordUsingResetToken(
     resetToken.value,
     userPassword.value,
   );

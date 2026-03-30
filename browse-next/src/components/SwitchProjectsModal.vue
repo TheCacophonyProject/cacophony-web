@@ -244,7 +244,7 @@ const filterUser = computed(() =>
 const loadAllUsers = async () => {
   const response = await ClientApi.Users.list();
   if (response.success) {
-    usersList.value = response.result.usersList.sort((a, b) => {
+    usersList.value = response.result.usersList.filter(u => !!u.email).sort((a, b) => {
       const ua = a.userName.toLowerCase();
       const ub = b.userName.toLowerCase();
       if (ua > ub) {

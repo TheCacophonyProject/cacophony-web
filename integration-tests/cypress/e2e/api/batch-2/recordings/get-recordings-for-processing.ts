@@ -79,7 +79,6 @@ describe("Get recordings for processing", () => {
           RecordingProcessingState.AnalyseThermal,
         ],
       );
-    console.log(processing1, processing2, processing3);
     expect(processing3.status).to.equal(HttpStatusCode.OkNoContent);
     expect(
       (processing1.result as { recording: ApiRecordingResponse }).recording
@@ -90,5 +89,10 @@ describe("Get recordings for processing", () => {
       (processing2.result as { recording: ApiRecordingResponse }).recording
         .processingState,
     ).to.equal(RecordingProcessingState.TrackAndAnalyse);
+  });
+
+  it("Test priorities for processing queue", async () => {
+    // TODO:
+    return;
   });
 });
