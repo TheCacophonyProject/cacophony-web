@@ -16,3 +16,5 @@ export const decodeJWT = (jwtString: string): JwtTokenPayload | null => {
     return null;
   }
 };
+
+export type NonEmptyArray<T> = [T, ...T[]];
