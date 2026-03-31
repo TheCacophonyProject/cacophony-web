@@ -141,7 +141,10 @@ const hasNonValidationError = computed({
 });
 
 const registerErrorMessagesDisplay = computed(() => {
-  if (registerErrorMessage.value) {
+  if (
+    registerErrorMessage.value &&
+    Array.isArray(registerErrorMessage.value.messages)
+  ) {
     return registerErrorMessage.value.messages.join(", ");
   } else {
     return "";

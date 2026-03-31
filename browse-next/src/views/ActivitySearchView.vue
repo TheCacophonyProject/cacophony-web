@@ -13,9 +13,9 @@ import {
   watch,
   type WatchStopHandle,
 } from "vue";
-import type {NamedPoint} from "@models/mapUtils";
+import type { NamedPoint } from "@models/mapUtils";
 import MapWithPoints from "@/components/MapWithPoints.vue";
-import type {ApiStationResponse as ApiLocationResponse} from "@typedefs/api/station";
+import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import {
   activeLocations,
   allHistoricLocations,
@@ -29,20 +29,46 @@ import {
   type SelectedProject,
   shouldViewAsSuperUser,
 } from "@models/LoggedInUser";
-import type {FetchResult, LoadedResource, SuccessFetchResult,} from "@apiClient/types";
-import {type RecordingType, RecordingType as ConcreteRecordingType, TagMode,} from "@typedefs/api/consts.ts";
-import type {DeviceId, LatLng, RecordingId, StationId as LocationId,} from "@typedefs/api/common";
+import type {
+  FetchResult,
+  LoadedResource,
+  SuccessFetchResult,
+} from "@apiClient/types";
+import {
+  type RecordingType,
+  RecordingType as ConcreteRecordingType,
+  TagMode,
+} from "@typedefs/api/consts.ts";
+import type {
+  DeviceId,
+  LatLng,
+  RecordingId,
+  StationId as LocationId,
+} from "@typedefs/api/common";
 import InlineViewModal from "@/components/InlineViewModal.vue";
-import type {MaybeElement} from "@vueuse/core";
-import {useIntersectionObserver, useWindowSize} from "@vueuse/core";
-import {DateTime} from "luxon";
-import {dayAndTimeAtLocation, formatDuration, timezoneForLatLng, visitDuration,} from "@models/visitsUtils";
-import {canonicalLatLngForLocations, latLngApproxDistance,} from "@/helpers/Location";
+import type { MaybeElement } from "@vueuse/core";
+import { useIntersectionObserver, useWindowSize } from "@vueuse/core";
+import { DateTime } from "luxon";
+import {
+  dayAndTimeAtLocation,
+  formatDuration,
+  timezoneForLatLng,
+  visitDuration,
+} from "@models/visitsUtils";
+import {
+  canonicalLatLngForLocations,
+  latLngApproxDistance,
+} from "@/helpers/Location";
 import * as sunCalc from "suncalc";
-import {type LocationQuery, type LocationQueryValue, useRoute, useRouter,} from "vue-router";
+import {
+  type LocationQuery,
+  type LocationQueryValue,
+  useRoute,
+  useRouter,
+} from "vue-router";
 import RecordingsList from "@/components/RecordingsList.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
-import type {ApiVisitResponse} from "@typedefs/api/monitoring";
+import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import ActivitySearchParameters from "@/components/ActivitySearchParameters.vue";
 import {
   ActivitySearchDisplayMode,
@@ -52,20 +78,40 @@ import {
   queryValueIsDate,
   validateLocations,
 } from "@/components/activitySearchUtils.ts";
-import {displayLabelForClassificationLabel, flatClassifications, getClassifications,} from "@api/classificationsUtils";
+import {
+  displayLabelForClassificationLabel,
+  flatClassifications,
+  getClassifications,
+} from "@api/classificationsUtils";
 import ActivitySearchDescription from "@/components/ActivitySearchDescription.vue";
-import {delayMs} from "@/utils.ts";
-import {aiTagsForRecording, canonicalTagsForRecording, humanTagsForRecording,} from "@models/recordingUtils.ts";
-import type {ApiDeviceResponse} from "@typedefs/api/device";
-import type {BulkRecordingsResponse, QueryRecordingsOptions,} from "@apiClient/Recording.ts";
-import {ClientApi} from "@/api";
-import type {VisitsQueryResult} from "@apiClient/Monitoring.ts";
-import type {NonEmptyArray} from "@/helpers/utils.ts";
-import {BButton, BModal, BOffcanvas, BProgress, BSpinner,} from "bootstrap-vue-next";
-import {MaterialSymbol} from "@dbetka/vue-material-symbols";
-import type {ApiAudioRecordingResponse, ApiRecordingResponse,} from "@typedefs/api/recording";
-import {CurrentViewAbortController} from "@apiClient/api.ts";
-import type {IconsProp} from "@dbetka/vue-material-symbols/dist/jscache/icons-names";
+import { delayMs } from "@/utils.ts";
+import {
+  aiTagsForRecording,
+  canonicalTagsForRecording,
+  humanTagsForRecording,
+} from "@models/recordingUtils.ts";
+import type { ApiDeviceResponse } from "@typedefs/api/device";
+import type {
+  BulkRecordingsResponse,
+  QueryRecordingsOptions,
+} from "@apiClient/Recording.ts";
+import { ClientApi } from "@/api";
+import type { VisitsQueryResult } from "@apiClient/Monitoring.ts";
+import type { NonEmptyArray } from "@/helpers/utils.ts";
+import {
+  BButton,
+  BModal,
+  BOffcanvas,
+  BProgress,
+  BSpinner,
+} from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import type {
+  ApiAudioRecordingResponse,
+  ApiRecordingResponse,
+} from "@typedefs/api/recording";
+import { CurrentViewAbortController } from "@apiClient/api.ts";
+import type { IconsProp } from "@dbetka/vue-material-symbols/dist/jscache/icons-names";
 
 const mapBuffer = ref<HTMLDivElement>();
 const mapContainer = ref<HTMLDivElement>();
@@ -327,8 +373,12 @@ interface DateRangeOption {
 }
 
 const availableDateRanges = computed<NonEmptyArray<DateRangeOption>>(() => {
-  const thermalMode = recordingMode.value === ActivitySearchRecordingMode.Cameras || displayMode.value === ActivitySearchDisplayMode.Visits;
-  const earliest = thermalMode ? minThermalDateForProject.value : minAudioDateForProject.value;
+  const thermalMode =
+    recordingMode.value === ActivitySearchRecordingMode.Cameras ||
+    displayMode.value === ActivitySearchDisplayMode.Visits;
+  const earliest = thermalMode
+    ? minThermalDateForProject.value
+    : minAudioDateForProject.value;
   const latest = maxDateForProject.value;
   const ranges = [] as DateRangeOption[];
   if (earliest < oneDayAgo && latest > oneDayAgo) {
@@ -697,7 +747,10 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
 });
 
 const selectedLocations = computed<(ApiLocationResponse | "any")[]>(() => {
-  if (searchParams.value.locations.includes("any") || searchParams.value.locations.length === 0) {
+  if (
+    searchParams.value.locations.includes("any") ||
+    searchParams.value.locations.length === 0
+  ) {
     return ["any"];
   }
   return searchParams.value.locations
@@ -793,7 +846,9 @@ const minAudioDateForProject = computed<Date>(() => {
   return earliest;
 });
 
-const earliestThermalRecordingTimeForDevices = (devices: ApiDeviceResponse[]): Date => {
+const earliestThermalRecordingTimeForDevices = (
+  devices: ApiDeviceResponse[],
+): Date => {
   let earliest = new Date();
   for (const device of devices) {
     if (device.earliestThermalRecordingTime) {
@@ -804,9 +859,11 @@ const earliestThermalRecordingTimeForDevices = (devices: ApiDeviceResponse[]): D
     }
   }
   return earliest;
-}
+};
 
-const earliestAudioRecordingTimeForDevices = (devices: ApiDeviceResponse[]): Date => {
+const earliestAudioRecordingTimeForDevices = (
+  devices: ApiDeviceResponse[],
+): Date => {
   let earliest = new Date();
   for (const device of devices) {
     if (device.earliestAudioRecordingTime) {
@@ -817,15 +874,24 @@ const earliestAudioRecordingTimeForDevices = (devices: ApiDeviceResponse[]): Dat
     }
   }
   return earliest;
-}
+};
 
 const minDateForSelectedLocations = computed<Date>(() => {
   // Earliest active location
-  if ((displayMode.value === ActivitySearchDisplayMode.Recordings && recordingMode.value === ActivitySearchRecordingMode.Cameras) || displayMode.value === ActivitySearchDisplayMode.Visits) {
+  if (
+    (displayMode.value === ActivitySearchDisplayMode.Recordings &&
+      recordingMode.value === ActivitySearchRecordingMode.Cameras) ||
+    displayMode.value === ActivitySearchDisplayMode.Visits
+  ) {
     // Return earliest thermal recording times
     if (selectedLocations.value.includes("any")) {
-      if (selectedDevices.value.length !== 0 && selectedDevices.value !== "all") {
-        return earliestThermalRecordingTimeForDevices(selectedDevices.value as ApiDeviceResponse[]);
+      if (
+        selectedDevices.value.length !== 0 &&
+        selectedDevices.value !== "all"
+      ) {
+        return earliestThermalRecordingTimeForDevices(
+          selectedDevices.value as ApiDeviceResponse[],
+        );
       }
       return new Date(minThermalDateForProject.value);
     }
@@ -844,8 +910,13 @@ const minDateForSelectedLocations = computed<Date>(() => {
   } else {
     // Earliest audio recording times.
     if (selectedLocations.value.includes("any")) {
-      if (selectedDevices.value.length !== 0 && selectedDevices.value !== "all") {
-        return earliestAudioRecordingTimeForDevices(selectedDevices.value as ApiDeviceResponse[]);
+      if (
+        selectedDevices.value.length !== 0 &&
+        selectedDevices.value !== "all"
+      ) {
+        return earliestAudioRecordingTimeForDevices(
+          selectedDevices.value as ApiDeviceResponse[],
+        );
       }
       return new Date(minAudioDateForProject.value);
     }
@@ -1289,7 +1360,7 @@ const displayMode = computed<ActivitySearchDisplayMode>(
   () => searchParams.value.displayMode,
 );
 const recordingMode = computed<ActivitySearchRecordingMode>(
-    () => searchParams.value.recordingMode,
+  () => searchParams.value.recordingMode,
 );
 const inRecordingsMode = computed<boolean>(
   () => displayMode.value === ActivitySearchDisplayMode.Recordings,
@@ -1796,7 +1867,6 @@ const fromDateMinusIncrement = computed<Date>(() => {
 });
 
 const atMinimumTimeForSelectedLocations = computed<boolean>(() => {
-  console.log("Min date", minDateForSelectedLocations.value);
   return (
     !!currentQueryCursor.value.fromDateTime &&
     Math.floor(minDateForSelectedLocations.value.getTime() / 1000) ===
@@ -2126,7 +2196,10 @@ onBeforeUnmount(() => {
           @click="toggleOffcanvasSearch"
           class="d-flex align-items-center p-2"
         >
-          <material-symbol :name="'search_gear' as unknown as IconsProp" size="1.5rem" />
+          <material-symbol
+            :name="'search_gear' as unknown as IconsProp"
+            size="1.5rem"
+          />
         </b-button>
       </div>
       <b-offcanvas

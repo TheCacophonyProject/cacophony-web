@@ -115,6 +115,7 @@ const credentialsResolvers = {
     },
   },
   getApiRoot: () => {
+    // FIXME: Use Cy.env var if present.
     return "http://localhost:1080";
   },
 };

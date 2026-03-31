@@ -291,20 +291,6 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
-  if (config.server.loggerLevel === "debug") {
-    app.post(
-      `${apiUrl}/get-email-confirmation-token`,
-      extractJwtAuthorizedUser,
-      async (_request: Request, response: Response) => {
-        const user = await User.findByPk(response.locals.requestUser.id);
-        const token = getEmailConfirmationToken(user.id, user.email);
-        return successResponse(response, "Got email confirmation token.", {
-          token,
-        });
-      },
-    );
-  }
-
   /**
    * @api {patch} /api/v1/users Updates the authenticated user's details
    * @apiName UpdateUser

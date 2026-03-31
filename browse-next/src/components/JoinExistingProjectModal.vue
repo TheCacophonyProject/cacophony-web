@@ -122,14 +122,6 @@ const getGroupsForAdmin = async () => {
 };
 
 const okayButtonText = computed(() => {
-  //   <button
-  //       class="btn btn-primary"
-  //   data-cy="list joinable projects button"
-  // :disabled="!isValidEmailAddress || submittingJoinRequest"
-  // @click.stop.prevent="getGroupsForAdmin"
-  //       >
-  //       Next
-  //       </button>
   if (!joinableProjectsLoaded.value) {
     return "Next";
   } else {
@@ -168,6 +160,7 @@ const disabledState = computed<boolean>(() => {
     v-model="joiningNewProject.visible"
     title="Join a project"
     :ok-title="okayButtonText"
+    :ok-class="'list-joinable-projects-button'"
     @ok="okayButtonAction"
     :ok-variant="okayButtonVariant"
     :ok-disabled="disabledState"

@@ -554,7 +554,11 @@ router.beforeEach(async (to, from, next) => {
       UserProjects.value !== null &&
       (UserProjects.value || []).length === 0
     ) {
-      if (to.name !== "setup" && to.name !== "confirm-email") {
+      if (
+        to.name !== "setup" &&
+        to.name !== "confirm-email" &&
+        to.name !== "accept-project-invite"
+      ) {
         return next({ name: "setup", ...nextUrl });
       }
     }

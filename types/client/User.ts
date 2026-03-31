@@ -126,17 +126,7 @@ const resendAccountActivationEmail =
 const changeAccountEmail =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   async (newEmailAddress: string): Promise<FetchResult<void>> => {
-    const response = await updateUserFields(
-      api,
-      authKey,
-    )({ email: newEmailAddress });
-    if (response.success) {
-      // FIXME
-      //const currentUser = CurrentUser.value as LoggedInUser;
-      //currentUser.email = newEmailAddress;
-      //setLoggedInUserData(currentUser);
-    }
-    return response;
+    return await updateUserFields(api, authKey)({ email: newEmailAddress });
   };
 
 const debugGetEmailConfirmationToken =

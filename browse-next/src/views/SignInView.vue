@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref } from "vue";
+import { computed, reactive, ref } from "vue";
 import {
   login,
   refreshUserProjects,
@@ -45,6 +45,13 @@ const hasError = computed({
 
 const router = useRouter();
 const route = useRoute();
+
+const hasProjectInviteToken = computed<boolean>(() => {
+  return (
+    !!route.query.nextUrl && route.query.nextUrl.includes("/accept-invite/")
+  );
+});
+
 const submitLogin = async () => {
   delete (signInInProgress as PendingRequest).errors;
   await login(userEmailAddress.value, userPassword.value, signInInProgress);
@@ -66,6 +73,10 @@ const submitLogin = async () => {
           params: {
             projectName: urlNormalisedCurrentProjectName.value,
           },
+        });
+      } else {
+        await router.push({
+          name: "setup",
         });
       }
     }
@@ -111,6 +122,15 @@ const signInFormIsFilledAndValid = computed<boolean>(
     >
       <b-alert v-model="hasError" variant="danger" class="text-center">
         {{ signInErrorMessage }}
+      </b-alert>
+      <b-alert
+        v-model="hasProjectInviteToken"
+        variant="warning"
+        class="text-center"
+      >
+        You've been invited to join a project.<br />To accept the invitation,
+        first sign in. <br />If you don't yet have an account, first create one,
+        using the email address that the invite was sent to.
       </b-alert>
       <div class="mb-3">
         <b-form-input

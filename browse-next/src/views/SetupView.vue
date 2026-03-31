@@ -9,6 +9,7 @@ import {
   pendingUserProjects,
   refreshUserProjects,
   urlNormalisedCurrentProjectName,
+  setLoggedInUserData,
 } from "@models/LoggedInUser";
 import type { LoggedInUser } from "@models/LoggedInUser";
 import {
@@ -107,6 +108,10 @@ const updateEmailAddress = async () => {
   );
   if (emailUpdateResponse.success) {
     emailAddressUpdated.value = true;
+    setLoggedInUserData({
+      ...(CurrentUser.value as LoggedInUser),
+      email: newUserEmailAddress.value,
+    });
   } else {
     const err =
       emailUpdateResponse.result.errors && emailUpdateResponse.result.errors[0];
@@ -481,6 +486,7 @@ const debugConfirmEmail = async () => {
                     <div
                       v-if="card.status.value.pending === 'requested'"
                       class="d-flex align-items-center"
+                      :data-cy="`waiting for approval from admin of ${card.groupName.value}`"
                     >
                       <material-symbol
                         name="schedule"
@@ -492,7 +498,7 @@ const debugConfirmEmail = async () => {
                     <div v-else-if="card.status.value.pending === 'invited'">
                       <button
                         type="button"
-                        data-cy="accept project invitation button"
+                        :data-cy="`accept project invitation button for ${card.groupName.value}`"
                         class="btn btn-secondary d-flex align-items-center text-nowrap"
                         @click.prevent="
                           () => acceptInvitationToProject(card.status.value)
@@ -529,7 +535,10 @@ const debugConfirmEmail = async () => {
               </template>
               <template #status="{ cell }">
                 <div v-if="cell.value.pending === 'requested'">
-                  <div class="d-flex align-items-center">
+                  <div
+                    class="d-flex align-items-center"
+                    :data-cy="`waiting for approval from admin of ${cell.value.groupName}`"
+                  >
                     <material-symbol
                       name="schedule"
                       size="1.25rem"
@@ -543,6 +552,7 @@ const debugConfirmEmail = async () => {
                     type="button"
                     class="btn btn-secondary d-flex align-items-center text-nowrap"
                     @click.prevent="() => acceptInvitationToProject(cell.value)"
+                    :data-cy="`accept project invitation button for ${cell.value.groupName}`"
                     :disabled="acceptingInvite"
                   >
                     <material-symbol name="check" size="1.25rem" />

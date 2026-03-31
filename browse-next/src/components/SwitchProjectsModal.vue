@@ -244,20 +244,22 @@ const filterUser = computed(() =>
 const loadAllUsers = async () => {
   const response = await ClientApi.Users.list();
   if (response.success) {
-    usersList.value = response.result.usersList.filter(u => !!u.email).sort((a, b) => {
-      const ua = a.userName.toLowerCase();
-      const ub = b.userName.toLowerCase();
-      if (ua > ub) {
-        return 1;
-      } else if (ua === ub) {
-        const uae = a.email.toLowerCase();
-        const ube = b.email.toLowerCase();
-        if (uae > ube) {
+    usersList.value = response.result.usersList
+      .filter((u) => !!u.email)
+      .sort((a, b) => {
+        const ua = a.userName.toLowerCase();
+        const ub = b.userName.toLowerCase();
+        if (ua > ub) {
           return 1;
+        } else if (ua === ub) {
+          const uae = a.email.toLowerCase();
+          const ube = b.email.toLowerCase();
+          if (uae > ube) {
+            return 1;
+          }
         }
-      }
-      return -1;
-    });
+        return -1;
+      });
     return usersList.value;
   }
   return [];

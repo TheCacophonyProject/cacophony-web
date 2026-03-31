@@ -6,6 +6,7 @@ import {
   startMailServerStub,
   waitForEmail,
   RESET_PASSWORD_PREFIX,
+  CONFIRM_EMAIL_PREFIX,
 } from "@commands/emailUtils";
 const apiRoot = `${Cypress.env("cacophony-api-server")}/api/v1`;
 const cyEl = (str: string) => {
@@ -23,8 +24,9 @@ const modalOkayButton = (modalId: string) => {
 };
 
 const registerNewUser = (userName: string, password: string) => {
+  cy.log(`Registering user: ${userName}`);
   cy.visit("/");
-  cy.get("[href='/register']").click();
+  cy.get("[href^='/register']").click();
   cyEl("username").type(userName);
   cyEl("email address").type(getEmail(userName));
   cyEl("password").type(password);
@@ -33,7 +35,7 @@ const registerNewUser = (userName: string, password: string) => {
   cyEl("register button").click();
 };
 const signOut = () => {
-  cyEl("sign out link").click();
+  cyEl("sign out link").click({ force: true });
 };
 
 const signInExistingUser = (userName: string, password: string) => {
@@ -66,6 +68,7 @@ const createNewProject = (project: string) => {
 };
 
 const confirmNewUserEmailAddress = (user: string) => {
+  cy.log(`Confirming email address for ${user}`);
   cy.url().should("contain", "/setup");
   // User should be taken to account setup page, where they are prompted to confirm their email address.
   expect(cyEl("resend confirmation email")).to.exist;
@@ -79,8 +82,12 @@ const confirmNewUserEmailAddress = (user: string) => {
         `/confirm-account-email/${response.body.token.replace(/\./g, ":")}`,
       );
       cy.url().should("contain", "/setup");
-      expect(cyEl("create new project button")).to.exist;
-      expect(cyEl("join existing project button")).to.exist;
+      cy.get("body").then((body) => {
+        if (!body.find(`[data-cy='pending project memberships']`).length) {
+          expect(cyEl("create new project button")).to.exist;
+          expect(cyEl("join existing project button")).to.exist;
+        }
+      });
     },
   );
 };
@@ -109,7 +116,7 @@ describe("New users can sign up and confirm their email address", () => {
     cyEl("switch or join project button").click();
     cyEl("join existing project button").click();
     cyEl("project admin email address").type(getEmail(user1), { force: true });
-    cyEl("list joinable projects button").click();
+    cy.get(".list-joinable-projects-button").click();
 
     // Since there is only one project, it won't show a list of options to choose from.
     modalOkayButton("join-project-modal").click();
@@ -189,9 +196,7 @@ describe("New users can sign up and confirm their email address", () => {
     registerNewUser(user, password);
     confirmNewUserEmailAddress(user);
     createProjectFromInitialSetup(project);
-
-    // TODO: Assert that we're taken to the dashboard or somewhere else to complete setup.
-
+    cy.url().should("contain", `/${urlNormaliseProjectName(project)}`);
     signOut();
   });
 
@@ -212,8 +217,7 @@ describe("New users can sign up and confirm their email address", () => {
     cy.url().should("contain", "/setup");
     cyEl("join existing project button").click();
     cyEl("project admin email address").type(getEmail(user1), { force: true });
-
-    cyEl("list joinable projects button").click();
+    cy.get(".list-joinable-projects-button").click();
     // Since there is only one project, it won't show a list of options to choose from.
     modalOkayButton("join-project-modal").click();
 
@@ -222,14 +226,105 @@ describe("New users can sign up and confirm their email address", () => {
     );
     expect(cyEl("pending project memberships")).to.exist;
     expect(cyEl("pending project memberships").contains(project)).to.exist;
-    expect(
-      cyEl("pending project memberships").contains(
-        "Waiting for approval from project admin",
-      ),
-    ).to.exist;
+    expect(cyEl(`waiting for approval from admin of ${project}`)).to.exist;
+    signOut();
+
+    cy.log("Project admin should get a request via email");
+    waitForEmail("join request").then((email) => {
+      const { token } = extractTokenStartingWith(
+        email,
+        JOIN_GROUP_REQUEST_PREFIX,
+      );
+
+      cy.log("Project admin signs in and accepts the email link");
+      signInExistingUser(user1, password);
+      cy.url().should("contain", urlNormaliseProjectName(project));
+      cy.visit(`/confirm-project-membership-request/${token}`);
+      cy.url().should("contain", urlNormaliseProjectName(project));
+      signOut();
+
+      cy.log("Requesting user should get email confirmation of join request");
+      waitForEmail("join request accepted").then((email) => {
+        expect(email).to.include(`You've been added to the group ${project}.`);
+        cy.log(`Requesting user was added to project ${project}`);
+        // Now if requesting user signs in, she should see the project in her projects list.
+        signInExistingUser(user2, password);
+        // The user only has the one project, so it should be selected on login.
+        cy.url().should("contain", urlNormaliseProjectName(project));
+      });
+    });
   });
 
-  it("New user with a pending invitation is able to see and accept that invitation from their setup screen", () => {
+  it("An existing user with a project can invite a non-platform member using their email address", () => {
+    cy.log("User 1 creates a project");
+    const user1 = uniqueName("Bob");
+    const password = uniqueName("pass");
+    const project = uniqueName("project");
+    registerNewUser(user1, password);
+    confirmNewUserEmailAddress(user1);
+    createProjectFromInitialSetup(project);
+    cy.log("They invite a non-member to join their project via email address.");
+
+    const user2 = uniqueName("Bob");
+    cy.visit(`/${urlNormaliseProjectName(project)}/settings/users`);
+    cyEl("invite someone to project button").click();
+    cyEl("invitee email address").type(getEmail(user2), { force: true });
+    modalOkayButton("invite-someone-modal").click();
+    signOut();
+
+    waitForEmail("invite").then((email) => {
+      cy.log(`${user2} receives invite email`);
+      const { token } = extractTokenStartingWith(email, ACCEPT_INVITE_PREFIX);
+      cy.log("Bob accepts the email invitation by clicking the link");
+      cy.visit(`/accept-invite/${token}`);
+      cy.log("Bob isn't logged in, so should get redirected to sign-in");
+      cy.url().should("contain", `/sign-in?nextUrl=/accept-invite/${token}`);
+
+      registerNewUser(user2, password);
+      confirmNewUserEmailAddress(user2);
+
+      // Now accept the token
+      cy.visit(`/accept-invite/${token}`);
+    });
+  });
+
+  it("An existing user with a project can invite a non-platform member using their email address, and if they sign up with a *different* address, they'll get an error.", () => {
+    cy.log("User 1 creates a project");
+    const user1 = uniqueName("Bob");
+    const password = uniqueName("pass");
+    const project = uniqueName("project");
+    registerNewUser(user1, password);
+    confirmNewUserEmailAddress(user1);
+    createProjectFromInitialSetup(project);
+    cy.log("They invite a non-member to join their project via email address.");
+
+    const user2 = uniqueName("Bob");
+    cy.visit(`/${urlNormaliseProjectName(project)}/settings/users`);
+    cyEl("invite someone to project button").click();
+    cyEl("invitee email address").type(getEmail(user2), { force: true });
+    modalOkayButton("invite-someone-modal").click();
+    signOut();
+
+    waitForEmail("invite").then((email) => {
+      cy.log(`${user2} receives invite email`);
+      const { token } = extractTokenStartingWith(email, ACCEPT_INVITE_PREFIX);
+      cy.log("Bob accepts the email invitation by clicking the link");
+      cy.visit(`/accept-invite/${token}`);
+      cy.log("Bob isn't logged in, so should get redirected to sign-in");
+      cy.url().should("contain", `/sign-in?nextUrl=/accept-invite/${token}`);
+
+      const altUser2 = uniqueName("Bob-alt");
+      registerNewUser(altUser2, password);
+      confirmNewUserEmailAddress(altUser2);
+
+      // Now accept the token
+      cy.log("Accept invite error");
+      cy.visit(`/accept-invite/${token}`);
+      cyEl("accept invite error").should("exist");
+    });
+  });
+
+  it("New user with a pending invitation is able to see and accept that invitation from their setup screen if they sign up normally", () => {
     cy.log("User 1 creates a project");
     const user1 = uniqueName("Bob");
     const password = uniqueName("pass");
@@ -254,7 +349,7 @@ describe("New users can sign up and confirm their email address", () => {
     cy.log("Should see our invited project listed with a pending status");
     expect(cyEl("pending project memberships")).to.exist;
     expect(cyEl("pending project memberships").contains(project)).to.exist;
-    cyEl("accept project invitation button").click();
+    cyEl(`accept project invitation button for ${project}`).click();
     cy.log("User is redirected to dashboard for joined project");
     cy.url().should("contain", `/${urlNormaliseProjectName(project)}`);
     signOut();
@@ -436,5 +531,14 @@ describe("New users can sign up and confirm their email address", () => {
     const evenNewerEmailAddress = getEmail(uniqueName("Bob3"));
     cyEl("new email address").type(evenNewerEmailAddress, { force: true });
     cyEl("update email address button").click();
+
+    // Make sure a confirmation email is sent for that new address.
+    waitForEmail("email confirmation").then((email) => {
+      const { token } = extractTokenStartingWith(email, CONFIRM_EMAIL_PREFIX);
+      // TODO: Check if we can do confirm account email successfully if logged out
+      cy.visit(`/confirm-account-email/${token}`);
+      cy.log("Redirected to Dashboard");
+      cy.url().should("contain", `/${project}`);
+    });
   });
 });

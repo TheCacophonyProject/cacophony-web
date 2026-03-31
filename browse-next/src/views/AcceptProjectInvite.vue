@@ -82,8 +82,11 @@ onMounted(async () => {
   <div v-if="checkingValidateEmailToken">
     <b-spinner size="xl" class="me-2" /><span class="h1">Accepting invite</span>
   </div>
-  <div v-else-if="!isValidValidateToken">
-    <span>Error: Accepting invite failed</span>
+  <div v-else-if="!isValidValidateToken" data-cy="accept invite error">
+    <span
+      >Error: Accepting invite failed.<br />Is the email address the invite was
+      sent to the same one you use for your Cacophony account?</span
+    >
     {{ validateError }}
   </div>
   <div v-else-if="alreadyPartOfProject">

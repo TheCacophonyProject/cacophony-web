@@ -47,7 +47,7 @@ export const extractTokenStartingWith = (
 ): { token: string; payload: Record<string, string | number> } => {
   expect(
     email.includes(tokenUrlPrefix),
-    "Email contains expected token",
+    `Email contains expected token '${tokenUrlPrefix}'`,
   ).to.equal(true);
   const tokenString = email
     .match(new RegExp(`${tokenUrlPrefix}[A-Za-z0-9.:_-]*`))
