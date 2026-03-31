@@ -554,7 +554,6 @@ async function main() {
   }
 
   await sendDailyServiceErrorsEmail(
-    config.server.browseUrl.replace("https://", ""),
     config.smtpDetails.serviceErrorsEmail,
     startDate,
     endDate,

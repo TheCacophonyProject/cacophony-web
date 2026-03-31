@@ -206,7 +206,6 @@ const currentHourInTimezone = (timeZone: string): number => {
       // New controversial or flagged for review tags.
       // New cool tags?
       await sendProjectActivityDigestEmail(
-        "browse-next.cacophony.org.nz",
         timespan === "weekly" ? "Weekly" : "Daily",
         group.groupName,
         recipients,

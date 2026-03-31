@@ -827,7 +827,6 @@ async function main() {
     </div>
 `;
   await sendPlatformUsageEmail(
-    config.server.browseUrl.replace("https://", ""),
     config.smtpDetails.platformUsageEmail,
     weekEndDate,
     emailHtml,

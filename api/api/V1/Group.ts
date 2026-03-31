@@ -652,7 +652,6 @@ export default function (app: Application, baseUrl: string) {
           // User was added.
           if (user.emailConfirmed) {
             await sendAddedToGroupNotificationEmail(
-              request.headers.host,
               user.email,
               group.groupName,
               permissions,
@@ -662,7 +661,6 @@ export default function (app: Application, baseUrl: string) {
           // User was updated.
           if (user.emailConfirmed) {
             await sendUpdatedGroupPermissionsNotificationEmail(
-              request.headers.host,
               user.email,
               group.groupName,
               permissions,
@@ -741,7 +739,6 @@ export default function (app: Application, baseUrl: string) {
           await invitation.destroy();
           // This user can't have confirmed their email yet, so just send
           await sendRemovedFromInvitedGroupNotificationEmail(
-            request.headers.host,
             invitation.email,
             response.locals.group.groupName,
           );
@@ -767,7 +764,6 @@ export default function (app: Application, baseUrl: string) {
         ) {
           if (response.locals.user.emailConfirmed) {
             await sendRemovedFromGroupNotificationEmail(
-              request.headers.host,
               response.locals.user.email,
               response.locals.group.groupName,
             );
@@ -777,7 +773,6 @@ export default function (app: Application, baseUrl: string) {
       } else if (removed && wasPending) {
         if (response.locals.user.emailConfirmed) {
           await sendRemovedFromInvitedGroupNotificationEmail(
-            request.headers.host,
             response.locals.user.email,
             response.locals.group.groupName,
           );
@@ -835,7 +830,6 @@ export default function (app: Application, baseUrl: string) {
       const actualUser = await User.findByPk(user.id);
       if (actualUser.emailConfirmed) {
         await sendLeftGroupNotificationEmail(
-          request.headers.host,
           actualUser.email,
           response.locals.group.groupName,
         );
@@ -1229,7 +1223,6 @@ export default function (app: Application, baseUrl: string) {
             permissions.owner = true;
           }
           await sendAddedToGroupNotificationEmail(
-            request.headers.host,
             actualUser.email,
             response.locals.group.groupName,
             permissions,
@@ -1258,7 +1251,6 @@ export default function (app: Application, baseUrl: string) {
             permissions.owner = true;
           }
           await sendAddedToGroupNotificationEmail(
-            request.headers.host,
             actualUser.email,
             response.locals.group.groupName,
             permissions,
@@ -1357,7 +1349,6 @@ export default function (app: Application, baseUrl: string) {
         const token = getInviteToGroupToken(invitation.id, group.id);
         const actualRequestUser = await User.findByPk(requestUser.id);
         const sendSuccess = await sendGroupInviteNewMemberEmail(
-          request.headers.host,
           token,
           actualRequestUser.email,
           group.groupName,
@@ -1398,7 +1389,6 @@ export default function (app: Application, baseUrl: string) {
           let sendSuccess: boolean;
           if (actualRequestUser.emailConfirmed) {
             sendSuccess = await sendGroupInviteExistingMemberEmail(
-              request.headers.host,
               token,
               actualRequestUser.email,
               group.groupName,
@@ -1408,7 +1398,6 @@ export default function (app: Application, baseUrl: string) {
           } else {
             // Still send the user an email, but send it as if they are not a current member.
             sendSuccess = await sendGroupInviteNewMemberEmail(
-              request.headers.host,
               token,
               actualRequestUser.email,
               group.groupName,

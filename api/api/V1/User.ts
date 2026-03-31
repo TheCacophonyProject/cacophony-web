@@ -250,7 +250,6 @@ export default function (app: Application, baseUrl: string) {
         // NOTE: We can now confirm the users' email address, since they signed up via an email.
         await user.update({ emailConfirmed: true });
         sendEmailSuccess = await sendWelcomeEmailWithGroupsAdded(
-          request.headers.host,
           user.email,
           addedToGroups.map(({ groupName }) => groupName),
         );
@@ -260,7 +259,6 @@ export default function (app: Application, baseUrl: string) {
         //  While the account is unvalidated, show a banner in the site, which allows to resend the validation email.
         //  User alerts and group invitations would not be activated until the user has confirmed their email address.
         sendEmailSuccess = await sendWelcomeEmailConfirmationEmail(
-          request.headers.host,
           getEmailConfirmationToken(user.id, user.email),
           user.email,
         );
@@ -344,7 +342,6 @@ export default function (app: Application, baseUrl: string) {
           dataToUpdate.email,
         );
         const emailSuccess = await sendChangedEmailConfirmationEmail(
-          request.headers.host,
           token,
           dataToUpdate.email,
         );
@@ -715,7 +712,6 @@ export default function (app: Application, baseUrl: string) {
       );
 
       const sendSuccess = await sendGroupMembershipRequestEmail(
-        request.headers.host,
         acceptToGroupRequestToken,
         requestingUser.email,
         requestingUser.userName,
@@ -934,7 +930,6 @@ export default function (app: Application, baseUrl: string) {
       );
       if (userToGrantMembershipFor.emailConfirmed) {
         await sendAddedToGroupNotificationEmail(
-          request.headers.host,
           userToGrantMembershipFor.email,
           response.locals.group.groupName,
           permissions,

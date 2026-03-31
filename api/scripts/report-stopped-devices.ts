@@ -101,7 +101,6 @@ async function main() {
       emailConfirmed,
     }));
     const successes = await sendStoppedDevicesReportEmail(
-      config.server.browseUrl.replace("https://", ""),
       group.groupName,
       stoppedDevices.map((device) => device.deviceName),
       userEmails,
