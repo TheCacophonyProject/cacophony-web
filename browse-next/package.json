@@ -1,6 +1,6 @@
 {
   "name": "browse-next",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "scripts": {
     "dev": "vite --force --host",
     "build": "vite build",
@@ -46,7 +46,7 @@
     "@types/suncalc": "^1.9.2",
     "@typescript-eslint/eslint-plugin": "^8.48.0",
     "@typescript-eslint/parser": "^8.48.0",
-    "@vitejs/plugin-vue": "^6.0.2",
+    "@vitejs/plugin-vue": "^6.0.5",
     "@vue/eslint-config-prettier": "^10.2.0",
     "@vue/eslint-config-typescript": "^14.6.0",
     "@vue/tsconfig": "^0.8.1",
