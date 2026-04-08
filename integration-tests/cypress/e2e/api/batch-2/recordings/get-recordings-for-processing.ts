@@ -7,6 +7,9 @@ import {
   RecordingType,
 } from "@shared/api/consts";
 import { testRunDockerCommand } from "@commands/server";
+import { TestApiImpl } from "@shared/client";
+import { JwtToken } from "@shared/client/types";
+import { RecordingId } from "@shared/api/common";
 
 describe("Get recordings for processing", () => {
   beforeEach(async () => {
@@ -18,6 +21,7 @@ describe("Get recordings for processing", () => {
     }
   });
 
+  // eslint-disable-next-line cypress/no-async-tests
   it("Can get recordings for processing in multiple states with one API call", async () => {
     const project = await createProjectWithUserAndDevice();
     const AdminUser = project.api();
@@ -80,15 +84,28 @@ describe("Get recordings for processing", () => {
         ],
       );
     expect(processing3.status).to.equal(HttpStatusCode.OkNoContent);
+    const rec1 = processing1.result as {
+      recording: ApiRecordingResponse;
+      rawJWT: JwtToken<RecordingId>;
+    };
+    const rec2 = processing2.result as {
+      recording: ApiRecordingResponse;
+      rawJWT: JwtToken<RecordingId>;
+    };
     expect(
-      (processing1.result as { recording: ApiRecordingResponse }).recording
-        .processingState,
+      rec1.recording.processingState,
       "prioritise 'analyse' state",
     ).to.equal(RecordingProcessingState.AnalyseThermal);
-    expect(
-      (processing2.result as { recording: ApiRecordingResponse }).recording
-        .processingState,
-    ).to.equal(RecordingProcessingState.TrackAndAnalyse);
+    expect(rec2.recording.processingState).to.equal(
+      RecordingProcessingState.TrackAndAnalyse,
+    );
+
+    cy.log("Check that we can download a file via signedUrl endpoint");
+    const recordingBinaryResponse =
+      await TestApiImpl.Recordings.getRecordingWithSignedUrl(rec1.rawJWT);
+    expect(recordingBinaryResponse.success, "Got recording with signed url").to
+      .be.true;
+    expect(recordingBinaryResponse.result).to.be.a("Blob");
   });
 
   it("Test priorities for processing queue", async () => {
