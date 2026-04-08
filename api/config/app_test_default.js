@@ -10,7 +10,7 @@ export const server = {
     active: true,
     port: 1080,
   },
-  browseUrl: "http://test.site",
+  browseUrl: "http://localhost:5050",
   isLocalDev: true,
 };
 export const s3Local = {

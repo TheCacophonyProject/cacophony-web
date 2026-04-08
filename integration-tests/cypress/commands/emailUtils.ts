@@ -3,7 +3,8 @@ import { uniqueName } from "@commands/testUtils";
 
 export const ACCEPT_INVITE_PREFIX = "/accept-invite/";
 export const CONFIRM_EMAIL_PREFIX = "/confirm-account-email/";
-export const JOIN_GROUP_REQUEST_PREFIX = "/confirm-group-membership-request/";
+export const JOIN_PROJECT_REQUEST_PREFIX =
+  "/confirm-project-membership-request/";
 export const RESET_PASSWORD_PREFIX = "/reset-password/";
 export const clearMailServerLog = () => {
   cy.log("Clearing mail server stub log");
@@ -28,6 +29,24 @@ export const waitForEmail = (type = "") => {
       return cy.wrap(email, { log: false });
     });
 };
+
+export const waitForEmailPromise = (type = "") => {
+  return new Promise<string>((resolve, _reject) => {
+    let email: string;
+    cy.log(`Wait for ${type} email`);
+    cy.exec(
+      `cd ../api && docker exec cacophony-web bash -lic "until grep -q 'SERVER: received email' mailServerStub.log ; do sleep 0.1; done; cat mailServerStub.log;"`,
+      { log: false },
+    ).then((response) => {
+      email = response.stdout;
+      expect(email.split("\n")[0], "Received an email").to.include(
+        "SERVER: received email",
+      );
+      resolve(email);
+    });
+  });
+};
+
 export const startMailServerStub = () => {
   cy.log("Attempting to start mail server stub");
   cy.exec(
@@ -41,6 +60,24 @@ export const startMailServerStub = () => {
     );
   });
 };
+
+export const startMailServerStubPromise = async () => {
+  return new Promise((resolve, _reject) => {
+    cy.log("Attempting to start mail server stub");
+    cy.exec(
+      `cd ../api && docker exec cacophony-web bash -lic "node ./api/scripts/mailServerStub.js > /dev/null &"`,
+      { log: false, failOnNonZeroExit: false },
+    ).then(() => {
+      // Wait for the mail server log file to be created
+
+      cy.exec(
+        `cd ../api && docker exec cacophony-web bash -lic "until [ -f mailServerStub.log ]; do sleep 0.1; done;"`,
+        { log: false },
+      ).then(resolve);
+    });
+  });
+};
+
 export const extractTokenStartingWith = (
   email: string,
   tokenUrlPrefix: string,

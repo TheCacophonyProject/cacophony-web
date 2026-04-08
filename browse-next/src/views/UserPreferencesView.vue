@@ -314,7 +314,7 @@ const changePassword = async (e: BvTriggerableEvent) => {
           <div class="account-settings-list row py-2 d-flex align-items-center">
             <span class="col-sm-3 fw-medium ps-0">Email address</span>
             <div class="col-sm-9 d-flex align-items-center ps-0">
-              <span cy-data="user email">{{ currentUser?.email }}</span>
+              <span data-cy="user email">{{ currentUser?.email }}</span>
               <button
                 type="button"
                 class="btn btn-icon d-flex justify-content-center ms-2"

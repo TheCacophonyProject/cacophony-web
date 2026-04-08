@@ -477,7 +477,7 @@ watch(userToFilterProjects, (userId) => {
           index
         ) in sortedUserProjects"
         :key="id"
-        :cy-data="urlNormaliseName(groupName)"
+        :data-cy="urlNormaliseName(groupName)"
         :to="nextRoute(groupName)"
         :aria-disabled="groupName === currentProjectName"
         :tabindex="groupName === currentProjectName ? -1 : index"

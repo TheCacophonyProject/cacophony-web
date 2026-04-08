@@ -376,6 +376,7 @@ onMounted(() => {
           data-bs-toggle="tooltip"
           data-bs-placement="right"
           data-bs-original-title="Manage project"
+          data-cy="manage project"
         >
           <span class="nav-icon-wrapper d-flex">
             <material-symbol name="handyman" />

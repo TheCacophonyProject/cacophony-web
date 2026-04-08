@@ -16,7 +16,7 @@ import {
   type FieldValidationError,
 } from "@apiClient/types";
 import type { FormInputValue, FormInputValidationState } from "@/utils";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 // ---------- userName ------------
@@ -168,6 +168,7 @@ const submittedDetails = ref<{
 } | null>(null);
 
 const router = useRouter();
+const route = useRoute();
 const register = async () => {
   const emailAddress = userEmailAddress.value.trim();
   const password = userPassword.value.trim();
@@ -187,11 +188,26 @@ const register = async () => {
   if (latestEUAVersionResponse.success) {
     latestEUAVersion = latestEUAVersionResponse.result.euaVersion;
   }
+
+  const tokenUrlPrefix = "/accept-invite/";
+  let signupInviteToken;
+  if (route.query.nextUrl) {
+    const nextUrl = route.query.nextUrl as unknown as string;
+    if (nextUrl.startsWith(tokenUrlPrefix)) {
+      // We're a new user signing up from an email link with a project invite.
+      signupInviteToken = nextUrl
+        .replace(tokenUrlPrefix, "")
+        .replace(/:/g, ".");
+    }
+  }
+  console.log("Signing up with invite token", signupInviteToken);
+
   const newUserResponse = await ClientApi.Users.register(
     name,
     password,
     emailAddress,
     latestEUAVersion,
+    signupInviteToken,
   );
   if (newUserResponse.success) {
     const newUser = newUserResponse.result;

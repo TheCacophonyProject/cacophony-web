@@ -61,7 +61,8 @@ export const CurrentUser = computed<LoggedInUser | null>({
     return null;
   },
   set: (val: LoggedInUser | null) => {
-    const ref = UserCreds.get(localStorageCredentials(DEFAULT_AUTH_ID));
+    const creds = localStorageCredentials(DEFAULT_AUTH_ID);
+    const ref = UserCreds.get(creds);
     if (ref && ref.value) {
       if (val) {
         ref.value.userData = val;

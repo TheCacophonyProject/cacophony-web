@@ -20,5 +20,8 @@ EXPOSE 9229
 # PostgreSQL
 EXPOSE 5432
 
+# Mailserver test server
+EXPOSE 8888
+
 COPY docker-entrypoint.sh /
 ENTRYPOINT ["/docker-entrypoint.sh"]

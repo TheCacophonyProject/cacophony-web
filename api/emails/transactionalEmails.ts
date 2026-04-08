@@ -327,7 +327,7 @@ export const sendGroupMembershipRequestEmail = async (
   const common = commonInterpolants();
   const acceptToGroupUrl = `${
     common.cacophonyBrowseUrl
-  }/confirm-group-membership-request/${acceptToGroupToken.replace(/\./g, ":")}`;
+  }/confirm-project-membership-request/${acceptToGroupToken.replace(/\./g, ":")}`;
   const { text, html } = await createEmailWithTemplate(
     "group-membership-request.html",
     {
@@ -342,7 +342,7 @@ export const sendGroupMembershipRequestEmail = async (
     html,
     text,
     userEmailAddress,
-    `A Cacophony Monitoring user wants to join your '${requestGroupName}' group`,
+    `A Cacophony Monitoring user wants to join your '${requestGroupName}' project`,
     await commonAttachments(),
   );
 };

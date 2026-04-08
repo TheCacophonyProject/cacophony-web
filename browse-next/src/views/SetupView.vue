@@ -258,7 +258,7 @@ const debugConfirmEmail = async () => {
             type="button"
             data-cy="resend confirmation email"
             @click="resendAccountActivationEmail"
-            :disabled="resendRequestSent"
+            :disabled="submittingResendActivationRequest"
           >
             <span v-if="submittingResendActivationRequest">
               <span class="spinner-border spinner-border-sm"></span>
@@ -266,7 +266,6 @@ const debugConfirmEmail = async () => {
             </span>
             <span v-else> Resend confirmation email</span>
           </button>
-
           <button
             v-if="isDev"
             type="button"
@@ -283,7 +282,7 @@ const debugConfirmEmail = async () => {
         >
           <div class="description d-flex">
             <material-symbol name="info" class="me-2" size="1.25rem" />
-            <p class="mb-0">
+            <p class="mb-0" data-cy="email send failure fallback">
               If you haven't received the confirmation email after a few minutes
               and have already checked your spam folder, please contact
               <a
@@ -317,9 +316,11 @@ const debugConfirmEmail = async () => {
             <button
               class="btn btn-secondary"
               type="button"
-              data-cy="send account confirmation email"
+              data-cy="resend confirmation email"
               @click="resendAccountActivationEmail"
-              :disabled="resendRequestSent || emailUpdateInProgress"
+              :disabled="
+                submittingResendActivationRequest || emailUpdateInProgress
+              "
             >
               <span v-if="submittingResendActivationRequest">
                 <span class="spinner-border spinner-border-sm"></span>
@@ -334,7 +335,7 @@ const debugConfirmEmail = async () => {
             >
               <div class="description d-flex">
                 <material-symbol name="info" class="me-2" size="1.25rem" />
-                <p class="mb-0">
+                <p class="mb-0" data-cy="email send failure fallback">
                   If you haven't received the confirmation email after a few
                   minutes and have already checked your spam folder, please
                   contact

@@ -564,8 +564,6 @@ export const isFetchingProjects = ref(false);
 
 export const refreshUserProjects = async () => {
   // Grab the users' groups, and select the first one.
-
-  console.warn("Fetching user projects");
   const NO_ABORT = false;
   const projectsResponse =
     await ClientApi.Projects.getCurrentUserProjects(NO_ABORT);

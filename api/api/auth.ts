@@ -116,10 +116,11 @@ export const getJoinGroupRequestToken = (
 export const getInviteToGroupToken = (
   inviteId: GroupInvitationId,
   groupId: GroupId,
+  email: string, // Email address of invitee
 ): string => {
-  // expires in a week
+  // expires in a year
   return jwt.sign(
-    { id: inviteId, group: groupId, _type: "invite-new-user" },
+    { id: inviteId, group: groupId, _type: "invite-new-user", email },
     config.server.passportSecret,
     {
       expiresIn: 60 * 60 * 24 * 365,

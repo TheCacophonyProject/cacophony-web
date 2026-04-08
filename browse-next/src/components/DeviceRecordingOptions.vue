@@ -1384,7 +1384,11 @@ watch(customRecordingWindowStop, async () => {
                   :no-animation="true"
                 >
                   <div class="d-flex">
-                    <material-symbol name="warning" class="me-2" size="1.25rem" />
+                    <material-symbol
+                      name="warning"
+                      class="me-2"
+                      size="1.25rem"
+                    />
                     Devices must have a location assigned to them to be able to
                     record. Set the location of your device on the Cacophony
                     Sidekick mobile app when you deploy it in the field.

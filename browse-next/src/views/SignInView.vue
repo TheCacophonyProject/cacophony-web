@@ -209,7 +209,10 @@ const signInFormIsFilledAndValid = computed<boolean>(
         data-cy="forgotten password link"
         >Forgot password?</router-link
       >
-      <router-link :to="{ name: 'register' }" class="small text-decoration-none"
+      <router-link
+        :to="{ name: 'register' }"
+        class="small text-decoration-none"
+        data-cy="create new account link"
         >Create a new account</router-link
       >
     </div>

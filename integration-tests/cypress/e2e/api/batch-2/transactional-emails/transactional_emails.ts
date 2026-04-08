@@ -6,7 +6,7 @@ import {
   extractTokenStartingWith,
   getEmailSubject,
   getEmailToAddress,
-  JOIN_GROUP_REQUEST_PREFIX,
+  JOIN_PROJECT_REQUEST_PREFIX,
   pumpSmtp,
   startMailServerStub,
   waitForEmail,
@@ -371,7 +371,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
           expect(getEmailToAddress(email)).to.equal(getTestEmail(adminUser));
           const { token } = extractTokenStartingWith(
             email,
-            JOIN_GROUP_REQUEST_PREFIX,
+            JOIN_PROJECT_REQUEST_PREFIX,
           );
           cy.log("Admin user accepts request");
           cy.apiGroupUserAcceptInviteRequest(adminUser, token);
@@ -413,7 +413,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
             expect(getEmailToAddress(email)).to.equal(getTestEmail(ownerUser));
             const { token } = extractTokenStartingWith(
               email,
-              JOIN_GROUP_REQUEST_PREFIX,
+              JOIN_PROJECT_REQUEST_PREFIX,
             );
             cy.log("Owner user accepts request");
             cy.apiGroupUserAcceptInviteRequest(ownerUser, token);
@@ -531,7 +531,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
           expect(getEmailToAddress(email)).to.equal(getTestEmail(ownerUser));
           const { token } = extractTokenStartingWith(
             email,
-            JOIN_GROUP_REQUEST_PREFIX,
+            JOIN_PROJECT_REQUEST_PREFIX,
           );
           cy.log("Owner user accepts request");
           cy.apiGroupUserAcceptInviteRequest(ownerUser, token);
@@ -595,7 +595,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
           expect(getEmailToAddress(email)).to.equal(getTestEmail(adminUser));
           const { token } = extractTokenStartingWith(
             email,
-            JOIN_GROUP_REQUEST_PREFIX,
+            JOIN_PROJECT_REQUEST_PREFIX,
           );
           cy.log("Admin user accepts request");
           cy.apiGroupUserAcceptInviteRequest(adminUser, token);
@@ -669,7 +669,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
           expect(getEmailToAddress(email)).to.equal(getTestEmail(ownerUser));
           const { token } = extractTokenStartingWith(
             email,
-            JOIN_GROUP_REQUEST_PREFIX,
+            JOIN_PROJECT_REQUEST_PREFIX,
           );
           cy.log("Owner user accepts request");
           cy.apiGroupUserAcceptInviteRequest(ownerUser, token);

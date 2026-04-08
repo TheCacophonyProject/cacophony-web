@@ -169,7 +169,7 @@ const disabledState = computed<boolean>(() => {
     centered
     @hidden="resetFormValues"
   >
-    <b-form data-cy="join existing group form">
+    <b-form data-cy="join existing project form">
       <p>
         You need to know the email address of the project administrator to join
         an existing project.

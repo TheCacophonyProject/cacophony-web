@@ -1,8 +1,5 @@
 // load the global Cypress types
 import "cypress";
-import "../commands/browsegui/general.d.ts";
-import "../commands/browsegui/groups.d.ts";
-import "../commands/browsegui/user.d.ts";
 import "../commands/api/alerts.d.ts";
 import "../commands/api/authenticate.d.ts";
 import "../commands/api/user.d.ts";

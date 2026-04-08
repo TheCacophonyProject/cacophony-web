@@ -264,7 +264,6 @@ const currentTrackIndex = computed<number>(() => {
 <style lang="css">
 .track-scrubber {
   background: var(--cp-player-toolbar-bg);
-  //transition: height 0.3s;
   /* Above the motion paths canvas if it exists */
   box-shadow: 0 1px 5px #000 inset;
   cursor: col-resize;
@@ -278,7 +277,6 @@ const currentTrackIndex = computed<number>(() => {
   right: 0;
   bottom: 0;
   width: 100%;
-  //min-height: 44px;
   pointer-events: none;
   height: calc(var(--height-for-tracks));
 }

@@ -16,7 +16,7 @@ export default defineConfig({
     setupNodeEvents(on, config) {
       return registerPlugins(on, config);
     },
-    specPattern: "cypress/e2e/browse-next/**/*.{js,jsx,ts,tsx}",
+    specPattern: "cypress/e2e/browse/**/*.{js,jsx,ts,tsx}",
     baseUrl: "http://localhost:5173",
   },
 });

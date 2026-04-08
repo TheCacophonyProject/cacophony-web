@@ -213,7 +213,7 @@ const RESERVED_GROUP_NAMES = [
   "end-user-agreement",
   "forgot-password",
   "reset-password",
-  "confirm-group-membership-request",
+  "confirm-project-membership-request",
   "accept-invite",
   "confirm-account-email",
   "setup",
@@ -1292,7 +1292,7 @@ export default function (app: Application, baseUrl: string) {
           if (!existingInvite) {
             return next(new AuthorizationError("Invite doesn't exist"));
           }
-          token = getInviteToGroupToken(existingInvite.id, group.id);
+          token = getInviteToGroupToken(existingInvite.id, group.id, email);
           // Should we be able to revoke email invites?
         } else {
           const existingGroupUser = await GroupUsers.findOne({
@@ -1346,7 +1346,7 @@ export default function (app: Application, baseUrl: string) {
           admin: makeAdmin,
           owner: makeOwner,
         });
-        const token = getInviteToGroupToken(invitation.id, group.id);
+        const token = getInviteToGroupToken(invitation.id, group.id, email);
         const actualRequestUser = await User.findByPk(requestUser.id);
         const sendSuccess = await sendGroupInviteNewMemberEmail(
           token,

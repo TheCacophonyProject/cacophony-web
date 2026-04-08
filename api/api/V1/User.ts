@@ -211,6 +211,9 @@ export default function (app: Application, baseUrl: string) {
       // If the user is signing up from an email invitation, and the email
       // address matches the invite email address, we can mark the user's email as confirmed
       // and add them to any pending invited groups.
+
+      // If they're signing up from an email invitation but using a different address to register,
+      // we can still add them to the group, we just won't automatically confirm their email address.
       let sendEmailSuccess: boolean;
       const token = response.locals.tokenInfo;
       const isSigningUpFromEmailInvitation =
@@ -219,17 +222,17 @@ export default function (app: Application, baseUrl: string) {
         token._type === "invite-new-user";
       const addedToGroups = [];
       if (isSigningUpFromEmailInvitation) {
-        const oneWeekAgo = new Date(
-          new Date().setDate(new Date().getDate() - 7),
+        const oneYearAgo = new Date(
+          new Date().setDate(new Date().getDate() - 365),
         );
         // NOTE: Check if there are any pending non-expired group invites for this email address:
-        const pendingInvites = await GroupInvites.findAll({
+        const invitation = await GroupInvites.findOne({
           where: {
-            email: user.email,
-            createdAt: { [Op.gt]: oneWeekAgo },
+            id: token.id,
+            createdAt: { [Op.gt]: oneYearAgo },
           },
         });
-        for (const invitation of pendingInvites) {
+        if (invitation) {
           const group = await Group.findByPk(invitation.GroupId);
           if (group) {
             const { added } = await Group.addOrUpdateGroupUser(
@@ -246,8 +249,10 @@ export default function (app: Application, baseUrl: string) {
           await invitation.destroy();
         }
       }
-      if (addedToGroups.length) {
-        // NOTE: We can now confirm the users' email address, since they signed up via an email.
+      if (addedToGroups.length && token.email === user.email) {
+        // FIXME: How do we see this email?
+
+        // NOTE: We can now confirm the users' email address, since they signed up via an email invite.
         await user.update({ emailConfirmed: true });
         sendEmailSuccess = await sendWelcomeEmailWithGroupsAdded(
           user.email,
@@ -263,11 +268,7 @@ export default function (app: Application, baseUrl: string) {
           user.email,
         );
       }
-
-      // NOTE: Only destroy users in a production env if emailing fails, since
-      //  otherwise we'd slow down tests too much by having to process emails for all
-      //  created users.
-      if (!sendEmailSuccess && config.productionEnv) {
+      if (!sendEmailSuccess) {
         // In this case, we don't want to create the user.
         await user.destroy();
         return next(

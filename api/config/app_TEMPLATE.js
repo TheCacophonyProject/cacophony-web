@@ -8,7 +8,7 @@ export const server = {
     active: true,
     port: 80,
   },
-  browse_url: "http://localhost:8080",
+  browseUrl: "http://localhost:5050",
   adminEmails: [],
   isLocalDev: true,
 };

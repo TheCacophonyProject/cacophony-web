@@ -17,6 +17,7 @@ import {
 import type { ApiTrackDataRequest } from "@typedefs/api/track.js";
 import type {
   FetchResult,
+  JwtToken,
   LoadedResource,
   TestHandle,
   WrappedFetchResult,
@@ -74,7 +75,7 @@ const getRecordingById =
   };
 
 const getThumbnail =
-  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (api: CacophonyApiClient, _authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (recordingId: RecordingId, trackId?: TrackId) => {
     let endPoint = `/api/v1/recordings/${recordingId}/thumbnail`;
     if (trackId) {
@@ -82,7 +83,7 @@ const getThumbnail =
       params.append("trackId", trackId.toString());
       endPoint = `${endPoint}?${params}`;
     }
-    return api.get(authKey, endPoint) as Promise<FetchResult<Blob>>;
+    return api.get(null, endPoint) as Promise<FetchResult<Blob>>;
   };
 
 const replaceTrackTag =
@@ -542,13 +543,28 @@ const getOneRecordingForProcessing =
       params.append("state", state);
     }
     return api.get(authKey, `/api/v1/processing/?${params}`, false) as Promise<
-      FetchResult<{ recording: ApiRecordingResponse }>
+      FetchResult<{
+        recording: ApiRecordingResponse;
+        rawJWT: JwtToken<RecordingId>;
+      }>
+    >;
+  };
+
+const getRecordingWithSignedUrl =
+  (api: CacophonyApiClient, _authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (recordingRawJWT: JwtToken<RecordingId>) => {
+    const ABORTABLE = true;
+    const params = new URLSearchParams();
+    params.append("jwt", recordingRawJWT);
+    return api.get(null, `/api/v1/signedUrl/?${params}`, ABORTABLE) as Promise<
+      FetchResult<Blob>
     >;
   };
 
 export default (api: CacophonyApiClient) => {
   return {
     getRecordingById: getRecordingById(api),
+    getRecordingWithSignedUrl: getRecordingWithSignedUrl(api),
     replaceTrackTag: replaceTrackTag(api),
     removeTrackTag: removeTrackTag(api),
     createDummyTrack: createDummyTrack(api),
@@ -575,6 +591,7 @@ export default (api: CacophonyApiClient) => {
     getOneRecordingForProcessing: getOneRecordingForProcessing(api),
     withAuth: (authKey: TestHandle) => ({
       getRecordingById: getRecordingById(api, authKey),
+      getRecordingWithSignedUrl: getRecordingWithSignedUrl(api, authKey),
       getThumbnail: getThumbnail(api, authKey),
       replaceTrackTag: replaceTrackTag(api, authKey),
       removeTrackTag: removeTrackTag(api, authKey),

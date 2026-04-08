@@ -150,13 +150,22 @@ const register =
     password: string,
     email: string,
     endUserAgreement: number | undefined,
-  ) =>
-    api.post(authKey, "/api/v1/users", {
+    inviteTokenJWT?: string,
+  ) => {
+    const payload = {
       userName,
       password,
       endUserAgreement,
       email,
-    }) as Promise<FetchResult<LoggedInUserWithCredentials>>;
+      inviteTokenJWT,
+    };
+    if (inviteTokenJWT) {
+      payload.inviteTokenJWT = inviteTokenJWT;
+    }
+    return api.post(authKey, "/api/v1/users", payload) as Promise<
+      FetchResult<LoggedInUserWithCredentials>
+    >;
+  };
 
 const saveUserSettings =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
