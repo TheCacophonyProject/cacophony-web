@@ -366,7 +366,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
           expect(getEmailSubject(email)).to.equal(
             `A Cacophony Monitoring user wants to join your '${getTestName(
               group,
-            )}' group`,
+            )}' project`,
           );
           expect(getEmailToAddress(email)).to.equal(getTestEmail(adminUser));
           const { token } = extractTokenStartingWith(
@@ -408,7 +408,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
             expect(getEmailSubject(email)).to.equal(
               `A Cacophony Monitoring user wants to join your '${getTestName(
                 group,
-              )}' group`,
+              )}' project`,
             );
             expect(getEmailToAddress(email)).to.equal(getTestEmail(ownerUser));
             const { token } = extractTokenStartingWith(
@@ -526,7 +526,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
           expect(getEmailSubject(email)).to.equal(
             `A Cacophony Monitoring user wants to join your '${getTestName(
               group,
-            )}' group`,
+            )}' project`,
           );
           expect(getEmailToAddress(email)).to.equal(getTestEmail(ownerUser));
           const { token } = extractTokenStartingWith(
@@ -590,7 +590,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
           expect(getEmailSubject(email)).to.equal(
             `A Cacophony Monitoring user wants to join your '${getTestName(
               group,
-            )}' group`,
+            )}' project`,
           );
           expect(getEmailToAddress(email)).to.equal(getTestEmail(adminUser));
           const { token } = extractTokenStartingWith(
@@ -664,7 +664,7 @@ describe("Transactional emails for different user lifecycle actions", () => {
           expect(getEmailSubject(email)).to.equal(
             `A Cacophony Monitoring user wants to join your '${getTestName(
               group,
-            )}' group`,
+            )}' project`,
           );
           expect(getEmailToAddress(email)).to.equal(getTestEmail(ownerUser));
           const { token } = extractTokenStartingWith(

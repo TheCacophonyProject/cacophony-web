@@ -268,7 +268,7 @@ export default function (app: Application, baseUrl: string) {
           user.email,
         );
       }
-      if (!sendEmailSuccess) {
+      if (!sendEmailSuccess && config.productionEnv) {
         // In this case, we don't want to create the user.
         await user.destroy();
         return next(
