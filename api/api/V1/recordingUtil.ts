@@ -1747,7 +1747,6 @@ export async function sendAlerts(recId: RecordingId, debug = false) {
             );
           }
           const alertSendSuccess = await sendAnimalAlertEmail(
-            "browse-next.cacophony.org.nz",
             recording.Group.groupName,
             recording.Device.deviceName,
             (recording.Station && recording.Station.name) || "unknown location",
