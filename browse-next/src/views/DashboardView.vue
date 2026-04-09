@@ -51,6 +51,7 @@ import { sortTagPrecedence } from "@models/visitsUtils";
 import type { LatLng, StationId as LocationId } from "@typedefs/api/common";
 import { DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS } from "@/consts.ts";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import { ActivitySearchDisplayMode } from "@/components/activitySearchUtils.ts";
 
 const selectedVisit = ref<ApiVisitResponse | null>(null);
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
@@ -634,6 +635,9 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
             name: 'activity',
             params: {
               projectName: urlNormalisedCurrentProjectName,
+            },
+            query: {
+              displayMode: ActivitySearchDisplayMode.Visits,
             },
           }"
           >View latest visits</b-button
