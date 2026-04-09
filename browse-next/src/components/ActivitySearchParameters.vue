@@ -1093,8 +1093,11 @@ const scrolledToStickyPosition = computed<boolean>(() => {
       </label>
     </div>
     <div
-      class="btn-group d-flex mt-4"
-      :class="{ 'btn-group-sm': scrolledToStickyPosition }"
+      class="btn-group btn-group-md d-flex"
+      :class="{
+        'btn-group-sm': scrolledToStickyPosition,
+        'mt-4': projectHasAudioAndThermal,
+      }"
       role="group"
       aria-label="Toggle between results groups as visits or as recordings"
       v-if="recordingMode === ActivitySearchRecordingMode.Cameras"
