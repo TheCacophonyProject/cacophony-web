@@ -381,7 +381,7 @@ const availableDateRanges = computed<NonEmptyArray<DateRangeOption>>(() => {
     : minAudioDateForProject.value;
   const latest = maxDateForProject.value;
   const ranges = [] as DateRangeOption[];
-  if (earliest < oneDayAgo || latest > oneDayAgo) {
+  if (latest > oneDayAgo) {
     ranges.push({
       range: lastTwentyFourHours,
       from: "24-hours-ago",
@@ -491,14 +491,14 @@ const deserialiseAndValidateRouteValue = (
         let from = availableDateRanges.value.find(
           (v) => v.from === "3-days-ago",
         );
-        if (from) {
-          return { replacement: from.from }; // 3 days ago
+        if (!from) {
+          from = availableDateRanges.value.find(
+            (v) => v.from === "24-hours-ago",
+          );
         }
-        from = availableDateRanges.value.find((v) => v.from === "24-hours-ago");
-        if (from) {
-          return { replacement: from.from }; // 24 hours ago
+        if (!from) {
+          from = availableDateRanges.value.find((v) => v.from === "any");
         }
-        from = availableDateRanges.value.find((v) => v.from === "any");
         if (from) {
           return { replacement: from.from }; // any time
         } else {
