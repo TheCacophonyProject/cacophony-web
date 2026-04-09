@@ -28,6 +28,7 @@ import { TagMode } from "@typedefs/api/consts.ts";
 import {
   ActivitySearchDisplayMode,
   ActivitySearchRecordingMode,
+  getEarliestDateForLocationInRecordingMode,
   getLatestDateForLocationInRecordingMode,
   queryValueIsDate,
 } from "@/components/activitySearchUtils.ts";
@@ -175,15 +176,24 @@ const combinedDateRange = computed<[Date, Date]>(() => {
   }
 });
 
+const locationsWithRecordings = computed<ApiLocationResponse[]>(() => {
+  return (props.locations.value || []).filter(
+    (location) =>
+      !!location.earliestAudioRecordingTime ||
+      !!location.earliestThermalRecordingTime,
+  );
+});
+
 const minDateForProject = computed<Date>(() => {
   // Earliest active location
   let earliest = new Date();
-  if (props.locations.value) {
-    for (const location of props.locations.value) {
-      const activeAt = new Date(location.activeAt);
-      if (activeAt < earliest) {
-        earliest = activeAt;
-      }
+  for (const location of locationsWithRecordings.value) {
+    const earliestDateForLocation = getEarliestDateForLocationInRecordingMode(
+      location,
+      props.params.recordingMode,
+    );
+    if (earliestDateForLocation && earliestDateForLocation < earliest) {
+      earliest = earliestDateForLocation;
     }
   }
   return earliest;
@@ -239,17 +249,17 @@ const maxDateForProject = computed<Date>(() => {
   // Latest active location
   let latest = new Date();
   latest.setFullYear(2010);
-  if (props.locations.value) {
-    for (const location of props.locations.value) {
-      const latestDateForLocation = getLatestDateForLocationInRecordingMode(
-        location,
-        props.params.recordingMode,
-      );
-      if (latestDateForLocation && latestDateForLocation > latest) {
-        latest = latestDateForLocation;
-      }
+
+  for (const location of locationsWithRecordings.value) {
+    const latestDateForLocation = getLatestDateForLocationInRecordingMode(
+      location,
+      props.params.recordingMode,
+    );
+    if (latestDateForLocation && latestDateForLocation > latest) {
+      latest = latestDateForLocation;
     }
   }
+
   return latest;
 });
 
@@ -339,7 +349,7 @@ const commonDateRanges = computed<DateRangeOption[]>(() => {
   const earliest = minDateForProject.value;
   const latest = maxDateForProject.value;
   const ranges = [];
-  if (earliest < oneDayAgo && latest > oneDayAgo) {
+  if (earliest < oneDayAgo || latest > oneDayAgo) {
     ranges.push({
       label: "Last 24 hours",
       urlLabel: "24-hours-ago",

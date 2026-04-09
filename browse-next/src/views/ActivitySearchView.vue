@@ -381,7 +381,7 @@ const availableDateRanges = computed<NonEmptyArray<DateRangeOption>>(() => {
     : minAudioDateForProject.value;
   const latest = maxDateForProject.value;
   const ranges = [] as DateRangeOption[];
-  if (earliest < oneDayAgo && latest > oneDayAgo) {
+  if (earliest < oneDayAgo || latest > oneDayAgo) {
     ranges.push({
       range: lastTwentyFourHours,
       from: "24-hours-ago",
@@ -488,7 +488,22 @@ const deserialiseAndValidateRouteValue = (
     } else {
       const date = new Date(value);
       if (!value || (value && value.trim() === "") || Number.isNaN(date)) {
-        return { replacement: availableDateRanges.value[1].from }; // 3 days ago
+        let from = availableDateRanges.value.find(
+          (v) => v.from === "3-days-ago",
+        );
+        if (from) {
+          return { replacement: from.from }; // 3 days ago
+        }
+        from = availableDateRanges.value.find((v) => v.from === "24-hours-ago");
+        if (from) {
+          return { replacement: from.from }; // 24 hours ago
+        }
+        from = availableDateRanges.value.find((v) => v.from === "any");
+        if (from) {
+          return { replacement: from.from }; // any time
+        } else {
+          console.error("Could not find from time for", value);
+        }
       }
       dateRange.value = [date, dateRange.value[1]];
       searchParams.value.from = date;
@@ -530,7 +545,7 @@ const deserialiseAndValidateRouteValue = (
         }
       }
     } else {
-      console.error("Invalid timespan?", value);
+      console.log("Invalid timespan?", value);
     }
   } else if (key === "devices") {
     value = value || [];
