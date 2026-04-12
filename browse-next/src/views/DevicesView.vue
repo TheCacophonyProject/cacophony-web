@@ -22,7 +22,12 @@ import CardTable from "@/components/CardTable.vue";
 import { DeviceType } from "@typedefs/api/consts.ts";
 import DeviceName from "@/components/DeviceName.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
-import { type RouteLocationRaw, useRoute, useRouter } from "vue-router";
+import {
+  type RouteLocationAsPathGeneric,
+  type RouteLocationRaw,
+  useRoute,
+  useRouter,
+} from "vue-router";
 import { urlNormaliseName } from "@/utils";
 import {
   allHistoricLocations,
@@ -59,6 +64,7 @@ const allLocations = inject(allHistoricLocations) as Ref<
 >;
 const route = useRoute();
 const router = useRouter();
+
 const devices = computed<ApiDeviceResponse[]>(() => {
   if (allProjectDevices.value !== null) {
     if (showInactiveDevices.value || route.name !== "devices") {
@@ -183,6 +189,18 @@ onBeforeMount(async () => {
       await reloadAllDevices();
     } else {
       await projectDevicesLoaded();
+      if (
+        !!activeProjectDevices.value &&
+        activeProjectDevices.value.length === 0
+      ) {
+        await router.replace({
+          ...route,
+          params: {
+            ...(route.params || {}),
+            all: "all",
+          },
+        } as RouteLocationAsPathGeneric);
+      }
     }
     const _ = findProbablyOnlineDevices();
   } else if (selectedDevice.value) {
