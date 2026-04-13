@@ -1,15 +1,12 @@
-import {
-  CacophonyApiClient,
-  unwrapLoadedResource,
-} from "@typedefs/client/api.js";
-import { DEFAULT_AUTH_ID, TestHandle } from "@typedefs/client/types.js";
-import type { FetchResult } from "@typedefs/client/types.js";
+import { CacophonyApiClient, unwrapLoadedResource } from "./api.js";
+import { DEFAULT_AUTH_ID, TestHandle } from "./types.js";
+import type { FetchResult } from "./types.js";
 import type {
   GroupId as ProjectId,
   RecordingId,
   StationId as LocationId,
-} from "@typedefs/api/common.js";
-import { ApiStaticVisitResponse } from "@typedefs/api/visit.js";
+} from "../api/common.js";
+import { ApiStaticVisitResponse } from "../api/visit.js";
 
 const getVisitsForProject =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>

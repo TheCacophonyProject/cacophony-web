@@ -14,10 +14,10 @@ import {
   LoggedInDeviceCredentials,
   LoggedInUserAuth,
   TestHandle,
-} from "@typedefs/client/types.js";
-import { decodeJWT } from "@typedefs/client/utils.js";
-import type { DeviceId, UserId } from "@typedefs/api/common.js";
-import { HttpStatusCode } from "@typedefs/api/consts.js";
+} from "./types.js";
+import { decodeJWT } from "./utils.js";
+import type { DeviceId, UserId } from "../api/common.js";
+import { HttpStatusCode } from "../api/consts.js";
 
 const userCredentials = new Map<TestHandle, LoggedInUserAuth>();
 const deviceCredentials = new Map<TestHandle, LoggedInDeviceCredentials>();

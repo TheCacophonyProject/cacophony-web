@@ -1,16 +1,16 @@
 import type {
   GroupId as ProjectId,
   StationId as LocationId,
-} from "@typedefs/api/common.js";
+} from "../api/common.js";
 import type {
   ApiVisitResponse,
   MonitoringPageCriteria,
-} from "@typedefs/api/monitoring.js";
-import type { RecordingType } from "@typedefs/api/consts.js";
-import { RecordingType as ConcreteRecordingType } from "@typedefs/api/consts.js";
-import type { CacophonyApiClient } from "@typedefs/client/api.js";
-import type { FetchResult, TestHandle } from "@typedefs/client/types.js";
-import { DEFAULT_AUTH_ID } from "@typedefs/client/types.js";
+} from "../api/monitoring.js";
+import type { RecordingType } from "../api/consts.js";
+import { RecordingType as ConcreteRecordingType } from "../api/consts.js";
+import type { CacophonyApiClient } from "./api.js";
+import type { FetchResult, TestHandle } from "./types.js";
+import { DEFAULT_AUTH_ID } from "./types.js";
 
 export interface VisitsQueryResult {
   statusCode: number;

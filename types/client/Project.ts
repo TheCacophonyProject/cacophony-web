@@ -1,21 +1,17 @@
-import { DEFAULT_AUTH_ID } from "@typedefs/client/types.js";
-import { unwrapLoadedResource } from "@typedefs/client/api.js";
-import type { CacophonyApiClient } from "@typedefs/client/api.js";
+import { DEFAULT_AUTH_ID } from "./types.js";
+import { unwrapLoadedResource } from "./api.js";
+import type { CacophonyApiClient } from "./api.js";
 
-import type {
-  FetchResult,
-  LoadedResource,
-  TestHandle,
-} from "@typedefs/client/types.js";
-import type { GroupId as ProjectId, UserId } from "@typedefs/api/common.js";
+import type { FetchResult, LoadedResource, TestHandle } from "./types.js";
+import type { GroupId as ProjectId, UserId } from "../api/common.js";
 import type {
   ApiGroupResponse as ApiProjectResponse,
   ApiGroupSettings as ApiProjectSettings,
   ApiGroupUserResponse as ApiProjectUserResponse,
-} from "@typedefs/api/group.js";
-import type { ApiDeviceResponse } from "@typedefs/api/device.js";
-import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station.js";
-import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group.js";
+} from "../api/group.js";
+import type { ApiDeviceResponse } from "../api/device.js";
+import type { ApiStationResponse as ApiLocationResponse } from "../api/station.js";
+import type { ApiGroupUserSettings as ApiProjectUserSettings } from "../api/group.js";
 
 const addNewProject =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>

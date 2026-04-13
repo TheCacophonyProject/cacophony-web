@@ -6,28 +6,28 @@ import type {
   TagId,
   TrackId,
   TrackTagId,
-} from "@typedefs/api/common.js";
-import type { ApiRecordingResponse } from "@typedefs/api/recording.js";
-import type { ApiTrackTagRequest } from "@typedefs/api/trackTag.js";
+} from "../api/common.js";
+import type { ApiRecordingResponse } from "../api/recording.js";
+import type { ApiTrackTagRequest } from "../api/trackTag.js";
 import {
   RecordingProcessingState,
   RecordingType,
   TagMode,
-} from "@typedefs/api/consts.js";
-import type { ApiTrackDataRequest } from "@typedefs/api/track.js";
+} from "../api/consts.js";
+import type { ApiTrackDataRequest } from "../api/track.js";
 import type {
   FetchResult,
   JwtToken,
   LoadedResource,
   TestHandle,
   WrappedFetchResult,
-} from "@typedefs/client/types.js";
-import { DEFAULT_AUTH_ID } from "@typedefs/client/types.js";
-import type { CacophonyApiClient } from "@typedefs/client/api.js";
+} from "./types.js";
+import { DEFAULT_AUTH_ID } from "./types.js";
+import type { CacophonyApiClient } from "./api.js";
 
-import { unwrapLoadedResource } from "@typedefs/client/api.js";
-import type { ApiRecordingUploadData } from "@typedefs/api/recording.js";
-import type { NonEmptyArray } from "@typedefs/client/utils.js";
+import { unwrapLoadedResource } from "./api.js";
+import type { ApiRecordingUploadData } from "../api/recording.js";
+import type { NonEmptyArray } from "./utils.js";
 
 export interface QueryRecordingsOptions {
   devices?: DeviceId[];
@@ -47,7 +47,6 @@ export interface QueryRecordingsOptions {
 
   types?: (RecordingType.ThermalRaw | RecordingType.Audio)[];
 }
-
 export interface BulkRecordingsResponse {
   recordings: ApiRecordingResponse[];
   count?: number;

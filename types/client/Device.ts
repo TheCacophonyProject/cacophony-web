@@ -4,29 +4,26 @@ import type {
   IsoFormattedDateString,
   LatLng,
   ScheduleId,
-} from "@typedefs/api/common.js";
+} from "../api/common.js";
 import type {
   ApiDeviceHistory,
   ApiDeviceHistorySettings,
   ApiDeviceResponse,
   ApiMaskRegionsData,
-} from "@typedefs/api/device.js";
+} from "../api/device.js";
 import type {
   ApiSubmitEventsRequestBody,
   DeviceConfigDetail,
   DeviceEvent,
   IsoFormattedString,
-} from "@typedefs/api/event.js";
-import type { DeviceEventType, DeviceTypeUnion } from "@typedefs/api/consts.js";
-import { DeviceType } from "@typedefs/api/consts.js";
-import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station.js";
-import type { ApiRecordingResponse } from "@typedefs/api/recording.js";
-import type { ApiTrackResponse } from "@typedefs/api/track.js";
-import type { CacophonyApiClient } from "@typedefs/client/api.js";
-import {
-  optionalQueryString,
-  unwrapLoadedResource,
-} from "@typedefs/client/api.js";
+} from "../api/event.js";
+import type { DeviceEventType, DeviceTypeUnion } from "../api/consts.js";
+import { DeviceType } from "../api/consts.js";
+import type { ApiStationResponse as ApiLocationResponse } from "../api/station.js";
+import type { ApiRecordingResponse } from "../api/recording.js";
+import type { ApiTrackResponse } from "../api/track.js";
+import type { CacophonyApiClient } from "./api.js";
+import { optionalQueryString, unwrapLoadedResource } from "./api.js";
 import type {
   BatteryInfo,
   BatteryInfoEvent,
@@ -34,8 +31,8 @@ import type {
   LoadedResource,
   LoggedInDeviceCredentials,
   TestHandle,
-} from "@typedefs/client/types.js";
-import { DEFAULT_AUTH_ID } from "@typedefs/client/types.js";
+} from "./types.js";
+import { DEFAULT_AUTH_ID } from "./types.js";
 
 const deleteDevice =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>

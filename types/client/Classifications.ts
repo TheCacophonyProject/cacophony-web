@@ -1,7 +1,7 @@
-import type { ApiClassificationResponse } from "@typedefs/api/trackTag.js";
-import type { CacophonyApiClient } from "@typedefs/client/api.js";
-import type { FetchResult, TestHandle } from "@typedefs/client/types.js";
-import { DEFAULT_AUTH_ID } from "@typedefs/client/types.js";
+import type { ApiClassificationResponse } from "../api/trackTag.js";
+import type { CacophonyApiClient } from "./api.js";
+import type { FetchResult, TestHandle } from "./types.js";
+import { DEFAULT_AUTH_ID } from "./types.js";
 
 const apiGetClassifications =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>

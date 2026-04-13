@@ -1,20 +1,20 @@
-import type { CacophonyApiClient } from "@typedefs/client/api.js";
-import { unwrapLoadedResource } from "@typedefs/client/api.js";
-import type { ApiLoggedInUserResponse } from "@typedefs/api/user.js";
-import type { GroupId, UserId } from "@typedefs/api/common.js";
+import type { CacophonyApiClient } from "./api.js";
+import { unwrapLoadedResource } from "./api.js";
+import type { ApiLoggedInUserResponse } from "../api/user.js";
+import type { GroupId, UserId } from "../api/common.js";
 import type {
   FetchResult,
   JwtToken,
   LoadedResource,
   LoggedInUserWithCredentials,
   TestHandle,
-} from "@typedefs/client/types.js";
-import { DEFAULT_AUTH_ID } from "@typedefs/client/types.js";
+} from "./types.js";
+import { DEFAULT_AUTH_ID } from "./types.js";
 
-import type { UserGlobalPermission } from "@typedefs/api/consts.js";
-import type { EndUserAgreementVersion } from "@typedefs/api/common.js";
-import type { ApiUserSettings } from "@typedefs/api/user.js";
-import type { ApiGroupResponse } from "@typedefs/api/group.js";
+import type { UserGlobalPermission } from "../api/consts.js";
+import type { EndUserAgreementVersion } from "../api/common.js";
+import type { ApiUserSettings } from "../api/user.js";
+import type { ApiGroupResponse } from "../api/group.js";
 const NO_ABORT = false;
 
 // FIXME: Move to globally exported types?

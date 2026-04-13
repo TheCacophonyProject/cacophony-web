@@ -3,14 +3,14 @@ import type {
   DeviceId,
   GroupId as ProjectId,
   StationId as LocationId,
-} from "@typedefs/api/common.js";
+} from "../api/common.js";
 import type {
   ApiAlertResponse,
   ApiPostAlertRequestBody,
-} from "@typedefs/api/alerts.js";
-import type { CacophonyApiClient } from "@typedefs/client/api.js";
-import type { FetchResult, TestHandle } from "@typedefs/client/types.js";
-import { DEFAULT_AUTH_ID } from "@typedefs/client/types.js";
+} from "../api/alerts.js";
+import type { CacophonyApiClient } from "./api.js";
+import type { FetchResult, TestHandle } from "./types.js";
+import { DEFAULT_AUTH_ID } from "./types.js";
 
 export const getAlertsForLocation =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>

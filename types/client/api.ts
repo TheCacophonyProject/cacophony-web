@@ -1,4 +1,4 @@
-import { HttpStatusCode } from "@typedefs/api/consts.js";
+import { HttpStatusCode } from "../api/consts.js";
 import type {
   FetchResult,
   JwtToken,
@@ -7,8 +7,8 @@ import type {
   LoggedInUserAuth,
   TestHandle,
   WrappedFetchResult,
-} from "@typedefs/client/types.js";
-import type { UserId, DeviceId } from "@typedefs/api/common.js";
+} from "./types.js";
+import type { UserId, DeviceId } from "../api/common.js";
 
 export const CurrentViewAbortController = {
   newView(abortReason?: string) {

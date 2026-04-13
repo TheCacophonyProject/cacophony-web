@@ -1,17 +1,13 @@
-import { unwrapLoadedResource } from "@typedefs/client/api.js";
-import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common.js";
+import { unwrapLoadedResource } from "./api.js";
+import type { IsoFormattedDateString, LatLng } from "../api/common.js";
 import type {
   GroupId as ProjectId,
   StationId as LocationId,
-} from "@typedefs/api/common.js";
-import type {
-  FetchResult,
-  LoadedResource,
-  TestHandle,
-} from "@typedefs/client/types.js";
-import { DEFAULT_AUTH_ID } from "@typedefs/client/types.js";
-import type { CacophonyApiClient } from "@typedefs/client/api.js";
-import type { ApiStationResponse } from "@typedefs/api/station.js";
+} from "../api/common.js";
+import type { FetchResult, LoadedResource, TestHandle } from "./types.js";
+import { DEFAULT_AUTH_ID } from "./types.js";
+import type { CacophonyApiClient } from "./api.js";
+import type { ApiStationResponse } from "../api/station.js";
 
 const createNewLocationForProject =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
