@@ -35,6 +35,12 @@ describe("Recordings - audio recording parameter tests", () => {
       "rarGroup2",
       "rarDevice2",
     );
+
+    cy.testCreateUserGroupAndDevice(
+      "rarGroup3Admin",
+      "rarGroup3",
+      "rarDevice3",
+    );
   });
 
   it("Can upload an audio recording", () => {
@@ -63,19 +69,18 @@ describe("Recordings - audio recording parameter tests", () => {
         expectedRecording1,
         EXCLUDE_IDS,
       );
+      cy.log("Delete recording");
+      cy.apiRecordingDelete("rarGroupAdmin", "rarRecording1");
+
+      cy.log("Check recording no longer exists");
+      cy.apiRecordingCheck(
+        "rarGroupAdmin",
+        "rarRecording1",
+        undefined,
+        [],
+        HttpStatusCode.Forbidden,
+      );
     });
-
-    cy.log("Delete recording");
-    cy.apiRecordingDelete("rarGroupAdmin", "rarRecording1");
-
-    cy.log("Check recording no longer exists");
-    cy.apiRecordingCheck(
-      "rarGroupAdmin",
-      "rarRecording1",
-      undefined,
-      [],
-      HttpStatusCode.Forbidden,
-    );
   });
 
   it("Can upload an audio recording - as if from tc2 device", () => {
@@ -108,6 +113,7 @@ describe("Recordings - audio recording parameter tests", () => {
         EXCLUDE_IDS,
       );
       cy.apiRecordingDownloadCheck("rarGroupAdmin", "rarRecording1");
+      cy.apiRecordingDelete("rarGroupAdmin", "rarRecording1");
     });
   });
 
@@ -141,8 +147,7 @@ describe("Recordings - audio recording parameter tests", () => {
     });
   });
 
-  //TODO: Ussue 108: Invalid duration ignored
-  it.skip("Handles invalid duration correctly", () => {
+  it("Handles invalid duration correctly", () => {
     cy.log("Invalid duration rejected correctly");
     const recording14 = TestCreateRecordingData(templateRecording);
 
@@ -187,8 +192,7 @@ describe("Recordings - audio recording parameter tests", () => {
     });
   });
 
-  //TODO: Fails - issue 80
-  it.skip("Invalid recordingDateTime handled correctly", () => {
+  it("Invalid recordingDateTime handled correctly", () => {
     const recording8 = TestCreateRecordingData(templateRecording);
     recording8.recordingDateTime = "BadTimeValue";
     cy.apiRecordingAdd(
@@ -398,8 +402,7 @@ describe("Recordings - audio recording parameter tests", () => {
     });
   });
 
-  //TODO: Issue 81.  Bad locations cause server error (not caught with error code)
-  it.skip("Invalid locations handled correctly", () => {
+  it("Invalid locations handled correctly", () => {
     const recording18 = TestCreateRecordingData(templateRecording);
     recording18.location = [-91, 20];
     cy.apiRecordingAdd(
