@@ -22,10 +22,18 @@ import logger from "@log";
 import { canonicalLatLng } from "@models/util/locationUtils.js";
 
 export function isLatLon(
-  point: { coordinates: [number, number] } | [number, number] | LatLng | string,
+  point: { coordinates: [number, number] } | [number, number] | LatLng,
   shouldThrow = true,
 ) {
   let valid = true;
+  if (typeof point !== "object") {
+    valid = false;
+    if (shouldThrow) {
+      throw new Error(
+        `Location ${JSON.stringify(point, null, 2)} is not valid.`,
+      );
+    }
+  }
   if (point === null) {
     valid = false;
     logger.warning("Invalid 5");
@@ -68,17 +76,19 @@ export function isLatLon(
   if (!valid && shouldThrow) {
     throw new Error(`Location ${JSON.stringify(point, null, 2)} is not valid.`);
   }
-  const location = canonicalLatLng(
-    point as LatLng | { coordinates: [number, number] } | [number, number],
-  );
-  if (
-    location.lat < -90 ||
-    90 < location.lat ||
-    location.lng < -180 ||
-    180 <= location.lng
-  ) {
-    logger.warning("Invalid 6 %s", point);
-    valid = false;
+  if (valid) {
+    const location = canonicalLatLng(
+      point as LatLng | { coordinates: [number, number] } | [number, number],
+    );
+    if (
+      location.lat < -90 ||
+      90 < location.lat ||
+      location.lng < -180 ||
+      180 <= location.lng
+    ) {
+      logger.warning("Location out of bounds %s", point);
+      valid = false;
+    }
   }
   if (!valid && shouldThrow) {
     throw new Error(`Location ${JSON.stringify(point, null, 2)} is not valid.`);
