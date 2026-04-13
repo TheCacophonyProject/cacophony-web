@@ -458,7 +458,16 @@ const interpolateTitle = (
         piece = piece.slice(0, piece.length - 1);
       }
       if (piece.startsWith(":") && params[piece.slice(1)]) {
-        const replaceWith = params[piece.slice(1)];
+        let replaceWith = params[piece.slice(1)];
+        if (piece.slice(1) === "projectName") {
+          if (
+            currentSelectedProject.value &&
+            urlNormaliseName(currentSelectedProject.value.groupName) ===
+              replaceWith
+          ) {
+            replaceWith = currentSelectedProject.value.groupName;
+          }
+        }
         output = output.replace(
           piece,
           replaceWith[0].toUpperCase() + replaceWith.slice(1),
