@@ -69,9 +69,14 @@ export const getFirstPass = (
       ...(types.includes(RecordingType.Audio) && !includeFilteredTracks
         ? { redacted: false }
         : {}),
-      duration: statusRecordingsOnly
-        ? { [Op.and]: [{ [Op.lt]: 2.5 }, { [Op.gt]: 0.0 }] }
-        : { [Op.gte]: minDuration },
+      // NOTE: If minDuration is zero, don't include this clause
+      ...(minDuration !== 0
+        ? {
+            duration: statusRecordingsOnly
+              ? { [Op.and]: [{ [Op.lt]: 2.5 }, { [Op.gt]: 0.0 }] }
+              : { [Op.gte]: minDuration },
+          }
+        : {}),
       [Op.and]: [
         ...(tagMode === TagMode.UnTagged
           ? [
@@ -385,9 +390,9 @@ export const getSelfJoinForTagMode = (
       // NOTE: Any recordings, tagged or untagged – but not false-positive only/filtered by default.
       //  If filtering by tags, this won't get used – it will switch to using TagMode.Tagged
 
-      // TODO: Improve this query, since it doesn't really need the left join as we're not checking tags - although we
-      //  are filtering false positives
       if (!includeFilteredTracks) {
+        // TODO: Improve this query, since it doesn't really need the left join as we're not checking tags - although we
+        //  are filtering false positives
         const automaticSql = getRawSql(options(true, true));
         const humanSql = getRawSql(options(false, false));
         return `
