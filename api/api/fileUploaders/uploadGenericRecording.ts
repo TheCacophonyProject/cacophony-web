@@ -285,6 +285,7 @@ const processFilePart = async (
   partKey: string,
   fileStream: ByteLengthTruncateStream,
   type: RecordingType,
+  recordingData: RecordingData,
 ): Promise<RecordingFileUploadResult> => {
   let length = 0;
   // NOTE: it can end up that we are uploading old recordings for another group, in which case we'd want to rename these keys.
@@ -324,7 +325,10 @@ const processFilePart = async (
       }
       // If this is a zero-sized file, we will timeout when trying to upload it via the S3 API.
       if (length === 0) {
-        log.warning("Zero length file");
+        log.warning(
+          "Zero length file, supplied data %s",
+          JSON.stringify(recordingData, null, 2),
+        );
         await upload.abort();
       } else {
         await upload.done();
@@ -348,7 +352,10 @@ const processFilePart = async (
         embeddedMetadata = metadata as Record<string, string>;
       }
       if (length === 0) {
-        log.warning("Zero length file");
+        log.warning(
+          "Zero length file, supplied data %s",
+          JSON.stringify(recordingData, null, 2),
+        );
         await upload.abort();
       } else {
         await upload.done();
@@ -490,6 +497,7 @@ export const uploadGenericRecording =
             mapPartName(partKey, file.field),
             stream,
             recordingData.type,
+            recordingData,
           );
           uploadResult.fileName = originalFilename;
         }
