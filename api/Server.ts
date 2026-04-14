@@ -191,12 +191,14 @@ const grafanaLabelRestart = async () => {
       store.set("cpuUsage", startUsage);
     }
     // Make sure user agent doesn't trigger mustache template parsing.
-    log.info(
-      "UA: %s",
-      request.headers["user-agent"]
-        .replaceAll("{", "%7B")
-        .replaceAll("}", "%7D"),
-    );
+    if (request.headers["user-agent"]) {
+      log.info(
+        "UA: %s",
+        request.headers["user-agent"]
+          .replaceAll("{", "%7B")
+          .replaceAll("}", "%7D"),
+      );
+    }
     next();
   });
   app.use(

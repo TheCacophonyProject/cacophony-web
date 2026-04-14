@@ -197,14 +197,12 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
   }
 
   static async getDeviceLocationAtTime(
-    deviceId: DeviceId,
-    groupId: GroupId,
+    deviceUuid: DeviceId,
     atTime: Date = new Date(),
   ): Promise<LatLng | null> {
     const before = await this.findOne({
       where: {
-        DeviceId: deviceId,
-        GroupId: groupId,
+        uuid: deviceUuid,
         fromDateTime: { [Op.lte]: atTime },
         location: { [Op.ne]: null },
       },

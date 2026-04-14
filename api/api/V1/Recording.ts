@@ -1120,9 +1120,9 @@ export default (app: Application, baseUrl: string) => {
       const recordingItem = response.locals.recording as Recording;
       const recording = await mapRecordingResponse(response.locals.recording);
       if (request.query["requires-signed-url"]) {
-        let rawJWT = "";
+        let rawJWT: string;
         let cookedJWT: string;
-        let rawSize = 0;
+        let rawSize: number;
         let cookedSize: number;
         if (recordingItem.fileKey) {
           cookedJWT = signedToken(
@@ -1132,9 +1132,14 @@ export default (app: Application, baseUrl: string) => {
             response.locals.requestUser.id,
             recordingItem.GroupId,
           );
-          cookedSize =
-            recordingItem.fileSize ||
-            (await util.getS3ObjectFileSize(recordingItem.fileKey));
+          if (
+            "cookedSize" in recordingItem &&
+            typeof recordingItem.fileSize === "number"
+          ) {
+            cookedSize = recordingItem.fileSize;
+          } else {
+            cookedSize = await util.getS3ObjectFileSize(recordingItem.fileKey);
+          }
         }
         if (recordingItem.rawFileKey) {
           rawJWT = signedToken(
@@ -1144,17 +1149,37 @@ export default (app: Application, baseUrl: string) => {
             response.locals.requestUser.id,
             recordingItem.GroupId,
           );
-          rawSize =
-            recordingItem.rawFileSize ||
-            (await util.getS3ObjectFileSize(recordingItem.rawFileKey));
+          if (
+            "rawFileSize" in recordingItem &&
+            typeof recordingItem.rawFileSize === "number"
+          ) {
+            rawSize = recordingItem.rawFileSize;
+          } else {
+            rawSize = await util.getS3ObjectFileSize(recordingItem.rawFileKey);
+          }
         }
-        return successResponse(response, {
+        const payload: {
+          recording: ApiRecordingResponse;
+          rawSize?: number;
+          fileSize?: number;
+          downloadFileJWT?: string;
+          downloadRawJWT?: string;
+        } = {
           recording,
-          rawSize: rawSize,
-          fileSize: cookedSize,
-          downloadFileJWT: cookedJWT,
-          downloadRawJWT: rawJWT,
-        });
+        };
+        if (rawSize) {
+          payload.rawSize = rawSize;
+        }
+        if (cookedSize) {
+          payload.fileSize = cookedSize;
+        }
+        if (cookedJWT) {
+          payload.downloadFileJWT = cookedJWT;
+        }
+        if (rawJWT) {
+          payload.downloadRawJWT = rawJWT;
+        }
+        return successResponse(response, payload);
       } else {
         return successResponse(response, {
           recording,

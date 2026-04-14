@@ -214,8 +214,8 @@ declare global {
       ): Chainable<
         Cypress.Response<{
           recording: ApiRecordingResponse;
-          rawSize: number;
-          downloadRawJWT: string;
+          rawSize?: number;
+          downloadRawJWT?: string;
         }>
       >;
 
@@ -1167,16 +1167,20 @@ Cypress.Commands.add(
     cy.apiRecordingGet(userName, recordingId as RecordingId, statusCode).then(
       (
         response: Cypress.Response<{
-          rawSize: number;
-          downloadRawJWT: string;
+          rawSize?: number;
+          downloadRawJWT?: string;
           recording: ApiRecordingResponse;
           messages: string[];
         }>,
       ) => {
-        cy.log(JSON.stringify(response, null, 2));
         if (statusCode === 200) {
-          expect(response.body.rawSize, "rawSize").to.exist;
-          expect(response.body.downloadRawJWT).to.exist;
+          if (
+            response.body.recording.processingState !==
+            RecordingProcessingState.Corrupt
+          ) {
+            expect(response.body.rawSize, "rawSize").to.exist;
+            expect(response.body.downloadRawJWT).to.exist;
+          }
           checkTreeStructuresAreEqualExcept(
             expectedRecording,
             response.body.recording,

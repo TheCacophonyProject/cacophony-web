@@ -627,7 +627,6 @@ export const maybeUpdateDeviceHistory = async (
     const existingHistory = await DeviceHistory.findOne({
       where: {
         uuid: device.uuid,
-        GroupId: device.GroupId,
         location: { [Op.ne]: null },
         stationId: { [Op.ne]: null },
         fromDateTime: { [Op.lte]: dateTime },
@@ -697,7 +696,6 @@ export const maybeUpdateDeviceHistory = async (
     const priorLocation = await DeviceHistory.findOne({
       where: {
         uuid: device.uuid,
-        GroupId: device.GroupId,
         setBy: { [Op.in]: setByArr },
         location: { [Op.ne]: null },
         stationId: { [Op.ne]: null },
@@ -718,7 +716,6 @@ export const maybeUpdateDeviceHistory = async (
         const laterLocation = await DeviceHistory.findOne({
           where: {
             uuid: device.uuid,
-            GroupId: device.GroupId,
             setBy: { [Op.in]: setByArr },
             location: { [Op.ne]: null },
             stationId: { [Op.ne]: null },
@@ -760,7 +757,6 @@ export const maybeUpdateDeviceHistory = async (
       const laterLocation = await DeviceHistory.findOne({
         where: {
           uuid: device.uuid,
-          GroupId: device.GroupId,
           setBy: { [Op.in]: setByArr },
           location: { [Op.ne]: null },
           stationId: { [Op.ne]: null },
@@ -896,6 +892,7 @@ export const maybeUpdateDeviceHistory = async (
       //   stationsInSameLocationForProject,
       // );
 
+      // FIXME: This would need to be using the historical group, if the device was moved?
       let stationToAssign = await tryToMatchLocationToStationInGroup(
         location,
         device.GroupId,
