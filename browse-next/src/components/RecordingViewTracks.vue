@@ -300,21 +300,24 @@ const addOrRemoveUserTag = async ({
         const positions = [];
         if (props.recording.type === RecordingType.ThermalRaw) {
           const recording = props.recording as ApiThermalRecordingResponse;
-          if (!recording.tags.some((tag) => tag.detail === "missed track")) {
-            // If we're adding a dummy track to a thermal recording, also add the "missed track" tag.
-            ClientApi.Recordings.addRecordingLabel(
-              recording.id,
-              "missed track",
-            ).then((labelResponse) => {
-              if (labelResponse.success) {
-                emit("added-recording-label", {
-                  id: labelResponse.result.tagId,
-                  detail: "Missed track",
-                  createdAt: new Date().toISOString(),
-                  confidence: 0.9,
-                });
-              }
-            });
+          if (tag !== "false-positive") {
+            // Only add if we're not tagging recording as a false-positive.
+            if (!recording.tags.some((tag) => tag.detail === "missed track")) {
+              // If we're adding a dummy track to a thermal recording, also add the "missed track" tag.
+              ClientApi.Recordings.addRecordingLabel(
+                recording.id,
+                "missed track",
+              ).then((labelResponse) => {
+                if (labelResponse.success) {
+                  emit("added-recording-label", {
+                    id: labelResponse.result.tagId,
+                    detail: "Missed track",
+                    createdAt: new Date().toISOString(),
+                    confidence: 0.9,
+                  });
+                }
+              });
+            }
           }
           const numFrames = Math.floor(
             recording.additionalMetadata?.totalFrames || recording.duration * 9,
