@@ -19,7 +19,10 @@ import Sequelize, { Op, Transaction } from "sequelize";
 import { Recording } from "@models/Recording.js";
 import { openS3 } from "@models/util/util.js";
 import { Readable } from "stream";
-import { TransformStream } from "stream/web";
+import {
+  ReadableStream as WebReadableStream,
+  TransformStream,
+} from "stream/web";
 import type { CptvFrame, CptvHeader } from "@api/cptv-decoder/decoder.js";
 import { CptvDecoder } from "@api/cptv-decoder/decoder.js";
 import { Device } from "@models/Device.js";
@@ -51,17 +54,19 @@ import { RecordingDataSuppliedMetadata } from "@typedefs/api/fileProcessing.js";
 import { Fn } from "sequelize/lib/utils";
 import { Visit, VISITS_ADVISORY_LOCK_KEY } from "@models/Visit.js";
 import { DeviceHistory } from "@models/DeviceHistory.js";
+import { JsonDocument } from "@typedefs/api/event.js";
 
 interface RecordingData {
   duration?: number;
   status?: "test" | "startup" | "shutdown";
   type: RecordingType;
   location?: LatLng;
-  recordingDateTime?: Date;
+  recordingDateTime?: Date | IsoFormattedDateString;
   processingState: RecordingProcessingState;
   rawFileHash: string;
   additionalMetadata?: Record<string, number | string>;
   fileHash?: string;
+  filename?: string;
   metadata?: RecordingDataSuppliedMetadata;
 }
 
@@ -166,18 +171,18 @@ const mergeEmbeddedDataWithSuppliedRecordingData = (
 
 const uploadStream = (
   key: string,
-  readableWebStream: ReadableStream,
+  readableWebStream: WebReadableStream,
   fileName?: string,
 ) => {
   if (fileName) {
-    return openS3().uploadStreaming(key, readableWebStream, {
+    return openS3().uploadStreaming(key, readableWebStream as ReadableStream, {
       filename: fileName,
     });
   }
-  return openS3().uploadStreaming(key, readableWebStream);
+  return openS3().uploadStreaming(key, readableWebStream as ReadableStream);
 };
 
-const processDataPart = (part: MultipartFormPart) => {
+const processDataPart = (part: MultipartFormPart): Promise<JsonDocument> => {
   return new Promise((resolve, reject) => {
     // Parse the data field.
     let jsonStream = "";
@@ -195,28 +200,37 @@ const processDataPart = (part: MultipartFormPart) => {
   });
 };
 
-const validateDataPart = async (data: unknown, uploadingDeviceId: DeviceId) => {
+const validateDataPart = async (
+  data: JsonDocument,
+  uploadingDeviceId: DeviceId,
+) => {
   // If the recordingDateTime data field is set, it must be a valid date.
   if (typeof data !== "object") {
     throw new UnprocessableError(`Could not validate data part: ${data}`);
   }
-  const dataObj = data as object;
+  const dataObj = data as RecordingData;
   if (
     "recordingDateTime" in dataObj &&
-    isNaN(
-      Date.parse((dataObj as { recordingDateTime: string }).recordingDateTime),
-    )
+    isNaN(Date.parse((dataObj.recordingDateTime || "").toString()))
   ) {
     throw new UnprocessableError(
       `Invalid recordingDateTime '${dataObj.recordingDateTime}'`,
     );
+  }
+  if ("duration" in dataObj) {
+    const duration = Number(dataObj.duration);
+    if (isNaN(duration) || duration <= 0) {
+      throw new UnprocessableError(
+        `Invalid recording duration '${dataObj.duration}'`,
+      );
+    }
   }
   if ("fileHash" in dataObj && !!dataObj.fileHash) {
     const existingRecordingWithHashForDevice: Recording =
       (await Recording.findOne({
         where: {
           DeviceId: uploadingDeviceId,
-          rawFileHash: (dataObj as { fileHash: string }).fileHash,
+          rawFileHash: dataObj.fileHash,
           deletedAt: { [Op.eq]: null },
         },
       })) as Recording;
@@ -227,24 +241,12 @@ const validateDataPart = async (data: unknown, uploadingDeviceId: DeviceId) => {
         uploadingDeviceId,
       );
       throw new ClientError(
-        `Duplicate recording found for device: ${existingRecordingWithHashForDevice.id}`,
+        `Duplicate recording found for device: ${existingRecordingWithHashForDevice.DeviceId}, (recording #${existingRecordingWithHashForDevice.id})`,
         HttpStatusCode.Ok,
       );
     }
   }
   return dataObj;
-};
-
-const processAndValidateDataPart = async (
-  part: MultipartFormPart,
-  uploadingDeviceId: DeviceId,
-) => {
-  try {
-    const data = await processDataPart(part);
-    return await validateDataPart(data, uploadingDeviceId);
-  } catch (err) {
-    part.emit("error", err);
-  }
 };
 
 interface RecordingFileUploadResult {
@@ -270,7 +272,7 @@ const mapPartName = (partKey: string, partName: string): string => {
   return partKey;
 };
 
-const closeStreams = async (streams: ReadableStream[]) => {
+const closeStreams = async (streams: (WebReadableStream | undefined)[]) => {
   for (const stream of streams) {
     if (stream && stream.cancel && !stream.locked) {
       try {
@@ -287,27 +289,18 @@ const processFilePart = async (
   part: MultipartFormPart,
   _request: Request,
   canceledRequest: { canceled: boolean },
+  data: RecordingData,
 ): Promise<RecordingFileUploadResult> => {
+  console.assert(!!data, "DATA MISSING");
+  console.assert(!!data.type, "FILETYPE MISSING");
   let length = 0;
   // NOTE: it can end up that we are uploading old recordings for another group, in which case we'd want to rename these keys.
   const sha1Hash = crypto.createHash("sha1");
   console.assert(!!part.filename, "NO FILENAME");
-
-  // NOTE: thermal-uploader calls the filename 'file',
   //  so we need to check for m4a metadata as well as trying to parse as a CPTV file.
-  const mightBeCptvFile =
-    !("filename" in part) ||
-    (part.filename &&
-      (part.filename.endsWith(".cptv") || part.filename === "file"));
+  const isCptvFile = data.type === RecordingType.ThermalRaw;
+  const isAudioFile = data.type === RecordingType.Audio;
 
-  const mightBeTc2AudioFile =
-    !("filename" in part) ||
-    (part.filename &&
-      (part.filename.endsWith(".aac") ||
-        part.filename.endsWith(".m4a") ||
-        part.filename === "file"));
-  let wasValidCptvFile = true;
-  let wasValidM4aFile = true;
   const transform = new TransformStream({
     transform(chunk, controller) {
       length += chunk.length;
@@ -318,50 +311,34 @@ const processFilePart = async (
       controller.enqueue(chunk);
     },
   });
-  let uploaderStream;
-  let cptvDecodeStream;
-  let m4aDecodeStream;
-  if (mightBeCptvFile && mightBeTc2AudioFile) {
-    const stream = Readable.toWeb(part);
-    const [u, d] = stream.pipeThrough(transform).tee();
-    uploaderStream = u;
-    [cptvDecodeStream, m4aDecodeStream] = d.tee();
-  } else if (mightBeCptvFile && !mightBeTc2AudioFile) {
-    const stream = Readable.toWeb(part);
-    [uploaderStream, cptvDecodeStream] = stream.pipeThrough(transform).tee();
-  } else if (mightBeTc2AudioFile && !mightBeCptvFile) {
-    const stream = Readable.toWeb(part);
-    [uploaderStream, m4aDecodeStream] = stream.pipeThrough(transform).tee();
-  } else {
-    uploaderStream = Readable.toWeb(part).pipeThrough(transform);
-  }
-  const streams = [uploaderStream, cptvDecodeStream, m4aDecodeStream];
+  const stream: WebReadableStream = Readable.toWeb(part);
+  const [uploaderStream, mediaDecodeStream] = stream
+    .pipeThrough(transform)
+    .tee();
+  const streams = [stream, uploaderStream, mediaDecodeStream];
   // Upload part, while piping it through a transform that performs sha1 + checks length.
-  const upload = uploadStream(partKey, uploaderStream as ReadableStream);
-  // Special treatment for "file" part, since that is the "raw" file.
-  // NOTE: Maybe validate stream, depending on upload recording type.
-  //  If there have been recordings from this device previously, we can get the
-  //  expected type from the device kind.
+  const upload = uploadStream(partKey, uploaderStream);
   let isCorrupt = false;
   let embeddedMetadata:
     | (CptvHeader & { firstFrame?: CptvFrame })
     | string
     | Record<string, unknown>;
-  let cptvStreamError = "";
   let uploaded = false;
   let decoder: CptvDecoder;
-  if (mightBeCptvFile) {
+
+  // FIXME: Rewrite this for both device uploads from tc2-devices, and from sidekick uploads.
+  //  Also handle device uploads from classic cameras, and via sidekick
+  if (isCptvFile) {
     // If the device is a known thermal camera, we can validate the cptv file, and potentially
     // exit early if it is found to be corrupt.
     try {
       decoder = new CptvDecoder();
-      embeddedMetadata = await decoder.getStreamMetadata(cptvDecodeStream);
+      embeddedMetadata = await decoder.getStreamMetadata(mediaDecodeStream);
       if (!canceledRequest.canceled) {
         if (typeof embeddedMetadata === "string") {
-          cptvStreamError = embeddedMetadata;
           // NOTE: we don't abort corrupt files, we just mark them as corrupt and keep them.
           isCorrupt = true;
-          wasValidCptvFile = false;
+          log.warning("CPTV Stream error %s", embeddedMetadata);
         }
         // If this is a zero-sized file, we will timeout when trying to upload it via the S3 API.
         if (length === 0) {
@@ -401,44 +378,45 @@ const processFilePart = async (
         await decoder.close();
       }
     }
-  }
-  if (mightBeTc2AudioFile && (!mightBeCptvFile || !wasValidCptvFile)) {
-    const metadata = await tryReadingM4aMetadata(m4aDecodeStream);
-    if (typeof metadata === "string") {
-      log.warning("Failed parsing m4a metadata: %s", metadata);
-      wasValidM4aFile = false;
-      // Probably wasn't a valid .aac file?
-      // isCorrupt = true;
-    } else if (typeof metadata === "object") {
-      embeddedMetadata = metadata as Record<string, string>;
-      isCorrupt = false;
-    }
-    if (length === 0) {
-      log.warning("Zero length file");
-      await upload.abort().catch(() => {
-        closeStreams(streams);
-        return;
-      });
-    }
-    if (!canceledRequest.canceled && !uploaded) {
-      await upload.done().catch((error) => {
-        closeStreams(streams);
-        if (error.name !== "AbortError") {
-          part.emit(
-            "error",
-            new UnprocessableError(
-              `Upload error: '${part.name}', ${error.toString()}'`,
-            ),
-          );
+  } else if (isAudioFile) {
+    try {
+      const metadata = await tryReadingM4aMetadata(mediaDecodeStream);
+      if (typeof metadata === "string") {
+        log.warning("Failed parsing m4a metadata: %s", metadata);
+        // Probably wasn't a valid .aac file?  Could be an old bird-recorder file.
+        // isCorrupt = true;
+      } else if (typeof metadata === "object") {
+        embeddedMetadata = metadata as Record<string, string>;
+      }
+      if (!canceledRequest.canceled) {
+        if (length === 0) {
+          log.warning("Zero length file");
+          await upload.abort().catch(() => {
+            closeStreams(streams);
+            return;
+          });
+        } else {
+          await upload.done().catch((error) => {
+            closeStreams(streams);
+            if (error.name !== "AbortError") {
+              part.emit(
+                "error",
+                new UnprocessableError(
+                  `Upload error: '${part.name}', ${error.toString()}'`,
+                ),
+              );
+            }
+          });
+          uploaded = true;
         }
-      });
-      uploaded = true;
+      }
+    } catch (e) {
+      // Close streams
+      await closeStreams(streams);
+      part.emit("error", new UnprocessableError(e));
     }
   }
-  if (mightBeCptvFile && !wasValidCptvFile && !wasValidM4aFile) {
-    log.error("Stream error %s", cptvStreamError);
-  }
-  if (!mightBeCptvFile && !mightBeTc2AudioFile && !uploaded) {
+  if (!uploaded) {
     await upload.done().catch((error) => {
       closeStreams(streams);
       if (error.name !== "AbortError") {
@@ -463,7 +441,7 @@ const processFilePart = async (
   };
 
   if (embeddedMetadata && typeof embeddedMetadata !== "string") {
-    if (embeddedMetadata.firstFrame) {
+    if (isCptvFile && embeddedMetadata.firstFrame) {
       payload.clipThumbnail = await createThumbnail(
         (embeddedMetadata as CptvHeader & { firstFrame?: CptvFrame })
           .firstFrame,
@@ -477,6 +455,8 @@ const processFilePart = async (
   }
   if (part.filename) {
     payload.fileName = part.filename;
+  } else if (data && data.filename) {
+    payload.fileName = data.filename;
   }
   return payload;
 };
@@ -583,9 +563,9 @@ export const uploadGenericRecording =
 
     // TODO - depending on the kind of asset we're uploading, it can go to different object storage providers and buckets.
     //  Choose destination based on object type, and potentially owning group.
-
     const recognisedFileParts = ["file", "derived", "thumb"];
-    let dataPromise: Promise<unknown>;
+    let data: RecordingData | JsonDocument;
+    let dataPromise: Promise<JsonDocument>;
     form.on("part", async (part: MultipartFormPart) => {
       if (canceledRequest.canceled) {
         part.destroy();
@@ -598,16 +578,28 @@ export const uploadGenericRecording =
           form.emit("error", error);
         }
       });
-
       if (part.name === "data") {
-        dataPromise = processAndValidateDataPart(part, recordingDeviceId);
+        try {
+          dataPromise = processDataPart(part);
+        } catch (err) {
+          part.emit("error", err);
+        }
+        // Maybe dataPromise hasn't returned here by the time we start
       } else if (recognisedFileParts.includes(part.name)) {
+        data = await dataPromise;
+        try {
+          data = await validateDataPart(data, recordingDeviceId);
+        } catch (err) {
+          part.emit("error", err);
+          return;
+        }
         fileUploadsInProgress.push(
           processFilePart(
             mapPartName(partKey, part.name),
             part,
             request,
             canceledRequest,
+            data as RecordingData,
           ),
         );
       } else {
@@ -620,12 +612,13 @@ export const uploadGenericRecording =
 
     // Only once all the parts are finished do we create the recording.
     form.on("close", async () => {
-      let data = (await dataPromise) as RecordingData;
+      let recordingData = data as RecordingData;
       const uploadResults = await Promise.all(fileUploadsInProgress);
       if (canceledRequest.canceled) {
         await deleteUploads(uploadResults);
         return;
       }
+      //
       const rawFileUploadResult = uploadResults.find(
         (part) => part.partName === "file",
       );
@@ -634,8 +627,8 @@ export const uploadGenericRecording =
         (part) => part.partName === "derived",
       );
       try {
-        data = mergeEmbeddedDataWithSuppliedRecordingData(
-          data as RecordingData,
+        recordingData = mergeEmbeddedDataWithSuppliedRecordingData(
+          recordingData,
           rawFileUploadResult,
           recordingDeviceId,
         );
@@ -646,11 +639,10 @@ export const uploadGenericRecording =
           return next(error);
         }
       }
-
       // NOTE: For uploads of old audio files without all embedded location metadata:
       if (
-        data.type === RecordingType.Audio &&
-        !data.location &&
+        recordingData.type === RecordingType.Audio &&
+        !recordingData.location &&
         recordingDevice &&
         recordingDevice.location
       ) {
@@ -658,35 +650,36 @@ export const uploadGenericRecording =
           await DeviceHistory.getDeviceLocationAtTime(
             recordingDevice.id,
             recordingDevice.GroupId,
-            data.recordingDateTime,
+            new Date(recordingData.recordingDateTime),
           );
         if (deviceLocationAtTime) {
-          data.location = deviceLocationAtTime;
+          recordingData.location = deviceLocationAtTime;
         } else {
-          data.location = recordingDevice.location;
+          recordingData.location = recordingDevice.location;
         }
       }
 
       // Reject recordings with invalid locations
       if (
-        !data.location ||
-        (data.location && !isLatLon(data.location, false))
+        !("location" in recordingData) ||
+        ("location" in recordingData && !recordingData.location) ||
+        ("location" in recordingData &&
+          !isLatLon(recordingData.location, false))
       ) {
         if (!canceledRequest.canceled) {
           canceledRequest.canceled = true;
           await deleteUploads(uploadResults);
           return next(
             new UnprocessableError(
-              `Invalid location '${JSON.stringify(data.location)}' for device ${recordingDeviceId}, data: ${JSON.stringify(data)}`,
+              `Invalid location '${JSON.stringify(recordingData["location"])}' for device ${recordingDeviceId}, data: ${JSON.stringify(recordingData)}`,
             ),
           );
         }
       }
 
       if (
-        data &&
-        data.fileHash &&
-        data.fileHash !== rawFileUploadResult.sha1Hash
+        recordingData.fileHash &&
+        recordingData.fileHash !== rawFileUploadResult.sha1Hash
       ) {
         // File was corrupted during upload, so we should reject it.
         log.error(
@@ -709,7 +702,7 @@ export const uploadGenericRecording =
       }
 
       const recordingTemplate = createRecording(
-        data,
+        recordingData,
         uploader,
         recordingDevice,
         uploadingUser,
@@ -719,10 +712,10 @@ export const uploadGenericRecording =
       // NOTE: If processingState is supplied, we're in a test, and should not mark files as corrupt.
       //  We only detect corrupt thermalRaw files currently.
       if (
-        data &&
-        !data.processingState &&
+        !recordingData.processingState &&
         rawFileUploadResult.isCorrupt &&
-        data.type === RecordingType.ThermalRaw
+        "type" in recordingData &&
+        recordingData.type === RecordingType.ThermalRaw
       ) {
         // The file couldn't be parsed, but it matches what was uploaded, so mark
         // it as corrupt and keep the file for investigation.
@@ -817,17 +810,21 @@ export const uploadGenericRecording =
         });
       }
 
-      const wouldHaveSuppliedTracks = dataHasSuppliedTracks(data);
+      const wouldHaveSuppliedTracks = dataHasSuppliedTracks(recordingData);
       // or with supplied tracks to support existing devices
       const metadataSupplied =
-        !!(data.metadata && data.metadata.metadata_source) ||
+        !!(recordingData.metadata && recordingData.metadata.metadata_source) ||
         wouldHaveSuppliedTracks;
-      setInitialProcessingState(recordingTemplate, data, metadataSupplied);
+      setInitialProcessingState(
+        recordingTemplate,
+        recordingData,
+        metadataSupplied,
+      );
 
-      if (metadataSupplied && data.type === RecordingType.ThermalRaw) {
+      if (metadataSupplied && recordingData.type === RecordingType.ThermalRaw) {
         recordingTemplate.additionalMetadata = {
           ...recordingTemplate.additionalMetadata,
-          metadataSource: data.metadata.metadata_source,
+          metadataSource: recordingData.metadata.metadata_source,
         };
       }
       if (!isLatLon(recordingTemplate.location)) {
@@ -882,7 +879,7 @@ export const uploadGenericRecording =
         // TODO: If tracks are supplied, we need to recalculate the Visits
 
         // Now that we have a recording saved to the DB, we can create any associated track items
-        await tracksFromMeta(recording, data.metadata);
+        await tracksFromMeta(recording, recordingData.metadata);
       }
 
       const recordingHasFinishedProcessing =
@@ -914,6 +911,8 @@ export const uploadGenericRecording =
         return successResponse(response, "Thanks for the data", {
           recordingId: recording.id,
         });
+      } else {
+        console.log("Not returning response, headers already sent");
       }
     });
 

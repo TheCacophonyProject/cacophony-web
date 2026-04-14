@@ -1,3 +1,5 @@
+import { ReadableStreamDefaultReader } from "node:stream/web";
+
 /* eslint-disable */
 /**
  */
