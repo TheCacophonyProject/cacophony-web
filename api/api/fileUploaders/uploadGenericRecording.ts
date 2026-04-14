@@ -1,9 +1,7 @@
-import type { MultipartFormPart } from "@api/fileUploaders/multipartFormDataHelper.js";
 import log from "@log";
 import {
   BadRequestError,
   ClientError,
-  CustomError,
   UnprocessableError,
 } from "@api/customErrors.js";
 import {
@@ -13,7 +11,6 @@ import {
   RecordingType,
 } from "@typedefs/api/consts.js";
 import { successResponse } from "@api/V1/responseUtil.js";
-import multiparty from "multiparty";
 import { NextFunction, Request, Response } from "express";
 import Sequelize, { Op, Transaction } from "sequelize";
 import { Recording } from "@models/Recording.js";
@@ -277,7 +274,21 @@ const processUploadedFileStream = async (
   recordingData: RecordingUploadSuppliedData,
   uploadingDevice: Device,
 ): Promise<RecordingFileUploadResult> => {
-  const type = recordingData.type;
+  let type = recordingData.type;
+  if (!type) {
+    if (recordingData.filename && recordingData.filename.endsWith(".cptv")) {
+      type = RecordingType.ThermalRaw;
+      recordingData.type = type;
+    } else if (
+      recordingData.filename &&
+      (recordingData.filename.endsWith(".aac") ||
+        recordingData.filename.endsWith(".m4a") ||
+        recordingData.filename.endsWith(".mp4"))
+    ) {
+      type = RecordingType.Audio;
+      recordingData.type = type;
+    }
+  }
   let length = 0;
   if (
     recordingData.filename &&
@@ -555,6 +566,7 @@ export const uploadGenericRecording =
       if (!("data" in fields)) {
         return next(new UnprocessableError("'data' field missing"));
       }
+
       recordingData = await validateDataPart(
         JSON.parse(fields.data) as JsonDocument,
         recordingDeviceId,
