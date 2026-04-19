@@ -1,6 +1,5 @@
-import { Worker } from "worker_threads";
+import { Worker, MessageChannel, MessagePort } from "node:worker_threads";
 import type { ReadableStream } from "stream/web";
-import * as worker_threads from "node:worker_threads";
 import logging from "@log";
 interface MessageData {
   type: string;
@@ -14,53 +13,145 @@ interface MessageDataMessage extends MessageData {
   };
 }
 
-export class CptvDecoder {
-  constructor() {
-    this.free().then(() => {
-      this.messageQueue = {};
+interface PooledDecoderWorker {
+  worker: Worker;
+  messagePort: MessagePort;
+}
+
+class DecoderWorkerPool {
+  private readonly idleWorkers: PooledDecoderWorker[] = [];
+  private readonly busyWorkers = new Set<PooledDecoderWorker>();
+  private readonly pendingResolvers: ((worker: PooledDecoderWorker) => void)[] =
+    [];
+  private readonly maxWorkers = 4;
+  private totalWorkers = 0;
+
+  private async createWorker(): Promise<PooledDecoderWorker> {
+    const { port1, port2 } = new MessageChannel();
+    port1.unref();
+
+    const worker = new Worker(new URL("./decoder.worker.js", import.meta.url), {
+      workerData: {
+        port: port2,
+      },
+      transferList: [port2],
     });
-  }
-  private inited = false;
-  private decoder: Worker;
-  private messageQueue = {};
-  async init() {
-    await this.free();
-    this.messageQueue = {};
-    if (!this.inited) {
-      const onMessage = async (message: MessageData | MessageDataMessage) => {
-        let type;
-        let data;
-        if (message.type && message.type !== "message") {
-          type = message.type;
-          data = message.data;
-        } else {
-          type = (message as MessageDataMessage).data.type;
-          data = (message as MessageDataMessage).data.data;
-        }
-        const resolver = this.messageQueue[type];
-        delete this.messageQueue[type];
-        if (resolver) {
-          resolver(data);
+
+    worker.unref();
+    worker.on("error", (err) => {
+      logging.error(`CPTV Decoder worker error: ${err.message}`);
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      const onMessage = (message: MessageData | MessageDataMessage) => {
+        const type =
+          message.type && message.type !== "message"
+            ? message.type
+            : (message as MessageDataMessage).data.type;
+
+        if (type === "init") {
+          port1.off("message", onMessage);
+          resolve();
         }
       };
 
-      const worker = new Worker(
-        new URL("./decoder.worker.js", import.meta.url),
-      );
+      const onError = (err: Error) => {
+        port1.off("message", onMessage);
+        reject(err);
+      };
 
-      worker.on("error", (err: Error) => {
-        logging.error(`CPTV Decoder worker error: ${err.message}`);
-        this.close();
-      });
+      port1.on("message", onMessage);
+      worker.once("error", onError);
+    });
 
-      worker.on("exit", (_code) => {
-        this.close();
-      });
-      this.decoder = worker;
-      this.decoder.addListener.bind(this.decoder)("message", onMessage);
-      await this.waitForMessage("init");
+    this.totalWorkers += 1;
 
+    return {
+      worker,
+      messagePort: port1,
+    };
+  }
+
+  async acquire(): Promise<PooledDecoderWorker> {
+    const idle = this.idleWorkers.pop();
+    if (idle) {
+      this.busyWorkers.add(idle);
+      return idle;
+    }
+
+    if (this.totalWorkers < this.maxWorkers) {
+      const created = await this.createWorker();
+      this.busyWorkers.add(created);
+      return created;
+    }
+
+    return await new Promise((resolve) => {
+      this.pendingResolvers.push(resolve);
+    });
+  }
+
+  async release(pooledWorker: PooledDecoderWorker): Promise<void> {
+    this.busyWorkers.delete(pooledWorker);
+
+    const waiter = this.pendingResolvers.shift();
+    if (waiter) {
+      this.busyWorkers.add(pooledWorker);
+      waiter(pooledWorker);
+      return;
+    }
+
+    this.idleWorkers.push(pooledWorker);
+  }
+}
+
+const CptvDecoderWorkerPool = new DecoderWorkerPool();
+
+export class CptvDecoder {
+  constructor() {
+    /* empty */
+  }
+  private inited = false;
+  private pooledWorker: PooledDecoderWorker | null = null;
+  private messagePort: MessagePort;
+  private messageQueue: Record<
+    string,
+    { resolve: (val: unknown) => void; reject: () => void }
+  > = {};
+  private readonly boundOnMessage = this.onMessage.bind(this);
+  private readonly boundOnMessageError = this.onMessageError.bind(this);
+  private closing = false;
+
+  onMessage(message: MessageData | MessageDataMessage) {
+    let type;
+    let data;
+    if (message.type && message.type !== "message") {
+      type = message.type;
+      data = message.data;
+    } else {
+      type = (message as MessageDataMessage).data.type;
+      data = (message as MessageDataMessage).data.data;
+    }
+    const pending = this.messageQueue[type];
+    if (!pending) {
+      return;
+    }
+    delete this.messageQueue[type];
+    pending.resolve(data);
+  }
+  onMessageError(err: Error) {
+    console.warn("MessageError", err);
+  }
+  onWorkerError(err: Error) {
+    logging.error(`CPTV Decoder worker error: ${err.message}`);
+  }
+  async init() {
+    this.messageQueue = {};
+    if (!this.inited) {
       this.inited = true;
+      this.pooledWorker = await CptvDecoderWorkerPool.acquire();
+      this.messagePort = this.pooledWorker.messagePort;
+      this.messagePort.on("message", this.boundOnMessage);
+      this.messagePort.on("messageerror", this.boundOnMessageError);
     }
   }
   /**
@@ -73,12 +164,7 @@ export class CptvDecoder {
   ): Promise<string | boolean> {
     await this.init();
     const type = "initWithReadableStream";
-    const thisStream = stream;
-    if (this.decoder) {
-      this.decoder.postMessage({ type, streamReader: stream }, [
-        thisStream as worker_threads.Transferable,
-      ]);
-    }
+    this.messagePort.postMessage({ type, streamReader: stream }, [stream]);
     return (await this.waitForMessage(type)) as string | boolean;
   }
 
@@ -93,12 +179,7 @@ export class CptvDecoder {
   ): Promise<(CptvHeader & { firstFrame?: CptvFrame }) | string> {
     await this.init();
     const type = "getStreamMetadata";
-    const thisStream = stream;
-    if (this.decoder) {
-      this.decoder.postMessage({ type, streamReader: stream }, [
-        thisStream as worker_threads.Transferable,
-      ]);
-    }
+    this.messagePort.postMessage({ type, streamReader: stream }, [stream]);
     return (await this.waitForMessage(type)) as CptvHeader | string;
   }
 
@@ -112,9 +193,7 @@ export class CptvDecoder {
   ): Promise<string | boolean> {
     await this.init();
     const type = "initWithLocalCptvFile";
-    if (this.decoder) {
-      this.decoder.postMessage({ type, arrayBuffer: fileBytes });
-    }
+    this.messagePort.postMessage({ type, arrayBuffer: fileBytes });
     return (await this.waitForMessage(type)) as string | boolean;
   }
 
@@ -126,9 +205,7 @@ export class CptvDecoder {
   async getBytesMetadata(fileBytes: Uint8Array): Promise<CptvHeader> {
     await this.init();
     const type = "getBytesMetadata";
-    if (this.decoder) {
-      this.decoder.postMessage({ type, arrayBuffer: fileBytes });
-    }
+    this.messagePort.postMessage({ type, arrayBuffer: fileBytes });
     return (await this.waitForMessage(type)) as CptvHeader;
   }
 
@@ -137,9 +214,7 @@ export class CptvDecoder {
    */
   async getNextFrame(): Promise<CptvFrame | null> {
     const type = "getNextFrame";
-    if (this.decoder) {
-      this.decoder.postMessage({ type });
-    }
+    this.messagePort.postMessage({ type });
     return (await this.waitForMessage(type)) as CptvFrame | null;
   }
 
@@ -149,9 +224,7 @@ export class CptvDecoder {
    */
   async getHeader(): Promise<CptvHeader> {
     const type = "getHeader";
-    if (this.decoder) {
-      this.decoder.postMessage({ type });
-    }
+    this.messagePort.postMessage({ type });
     return (await this.waitForMessage(type)) as CptvHeader;
   }
 
@@ -161,9 +234,7 @@ export class CptvDecoder {
    */
   async hasStreamError(): Promise<boolean> {
     const type = "hasStreamError";
-    if (this.decoder) {
-      this.decoder.postMessage({ type });
-    }
+    this.messagePort.postMessage({ type });
     return (await this.waitForMessage(type)) as boolean;
   }
 
@@ -172,26 +243,17 @@ export class CptvDecoder {
    */
   async getStreamError(): Promise<string | null> {
     const type = "getStreamError";
-    if (this.decoder) {
-      this.decoder.postMessage({ type });
-    }
+    this.messagePort.postMessage({ type });
     return (await this.waitForMessage(type)) as string | null;
   }
 
-  /**
-   * Free resources associated with the currently decoded file.
-   */
-  async free(): Promise<void> {
-    const type = "freeResources";
-    if (this.decoder && this.inited) {
-      this.decoder.postMessage({ type });
-      return (await this.waitForMessage(type)) as void;
-    }
-  }
-
   async waitForMessage(messageType: string): Promise<unknown> {
-    return new Promise((resolve) => {
-      this.messageQueue[messageType] = resolve;
+    if (this.messageQueue[messageType]) {
+      // Reject existing message of this type if any
+      this.messageQueue[messageType].reject();
+    }
+    return new Promise((resolve, reject) => {
+      this.messageQueue[messageType] = { resolve, reject };
     });
   }
 
@@ -200,10 +262,29 @@ export class CptvDecoder {
    * do this only when the thread closes.
    */
   async close(): Promise<void> {
-    if (this.decoder) {
-      await this.decoder.terminate();
+    if (this.closing || !this.pooledWorker) {
+      return;
     }
-    delete this.decoder;
+    this.closing = true;
+    try {
+      this.messagePort.postMessage({ type: "reset" });
+      await this.waitForMessage("reset");
+    } finally {
+      for (const [type, { reject }] of Object.entries(this.messageQueue)) {
+        reject();
+        delete this.messageQueue[type];
+      }
+
+      this.messageQueue = {};
+      this.messagePort.off("message", this.boundOnMessage);
+      this.messagePort.off("messageerror", this.boundOnMessageError);
+
+      await CptvDecoderWorkerPool.release(this.pooledWorker);
+
+      this.pooledWorker = null;
+      this.inited = false;
+      this.closing = false;
+    }
   }
 }
 

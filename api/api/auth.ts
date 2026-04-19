@@ -232,7 +232,6 @@ export const getVerifiedJWTFromBody = (
   if (token && token.startsWith("JWT ")) {
     token = token.slice(4);
   }
-  console.log("token found from body", token);
   if (!token) {
     // allow taking the jwt from the query params.
     token = request.query.jwt as string;
