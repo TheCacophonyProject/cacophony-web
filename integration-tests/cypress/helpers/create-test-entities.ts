@@ -154,6 +154,7 @@ export const createProjectWithUserAndDevice = async (options?: {
     "audio-60s-tc2.m4a",
     "invalid.cptv",
     "small.cptv",
+    //"50mb.cptv",
     "startup-status.cptv",
     "shutdown-status.cptv",
     "audio-test-recording-tc2.m4a",

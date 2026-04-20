@@ -36,6 +36,11 @@ class DecoderWorkerPool {
         port: port2,
       },
       transferList: [port2],
+      resourceLimits: {
+        maxOldGenerationSizeMb: 20, // Limit heap to 20MB, seems to be all that's needed for CPTV files
+        maxYoungGenerationSizeMb: 20,
+        stackSizeMb: 8,
+      },
     });
 
     worker.unref();

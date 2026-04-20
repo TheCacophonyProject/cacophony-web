@@ -25,7 +25,7 @@ const extForUploadFileType = (type: RecordingType) => {
 const getRecordingFixtureForType = (
   fixtures: Record<string, ArrayBuffer>,
   type: RecordingType,
-  variant?: "test" | "startup" | "shutdown" | "big-file",
+  variant?: RecordingUploadType,
 ) => {
   switch (type) {
     case RecordingType.Audio:
@@ -40,6 +40,8 @@ const getRecordingFixtureForType = (
         return fixtures["shutdown-status.cptv"];
       } else if (variant === "big-file") {
         return fixtures["small.cptv"];
+      } else if (variant === "huge-file") {
+        return fixtures["50mb.cptv"];
       } else {
         return fixtures["oneframe.cptv"];
       }
@@ -52,7 +54,7 @@ export const uploadRecording = async (
     project: ProjectBundle;
     location?: LatLng;
     deviceHandle?: TestDeviceHandle;
-    recordingType?: "test" | "startup" | "shutdown" | "big-file";
+    recordingType?: RecordingUploadType;
     duration?: number;
     metadata?: RecordingDataSuppliedMetadata;
     type: RecordingType;
@@ -70,6 +72,11 @@ export const uploadRecording = async (
     recordingOptions.type,
     recordingOptions.recordingType,
   );
+  if (!rawFile) {
+    throw new Error(
+      `Test fixture not found: ${recordingOptions.recordingType}`,
+    );
+  }
   const rawFileName = `filename.${extForUploadFileType(recordingOptions.type)}`;
   // TODO: Maybe we could fuzz a location based on locationBase if there's no supplied location
   const location =
@@ -123,7 +130,7 @@ export const uploadRecordingFromDeviceForProject = async (options: {
   project: ProjectBundle;
   location?: LatLng;
   deviceHandle?: TestDeviceHandle;
-  recordingType?: "test" | "startup" | "shutdown" | "big-file";
+  recordingType?: RecordingUploadType;
   duration?: number;
   metadata?: RecordingDataSuppliedMetadata;
   type: RecordingType;
@@ -139,7 +146,7 @@ export const uploadRecordingOnBehalfOfDeviceForProject = async (options: {
   project: ProjectBundle;
   location?: LatLng;
   userHandle?: TestUserHandle;
-  recordingType?: "test" | "startup" | "shutdown" | "big-file";
+  recordingType?: RecordingUploadType;
   duration?: number;
   metadata?: RecordingDataSuppliedMetadata;
   type: RecordingType;
@@ -151,6 +158,12 @@ export const uploadRecordingOnBehalfOfDeviceForProject = async (options: {
   console.log(userToUploadAs);
   return uploadRecording(userToUploadAs, options);
 };
+export type RecordingUploadType =
+  | "test"
+  | "startup"
+  | "shutdown"
+  | "big-file"
+  | "huge-file";
 
 export const uploadThermalRecordingFromDeviceForProject = async (options: {
   project: ProjectBundle;
@@ -159,7 +172,7 @@ export const uploadThermalRecordingFromDeviceForProject = async (options: {
   duration?: number; // Artificially set a duration for test purposes
   metadata?: RecordingDataSuppliedMetadata;
   recordingDateTime: Date;
-  recordingType?: "test" | "startup" | "shutdown" | "big-file";
+  recordingType?: RecordingUploadType;
 }): Promise<RecordingId> => {
   return uploadRecordingFromDeviceForProject({
     ...options,
@@ -176,7 +189,7 @@ export const uploadThermalRecordingOnBehalfOfDeviceForProject =
     duration?: number; // Artificially set a duration for test purposes
     metadata?: RecordingDataSuppliedMetadata;
     recordingDateTime: Date;
-    recordingType?: "test" | "startup" | "shutdown" | "big-file";
+    recordingType?: RecordingUploadType;
   }): Promise<RecordingId> => {
     return uploadRecordingOnBehalfOfDeviceForProject({
       ...options,

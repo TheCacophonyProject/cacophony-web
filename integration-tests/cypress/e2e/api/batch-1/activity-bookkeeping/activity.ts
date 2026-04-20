@@ -104,6 +104,60 @@ describe("Activity bookkeeping", () => {
     ).to.deep.equal(expectedLocationIds);
   });
 
+  it.skip(`Can upload multiple huge recordings from device with same location, 
+  and with dates after the project creation date, ensuring correct book-keeping`, async () => {
+    const project = await createProjectWithUserAndDevice();
+    const AdminUser = project.api();
+    const startDate = new Date("2026-01-10T20:07:06.292Z");
+    const dates = spreadDays(startDate, 30);
+    const recordingUploads = [];
+    const requestTime = new Date();
+    for (const date of dates) {
+      recordingUploads.push(
+        uploadThermalRecordingFromDeviceForProject({
+          project,
+          recordingType: "huge-file",
+          location: testLocation(-42, 170, 0),
+          recordingDateTime: date,
+        }),
+      );
+    }
+    // NOTE: Recording Ids that come back may not be in ascending sequence.
+    //  However, the last recordingId should correspond to the latest date.
+    const recordingIds = await Promise.all(recordingUploads);
+    const uploadedRecording = (await AdminUser.Recordings.getRecordingById(
+      recordingIds[recordingIds.length - 1],
+    )) as ApiThermalRecordingResponse;
+    expect(
+      uploadedRecording.recordingDateTime,
+      "recording date is latest",
+    ).to.be.equal(dates[dates.length - 1].toISOString());
+    await checkActivity(project, requestTime, "device", uploadedRecording);
+
+    const uploadedRecordings = await Promise.all(
+      recordingIds.map(
+        (recordingId) =>
+          AdminUser.Recordings.getRecordingById(
+            recordingId,
+          ) as unknown as ApiThermalRecordingResponse,
+      ),
+    );
+    const expectedLocationIds = recordingIds.map(
+      (_) => uploadedRecording.stationId,
+    );
+    const expectedLocations = recordingIds.map(
+      (_) => uploadedRecording.location,
+    );
+    expect(
+      uploadedRecordings.map((r) => r.location),
+      "recording locations match",
+    ).to.deep.equal(expectedLocations);
+    expect(
+      uploadedRecordings.map((r) => r.stationId),
+      "recording stations match",
+    ).to.deep.equal(expectedLocationIds);
+  });
+
   it(`Ensure there are no race conditions for device kind when 
   uploading multiple different recording types in quick succession`, async () => {
     const project = await createProjectWithUserAndDevice();
