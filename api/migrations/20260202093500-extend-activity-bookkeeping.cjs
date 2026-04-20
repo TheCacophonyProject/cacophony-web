@@ -57,6 +57,7 @@ module.exports = {
             FROM "Recordings" r
             WHERE
               r."deletedAt" IS NULL
+              AND r."recordingDateTime" is not null    
               AND r."DeviceId" IS NOT NULL
             GROUP BY r."DeviceId"
           ) agg
@@ -113,6 +114,7 @@ module.exports = {
             FROM "Recordings" r
             WHERE
               r."deletedAt" IS NULL
+              AND r."recordingDateTime" is not null
               AND r."GroupId" IS NOT NULL
             GROUP BY r."GroupId"
           ) agg
@@ -145,6 +147,7 @@ module.exports = {
             FROM "Recordings" r
             WHERE
               r."deletedAt" IS NULL
+              AND r."recordingDateTime" is not null              
               AND r."StationId" IS NOT NULL
             GROUP BY r."StationId"
           ) agg

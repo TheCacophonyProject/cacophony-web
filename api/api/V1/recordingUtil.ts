@@ -1863,8 +1863,9 @@ export const updateRecordingTimeBookkeeping = async (
            SELECT r."recordingDateTime"
            FROM "Recordings" r
            WHERE r."DeviceId" = :deviceId
-             AND r."deletedAt" IS NULL
+             AND r."deletedAt" IS NULL             
              AND r."type" = :type
+             AND r."recordingDateTime" is not null
            ORDER BY r."recordingDateTime" ASC
            LIMIT 1
          ) AS "${earliestColName}",
@@ -1872,8 +1873,9 @@ export const updateRecordingTimeBookkeeping = async (
            SELECT r."recordingDateTime"
            FROM "Recordings" r
            WHERE r."DeviceId" = :deviceId
-             AND r."deletedAt" IS NULL
-             AND r."type" = :type
+             AND r."deletedAt" IS NULL        
+             AND r."type" = :type            
+             AND r."recordingDateTime" is not null
            ORDER BY r."recordingDateTime" DESC
            LIMIT 1
          ) AS "${lastColName}"
@@ -1898,8 +1900,9 @@ export const updateRecordingTimeBookkeeping = async (
               SELECT r."recordingDateTime"
               FROM "Recordings" r
               WHERE r."GroupId" = :groupId
-                AND r."deletedAt" IS NULL
+                AND r."deletedAt" IS NULL                
                 AND r."type" = :type
+                AND r."recordingDateTime" is not null
               ORDER BY r."recordingDateTime" ASC
               LIMIT 1
             ) AS "${earliestColName}",
@@ -1907,8 +1910,9 @@ export const updateRecordingTimeBookkeeping = async (
               SELECT r."recordingDateTime"
               FROM "Recordings" r
               WHERE r."GroupId" = :groupId
-                AND r."deletedAt" IS NULL
+                AND r."deletedAt" IS NULL                
                 AND r."type" = :type
+                AND r."recordingDateTime" is not null
               ORDER BY r."recordingDateTime" DESC
               LIMIT 1
             ) AS "${lastColName}"
@@ -1940,7 +1944,8 @@ export const updateRecordingTimeBookkeeping = async (
               FROM "Recordings" r
               WHERE r."StationId" = :stationId
                 AND r."deletedAt" IS NULL
-                AND r."type" = :type
+                AND r."type" = :type            
+                AND r."recordingDateTime" is not null
               ORDER BY r."recordingDateTime" ASC
               LIMIT 1
             ) AS "${earliestColName}",
@@ -1949,7 +1954,8 @@ export const updateRecordingTimeBookkeeping = async (
               FROM "Recordings" r
               WHERE r."StationId" = :stationId
                 AND r."deletedAt" IS NULL
-                AND r."type" = :type
+                AND r."type" = :type            
+                AND r."recordingDateTime" is not null
               ORDER BY r."recordingDateTime" DESC
               LIMIT 1
             ) AS "${lastColName}"
@@ -1981,7 +1987,8 @@ export const updateRecordingTimeBookkeeping = async (
               FROM "Recordings" r
               WHERE r."StationId" = :stationId
                 AND r."deletedAt" IS NULL
-                AND r."type" = :type
+                AND r."type" = :type                
+                AND r."recordingDateTime" is not null
               ORDER BY r."recordingDateTime" ASC
               LIMIT 1
             ) AS "${earliestColName}",
@@ -1990,7 +1997,8 @@ export const updateRecordingTimeBookkeeping = async (
               FROM "Recordings" r
               WHERE r."StationId" = :stationId
                 AND r."deletedAt" IS NULL
-                AND r."type" = :type
+                AND r."type" = :type                
+                AND r."recordingDateTime" is not null
               ORDER BY r."recordingDateTime" DESC
               LIMIT 1
             ) AS "${lastColName}"

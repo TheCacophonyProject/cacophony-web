@@ -12,6 +12,7 @@ import {
 import { getTestName } from "@commands/names";
 import { TestNameAndId } from "@commands/types";
 import { ApiDeviceHistory } from "@shared/api/device";
+import { RecordingProcessingState } from "@shared/api/consts";
 
 const templateExpectedCypressRecording: ApiThermalRecordingResponse =
   JSON.parse(JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE));
@@ -69,6 +70,7 @@ describe("Stations: assign recordings to stations", () => {
         ...location,
         time: recordingTime,
         noTracks: true,
+        processingState: RecordingProcessingState.TrackAndAnalyse,
       })
         .thenCheckStationIsNew(Josie)
         .then((station: TestNameAndId) => {
@@ -125,6 +127,7 @@ describe("Stations: assign recordings to stations", () => {
       ...location,
       time: oneDayLater,
       noTracks: true,
+      processingState: RecordingProcessingState.TrackAndAnalyse,
     })
       .thenCheckStationIsNew(Josie)
       .then((station: TestNameAndId) => {
@@ -228,7 +231,11 @@ describe("Stations: assign recordings to stations", () => {
       cy.log(
         "Add a matching recording, dated day 3 and check assigned to existing station",
       );
-      cy.testUploadRecording(deviceName, { ...location, time: threeDaysTime })
+      cy.testUploadRecording(deviceName, {
+        ...location,
+        time: threeDaysTime,
+        processingState: RecordingProcessingState.TrackAndAnalyse,
+      })
         .thenCheckStationIdIs(Josie, stationId)
         .then((station: TestNameAndId) => {
           cy.log(
@@ -265,6 +272,7 @@ describe("Stations: assign recordings to stations", () => {
             ...nearbyLocation,
             time: twoDaysTime,
             noTracks: true,
+            processingState: RecordingProcessingState.TrackAndAnalyse,
           })
             .thenCheckStationNameIs(Josie, station.name)
             .then(() => {
@@ -342,6 +350,7 @@ describe("Stations: assign recordings to stations", () => {
         ...location,
         time: threeDaysTime,
         noTracks: true,
+        processingState: RecordingProcessingState.TrackAndAnalyse,
       })
         .thenCheckStationIdIs(Josie, stationId)
         .then((station: TestNameAndId) => {
@@ -379,6 +388,7 @@ describe("Stations: assign recordings to stations", () => {
             ...location,
             time: twoDaysTime,
             noTracks: true,
+            processingState: RecordingProcessingState.TrackAndAnalyse,
           })
             .thenCheckStationNameIs(Josie, station.name)
             .then(() => {
@@ -416,13 +426,18 @@ describe("Stations: assign recordings to stations", () => {
     cy.apiDeviceAdd(device1Name, group);
     cy.apiDeviceAdd(device2Name, group2);
 
-    cy.testUploadRecording(device1Name, { ...location, noTracks: true })
+    cy.testUploadRecording(device1Name, {
+      ...location,
+      noTracks: true,
+      processingState: RecordingProcessingState.TrackAndAnalyse,
+    })
       .thenCheckStationIsNew(Josie)
       .then((station1: { id: number }) => {
         cy.log("Upload another recording and check assigned to same station");
         cy.testUploadRecording(device2Name, {
           ...nearbyLocation,
           noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
         })
           .thenCheckStationIsNew(Josie)
           .then((station2: { id: number }) => {
@@ -458,6 +473,7 @@ describe("Stations: assign recordings to stations", () => {
       ...nearbyLocation,
       time: twoDaysTime,
       noTracks: true,
+      processingState: RecordingProcessingState.TrackAndAnalyse,
     })
       .thenCheckStationIsNew(Josie)
       .then((station: TestNameAndId) => {
@@ -488,6 +504,7 @@ describe("Stations: assign recordings to stations", () => {
           ...nearbyLocation,
           time: oneDaysTime,
           noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
         })
           .thenCheckStationIdIs(Josie, station.id)
           .then(() => {
@@ -543,6 +560,7 @@ describe("Stations: assign recordings to stations", () => {
       ...location1Nearby,
       time: twoDaysTime,
       noTracks: true,
+      processingState: RecordingProcessingState.TrackAndAnalyse,
     })
       .thenCheckStationNameIs(Josie, getTestName(station1Name))
       .then(() => {
@@ -572,6 +590,7 @@ describe("Stations: assign recordings to stations", () => {
           ...location2,
           time: threeDaysTime,
           noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
         })
           .thenCheckStationIsNew(Josie)
           .then((station2: TestNameAndId) => {
@@ -635,6 +654,7 @@ describe("Stations: assign recordings to stations", () => {
               ...location2,
               time: threeDaysTime,
               noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
             })
               .thenCheckStationNameIs(Josie, getTestName(station2Name))
               .then(() => {
@@ -732,6 +752,7 @@ describe("Stations: assign recordings to stations", () => {
         ...location,
         time: dayTwo,
         noTracks: true,
+        processingState: RecordingProcessingState.TrackAndAnalyse,
       })
         .thenCheckStationIdIs(Josie, stationId)
         .then(() => {
@@ -829,6 +850,7 @@ describe("Stations: assign recordings to stations", () => {
         ...location,
         time: now,
         noTracks: true,
+        processingState: RecordingProcessingState.TrackAndAnalyse,
       })
         .thenCheckStationIsNew(Josie)
         .then((station: TestNameAndId) => {
@@ -857,6 +879,7 @@ describe("Stations: assign recordings to stations", () => {
         ...location,
         time: now,
         noTracks: true,
+        processingState: RecordingProcessingState.TrackAndAnalyse,
       }).thenCheckStationIsNew(Josie);
     });
   });

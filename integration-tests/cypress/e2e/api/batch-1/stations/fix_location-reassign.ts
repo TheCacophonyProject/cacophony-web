@@ -10,7 +10,11 @@ import { NOT_NULL, NOT_NULL_STRING } from "@commands/constants";
 import { TEMPLATE_THERMAL_RECORDING_RESPONSE } from "@commands/dataTemplate";
 import { TestNameAndId } from "@commands/types";
 import { getTestName } from "@commands/names";
-import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
+import {
+  DeviceType,
+  HttpStatusCode,
+  RecordingProcessingState,
+} from "@typedefs/api/consts";
 import { ApiStationResponse } from "@typedefs/api/station";
 import ApiRecordingResponse = Cypress.ApiRecordingResponse;
 import { ApiDeviceHistory } from "@shared/api/device";
@@ -115,24 +119,44 @@ describe("Device: fix-location (reassign) recordings to correct station", () => 
 
       cy.testUploadRecording(
         deviceName,
-        { ...oldLocation, time: firstTime, noTracks: true },
+        {
+          ...oldLocation,
+          time: firstTime,
+          noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
+        },
         firstName,
       )
         .thenCheckStationIsNew(Josie)
         .then((autoStation: TestNameAndId) => {
           cy.testUploadRecording(
             deviceName,
-            { ...oldLocation, time: secondTime, noTracks: true },
+            {
+              ...oldLocation,
+              time: secondTime,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             secondName,
           );
           cy.testUploadRecording(
             deviceName,
-            { ...oldLocation, time: thirdTime, noTracks: true },
+            {
+              ...oldLocation,
+              time: thirdTime,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             thirdName,
           );
           cy.testUploadRecording(
             deviceName,
-            { ...oldLocation, time: fourthTime, noTracks: true },
+            {
+              ...oldLocation,
+              time: fourthTime,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             fourthName,
           );
           //Device history for firstTime, oldLocation, autoStation added
@@ -252,24 +276,44 @@ describe("Device: fix-location (reassign) recordings to correct station", () => 
 
       cy.testUploadRecording(
         deviceName,
-        { ...oldLocation, time: firstTime, noTracks: true },
+        {
+          ...oldLocation,
+          time: firstTime,
+          noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
+        },
         firstName,
       )
         .thenCheckStationIsNew(Josie)
         .then((autoStation: TestNameAndId) => {
           cy.testUploadRecording(
             deviceName,
-            { ...oldLocation, time: secondTime, noTracks: true },
+            {
+              ...oldLocation,
+              time: secondTime,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             secondName,
           );
           cy.testUploadRecording(
             deviceName,
-            { ...oldLocation, time: thirdTime, noTracks: true },
+            {
+              ...oldLocation,
+              time: thirdTime,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             thirdName,
           );
           cy.testUploadRecording(
             deviceName,
-            { ...oldLocation, time: fourthTime, noTracks: true },
+            {
+              ...oldLocation,
+              time: fourthTime,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             fourthName,
           );
           //Device history for frstTime, oldLocation, autoStation added
@@ -397,24 +441,44 @@ describe("Device: fix-location (reassign) recordings to correct station", () => 
 
       cy.testUploadRecording(
         deviceName,
-        { ...oldLocation, time: firstTime, noTracks: true },
+        {
+          ...oldLocation,
+          time: firstTime,
+          noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
+        },
         firstName,
       )
         .thenCheckStationIsNew(Josie)
         .then((autoStation: TestNameAndId) => {
           cy.testUploadRecording(
             deviceName,
-            { ...oldLocation, time: secondTime, noTracks: true },
+            {
+              ...oldLocation,
+              time: secondTime,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             secondName,
           );
           cy.testUploadRecording(
             deviceName,
-            { ...oldLocation, time: thirdTime, noTracks: true },
+            {
+              ...oldLocation,
+              time: thirdTime,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             thirdName,
           );
           cy.testUploadRecording(
             deviceName,
-            { ...oldLocation, time: fourthTime, noTracks: true },
+            {
+              ...oldLocation,
+              time: fourthTime,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             fourthName,
           );
           //Device history for firstTime, oldLocation, autoStation added
@@ -434,7 +498,12 @@ describe("Device: fix-location (reassign) recordings to correct station", () => 
             cy.log("Add a pre-existing recording to the new station");
             cy.testUploadRecording(
               deviceName,
-              { ...newLocation, time: fifthTime, noTracks: true },
+              {
+                ...newLocation,
+                time: fifthTime,
+                noTracks: true,
+                processingState: RecordingProcessingState.TrackAndAnalyse,
+              },
               fifthName,
             );
 
@@ -560,14 +629,24 @@ describe("Device: fix-location (reassign) recordings to correct station", () => 
 
       cy.testUploadRecording(
         deviceName,
-        { ...oldLocation, time: firstTime, noTracks: true },
+        {
+          ...oldLocation,
+          time: firstTime,
+          noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
+        },
         firstName,
       )
         .thenCheckStationIsNew(Josie)
         .then((autoStation: TestNameAndId) => {
           cy.testUploadRecording(
             deviceName,
-            { ...oldLocation, time: secondTime, noTracks: true },
+            {
+              ...oldLocation,
+              time: secondTime,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             secondName,
           );
 
@@ -576,14 +655,24 @@ describe("Device: fix-location (reassign) recordings to correct station", () => 
           //2 more recordings at intermediate location
           cy.testUploadRecording(
             deviceName,
-            { ...intermediateLocation, time: thirdTime, noTracks: true },
+            {
+              ...intermediateLocation,
+              time: thirdTime,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             thirdName,
           )
             .thenCheckStationIsNew(Josie)
             .then((intermediateStation: TestNameAndId) => {
               cy.testUploadRecording(
                 deviceName,
-                { ...intermediateLocation, time: fourthTime, noTracks: true },
+                {
+                  ...intermediateLocation,
+                  time: fourthTime,
+                  noTracks: true,
+                  processingState: RecordingProcessingState.TrackAndAnalyse,
+                },
                 fourthName,
               );
               //Device history for thirdTime, intermediateLocation, intermediateStation added
@@ -736,24 +825,44 @@ describe("Device: fix-location (reassign) recordings to correct station", () => 
     cy.apiDeviceAdd(deviceName, group).then(() => {
       cy.testUploadRecording(
         deviceName,
-        { ...oldLocation, time: firstTime, noTracks: true },
+        {
+          ...oldLocation,
+          time: firstTime,
+          noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
+        },
         firstName,
       )
         .thenCheckStationIsNew(Josie)
         .then((autoStation: TestNameAndId) => {
           cy.testUploadRecording(
             deviceName,
-            { ...oldLocation, time: secondTime, noTracks: true },
+            {
+              ...oldLocation,
+              time: secondTime,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             secondName,
           );
           cy.testUploadRecording(
             deviceName,
-            { ...oldLocation, time: thirdTime, noTracks: true },
+            {
+              ...oldLocation,
+              time: thirdTime,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             thirdName,
           );
           cy.testUploadRecording(
             deviceName,
-            { ...oldLocation, time: fourthTime, noTracks: true },
+            {
+              ...oldLocation,
+              time: fourthTime,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             fourthName,
           );
 
@@ -777,7 +886,10 @@ describe("Device: fix-location (reassign) recordings to correct station", () => 
               manualStationId.toString(),
               oldLocation,
               HttpStatusCode.Ok,
-              { messages: ["Updated 2 recording(s)"], useRawStationId: true },
+              {
+                messages: ["Updated 2 recording(s)"],
+                useRawStationId: true,
+              },
             ).then(() => {
               cy.log("Check 1st 2 recordings unchanged");
               checkRecordingLocationAndStation(
@@ -899,7 +1011,12 @@ describe("Device: fix-location (reassign) recordings to correct station", () => 
       // 1 recording at old location, 2 at intermediate, then one elsewhere
       cy.testUploadRecording(
         deviceName,
-        { ...oldLocation, time: firstTime, noTracks: true },
+        {
+          ...oldLocation,
+          time: firstTime,
+          noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
+        },
         firstName,
       )
         .thenCheckStationIsNew(Josie)
@@ -909,21 +1026,36 @@ describe("Device: fix-location (reassign) recordings to correct station", () => 
           //2 more recordings at intermediate location
           cy.testUploadRecording(
             deviceName,
-            { ...intermediateLocation, time: secondTime, noTracks: true },
+            {
+              ...intermediateLocation,
+              time: secondTime,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             secondName,
           )
             .thenCheckStationIsNew(Josie)
             .then((intermediateStation: TestNameAndId) => {
               cy.testUploadRecording(
                 deviceName,
-                { ...intermediateLocation, time: thirdTime, noTracks: true },
+                {
+                  ...intermediateLocation,
+                  time: thirdTime,
+                  noTracks: true,
+                  processingState: RecordingProcessingState.TrackAndAnalyse,
+                },
                 thirdName,
               );
 
               // then one recording elsewhere
               cy.testUploadRecording(
                 deviceName,
-                { ...elsewhereLocation, time: fourthTime, noTracks: true },
+                {
+                  ...elsewhereLocation,
+                  time: fourthTime,
+                  noTracks: true,
+                  processingState: RecordingProcessingState.TrackAndAnalyse,
+                },
                 fourthName,
               )
                 .thenCheckStationIsNew(Josie)
@@ -1128,7 +1260,12 @@ describe("Device: fix-location (reassign) recordings to correct station", () => 
           // 1 recording at old location, 2 at intermediate, then one elsewhere
           cy.testUploadRecording(
             deviceName,
-            { ...oldLocation, time: firstTime, noTracks: true },
+            {
+              ...oldLocation,
+              time: firstTime,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             firstName,
           )
             .thenCheckStationIdIs(Josie, oldStationId)

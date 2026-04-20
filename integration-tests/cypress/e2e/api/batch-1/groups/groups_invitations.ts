@@ -5,6 +5,7 @@ import {
   ACCEPT_INVITE_PREFIX,
   extractTokenStartingWith,
   startMailServerStub,
+  TestEmail,
   waitForEmail,
 } from "@commands/emailUtils";
 
@@ -43,7 +44,7 @@ describe("Groups - user invitations", () => {
         },
       );
 
-      waitForEmail("invite").then((email) => {
+      waitForEmail(invitee, "invite").then((email: TestEmail) => {
         const { payload, token } = extractTokenStartingWith(
           email,
           ACCEPT_INVITE_PREFIX,
@@ -109,7 +110,7 @@ describe("Groups - user invitations", () => {
         },
       );
 
-      waitForEmail("invite").then((email) => {
+      waitForEmail(invitee, "invite").then((email) => {
         const { payload, token } = extractTokenStartingWith(
           email,
           ACCEPT_INVITE_PREFIX,
@@ -183,7 +184,7 @@ describe("Groups - user invitations", () => {
         },
       );
 
-      waitForEmail("invite").then((email) => {
+      waitForEmail(invitee, "invite").then((email) => {
         const { payload, token } = extractTokenStartingWith(
           email,
           ACCEPT_INVITE_PREFIX,
@@ -254,7 +255,7 @@ describe("Groups - user invitations", () => {
         },
       );
 
-      waitForEmail("invite").then((email) => {
+      waitForEmail(invitee, "invite").then((email: TestEmail) => {
         const { payload, token } = extractTokenStartingWith(
           email,
           ACCEPT_INVITE_PREFIX,
@@ -312,6 +313,10 @@ describe("Groups - user invitations", () => {
           owner: NOT_OWNER,
         };
       });
+      waitForEmail(existingMember, "Confirm email").then((email) => {
+        // Do nothing
+        cy.log(email.body);
+      });
 
       cy.testCreateUserAndGroup(adminName, groupName).then(
         ({ userId, groupId }) => {
@@ -333,7 +338,8 @@ describe("Groups - user invitations", () => {
         },
       );
 
-      waitForEmail("invite").then((email) => {
+      waitForEmail(existingMember, "invite").then((email: TestEmail) => {
+        cy.log("FOO", email.body);
         const { payload, token } = extractTokenStartingWith(
           email,
           ACCEPT_INVITE_PREFIX,
@@ -383,6 +389,11 @@ describe("Groups - user invitations", () => {
           owner: NOT_OWNER,
         };
       });
+      waitForEmail(existingMember, "Confirm email").then(
+        (_email: TestEmail) => {
+          // Do nothing
+        },
+      );
 
       cy.testCreateUserAndGroup(adminName, groupName).then(
         ({ userId, groupId }) => {
@@ -404,7 +415,7 @@ describe("Groups - user invitations", () => {
         },
       );
 
-      waitForEmail("invite").then((email) => {
+      waitForEmail(existingMember, "invite").then((email) => {
         const { payload, token } = extractTokenStartingWith(
           email,
           ACCEPT_INVITE_PREFIX,
@@ -454,6 +465,11 @@ describe("Groups - user invitations", () => {
           owner: OWNER,
         };
       });
+      waitForEmail(existingMember, "Confirm email").then(
+        (_email: TestEmail) => {
+          // Do nothing
+        },
+      );
 
       cy.testCreateUserAndGroup(adminName, groupName).then(
         ({ userId, groupId }) => {
@@ -475,7 +491,7 @@ describe("Groups - user invitations", () => {
         },
       );
 
-      waitForEmail("invite").then((email) => {
+      waitForEmail(existingMember, "invite").then((email) => {
         const { payload, token } = extractTokenStartingWith(
           email,
           ACCEPT_INVITE_PREFIX,

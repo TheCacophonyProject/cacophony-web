@@ -1,92 +1,70 @@
 import { getTestEmail } from "@commands/names";
-import { uniqueName } from "@commands/testUtils";
 
 export const ACCEPT_INVITE_PREFIX = "/accept-invite/";
 export const CONFIRM_EMAIL_PREFIX = "/confirm-account-email/";
 export const JOIN_PROJECT_REQUEST_PREFIX =
   "/confirm-project-membership-request/";
 export const RESET_PASSWORD_PREFIX = "/reset-password/";
-export const clearMailServerLog = () => {
-  cy.log("Clearing mail server stub log");
-  return cy.exec(
-    `cd ../api && docker exec cacophony-web bash -lic "echo "" > mailServerStub.log;"`,
-    { log: false },
-  );
-};
-export const waitForEmail = (type = "") => {
-  let email: string;
+export interface TestEmail {
+  headers: {
+    to: string;
+    subject: string;
+  };
+  body: string;
+  html: string;
+}
+
+export const waitForEmail = (toUser: string, type): Cypress.Chainable => {
   cy.log(`Wait for ${type} email`);
+  const params = new URLSearchParams();
+  params.append("address", getTestEmail(toUser));
   return cy
-    .exec(
-      `cd ../api && docker exec cacophony-web bash -lic "until grep -q 'SERVER: received email' mailServerStub.log ; do sleep 0.1; done; cat mailServerStub.log;"`,
-      { log: false },
-    )
+    .request("GET", `http://localhost:8888/get-mail?${params}`)
     .then((response) => {
-      email = response.stdout;
-      expect(email.split("\n")[0], "Received an email").to.include(
-        "SERVER: received email",
-      );
-      return cy.wrap(email, { log: false });
+      cy.wrap(response.body);
     });
 };
 
-export const waitForEmailPromise = (type = "") => {
+export const waitForEmailPromise = (toUser: string, type = "") => {
   return new Promise<string>((resolve, _reject) => {
-    let email: string;
     cy.log(`Wait for ${type} email`);
-    cy.exec(
-      `cd ../api && docker exec cacophony-web bash -lic "until grep -q 'SERVER: received email' mailServerStub.log ; do sleep 0.1; done; cat mailServerStub.log;"`,
-      { log: false },
-    ).then((response) => {
-      email = response.stdout;
-      expect(email.split("\n")[0], "Received an email").to.include(
-        "SERVER: received email",
-      );
-      resolve(email);
+    const params = new URLSearchParams();
+    params.append("address", getTestEmail(toUser));
+    fetch(`http://localhost:8888/get-mail?${params}`).then((emailResponse) => {
+      if (emailResponse.ok) {
+        emailResponse.json().then(resolve);
+      }
     });
   });
 };
 
 export const startMailServerStub = () => {
   cy.log("Attempting to start mail server stub");
-  cy.exec(
-    `cd ../api && docker exec cacophony-web bash -lic "node ./api/scripts/mailServerStub.js > /dev/null &"`,
+  return cy.exec(
+    `cd ../api && docker exec cacophony-web bash -lic "node ./api/scripts/concurrent-mailserver-stub.js > /dev/null &"`,
     { log: false, failOnNonZeroExit: false },
-  ).then(() => {
-    // Wait for the mail server log file to be created
-    return cy.exec(
-      `cd ../api && docker exec cacophony-web bash -lic "until [ -f mailServerStub.log ]; do sleep 0.1; done;"`,
-      { log: false },
-    );
-  });
+  );
 };
 
 export const startMailServerStubPromise = async () => {
   return new Promise((resolve, _reject) => {
     cy.log("Attempting to start mail server stub");
     cy.exec(
-      `cd ../api && docker exec cacophony-web bash -lic "node ./api/scripts/mailServerStub.js > /dev/null &"`,
+      `cd ../api && docker exec cacophony-web bash -lic "node ./api/scripts/concurrent-mailserver-stub.js > /dev/null &"`,
       { log: false, failOnNonZeroExit: false },
-    ).then(() => {
-      // Wait for the mail server log file to be created
-
-      cy.exec(
-        `cd ../api && docker exec cacophony-web bash -lic "until [ -f mailServerStub.log ]; do sleep 0.1; done;"`,
-        { log: false },
-      ).then(resolve);
-    });
+    ).then(resolve);
   });
 };
 
 export const extractTokenStartingWith = (
-  email: string,
+  email: TestEmail,
   tokenUrlPrefix: string,
 ): { token: string; payload: Record<string, string | number> } => {
   expect(
-    email.includes(tokenUrlPrefix),
+    email.body.includes(tokenUrlPrefix),
     `Email contains expected token '${tokenUrlPrefix}'`,
   ).to.equal(true);
-  const tokenString = email
+  const tokenString = email.body
     .match(new RegExp(`${tokenUrlPrefix}[A-Za-z0-9.:_-]*`))
     .toString();
   const token = tokenString.substring(tokenUrlPrefix.length);
@@ -99,25 +77,12 @@ export const extractTokenStartingWith = (
   return { token, payload };
 };
 
-export const getEmailSubject = (email: string): string => {
-  const lines = email.split("\n");
-  const prefix = "SERVER: subject: ";
-  const toLine = lines.find((line) => line.startsWith(prefix));
-  return (toLine && toLine.slice(prefix.length)) || "";
-};
-export const getEmailToAddress = (email: string): string => {
-  const lines = email.split("\n");
-  const prefix = "SERVER: to: ";
-  const toLine = lines.find((line) => line.startsWith(prefix));
-  return (toLine && toLine.slice(prefix.length)) || "";
-};
-
 export const confirmEmailAddress = (userName: string) => {
-  return waitForEmail("welcome").then((email) => {
-    expect(getEmailSubject(email)).to.equal(
+  return waitForEmail(userName, "welcome").then((email: TestEmail) => {
+    expect(email.headers.subject).to.equal(
       "🔧 Finish setting up your new Cacophony Monitoring account",
     );
-    expect(getEmailToAddress(email)).to.equal(getTestEmail(userName));
+    expect(email.headers.to).to.equal(getTestEmail(userName));
     const { payload, token } = extractTokenStartingWith(
       email,
       CONFIRM_EMAIL_PREFIX,
@@ -125,10 +90,4 @@ export const confirmEmailAddress = (userName: string) => {
     expect(payload._type).to.equal("confirm-email");
     return cy.apiConfirmEmailAddress(token);
   });
-};
-
-export const pumpSmtp = () => {
-  cy.log("Pump smtp server stub");
-  const user = uniqueName("pump-smtp");
-  return cy.apiUserAdd(user);
 };

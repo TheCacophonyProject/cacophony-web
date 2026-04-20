@@ -131,7 +131,7 @@ const recordingsForWeekEnding = (
     now,
   )} and "GroupId" not in (${CACOPHONY_GROUPS.join(
     ", ",
-  )}) and "deletedAt" is null;`;
+  )}) and "deletedAt" is null and "recordingDateTime" is not null;`;
 };
 const queryPrevXWeeks = async (
   fn: (n: Date, i: number) => string,

@@ -201,6 +201,7 @@ export default function (app: Application, baseUrl: string) {
           INNER JOIN "GroupUsers" GU ON G."id" = GU."GroupId"
           INNER JOIN "Users" U ON U."id" = GU."UserId" AND U."id" = :userId
           WHERE R."deletedAt" IS NULL
+          AND R."recordingDateTime" is not null        
           GROUP BY R."StationId";`;
 
       const replacements = {

@@ -1,6 +1,7 @@
 import { Worker, MessageChannel, MessagePort } from "node:worker_threads";
 import type { ReadableStream } from "stream/web";
 import logging from "@log";
+import { availableParallelism } from "node:os";
 interface MessageData {
   type: string;
   data: unknown;
@@ -23,7 +24,7 @@ class DecoderWorkerPool {
   private readonly busyWorkers = new Set<PooledDecoderWorker>();
   private readonly pendingResolvers: ((worker: PooledDecoderWorker) => void)[] =
     [];
-  private readonly maxWorkers = 4;
+  private readonly maxWorkers = Math.max(4, availableParallelism() - 1);
   private totalWorkers = 0;
 
   private async createWorker(): Promise<PooledDecoderWorker> {

@@ -38,6 +38,11 @@ const checkOnlyInstanceOfScriptRunning = async () => {
   const mailServer = init(port);
   const server = express();
   server.use(express.json());
+  server.get("/", async (_request: Request, response: Response) => {
+    response.json({
+      running: true,
+    });
+  });
   server.get("/get-mail", async (request: Request, response: Response) => {
     try {
       // Maybe get all the emails from this address and return the latest one, since order isn't guaranteed?

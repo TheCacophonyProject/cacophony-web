@@ -8,7 +8,7 @@ import { getCreds } from "@commands/server";
 import { NOT_NULL, NOT_NULL_STRING } from "@commands/constants";
 import { TestNameAndId } from "@commands/types";
 import { getTestName } from "@commands/names";
-import { DeviceType } from "@typedefs/api/consts";
+import { DeviceType, RecordingProcessingState } from "@typedefs/api/consts";
 
 const beforeRecordings = new Date(
   new Date().setDate(new Date().getDate() - 10),
@@ -115,7 +115,12 @@ describe("Fix location: subsequent recordings", () => {
       cy.log("and check recording uses updated station");
       cy.testUploadRecording(
         deviceName,
-        { ...oldLocation, time: dayThree, noTracks: true },
+        {
+          ...oldLocation,
+          time: dayThree,
+          noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
+        },
         thirdName,
       )
         .thenCheckStationNameIs(Josie, getTestName(manualStationName))
@@ -184,7 +189,12 @@ describe("Fix location: subsequent recordings", () => {
 
       cy.testUploadRecording(
         deviceName,
-        { ...oldLocation, time: dayOne, noTracks: true },
+        {
+          ...oldLocation,
+          time: dayOne,
+          noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
+        },
         firstName,
       )
         .thenCheckStationIsNew(Josie)
@@ -259,7 +269,12 @@ describe("Fix location: subsequent recordings", () => {
       cy.log("and check recording creates a new station");
       cy.testUploadRecording(
         deviceName,
-        { ...oldLocation, time: dayZero, noTracks: true },
+        {
+          ...oldLocation,
+          time: dayZero,
+          noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
+        },
         firstName,
       )
         .thenCheckStationIsNew(Josie)
@@ -348,7 +363,12 @@ describe("Fix location: subsequent recordings", () => {
       cy.log("and check recording created new station");
       cy.testUploadRecording(
         deviceName,
-        { ...elsewhereLocation, time: dayThree, noTracks: true },
+        {
+          ...elsewhereLocation,
+          time: dayThree,
+          noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
+        },
         thirdName,
       )
         .thenCheckStationIsNew(Josie)
@@ -422,7 +442,12 @@ describe("Fix location: subsequent recordings", () => {
       cy.log("and check recording creates new station");
       cy.testUploadRecording(
         deviceName,
-        { ...elsewhereLocation, time: dayOne, noTracks: true },
+        {
+          ...elsewhereLocation,
+          time: dayOne,
+          noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
+        },
         firstName,
       )
         .thenCheckStationIsNew(Josie)
@@ -500,7 +525,12 @@ describe("Fix location: subsequent recordings", () => {
       cy.log("and check recording creates a new station");
       cy.testUploadRecording(
         deviceName,
-        { ...elsewhereLocation, time: dayOne, noTracks: true },
+        {
+          ...elsewhereLocation,
+          time: dayOne,
+          noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
+        },
         firstName,
       )
         .thenCheckStationIsNew(Josie)
@@ -577,7 +607,12 @@ describe("Fix location: subsequent recordings", () => {
       cy.log("and check recording created new station");
       cy.testUploadRecording(
         deviceName,
-        { ...elsewhereLocation, time: dayFour, noTracks: true },
+        {
+          ...elsewhereLocation,
+          time: dayFour,
+          noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
+        },
         fourthName,
       )
         .thenCheckStationIsNew(Josie)
@@ -597,7 +632,12 @@ describe("Fix location: subsequent recordings", () => {
           cy.log("and check recording assigned to re-assigned station");
           cy.testUploadRecording(
             deviceName,
-            { ...oldLocation, time: dayThree, noTracks: true },
+            {
+              ...oldLocation,
+              time: dayThree,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             thirdName,
           )
             .thenCheckStationNameIs(Josie, getTestName(manualStationName))
@@ -667,7 +707,12 @@ describe("Fix location: subsequent recordings", () => {
       cy.log("and check recording created new station");
       cy.testUploadRecording(
         deviceName,
-        { ...elsewhereLocation, time: dayFour, noTracks: true },
+        {
+          ...elsewhereLocation,
+          time: dayFour,
+          noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
+        },
         fourthName,
       )
         .thenCheckStationIsNew(Josie)
@@ -687,7 +732,12 @@ describe("Fix location: subsequent recordings", () => {
           cy.log("and check recording assigned to re-assigned station");
           cy.testUploadRecording(
             deviceName,
-            { ...oldLocation, time: dayOne, noTracks: true },
+            {
+              ...oldLocation,
+              time: dayOne,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             firstName,
           )
             .thenCheckStationIsNew(Josie)
@@ -768,7 +818,12 @@ describe("Fix location: subsequent recordings", () => {
 
       cy.testUploadRecording(
         deviceName,
-        { ...oldLocation, time: dayTwo, noTracks: true },
+        {
+          ...oldLocation,
+          time: dayTwo,
+          noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
+        },
         firstName,
       )
         .thenCheckStationNameIs(Josie, getTestName(manualStationName))
@@ -836,7 +891,12 @@ describe("Fix location: subsequent recordings", () => {
       cy.log("and check recording created new station");
       cy.testUploadRecording(
         deviceName,
-        { ...elsewhereLocation, time: dayFour, noTracks: true },
+        {
+          ...elsewhereLocation,
+          time: dayFour,
+          noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
+        },
         fourthName,
       )
         .thenCheckStationIsNew(Josie)
@@ -856,7 +916,12 @@ describe("Fix location: subsequent recordings", () => {
           cy.log("and check recording assigned to re-assigned station");
           cy.testUploadRecording(
             deviceName,
-            { ...oldLocation, time: dayTwo, noTracks: true },
+            {
+              ...oldLocation,
+              time: dayTwo,
+              noTracks: true,
+              processingState: RecordingProcessingState.TrackAndAnalyse,
+            },
             firstName,
           )
             .thenCheckStationNameIs(Josie, getTestName(manualStationName))

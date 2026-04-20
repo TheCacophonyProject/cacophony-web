@@ -303,7 +303,8 @@ WITH ordered AS (
     WHERE r."deletedAt" IS NULL
       AND r.type = '${RecordingType.ThermalRaw}'
       AND r."StationId" = :stationId
-      AND r."duration" >= 3
+      AND r."duration" >= 3      
+      AND r."recordingDateTime" is not null
       AND r."recordingDateTime" >= :queryFrom
       AND r."recordingDateTime" <= :queryUntil
 ),
