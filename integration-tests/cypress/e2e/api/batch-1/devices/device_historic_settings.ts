@@ -2,6 +2,7 @@ import { TestGetLocation } from "@commands/api/station";
 import { getCreds, makeAuthorizedRequest, v1ApiPath } from "@commands/server";
 import { uploadFile } from "@commands/fileUpload";
 import { ApiDeviceHistorySettings } from "@shared/api/device";
+import { RecordingProcessingState } from "@typedefs/api/consts";
 
 describe("Devices historic settings", () => {
   it("A user can add and retrieve a reference image for a device in a location", () => {
@@ -19,6 +20,7 @@ describe("Devices historic settings", () => {
       ...TestGetLocation(1),
       time: twoDaysAgo,
       noTracks: true,
+      processingState: RecordingProcessingState.TrackAndAnalyse,
     }).then(() => {
       let params = new URLSearchParams();
       params.append("at-time", new Date().toISOString());
@@ -108,6 +110,7 @@ describe("Devices historic settings", () => {
                     ...TestGetLocation(2),
                     time: oneDayAgo,
                     noTracks: true,
+                    processingState: RecordingProcessingState.TrackAndAnalyse,
                   }).then(() => {
                     cy.log(
                       "Make sure the settings have been cleared for the older location.",
@@ -139,6 +142,7 @@ describe("Devices historic settings", () => {
                     ...TestGetLocation(3),
                     time: new Date(),
                     noTracks: true,
+                    processingState: RecordingProcessingState.TrackAndAnalyse,
                   }).then(() => {
                     cy.log(
                       "Make sure the location specific settings have been cleared for the new location, while other settings are preserved",

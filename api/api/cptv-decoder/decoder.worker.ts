@@ -98,6 +98,7 @@ class CptvDecoderInterface {
 
   async free() {
     this.framesRead = 0;
+    this.expectedSize = 0;
     this.locked = false;
     this.consumed = false;
     this.inited = false;

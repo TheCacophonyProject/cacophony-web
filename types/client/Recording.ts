@@ -388,19 +388,12 @@ const uploadRecordingOnBehalfOfDevice =
     data: ApiRecordingUploadData,
     rawFile: ArrayBuffer,
     rawFileName: string,
-    derivedFile?: ArrayBuffer,
-    derivedFileName?: string,
-    thumbFile?: ArrayBuffer,
-    thumbFileName?: string,
   ) => {
     const formData = prepareUploadedRecordingData(
       data,
       rawFile,
       rawFileName,
-      derivedFile,
-      derivedFileName,
-      thumbFile,
-      thumbFileName,
+      true,
     );
     console.log("Uploading recording with authKey", authKey);
 
@@ -449,46 +442,31 @@ const prepareUploadedRecordingData = (
   data: ApiRecordingUploadData,
   rawFile: ArrayBuffer,
   rawFileName: string,
-  derivedFile?: ArrayBuffer,
-  derivedFileName?: string,
-  thumbFile?: ArrayBuffer,
-  thumbFileName?: string,
+  swapFieldOrder: boolean,
 ) => {
   const formData = new FormData();
-  formData.set("data", JSON.stringify(data));
+  if (!swapFieldOrder) {
+    formData.set("data", JSON.stringify(data));
+  }
   formData.set(
     "file",
     new Blob([rawFile], { type: getMimeTypeFromFileName(rawFileName) }),
     rawFileName,
   );
-  if (derivedFile && derivedFileName) {
-    formData.set("derived", new Blob([derivedFile]), derivedFileName);
-  }
-  if (thumbFile && thumbFileName) {
-    formData.set("thumb", new Blob([thumbFile]), thumbFileName);
+  if (swapFieldOrder) {
+    formData.set("data", JSON.stringify(data));
   }
   return formData;
 };
 
 const uploadRecordingFromDevice =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (
-    data: ApiRecordingUploadData,
-    rawFile: ArrayBuffer,
-    rawFileName: string,
-    derivedFile?: ArrayBuffer,
-    derivedFileName?: string,
-    thumbFile?: ArrayBuffer,
-    thumbFileName?: string,
-  ) => {
+  (data: ApiRecordingUploadData, rawFile: ArrayBuffer, rawFileName: string) => {
     const formData = prepareUploadedRecordingData(
       data,
       rawFile,
       rawFileName,
-      derivedFile,
-      derivedFileName,
-      thumbFile,
-      thumbFileName,
+      false,
     );
     return api.post(authKey, `/api/v1/recordings`, formData, true) as Promise<
       FetchResult<{ recordingId: RecordingId; messages: string[] }>

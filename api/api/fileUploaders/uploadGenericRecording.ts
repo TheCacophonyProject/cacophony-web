@@ -271,20 +271,22 @@ const closeStreams = async (streams: (WebReadableStream | undefined)[]) => {
 const processUploadedFileStream = async (
   objectStorageKey: string,
   fileStream: ByteLengthTruncateStream,
-  recordingData: RecordingUploadSuppliedData,
   uploadingDevice: Device,
+  recordingData: RecordingUploadSuppliedData,
 ): Promise<RecordingFileUploadResult> => {
   let type = recordingData.type;
   if (!type) {
+    // NOTE: Currently Sidekick uploads files with the filename set for CPTV files,
+    // but not for audio files, which is unfortunate, and should be fixed in a future
+    // Sidekick release.  Because Sidekick also puts the `data` field *after* the `file`
+    // field in the multipart FormData, we have to infer the file type from the
+    // filename.  Using our multipart form processing lib, we can't parse data fields
+    // that come after the file fields.  This should also be fixed in a future Sidekick
+    // release, and this workaround should be removed.
     if (recordingData.filename && recordingData.filename.endsWith(".cptv")) {
       type = RecordingType.ThermalRaw;
       recordingData.type = type;
-    } else if (
-      recordingData.filename &&
-      (recordingData.filename.endsWith(".aac") ||
-        recordingData.filename.endsWith(".m4a") ||
-        recordingData.filename.endsWith(".mp4"))
-    ) {
+    } else {
       type = RecordingType.Audio;
       recordingData.type = type;
     }
@@ -431,7 +433,8 @@ const processUploadedFileStream = async (
       recordingData.filename,
       uploadingDevice,
     );
-    if (recordingDateTime) {
+    if (recordingDateTime && uploadingDevice.location) {
+      // FIXME: Get device location at recording time
       payload.embeddedMetadata = {
         recordingDateTime,
         latitude: uploadingDevice.location.lat,
@@ -459,11 +462,11 @@ const getTimezoneOffset = (timeZone: string): string => {
 const parseDateTimeFromFilename = (
   filePath: string,
   device: Device,
-): IsoFormattedDateString => {
+): IsoFormattedDateString | null => {
   // Reference: "/var/spool/cptv/failed-uploads/2026-01-21--06-12-45.cptv"
   const filename = filePath.split("/").pop().split(".").shift();
   const parts = filename.split("--");
-  if (parts.length === 2) {
+  if (parts.length === 2 && device.location) {
     const deviceTimezone = tzLookup(device.location.lat, device.location.lng);
     const offset = getTimezoneOffset(deviceTimezone);
     const dateParts = parts[0];
@@ -473,7 +476,7 @@ const parseDateTimeFromFilename = (
     const secs = timeParts[2];
     return `${dateParts}T${hour}:${mins}:${secs}${offset}`;
   }
-  return new Date().toISOString();
+  return null;
 };
 
 const createRecording = (
@@ -563,15 +566,13 @@ export const uploadGenericRecording =
         maxTotalFileCount: 1,
         maxFieldValueByteLength: 1024 * 1024, // 1MB - why would anything be bigger?
       });
-      if (!("data" in fields)) {
-        return next(new UnprocessableError("'data' field missing"));
+      if ("data" in fields) {
+        recordingData = await validateDataPart(
+          JSON.parse(fields.data) as JsonDocument,
+          recordingDeviceId,
+          files,
+        );
       }
-
-      recordingData = await validateDataPart(
-        JSON.parse(fields.data) as JsonDocument,
-        recordingDeviceId,
-        files,
-      );
 
       for await (const {
         filename: originalFilename,
@@ -579,18 +580,27 @@ export const uploadGenericRecording =
         ...file
       } of files) {
         if (file.field === "file") {
+          recordingData = {
+            ...(recordingData || {}),
+            filename: originalFilename,
+          } as RecordingUploadSuppliedData;
           uploadResult = await processUploadedFileStream(
             objectStorageKey,
             stream,
-            recordingData,
             recordingDevice,
+            recordingData,
           );
           uploadResult.fileName = originalFilename;
+        } else {
+          await stream.resume();
         }
       }
     } catch (err) {
       // What kind of errors can we have?
       return next(err);
+    }
+    if (!uploadResult) {
+      return next(new UnprocessableError("No file data supplied"));
     }
     recordingData = mergeEmbeddedDataWithSuppliedRecordingData(
       recordingData,

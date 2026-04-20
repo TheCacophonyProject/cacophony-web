@@ -2,7 +2,11 @@ import { LatLng, RecordingId } from "@shared/api/common";
 import { ProjectBundle } from "@/helpers/create-test-entities";
 import { ApiRecordingUploadData } from "@shared/api/recording";
 import { RecordingType } from "@shared/api/consts";
-import { TestDeviceHandle, TestEntityHandle } from "@shared/client/types";
+import {
+  TestDeviceHandle,
+  TestEntityHandle,
+  TestUserHandle,
+} from "@shared/client/types";
 import { TestApiImpl } from "@shared/client";
 import { RecordingDataSuppliedMetadata } from "@shared/api/fileProcessing";
 
@@ -58,7 +62,9 @@ export const uploadRecording = async (
   expect(["user", "device"], "uploader must be device or user").to.include(
     uploaderHandle.type,
   );
-  const deviceId = uploaderHandle.id;
+  const deviceId =
+    (recordingOptions.deviceHandle && recordingOptions.deviceHandle.id) ||
+    recordingOptions.project.deviceHandles[0].id;
   const rawFile = getRecordingFixtureForType(
     recordingOptions.project.testFixtures,
     recordingOptions.type,
@@ -129,6 +135,23 @@ export const uploadRecordingFromDeviceForProject = async (options: {
   return uploadRecording(deviceToUploadFrom, options);
 };
 
+export const uploadRecordingOnBehalfOfDeviceForProject = async (options: {
+  project: ProjectBundle;
+  location?: LatLng;
+  userHandle?: TestUserHandle;
+  recordingType?: "test" | "startup" | "shutdown" | "big-file";
+  duration?: number;
+  metadata?: RecordingDataSuppliedMetadata;
+  type: RecordingType;
+  recordingDateTime: Date;
+}): Promise<RecordingId | null> => {
+  // Use the first user in the project bundle, or the specified user.
+  const userToUploadAs: TestUserHandle =
+    options.userHandle || options.project.userHandles[0];
+  console.log(userToUploadAs);
+  return uploadRecording(userToUploadAs, options);
+};
+
 export const uploadThermalRecordingFromDeviceForProject = async (options: {
   project: ProjectBundle;
   location?: LatLng;
@@ -141,6 +164,36 @@ export const uploadThermalRecordingFromDeviceForProject = async (options: {
   return uploadRecordingFromDeviceForProject({
     ...options,
     type: RecordingType.ThermalRaw,
+  });
+};
+
+export const uploadThermalRecordingOnBehalfOfDeviceForProject =
+  async (options: {
+    project: ProjectBundle;
+    location?: LatLng;
+    userHandle?: TestUserHandle;
+    deviceHandle?: TestDeviceHandle;
+    duration?: number; // Artificially set a duration for test purposes
+    metadata?: RecordingDataSuppliedMetadata;
+    recordingDateTime: Date;
+    recordingType?: "test" | "startup" | "shutdown" | "big-file";
+  }): Promise<RecordingId> => {
+    return uploadRecordingOnBehalfOfDeviceForProject({
+      ...options,
+      type: RecordingType.ThermalRaw,
+    });
+  };
+
+export const uploadAudioRecordingOnBehalfOfDeviceForProject = async (options: {
+  project: ProjectBundle;
+  location?: LatLng;
+  userHandle?: TestUserHandle;
+  isTestRecording?: true;
+  recordingDateTime: Date;
+}): Promise<RecordingId> => {
+  return uploadRecordingOnBehalfOfDeviceForProject({
+    ...options,
+    type: RecordingType.Audio,
   });
 };
 
