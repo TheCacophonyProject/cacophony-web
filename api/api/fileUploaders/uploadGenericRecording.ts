@@ -662,6 +662,32 @@ export const uploadGenericRecording =
           "Uploaded file integrity check failed, please retry.",
         ),
       );
+    } else if (uploadResult.sha1Hash && !("fileHash" in recordingData)) {
+      // NOTE: During CI, we'll always set fileHash = null in data, so that
+      // we don't check for duplicates there.
+      const duplicateRecording = await Recording.findOne({
+        where: {
+          rawFileHash: uploadResult.sha1Hash,
+          type: recordingData.type,
+          DeviceId: recordingDeviceId,
+          deletedAt: { [Op.eq]: null },
+        },
+      });
+      if (duplicateRecording) {
+        // A file hash wasn't supplied (maybe because this was a Sidekick upload with the FormData fields out of order)
+        await deleteUpload(uploadResult.objectStorageKey);
+        log.warning(
+          "Recording with hash %s for device %s already exists, discarding duplicate",
+          uploadResult.sha1Hash,
+          recordingDeviceId,
+        );
+        return next(
+          new ClientError(
+            `Duplicate recording found for device: ${duplicateRecording.DeviceId}, (recording #${duplicateRecording.id})`,
+            HttpStatusCode.Ok,
+          ),
+        );
+      }
     }
 
     const recordingTemplate = createRecording(

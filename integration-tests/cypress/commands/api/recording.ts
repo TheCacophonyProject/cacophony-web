@@ -746,6 +746,9 @@ Cypress.Commands.add(
 
     const url = v1ApiPath("recordings");
 
+    if (!("fileHash" in data)) {
+      data.fileHash = null;
+    }
     uploadFile(
       url,
       deviceName,
