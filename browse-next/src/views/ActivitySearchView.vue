@@ -1427,9 +1427,11 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
     } else {
       isNewQuery = queryHash !== currentQueryHash.value;
     }
-    if (
-      (currentQueryCursor.value.fromDateTime as Date) < (fromDateTime as Date)
-    ) {
+    const a = new Date(currentQueryCursor.value.fromDateTime as Date);
+    const b = new Date(fromDateTime as Date);
+    a.setMilliseconds(0);
+    b.setMilliseconds(0);
+    if (a < b) {
       // We need to narrow the already loaded search range
       isNewQuery = true;
     }
@@ -1535,9 +1537,9 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
               appendRecordingsChunkedByDay(recordings);
               currentQueryLoaded.value += recordings.length;
               if (recordings.length !== 0) {
-                gotUntilDate = new Date(
-                  recordings[recordings.length - 1].recordingDateTime,
-                );
+                const earliestTime =
+                  recordings[recordings.length - 1].recordingDateTime;
+                gotUntilDate = new Date(earliestTime);
               }
             } else {
               console.warn("Duplicate recordings, not appending");
