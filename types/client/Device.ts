@@ -176,12 +176,26 @@ const getDeviceNodeGroup =
         limit: 1,
       }).then((response) => {
         if (response.success && response.result.rows.length) {
+          let details = response.result.rows[0].EventDetail.details;
+          if (typeof details === "string") {
+            try {
+              details = details
+                .trim()
+                // eslint-disable-next-line no-control-regex
+                .replace(/[\u0000-\u001F\u007F-\u009F]/g, "")
+                .replace(/\\\\/g, "\\");
+              details = JSON.parse(details);
+            } catch (e) {
+              console.warn(e);
+              // Do nothing
+            }
+          }
           resolve(
             (
-              response.result.rows[0].EventDetail.details as {
+              details as {
                 nodegroup: string;
               }
-            ).nodegroup || "unknown channel",
+            ).nodegroup || "tc2-prod",
           );
         } else {
           resolve(false);

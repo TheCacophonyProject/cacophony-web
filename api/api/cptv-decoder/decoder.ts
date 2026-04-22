@@ -46,6 +46,21 @@ class DecoderWorkerPool {
     worker.unref();
     worker.on("error", (err) => {
       logging.error(`CPTV Decoder worker error: ${err.message}`);
+      try {
+        worker.terminate();
+      } finally {
+        let brokenWorker;
+        for (const pooledWorker of this.busyWorkers) {
+          if (pooledWorker.worker === worker) {
+            brokenWorker = pooledWorker;
+            break;
+          }
+        }
+        if (brokenWorker) {
+          this.busyWorkers.delete(brokenWorker);
+        }
+        this.totalWorkers -= 1;
+      }
     });
 
     await new Promise<void>((resolve, reject) => {
@@ -71,6 +86,9 @@ class DecoderWorkerPool {
     });
 
     this.totalWorkers += 1;
+    logging.info(
+      `New CPTV Decoder worker ${this.totalWorkers}/${this.maxWorkers}`,
+    );
 
     return {
       worker,
@@ -97,16 +115,23 @@ class DecoderWorkerPool {
   }
 
   async release(pooledWorker: PooledDecoderWorker): Promise<void> {
-    this.busyWorkers.delete(pooledWorker);
-
-    const waiter = this.pendingResolvers.shift();
-    if (waiter) {
-      this.busyWorkers.add(pooledWorker);
-      waiter(pooledWorker);
-      return;
+    if (this.busyWorkers.delete(pooledWorker)) {
+      const waiter = this.pendingResolvers.shift();
+      if (waiter) {
+        this.busyWorkers.add(pooledWorker);
+        waiter(pooledWorker);
+        return;
+      }
+      this.idleWorkers.push(pooledWorker);
+    } else {
+      // If the busy worker was already terminated for some error reason.
+      const waiter = this.pendingResolvers.shift();
+      if (waiter) {
+        const pooledWorker = await this.acquire();
+        waiter(pooledWorker);
+        return;
+      }
     }
-
-    this.idleWorkers.push(pooledWorker);
   }
 }
 
@@ -146,9 +171,6 @@ export class CptvDecoder {
   }
   onMessageError(err: Error) {
     console.warn("MessageError", err);
-  }
-  onWorkerError(err: Error) {
-    logging.error(`CPTV Decoder worker error: ${err.message}`);
   }
   async init() {
     this.messageQueue = {};

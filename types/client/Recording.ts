@@ -395,8 +395,6 @@ const uploadRecordingOnBehalfOfDevice =
       rawFileName,
       true,
     );
-    console.log("Uploading recording with authKey", authKey);
-
     return api.post(
       authKey,
       `/api/v1/recordings/device/${deviceId}`,
@@ -448,11 +446,15 @@ const prepareUploadedRecordingData = (
   if (!swapFieldOrder) {
     formData.set("data", JSON.stringify(data));
   }
-  formData.set(
-    "file",
-    new Blob([rawFile], { type: getMimeTypeFromFileName(rawFileName) }),
-    rawFileName,
-  );
+  if (rawFile && rawFile.byteLength) {
+    formData.set(
+      "file",
+      new Blob([rawFile], { type: getMimeTypeFromFileName(rawFileName) }),
+      rawFileName,
+    );
+  } else {
+    throw new Error(`File data for ${rawFileName} not found`);
+  }
   if (swapFieldOrder) {
     formData.set("data", JSON.stringify(data));
   }

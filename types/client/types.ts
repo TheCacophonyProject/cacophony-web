@@ -94,7 +94,7 @@ export interface ValidationErrorResult extends ErrorResult {
 }
 
 export type HttpSuccessCode = HttpStatusCode.Ok | HttpStatusCode.NotModified;
-type HttpFailureCode =
+export type HttpFailureCode =
   | HttpStatusCode.BadRequest
   | HttpStatusCode.AuthorizationError
   | HttpStatusCode.Forbidden

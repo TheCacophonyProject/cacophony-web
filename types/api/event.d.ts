@@ -18,10 +18,7 @@ export interface DeviceEvent {
   createdAt: IsoFormattedString;
   DeviceId: DeviceId;
   Device: { deviceName: string };
-  EventDetail: {
-    type: string;
-    details?: object;
-  };
+  EventDetail: EventDescription;
   env: EventEnv;
 }
 export interface DeviceConfigDetail {

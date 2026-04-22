@@ -1,6 +1,8 @@
 import { HttpStatusCode } from "../api/consts.js";
 import type {
   FetchResult,
+  HttpFailureCode,
+  HttpSuccessCode,
   JwtToken,
   LoadedResource,
   LoggedInDeviceCredentials,
@@ -119,6 +121,28 @@ const cacophonyFetchWrapper = async <T>(
   stateResolvers: RequestStateResolvers,
   retryHandler?: NetworkConnectionErrorHandler,
 ): Promise<FetchResult<T>> => {
+  let fetch;
+  let inBrowserContext = false;
+  try {
+    if (window !== undefined) {
+      fetch = window.fetch;
+      inBrowserContext = true;
+    }
+  } catch (_e) {
+    // nothing
+  }
+  if (!fetch) {
+    try {
+      if (global !== undefined) {
+        fetch = global.fetch;
+      }
+    } catch (_e) {
+      // nothing
+    }
+  }
+  if (!fetch) {
+    throw new Error("Couldn't resolve `fetch`");
+  }
   request = {
     mode: "cors",
     cache: "no-cache",
@@ -127,6 +151,15 @@ const cacophonyFetchWrapper = async <T>(
       ...request.headers,
     },
   };
+  if (!inBrowserContext && request.body) {
+    // NOTE: When running via node/playwright, request.body becomes request.data/request.multipart
+    if (request.body instanceof FormData) {
+      request["multipart"] = request.body;
+    } else {
+      request["data"] = request.body;
+    }
+    delete request.body;
+  }
   if (abortable) {
     request.signal = CurrentViewAbortController.controller.signal;
     request.signal?.addEventListener("onabort", (e) => {
@@ -137,25 +170,29 @@ const cacophonyFetchWrapper = async <T>(
   // Check if the credentials are stale?
   // If so, attempt to refresh them
   // Then use them
-  if (credentials) {
-    // Could this be derived from whether we have a valid token?
-    (request.headers as Record<string, string>).Authorization = credentials;
-  } else if (window !== undefined) {
-    // Are we logging in?  Maybe check the route before adding these headers
+  try {
+    if (credentials) {
+      // Could this be derived from whether we have a valid token?
+      (request.headers as Record<string, string>).Authorization = credentials;
+    } else if (window !== undefined) {
+      // Are we logging in?  Maybe check the route before adding these headers
 
-    // During authentication/token refresh, we'll send the users screen resolution for analytics purposes
-    (request.headers as Record<string, string>).Viewport = `${
-      window.screen.width
-    }x${window.screen.height}@${
-      window.devicePixelRatio
-    } - ${getScreenOrientation()}`;
+      // During authentication/token refresh, we'll send the users screen resolution for analytics purposes
+      (request.headers as Record<string, string>).Viewport = `${
+        window.screen.width
+      }x${window.screen.height}@${
+        window.devicePixelRatio
+      } - ${getScreenOrientation()}`;
+    }
+  } catch (_e) {
+    // Do nothing
   }
   let response: Response;
   if (!retryHandler) {
     //retryHandler = stateResolvers.networkConnectionErrorHandler.new(url, request);
   }
   try {
-    response = await window.fetch(url, request);
+    response = await fetch(url, request);
     /*
     stateResolvers.networkConnectionError.retryInterval = INITIAL_RETRY_INTERVAL;
     stateResolvers.networkConnectionError.retryCount = 0;
@@ -183,22 +220,50 @@ const cacophonyFetchWrapper = async <T>(
       };
     }
 
-    const isJSON = (
-      Array.from(response.headers.entries()) as [string, string][]
-    ).find(
-      ([key, val]: [string, string]) =>
-        key.toLowerCase() === "content-type" &&
-        val.toLowerCase().includes("application/json"),
-    );
+    const headerEntries =
+      typeof response.headers === "function"
+        ? (
+            response as unknown as { headers: () => [string, string][] }
+          ).headers()
+        : response.headers.entries();
+    let isJSON: boolean;
+    if ((headerEntries["content-type"] || "").includes("application/json")) {
+      isJSON = true;
+    } else {
+      isJSON = !!(Array.from(headerEntries) as [string, string][]).find(
+        ([key, val]: [string, string]) =>
+          key.toLowerCase() === "content-type" &&
+          val.toLowerCase().includes("application/json"),
+      );
+    }
     let result;
+    let status: HttpSuccessCode | HttpFailureCode;
+    let ok: boolean;
     if (isJSON) {
       // FIXME: Can this fail?  Check if we need try/catch
       result = await response.json();
+      status =
+        typeof response.status === "function"
+          ? (
+              response as unknown as {
+                status: () => HttpSuccessCode | HttpFailureCode;
+              }
+            ).status()
+          : response.status;
+      ok =
+        typeof response.ok === "function"
+          ? (
+              response as unknown as {
+                ok: () => boolean;
+              }
+            ).ok()
+          : response.ok;
+
       // TODO: Check where we return forbidden, and consider whether the front-end should actually log out for those cases.
       // FIXME:(auth): We should handle this elsewhere?
 
       if (
-        response.status === HttpStatusCode.Forbidden &&
+        status === HttpStatusCode.Forbidden &&
         result.errorType === "authorization" &&
         !response.url.endsWith("/api/v1/users/authenticate") &&
         !response.url.endsWith("/api/v1/users/refresh-session-token")
@@ -216,27 +281,46 @@ const cacophonyFetchWrapper = async <T>(
       }
 
       if (result.cwVersion) {
-        const lastApiVersion = window.localStorage.getItem("last-api-version");
-        if (lastApiVersion && lastApiVersion !== result.cwVersion) {
-          // TODO - could show a user prompt rather than just refreshing?
+        if (inBrowserContext) {
+          const lastApiVersion =
+            window.localStorage.getItem("last-api-version");
+          if (lastApiVersion && lastApiVersion !== result.cwVersion) {
+            // TODO - could show a user prompt rather than just refreshing?
 
-          // TODO - Do we need to actually log the user out, in case there have been changes to the structure
-          //  of the user object stored, and we need to get it again?  Or we could just re-fetch the user info before we reload?
-          window.localStorage.setItem(
-            "last-api-version",
-            result.cwVersion.version,
-          );
-          window.location.reload();
+            // TODO - Do we need to actually log the user out, in case there have been changes to the structure
+            //  of the user object stored, and we need to get it again?  Or we could just re-fetch the user info before we reload?
+            window.localStorage.setItem(
+              "last-api-version",
+              result.cwVersion.version,
+            );
+            window.location.reload();
+          }
         }
         delete result.cwVersion;
       }
     } else {
       result = await response.blob();
+      status =
+        typeof response.status === "function"
+          ? (
+              response as unknown as {
+                status: () => HttpSuccessCode | HttpFailureCode;
+              }
+            ).status()
+          : response.status;
+      ok =
+        typeof response.ok === "function"
+          ? (
+              response as unknown as {
+                ok: () => boolean;
+              }
+            ).ok()
+          : response.ok;
     }
     return {
       result,
-      status: response.status,
-      success: response.ok,
+      status: status as HttpSuccessCode,
+      success: ok as true,
     };
   } catch (e: Error | unknown) {
     if ((e as Error).name === "AbortError") {
