@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "@typedefs/*":  ["../types/*"],
+      "@shared/*":  ["../types/*"],
+      "@/*": ["./*"]
+    }
+  }
+}

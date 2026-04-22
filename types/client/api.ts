@@ -299,7 +299,14 @@ const cacophonyFetchWrapper = async <T>(
         delete result.cwVersion;
       }
     } else {
-      result = await response.blob();
+      if (inBrowserContext) {
+        result = await response.blob();
+      } else {
+        const buffer = await (
+          response as unknown as { body: () => Promise<ArrayBuffer> }
+        ).body();
+        result = new Blob([buffer]);
+      }
       status =
         typeof response.status === "function"
           ? (
@@ -323,6 +330,7 @@ const cacophonyFetchWrapper = async <T>(
       success: ok as true,
     };
   } catch (e: Error | unknown) {
+    console.log("!!", e);
     if ((e as Error).name === "AbortError") {
       console.warn(
         "!! Abort, abort",

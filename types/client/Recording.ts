@@ -453,7 +453,7 @@ const prepareUploadedRecordingData = (
       rawFileName,
     );
   } else {
-    throw new Error(`File data for ${rawFileName} not found`);
+    throw new Error(`File data for ${rawFileName} not found.`);
   }
   if (swapFieldOrder) {
     formData.set("data", JSON.stringify(data));
