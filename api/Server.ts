@@ -180,7 +180,7 @@ const grafanaLabelRestart = async () => {
   }
 
   const app: Application = express();
-
+  app.set("trust proxy", true);
   app.use((request: Request, _response: Response, next: NextFunction) => {
     // Add a unique request ID to each API request, for logging purposes.
     asyncLocalStorage.enterWith(new Map());
