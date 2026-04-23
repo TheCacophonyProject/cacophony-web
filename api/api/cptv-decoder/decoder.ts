@@ -16,6 +16,7 @@ interface MessageDataMessage extends MessageData {
 
 interface PooledDecoderWorker {
   worker: Worker;
+  workStartedAt: Date;
   messagePort: MessagePort;
 }
 
@@ -92,6 +93,7 @@ class DecoderWorkerPool {
 
     return {
       worker,
+      workStartedAt: new Date(),
       messagePort: port1,
     };
   }
@@ -99,6 +101,7 @@ class DecoderWorkerPool {
   async acquire(): Promise<PooledDecoderWorker> {
     const idle = this.idleWorkers.pop();
     if (idle) {
+      idle.workStartedAt = new Date();
       this.busyWorkers.add(idle);
       return idle;
     }
@@ -111,6 +114,18 @@ class DecoderWorkerPool {
 
     return await new Promise((resolve) => {
       this.pendingResolvers.push(resolve);
+      const oldestWorker = Array.from(this.busyWorkers).reduce(
+        (ageMs, worker) => {
+          return Math.max(
+            ageMs,
+            new Date().getTime() - worker.workStartedAt.getTime(),
+          );
+        },
+        0,
+      );
+      logging.warning(
+        `All CPTV decoder workers busy (oldest ${oldestWorker}ms), ${this.pendingResolvers.length} jobs waiting`,
+      );
     });
   }
 
@@ -125,6 +140,8 @@ class DecoderWorkerPool {
       this.idleWorkers.push(pooledWorker);
     } else {
       // If the busy worker was already terminated for some error reason.
+
+      // FIXME: Could this result in just passing the waiter another promise?
       const waiter = this.pendingResolvers.shift();
       if (waiter) {
         const pooledWorker = await this.acquire();
@@ -176,6 +193,9 @@ export class CptvDecoder {
     this.messageQueue = {};
     if (!this.inited) {
       this.inited = true;
+
+      // TODO: Here we can see if any workers are stalled out, since we can
+      //  record when they start work.
       this.pooledWorker = await CptvDecoderWorkerPool.acquire();
       this.messagePort = this.pooledWorker.messagePort;
       this.messagePort.on("message", this.boundOnMessage);

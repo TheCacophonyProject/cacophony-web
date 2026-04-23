@@ -350,6 +350,9 @@ const processUploadedFileStream = async (
   if (isCptvFile) {
     try {
       decoder = new CptvDecoder();
+      // TODO: Do we somehow need to handle aborted streams here?  Can we simulate this in a playwright test?
+      //  I guess if all the workers get stalled like this, and await forever, that would be bad.
+      //  We really need a way of timing out the stream read?  Maybe just aborting it on request close?
       embeddedMetadata = await decoder.getStreamMetadata(mediaDecodeStream);
       if (typeof embeddedMetadata === "string") {
         // NOTE: we don't abort corrupt files, we just mark them as corrupt and keep them.
