@@ -133,6 +133,7 @@ class DecoderWorkerPool {
     if (this.busyWorkers.delete(pooledWorker)) {
       const waiter = this.pendingResolvers.shift();
       if (waiter) {
+        pooledWorker.workStartedAt = new Date();
         this.busyWorkers.add(pooledWorker);
         waiter(pooledWorker);
         return;
