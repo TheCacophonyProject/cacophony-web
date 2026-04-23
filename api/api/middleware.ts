@@ -441,7 +441,8 @@ export const validateFields = (
     }
 
     {
-      const logMessage = format("%s %s", request.method, request.url);
+      const safeUrl = request.url.replaceAll("{", "%7B").replaceAll("}", "%7D");
+      const logMessage = format("%s %s", request.method, safeUrl);
       const requester =
         response.locals.token &&
         (response.locals.token as DecodedJWTToken)._type;

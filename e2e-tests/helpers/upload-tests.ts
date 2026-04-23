@@ -23,51 +23,51 @@ export type FileFixtures = {
 };
 
 export const test = base.extend<FileFixtures>({
-    startupCptv: async ({page}, use) => {
+    startupCptv: async ({}, use) => {
         const file = await readFile("./file-fixtures/startup-status.cptv");
         await use(file.buffer as ArrayBuffer);
     },
-    shutdownCptv: async ({page}, use) => {
+    shutdownCptv: async ({}, use) => {
         const file = await readFile("./file-fixtures/shutdown-status.cptv");
         await use(file.buffer as ArrayBuffer);
     },
-    smallCptv: async ({page}, use) => {
+    smallCptv: async ({}, use) => {
         const file = await readFile("./file-fixtures/small.cptv");
         await use(file.buffer as ArrayBuffer);
     },
-    testLowPowerCptv: async ({page}, use) => {
+    testLowPowerCptv: async ({}, use) => {
         // TODO
         const file = await readFile("./file-fixtures/small.cptv");
         await use(file.buffer as ArrayBuffer);
     },
-    testHighPowerCptv: async ({page}, use) => {
+    testHighPowerCptv: async ({}, use) => {
         // TODO
         const file = await readFile("./file-fixtures/small.cptv");
         await use(file.buffer as ArrayBuffer);
     },
-    oneFrameCptv: async ({page}, use) => {
+    oneFrameCptv: async ({}, use) => {
         const file = await readFile("./file-fixtures/oneframe.cptv");
         await use(file.buffer as ArrayBuffer);
     },
 
-    legacyAudio: async ({page}, use) => {
+    legacyAudio: async ({}, use) => {
         const file = await readFile("./file-fixtures/60sec-audio.m4a");
         await use(file.buffer as ArrayBuffer);
     },
-    standardAudio: async ({page}, use) => {
+    standardAudio: async ({}, use) => {
         const file = await readFile("./file-fixtures/audio-60s-tc2.m4a");
         await use(file.buffer as ArrayBuffer);
     },
-    testAudio: async ({page}, use) => {
+    testAudio: async ({}, use) => {
         const file = await readFile("./file-fixtures/audio-test-recording-tc2.m4a");
         await use(file.buffer as ArrayBuffer);
     },
 
-    zeroSizedFile: async ({page}, use) => {
+    zeroSizedFile: async ({}, use) => {
         const file = await readFile("./file-fixtures/zero-sized");
         await use(file.buffer as ArrayBuffer);
     },
-    corruptFile: async ({page}, use) => {
+    corruptFile: async ({}, use) => {
         const file = await readFile("./file-fixtures/invalid");
         await use(file.buffer as ArrayBuffer);
     },

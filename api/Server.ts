@@ -11,7 +11,7 @@ import { openS3 } from "./models/util/util.js";
 import initialiseApi from "./api/V1/index.js";
 import expressWinston from "express-winston";
 import { exec } from "child_process";
-import { promisify } from "util";
+import { format, promisify } from "util";
 import { v4 as uuidv4 } from "uuid";
 import qs from "qs";
 import { Op } from "sequelize";
@@ -192,12 +192,18 @@ const grafanaLabelRestart = async () => {
     }
     // Make sure user agent doesn't trigger mustache template parsing.
     if (request.headers["user-agent"]) {
-      log.info(
-        "UA: %s",
-        request.headers["user-agent"]
+      const safeUserAgent = request.headers["user-agent"]
+        .replaceAll("{", "%7B")
+        .replaceAll("}", "%7D");
+      if (safeUserAgent === "Go-http-client/1.1") {
+        const safeUrl = request.url
           .replaceAll("{", "%7B")
-          .replaceAll("}", "%7D"),
-      );
+          .replaceAll("}", "%7D");
+        const logMessage = format("%s %s", request.method, safeUrl);
+        log.info("UA: %s (%s) -> %s", safeUserAgent, request.ip, logMessage);
+      } else {
+        log.info("UA: %s", safeUserAgent);
+      }
     }
     next();
   });
