@@ -1,6 +1,7 @@
 import type { Application, NextFunction, Request, Response } from "express";
 import express from "express";
 import passport from "passport";
+import { ExtractJwt } from "passport-jwt";
 import process from "process";
 import http from "http";
 import config from "./config.js";
@@ -29,6 +30,8 @@ import type { UserId } from "@typedefs/api/common.js";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 import { User } from "@models/User.js";
 import os from "os";
+import { type DecodedJWTToken, getVerifiedJWT } from "@api/auth.js";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 
 const asyncExec = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
@@ -196,11 +199,25 @@ const grafanaLabelRestart = async () => {
         .replaceAll("{", "%7B")
         .replaceAll("}", "%7D");
       if (safeUserAgent === "Go-http-client/1.1") {
+        const token = ExtractJwt.fromAuthHeaderWithScheme("jwt")(request);
+        let deviceId = "unknown";
+        if (token) {
+          const decodedToken = jwt.decode(token) as JwtPayload | null;
+          if (decodedToken) {
+            deviceId = decodedToken.id;
+          }
+        }
         const safeUrl = request.url
           .replaceAll("{", "%7B")
           .replaceAll("}", "%7D");
         const logMessage = format("%s %s", request.method, safeUrl);
-        log.info("UA: %s (%s) -> %s", safeUserAgent, request.ip, logMessage);
+        log.info(
+          "UA: %s, (%s) #%s -> %s",
+          safeUserAgent,
+          request.ip,
+          deviceId,
+          logMessage,
+        );
       } else {
         log.info("UA: %s", safeUserAgent);
       }
