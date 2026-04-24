@@ -342,6 +342,7 @@ export async function getCPTVFrames(
     ).Body.transformToWebStream();
     decoder = new CptvDecoder();
     const result = await decoder.initWithReadableStream(
+      recording.DeviceId,
       stream as ReadableStream,
     );
     if (typeof result === "string") {

@@ -2,6 +2,7 @@ import { Worker, MessageChannel, MessagePort } from "node:worker_threads";
 import type { ReadableStream } from "stream/web";
 import logging from "@log";
 import { availableParallelism } from "node:os";
+import { DeviceId } from "@typedefs/api/common.js";
 interface MessageData {
   type: string;
   data: unknown;
@@ -17,18 +18,21 @@ interface MessageDataMessage extends MessageData {
 interface PooledDecoderWorker {
   worker: Worker;
   workStartedAt: Date;
+  deviceId: DeviceId;
   messagePort: MessagePort;
 }
 
 class DecoderWorkerPool {
   private readonly idleWorkers: PooledDecoderWorker[] = [];
   private readonly busyWorkers = new Set<PooledDecoderWorker>();
-  private readonly pendingResolvers: ((worker: PooledDecoderWorker) => void)[] =
-    [];
+  private readonly pendingResolvers: {
+    deviceId: DeviceId;
+    resolve: (worker: PooledDecoderWorker) => void;
+  }[] = [];
   private readonly maxWorkers = Math.max(4, availableParallelism() - 1);
   private totalWorkers = 0;
 
-  private async createWorker(): Promise<PooledDecoderWorker> {
+  private async createWorker(deviceId: DeviceId): Promise<PooledDecoderWorker> {
     const { port1, port2 } = new MessageChannel();
     port1.unref();
 
@@ -93,15 +97,17 @@ class DecoderWorkerPool {
 
     return {
       worker,
+      deviceId,
       workStartedAt: new Date(),
       messagePort: port1,
     };
   }
 
-  async acquire(): Promise<PooledDecoderWorker> {
+  async acquire(deviceId: DeviceId): Promise<PooledDecoderWorker> {
     const idle = this.idleWorkers.pop();
     if (idle) {
       idle.workStartedAt = new Date();
+      idle.deviceId = deviceId;
       this.busyWorkers.add(idle);
       return idle;
     }
@@ -127,7 +133,7 @@ class DecoderWorkerPool {
     ) {
       try {
         logging.warning(
-          `Terminating stalled CPTV decoder worker after ${new Date().getTime() - oldestWorker.workStartedAt.getTime()}ms`,
+          `Terminating stalled CPTV decoder worker for #${oldestWorker.deviceId} after ${new Date().getTime() - oldestWorker.workStartedAt.getTime()}ms`,
         );
         await oldestWorker.worker.terminate();
       } finally {
@@ -146,13 +152,13 @@ class DecoderWorkerPool {
     }
 
     if (this.totalWorkers < this.maxWorkers) {
-      const created = await this.createWorker();
+      const created = await this.createWorker(deviceId);
       this.busyWorkers.add(created);
       return created;
     }
 
     return await new Promise((resolve) => {
-      this.pendingResolvers.push(resolve);
+      this.pendingResolvers.push({ deviceId, resolve });
       const oldestWorker = Array.from(this.busyWorkers).reduce(
         (oldWorker, worker) => {
           if (!oldWorker) {
@@ -169,7 +175,7 @@ class DecoderWorkerPool {
       );
       if (oldestWorker) {
         logging.warning(
-          `All CPTV decoder workers busy (oldest created at ${oldestWorker.workStartedAt}), ${this.pendingResolvers.length} jobs waiting`,
+          `All CPTV decoder workers busy (oldest created at ${oldestWorker.workStartedAt} for #${oldestWorker.deviceId}), ${this.pendingResolvers.length} jobs waiting`,
         );
       }
     });
@@ -180,8 +186,9 @@ class DecoderWorkerPool {
       const waiter = this.pendingResolvers.shift();
       if (waiter) {
         pooledWorker.workStartedAt = new Date();
+        pooledWorker.deviceId = waiter.deviceId;
         this.busyWorkers.add(pooledWorker);
-        waiter(pooledWorker);
+        waiter.resolve(pooledWorker);
         return;
       }
       this.idleWorkers.push(pooledWorker);
@@ -193,9 +200,10 @@ class DecoderWorkerPool {
       // FIXME: Could this result in just passing the waiter another promise?
       const waiter = this.pendingResolvers.shift();
       if (waiter) {
-        const pooledWorker = await this.acquire();
+        const pooledWorker = await this.acquire(waiter.deviceId);
         pooledWorker.workStartedAt = new Date();
-        waiter(pooledWorker);
+        pooledWorker.deviceId = waiter.deviceId;
+        waiter.resolve(pooledWorker);
         return;
       }
     }
@@ -239,14 +247,14 @@ export class CptvDecoder {
   onMessageError(err: Error) {
     console.warn("MessageError", err);
   }
-  async init() {
+  async init(deviceId: DeviceId) {
     this.messageQueue = {};
     if (!this.inited) {
       this.inited = true;
 
       // TODO: Here we can see if any workers are stalled out, since we can
       //  record when they start work.
-      this.pooledWorker = await CptvDecoderWorkerPool.acquire();
+      this.pooledWorker = await CptvDecoderWorkerPool.acquire(deviceId);
       this.messagePort = this.pooledWorker.messagePort;
       this.messagePort.on("message", this.boundOnMessage);
       this.messagePort.on("messageerror", this.boundOnMessageError);
@@ -258,9 +266,10 @@ export class CptvDecoder {
    * @returns True on success, or an error string on failure (String | Boolean)
    */
   async initWithReadableStream(
+    deviceId: DeviceId,
     stream: ReadableStream,
   ): Promise<string | boolean> {
-    await this.init();
+    await this.init(deviceId);
     const type = "initWithReadableStream";
     this.messagePort.postMessage({ type, streamReader: stream }, [stream]);
     return (await this.waitForMessage(type)) as string | boolean;
@@ -273,9 +282,10 @@ export class CptvDecoder {
    * @returns {CptvHeader} on success, or an error string on failure
    */
   async getStreamMetadata(
+    deviceId: DeviceId,
     stream: ReadableStream,
   ): Promise<(CptvHeader & { firstFrame?: CptvFrame }) | string> {
-    await this.init();
+    await this.init(deviceId);
     const type = "getStreamMetadata";
     this.messagePort.postMessage({ type, streamReader: stream }, [stream]);
     return (await this.waitForMessage(type)) as CptvHeader | string;
@@ -287,9 +297,10 @@ export class CptvDecoder {
    * @returns True on success, or an error string on failure (String | Boolean)
    */
   async initWithLocalCptvFile(
+    deviceId: DeviceId,
     fileBytes: Uint8Array,
   ): Promise<string | boolean> {
-    await this.init();
+    await this.init(deviceId);
     const type = "initWithLocalCptvFile";
     this.messagePort.postMessage({ type, arrayBuffer: fileBytes });
     return (await this.waitForMessage(type)) as string | boolean;
@@ -300,8 +311,11 @@ export class CptvDecoder {
    * This function reads and consumes the entire file, without decoding actual frames.
    * @param fileBytes (Uint8Array)
    */
-  async getBytesMetadata(fileBytes: Uint8Array): Promise<CptvHeader> {
-    await this.init();
+  async getBytesMetadata(
+    deviceId: DeviceId,
+    fileBytes: Uint8Array,
+  ): Promise<CptvHeader> {
+    await this.init(deviceId);
     const type = "getBytesMetadata";
     this.messagePort.postMessage({ type, arrayBuffer: fileBytes });
     return (await this.waitForMessage(type)) as CptvHeader;
