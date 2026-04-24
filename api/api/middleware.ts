@@ -462,7 +462,7 @@ export const validateFields = (
           response.locals.viewAsSuperUser ? "::SUPER_USER" : "",
         );
       } else {
-        log.info("\n\t\t NEW REQUEST\n\t\t %s\n\t\t %s: %s%s", logMessage);
+        log.info("\n\t\t NEW REQUEST\n\t\t %s", logMessage);
       }
       const validationErrors = validationResult(request);
       if (!validationErrors.isEmpty()) {

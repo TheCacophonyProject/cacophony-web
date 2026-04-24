@@ -62,7 +62,14 @@ class DecoderWorkerPool {
           }
         }
         if (brokenWorker) {
+          logging.error(
+            `Removing broken CPTV Decoder worker for #${brokenWorker.deviceId}, created at ${brokenWorker.workStartedAt}`,
+          );
           this.busyWorkers.delete(brokenWorker);
+        } else {
+          logging.error(
+            "Failed to find broken worker in busy pool in order to remove",
+          );
         }
         this.totalWorkers -= 1;
       }
