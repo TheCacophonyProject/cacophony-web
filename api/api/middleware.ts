@@ -453,14 +453,17 @@ export const validateFields = (
         "unknown";
 
       // TODO: At this point *if* we have errors, we may want to lookup the userName or deviceName?
-
-      log.info(
-        "\n\t\t NEW REQUEST\n\t\t %s\n\t\t %s: %s%s",
-        logMessage,
-        requester || "unauthenticated",
-        requestId,
-        response.locals.viewAsSuperUser ? "::SUPER_USER" : "",
-      );
+      if (requester) {
+        log.info(
+          "\n\t\t NEW REQUEST\n\t\t %s\n\t\t %s: %s%s",
+          logMessage,
+          requester || "unauthenticated",
+          requestId,
+          response.locals.viewAsSuperUser ? "::SUPER_USER" : "",
+        );
+      } else {
+        log.info("\n\t\t NEW REQUEST\n\t\t %s\n\t\t %s: %s%s", logMessage);
+      }
       const validationErrors = validationResult(request);
       if (!validationErrors.isEmpty()) {
         return next(new ValidationError(validationErrors));

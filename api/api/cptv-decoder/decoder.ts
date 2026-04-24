@@ -51,7 +51,7 @@ class DecoderWorkerPool {
         worker.terminate();
       } finally {
         let brokenWorker;
-        for (const pooledWorker of this.busyWorkers) {
+        for (const pooledWorker of Array.from(this.busyWorkers)) {
           if (pooledWorker.worker === worker) {
             brokenWorker = pooledWorker;
             break;
@@ -106,6 +106,45 @@ class DecoderWorkerPool {
       return idle;
     }
 
+    const oldestWorker = Array.from(this.busyWorkers).reduce(
+      (oldWorker, worker) => {
+        if (!oldWorker) {
+          return worker;
+        } else {
+          if (worker.workStartedAt > oldWorker.workStartedAt) {
+            return worker;
+          } else {
+            return oldWorker;
+          }
+        }
+      },
+      undefined,
+    );
+    if (
+      oldestWorker &&
+      new Date().getTime() - oldestWorker.workStartedAt.getTime() >
+        10 * 60 * 1000
+    ) {
+      try {
+        logging.warning(
+          `Terminating stalled CPTV decoder worker after ${new Date().getTime() - oldestWorker.workStartedAt.getTime()}ms`,
+        );
+        await oldestWorker.worker.terminate();
+      } finally {
+        let timedOutWorker;
+        for (const pooledWorker of Array.from(this.busyWorkers)) {
+          if (pooledWorker === oldestWorker) {
+            timedOutWorker = pooledWorker;
+            break;
+          }
+        }
+        if (timedOutWorker) {
+          this.busyWorkers.delete(timedOutWorker);
+        }
+        this.totalWorkers -= 1;
+      }
+    }
+
     if (this.totalWorkers < this.maxWorkers) {
       const created = await this.createWorker();
       this.busyWorkers.add(created);
@@ -115,17 +154,24 @@ class DecoderWorkerPool {
     return await new Promise((resolve) => {
       this.pendingResolvers.push(resolve);
       const oldestWorker = Array.from(this.busyWorkers).reduce(
-        (ageMs, worker) => {
-          return Math.max(
-            ageMs,
-            new Date().getTime() - worker.workStartedAt.getTime(),
-          );
+        (oldWorker, worker) => {
+          if (!oldWorker) {
+            return worker;
+          } else {
+            if (worker.workStartedAt > oldWorker.workStartedAt) {
+              return worker;
+            } else {
+              return oldWorker;
+            }
+          }
         },
-        0,
+        undefined,
       );
-      logging.warning(
-        `All CPTV decoder workers busy (oldest ${oldestWorker}ms), ${this.pendingResolvers.length} jobs waiting`,
-      );
+      if (oldestWorker) {
+        logging.warning(
+          `All CPTV decoder workers busy (oldest created at ${oldestWorker.workStartedAt}), ${this.pendingResolvers.length} jobs waiting`,
+        );
+      }
     });
   }
 
@@ -141,11 +187,14 @@ class DecoderWorkerPool {
       this.idleWorkers.push(pooledWorker);
     } else {
       // If the busy worker was already terminated for some error reason.
-
+      logging.warning(
+        "Attempted to release worker not in busyWorkers pool - it may have terminated itself",
+      );
       // FIXME: Could this result in just passing the waiter another promise?
       const waiter = this.pendingResolvers.shift();
       if (waiter) {
         const pooledWorker = await this.acquire();
+        pooledWorker.workStartedAt = new Date();
         waiter(pooledWorker);
         return;
       }
