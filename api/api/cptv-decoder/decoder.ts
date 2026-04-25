@@ -68,7 +68,7 @@ class DecoderWorkerPool {
           this.busyWorkers.delete(brokenWorker);
         } else {
           logging.error(
-            "Failed to find broken worker in busy pool in order to remove",
+            "Failed to find broken CPTV decoder worker in busy pool in order to remove",
           );
         }
         this.totalWorkers -= 1;
@@ -124,7 +124,7 @@ class DecoderWorkerPool {
         if (!oldWorker) {
           return worker;
         } else {
-          if (worker.workStartedAt > oldWorker.workStartedAt) {
+          if (worker.workStartedAt < oldWorker.workStartedAt) {
             return worker;
           } else {
             return oldWorker;
@@ -135,8 +135,7 @@ class DecoderWorkerPool {
     );
     if (
       oldestWorker &&
-      new Date().getTime() - oldestWorker.workStartedAt.getTime() >
-        10 * 60 * 1000
+      new Date().getTime() - oldestWorker.workStartedAt.getTime() > 60 * 1000
     ) {
       try {
         logging.warning(
@@ -153,6 +152,10 @@ class DecoderWorkerPool {
         }
         if (timedOutWorker) {
           this.busyWorkers.delete(timedOutWorker);
+        } else {
+          logging.error(
+            `Failed to remove stalled CPTV decoder worker for #${oldestWorker.deviceId} from busy list`,
+          );
         }
         this.totalWorkers -= 1;
       }
@@ -171,7 +174,7 @@ class DecoderWorkerPool {
           if (!oldWorker) {
             return worker;
           } else {
-            if (worker.workStartedAt > oldWorker.workStartedAt) {
+            if (worker.workStartedAt < oldWorker.workStartedAt) {
               return worker;
             } else {
               return oldWorker;
@@ -202,7 +205,7 @@ class DecoderWorkerPool {
     } else {
       // If the busy worker was already terminated for some error reason.
       logging.warning(
-        "Attempted to release worker not in busyWorkers pool - it may have terminated itself",
+        "Attempted to release CPTV decoder worker not in busyWorkers pool - it may have terminated itself",
       );
       // FIXME: Could this result in just passing the waiter another promise?
       const waiter = this.pendingResolvers.shift();
@@ -213,6 +216,7 @@ class DecoderWorkerPool {
         waiter.resolve(pooledWorker);
         return;
       }
+      this.idleWorkers.push(pooledWorker);
     }
   }
 }
