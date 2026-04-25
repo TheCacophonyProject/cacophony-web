@@ -356,6 +356,7 @@ const processUploadedFileStream = async (
       embeddedMetadata = await decoder.getStreamMetadata(
         uploadingDevice.id,
         mediaDecodeStream,
+        recordingData.fileHash,
       );
       if (typeof embeddedMetadata === "string") {
         // NOTE: we don't abort corrupt files, we just mark them as corrupt and keep them.
