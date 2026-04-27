@@ -18,25 +18,28 @@ interface MessageDataMessage extends MessageData {
 interface PooledDecoderWorker {
   worker: Worker;
   workStartedAt: Date;
+  messagePort: MessagePort;
+  info?: DecoderRequestInfo;
+}
+
+export interface DecoderRequestInfo {
   deviceId: DeviceId;
   fileHash?: string;
-  messagePort: MessagePort;
+  requestId?: string;
 }
 
 class DecoderWorkerPool {
   private readonly idleWorkers: PooledDecoderWorker[] = [];
   private readonly busyWorkers = new Set<PooledDecoderWorker>();
   private readonly pendingResolvers: {
-    deviceId: DeviceId;
-    fileHash?: string;
+    info?: DecoderRequestInfo;
     resolve: (worker: PooledDecoderWorker) => void;
   }[] = [];
   private readonly maxWorkers = Math.max(4, availableParallelism() - 1);
   private totalWorkers = 0;
 
   private async createWorker(
-    deviceId: DeviceId,
-    fileHash?: string,
+    info?: DecoderRequestInfo,
   ): Promise<PooledDecoderWorker> {
     const { port1, port2 } = new MessageChannel();
     port1.unref();
@@ -68,7 +71,7 @@ class DecoderWorkerPool {
         }
         if (brokenWorker) {
           logging.error(
-            `Removing broken CPTV Decoder worker for #${brokenWorker.deviceId}, created at ${brokenWorker.workStartedAt}`,
+            `Removing broken CPTV Decoder worker for #${brokenWorker.info?.deviceId},${brokenWorker.info?.requestId},${brokenWorker.info?.fileHash}, created at ${brokenWorker.workStartedAt}`,
           );
           this.busyWorkers.delete(brokenWorker);
         } else {
@@ -109,22 +112,17 @@ class DecoderWorkerPool {
 
     return {
       worker,
-      deviceId,
-      fileHash,
+      info,
       workStartedAt: new Date(),
       messagePort: port1,
     };
   }
 
-  async acquire(
-    deviceId: DeviceId,
-    fileHash?: string,
-  ): Promise<PooledDecoderWorker> {
+  async acquire(info?: DecoderRequestInfo): Promise<PooledDecoderWorker> {
     const idle = this.idleWorkers.pop();
     if (idle) {
       idle.workStartedAt = new Date();
-      idle.deviceId = deviceId;
-      idle.fileHash = fileHash;
+      idle.info = info;
       this.busyWorkers.add(idle);
       return idle;
     }
@@ -136,7 +134,7 @@ class DecoderWorkerPool {
     ) {
       try {
         logging.warning(
-          `Terminating stalled CPTV decoder worker for #${oldestWorker.deviceId},${oldestWorker.fileHash} after ${new Date().getTime() - oldestWorker.workStartedAt.getTime()}ms`,
+          `Terminating stalled CPTV decoder worker for #${oldestWorker.info?.deviceId},${oldestWorker.info?.requestId},${oldestWorker.info?.fileHash}, created at ${oldestWorker.workStartedAt}`,
         );
         await oldestWorker.worker.terminate();
       } finally {
@@ -151,7 +149,7 @@ class DecoderWorkerPool {
           this.busyWorkers.delete(timedOutWorker);
         } else {
           logging.error(
-            `Failed to remove stalled CPTV decoder worker for #${oldestWorker.deviceId},${oldestWorker.fileHash} from busy list`,
+            `Failed to remove stalled CPTV decoder worker for #${oldestWorker.info?.deviceId},${oldestWorker.info?.requestId},${oldestWorker.info?.fileHash} from busy list`,
           );
         }
         this.totalWorkers -= 1;
@@ -159,17 +157,17 @@ class DecoderWorkerPool {
     }
 
     if (this.totalWorkers < this.maxWorkers) {
-      const created = await this.createWorker(deviceId, fileHash);
+      const created = await this.createWorker(info);
       this.busyWorkers.add(created);
       return created;
     }
 
     return await new Promise((resolve) => {
-      this.pendingResolvers.push({ deviceId, resolve, fileHash });
+      this.pendingResolvers.push({ info, resolve });
       const oldestWorker = this.oldestBusyWorker();
       if (oldestWorker) {
         logging.warning(
-          `All CPTV decoder workers busy (oldest created at ${oldestWorker.workStartedAt} for #${oldestWorker.deviceId},${oldestWorker.fileHash}), ${this.pendingResolvers.length} jobs waiting`,
+          `All CPTV decoder workers busy (oldest created at ${oldestWorker.workStartedAt} for #${oldestWorker.info?.deviceId},${oldestWorker.info?.requestId},${oldestWorker.info?.fileHash}), ${this.pendingResolvers.length} jobs waiting`,
         );
       }
     });
@@ -197,8 +195,7 @@ class DecoderWorkerPool {
       const waiter = this.pendingResolvers.shift();
       if (waiter) {
         pooledWorker.workStartedAt = new Date();
-        pooledWorker.deviceId = waiter.deviceId;
-        pooledWorker.fileHash = waiter.fileHash;
+        pooledWorker.info = waiter.info;
         this.busyWorkers.add(pooledWorker);
         waiter.resolve(pooledWorker);
         return;
@@ -207,18 +204,14 @@ class DecoderWorkerPool {
     } else {
       // If the busy worker was already terminated for some error reason.
       logging.warning(
-        `Attempted to release CPTV decoder worker not in busyWorkers pool (#${pooledWorker.deviceId}, ${pooledWorker.fileHash}, ${pooledWorker.workStartedAt}) - it may have terminated itself`,
+        `Attempted to release CPTV decoder worker not in busyWorkers pool (#${pooledWorker.info?.deviceId},${pooledWorker.info?.requestId},${pooledWorker.info?.fileHash}, ${pooledWorker.workStartedAt}) - it may have terminated itself`,
       );
       // FIXME: Could this result in just passing the waiter another promise?
       const waiter = this.pendingResolvers.shift();
       if (waiter) {
-        const pooledWorker = await this.acquire(
-          waiter.deviceId,
-          waiter.fileHash,
-        );
+        const pooledWorker = await this.acquire(waiter.info);
         pooledWorker.workStartedAt = new Date();
-        pooledWorker.deviceId = waiter.deviceId;
-        pooledWorker.fileHash = waiter.fileHash;
+        pooledWorker.info = waiter.info;
         waiter.resolve(pooledWorker);
         return;
       }
@@ -264,14 +257,11 @@ export class CptvDecoder {
   onMessageError(err: Error) {
     console.warn("MessageError", err);
   }
-  async init(deviceId: DeviceId, fileHash?: string) {
+  async init(info?: DecoderRequestInfo) {
     this.messageQueue = {};
     if (!this.inited) {
       this.inited = true;
-      this.pooledWorker = await CptvDecoderWorkerPool.acquire(
-        deviceId,
-        fileHash,
-      );
+      this.pooledWorker = await CptvDecoderWorkerPool.acquire(info);
       this.messagePort = this.pooledWorker.messagePort;
       this.messagePort.on("message", this.boundOnMessage);
       this.messagePort.on("messageerror", this.boundOnMessageError);
@@ -280,14 +270,14 @@ export class CptvDecoder {
   /**
    * Initialise a new player with an cptv file stream
    * @param stream (ReadableStream)
+   * @param info
    * @returns True on success, or an error string on failure (String | Boolean)
    */
   async initWithReadableStream(
-    deviceId: DeviceId,
     stream: ReadableStream,
-    fileHash?: string,
+    info?: DecoderRequestInfo,
   ): Promise<string | boolean> {
-    await this.init(deviceId, fileHash);
+    await this.init(info);
     const type = "initWithReadableStream";
     this.messagePort.postMessage({ type, streamReader: stream }, [stream]);
     return (await this.waitForMessage(type)) as string | boolean;
@@ -297,14 +287,14 @@ export class CptvDecoder {
    * Get the header and duration in seconds for a cptv file stream
    * This function reads and consumes the entire stream, without decoding actual frames.
    * @param stream (ReadableStream)
+   * @param info
    * @returns {CptvHeader} on success, or an error string on failure
    */
   async getStreamMetadata(
-    deviceId: DeviceId,
     stream: ReadableStream,
-    fileHash?: string,
+    info?: DecoderRequestInfo,
   ): Promise<(CptvHeader & { firstFrame?: CptvFrame }) | string> {
-    await this.init(deviceId, fileHash);
+    await this.init(info);
     const type = "getStreamMetadata";
     this.messagePort.postMessage({ type, streamReader: stream }, [stream]);
     return (await this.waitForMessage(type)) as CptvHeader | string;
@@ -313,14 +303,14 @@ export class CptvDecoder {
   /**
    * Initialise a new player with an already loaded local file.
    * @param fileBytes (Uint8Array)
+   * @param info
    * @returns True on success, or an error string on failure (String | Boolean)
    */
   async initWithLocalCptvFile(
-    deviceId: DeviceId,
     fileBytes: Uint8Array,
-    fileHash?: string,
+    info?: DecoderRequestInfo,
   ): Promise<string | boolean> {
-    await this.init(deviceId, fileHash);
+    await this.init(info);
     const type = "initWithLocalCptvFile";
     this.messagePort.postMessage({ type, arrayBuffer: fileBytes });
     return (await this.waitForMessage(type)) as string | boolean;
@@ -330,13 +320,13 @@ export class CptvDecoder {
    * Get the header and duration in seconds for an already loaded byte array
    * This function reads and consumes the entire file, without decoding actual frames.
    * @param fileBytes (Uint8Array)
+   * @param info
    */
   async getBytesMetadata(
-    deviceId: DeviceId,
     fileBytes: Uint8Array,
-    fileHash?: string,
+    info?: DecoderRequestInfo,
   ): Promise<CptvHeader> {
-    await this.init(deviceId, fileHash);
+    await this.init(info);
     const type = "getBytesMetadata";
     this.messagePort.postMessage({ type, arrayBuffer: fileBytes });
     return (await this.waitForMessage(type)) as CptvHeader;

@@ -20,7 +20,11 @@ import {
   ReadableStream as WebReadableStream,
   TransformStream,
 } from "stream/web";
-import type { CptvFrame, CptvHeader } from "@api/cptv-decoder/decoder.js";
+import type {
+  CptvFrame,
+  CptvHeader,
+  DecoderRequestInfo,
+} from "@api/cptv-decoder/decoder.js";
 import { CptvDecoder } from "@api/cptv-decoder/decoder.js";
 import { Device } from "@models/Device.js";
 import type { User } from "@models/User.js";
@@ -55,6 +59,7 @@ import { JsonDocument } from "@typedefs/api/event.js";
 import { parseFormData, Pechkin } from "pechkin";
 import { ByteLengthTruncateStream } from "pechkin/dist/ByteLengthTruncateStream.js";
 import tzLookup from "tz-lookup-oss";
+import { asyncLocalStorage } from "@/Globals.js";
 
 interface RecordingUploadSuppliedData {
   type: RecordingType;
@@ -350,13 +355,18 @@ const processUploadedFileStream = async (
   if (isCptvFile) {
     try {
       decoder = new CptvDecoder();
-      // TODO: Do we somehow need to handle aborted streams here?  Can we simulate this in a playwright test?
-      //  I guess if all the workers get stalled like this, and await forever, that would be bad.
-      //  We really need a way of timing out the stream read?  Maybe just aborting it on request close?
+      // TODO: Do we somehow need to handle aborted/stalled streams here?  Can we simulate this in a playwright test?
+      const info: DecoderRequestInfo = {
+        fileHash: recordingData.fileHash,
+        deviceId: uploadingDevice.id,
+      };
+      const asyncStore = asyncLocalStorage && asyncLocalStorage.getStore();
+      if (asyncStore) {
+        info.requestId = asyncStore.get("requestId") as string;
+      }
       embeddedMetadata = await decoder.getStreamMetadata(
-        uploadingDevice.id,
         mediaDecodeStream,
-        recordingData.fileHash,
+        info,
       );
       if (typeof embeddedMetadata === "string") {
         // NOTE: we don't abort corrupt files, we just mark them as corrupt and keep them.
@@ -682,6 +692,9 @@ export const uploadGenericRecording =
       });
       if (duplicateRecording) {
         // A file hash wasn't supplied (maybe because this was a Sidekick upload with the FormData fields out of order)
+
+        // In this case,
+
         await deleteUpload(uploadResult.objectStorageKey);
         log.warning(
           "Recording with hash %s for device %s already exists, discarding duplicate",
