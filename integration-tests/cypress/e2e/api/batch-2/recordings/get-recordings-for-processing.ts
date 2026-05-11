@@ -115,9 +115,7 @@ describe("Get recordings for processing", () => {
 
   it("Audio finished state is handled properly with multiple states api call", async () => {
     // TODO
+    // An audio recording in finished state should only return for processing if a human has added a track and it has not got an AI prediction associated with it
     return;
   });
-
 });
-
-
