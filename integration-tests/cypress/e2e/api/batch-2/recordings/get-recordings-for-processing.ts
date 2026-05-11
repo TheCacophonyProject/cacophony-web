@@ -112,4 +112,12 @@ describe("Get recordings for processing", () => {
     // TODO:
     return;
   });
+
+  it("Audio finished state is handled properly with multiple states api call", async () => {
+    // TODO
+    return;
+  });
+
 });
+
+
