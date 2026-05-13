@@ -78,6 +78,7 @@
     "@types/pg": "^8.15.6",
     "@types/temp": "^0.9.4",
     "@types/uuid": "^10.0.0",
+    "@typescript/native-preview": "^7.0.0-dev.20260421.2",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",

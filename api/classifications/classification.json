@@ -1,6 +1,6 @@
 {
   "label": "all",
-  "version": "ad6febdf-cfdc-49e8-a2c1-8b99174b431a",
+  "version": "a06febdf-cfdc-49e8-a2c1-8b99174b431a",
   "children": [
     {
       "label": "mammal",
@@ -141,7 +141,11 @@
               "label": "mouse"
             },
             {
-              "label": "rat"
+              "label": "rat",
+              "children": [
+                { "label": "ship rat" },
+                { "label": "norway rat" }
+              ]
             },
             {
               "label": "rakali",

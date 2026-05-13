@@ -23,6 +23,8 @@
   "rodent": "all.mammal.rodent",
   "mouse": "all.mammal.rodent.mouse",
   "rat": "all.mammal.rodent.rat",
+  "ship rat": "all.mammal.rodent.rat.ship_rat",
+  "norway rat": "all.mammal.rodent.rat.norway_rat",
   "sealion": "all.mammal.sealion",
   "sheep": "all.mammal.sheep",
   "wallaby": "all.mammal.wallaby",

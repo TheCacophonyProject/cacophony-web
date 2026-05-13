@@ -135,7 +135,7 @@ function getThresholds(gridData: GridDataCell[][][]) {
       // This doesn't take into account outliers but best to predict more rats
       // otherwise could look for 2 consecutive rat tags or a #of rat tags
       for (let i = 0; i < sorted.length; i++) {
-        if (sorted[i].tag == "rat") {
+        if (sorted[i].tag.includes("rat")) {
           ratStart = i;
           break;
         } else if (sorted[i].tag == "mouse") {
