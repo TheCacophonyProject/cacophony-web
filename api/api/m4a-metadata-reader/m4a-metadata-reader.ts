@@ -1,10 +1,10 @@
-import loadWasm, { M4aReaderContext } from "./m4a_metadata.js";
+import loadWasm, { InitOutput, M4aReaderContext } from "./m4a_metadata.js";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import { ReadableStream } from "stream/web";
 import path from "path";
 
-let wasmLoaded;
+let wasmLoaded: undefined | InitOutput;
 
 export const tryReadingM4aMetadata = async (
   stream: ReadableStream,

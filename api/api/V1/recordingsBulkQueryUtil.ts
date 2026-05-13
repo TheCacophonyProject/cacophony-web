@@ -190,12 +190,44 @@ export const getFirstPass = (
 
 const getRawSql = (options: Sequelize.FindOptions) => {
   const tableName: string = Recording.getTableName() as unknown as string;
-  (Recording as object)["_validateIncludedElements"](options, {
-    [tableName]: true,
-  });
-  return (Recording as object)["queryGenerator"]
-    .selectQuery(Recording.getTableName(), options, Recording)
-    .replace(";", "");
+  if (
+    "_validateIncludedElements" in Recording &&
+    typeof Recording._validateIncludedElements === "function"
+  ) {
+    Recording._validateIncludedElements(options, {
+      [tableName]: true,
+    });
+  }
+  if (
+    "queryGenerator" in Recording &&
+    "selectQuery" in (Recording as { queryGenerator: object }).queryGenerator &&
+    typeof (Recording.queryGenerator as { selectQuery: unknown })
+      .selectQuery === "function"
+  ) {
+    return (
+      Recording as {
+        queryGenerator: {
+          selectQuery: (
+            name:
+              | string
+              | {
+                  tableName: string;
+                  schema: string;
+                  delimiter: string;
+                },
+            options: unknown,
+            rec: Recording,
+          ) => string;
+        };
+      }
+    ).queryGenerator
+      .selectQuery(
+        Recording.getTableName(),
+        options,
+        Recording as unknown as Recording,
+      )
+      .replace(";", "");
+  }
 };
 
 export const getSelfJoinForTagMode = (
@@ -537,7 +569,7 @@ export const queryRecordingsInProject = async (
       untilDate,
       direction,
     );
-  const tagReplacements = {};
+  const tagReplacements: Record<string, string> = {};
   for (let i = 0; i < taggedWith.length; i++) {
     tagReplacements[`tag_${i}`] = `*.${taggedWith[i].replace(/-/g, "_")}.*`;
   }

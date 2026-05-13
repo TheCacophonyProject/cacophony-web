@@ -20,6 +20,7 @@ export interface ApiTrackTagAttributes {
 
 export interface TrackTagData extends ApiTrackTagAttributes {
   name?: string;
+  clarity?: number;
   all_class_confidences?: null | Record<string, number>;
   classify_time?: number;
   message?: string;

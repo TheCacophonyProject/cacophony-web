@@ -43,10 +43,13 @@ import {
   parseJSONField,
 } from "../extract-middleware.js";
 import {
-  anyOf,
+  atLeastOneOf,
+  atMostOneOf,
   booleanOf,
   checkDeviceNameIsUniqueInGroup,
   deprecatedField,
+  exactlyOneOf,
+  exactlyOneOfOrDefault,
   idOf,
   integerOfWithDefault,
   nameOf,
@@ -69,7 +72,7 @@ import MaskRegionsSchema from "@schemas/api/device/MaskRegions.schema.json" with
 import logging from "@log";
 import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
-import Sequelize, { Op } from "sequelize";
+import Sequelize, { Op, WhereOptions } from "sequelize";
 import { DeviceHistory } from "@models/DeviceHistory.js";
 import { Station, TimeInterval } from "@models/Station.js";
 import { Group } from "@models/Group.js";
@@ -95,7 +98,7 @@ import {
 import { deleteFile } from "@/models/util/util.js";
 import { TrackTag } from "@models/TrackTag.js";
 import { User } from "@models/User.js";
-import { SaltId } from "@typedefs/api/common.js";
+import { DeviceId, LocationId, SaltId } from "@typedefs/api/common.js";
 import { Visit } from "@models/Visit.js";
 
 export const mapDeviceResponse = (
@@ -249,7 +252,10 @@ export default function (app: Application, baseUrl: string) {
     apiUrl,
     validateFields([
       nameOf(body("group")),
-      anyOf(validNameOf(body("devicename")), validNameOf(body("deviceName"))),
+      exactlyOneOf(
+        validNameOf(body("devicename")),
+        validNameOf(body("deviceName")),
+      ),
       validPasswordOf(body("password")),
       idOf(body("saltId")).optional(),
       body("deviceType").optional().isIn(Object.values(DeviceType)),
@@ -384,9 +390,9 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       idOf(param("deviceId")),
       nameOrIdOf(body("group")),
-      anyOf(
-        query("onlyActive").default(false).isBoolean().toBoolean(),
-        query("only-active").default(false).isBoolean().toBoolean(),
+      exactlyOneOfOrDefault(false)(
+        query("only-active").isBoolean().toBoolean(),
+        deprecatedField(query("onlyActive").isBoolean().toBoolean()),
       ),
     ]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(body("group")),
@@ -427,11 +433,12 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       query("view-mode").optional().equals("user"),
       deprecatedField(query("where")), // Sidekick
-      anyOf(
-        query("onlyActive").optional().isBoolean().toBoolean(),
+      atMostOneOf(
+        deprecatedField(query("onlyActive").optional().isBoolean().toBoolean()),
         query("only-active").optional().isBoolean().toBoolean(),
-        query("stationId").optional().isInt().toInt(),
       ),
+      // FIXME: Why is this field here?
+      query("stationId").optional().isInt().toInt(),
     ]),
     fetchAuthorizedRequiredDevices,
     async (request: Request, response: Response) => {
@@ -529,9 +536,9 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("id")),
       query("view-mode").optional().equals("user"),
       deprecatedField(query("where")), // Sidekick
-      anyOf(
-        query("onlyActive").default(false).isBoolean().toBoolean(),
-        query("only-active").default(false).isBoolean().toBoolean(),
+      exactlyOneOfOrDefault(false)(
+        query("only-active").isBoolean().toBoolean(),
+        deprecatedField(query("onlyActive").isBoolean().toBoolean()),
       ),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
@@ -553,9 +560,9 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("id")),
       query("view-mode").optional().equals("user"),
       deprecatedField(query("where")), // Sidekick
-      anyOf(
-        query("onlyActive").default(false).isBoolean().toBoolean(),
-        query("only-active").default(false).isBoolean().toBoolean(),
+      exactlyOneOfOrDefault(false)(
+        query("only-active").isBoolean().toBoolean(),
+        deprecatedField(query("onlyActive").isBoolean().toBoolean()),
       ),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
@@ -808,7 +815,10 @@ export default function (app: Application, baseUrl: string) {
           tracksById.set(autoTrack.id, autoTrack);
         }
       }
-      const uniqueTags = {};
+      const uniqueTags: Record<
+        string,
+        { what: string; path: string; count: number }
+      > = {};
       for (const track of tracksById.values()) {
         const what = track.TrackTags[0].what;
         if (!uniqueTags[what]) {
@@ -875,21 +885,22 @@ export default function (app: Application, baseUrl: string) {
             fromDateTime,
             location: mapStation(Station),
           }))
-          .reduce((acc, item) => {
-            acc[item.location.id] = item;
-            return acc;
-          }, {}),
-      ).sort(
-        (
-          a: { fromDateTime: Date; location: ApiStationResponse },
-          b: { fromDateTime: Date; location: ApiStationResponse },
-        ) => {
-          return (
-            new Date(b.fromDateTime).getTime() -
-            new Date(a.fromDateTime).getTime()
-          );
-        },
-      );
+          .reduce(
+            (acc, item) => {
+              acc[item.location.id] = item;
+              return acc;
+            },
+            {} as Record<
+              LocationId,
+              { fromDateTime: Date; location: ApiStationResponse }
+            >,
+          ),
+      ).sort((a, b) => {
+        return (
+          new Date(b.fromDateTime).getTime() -
+          new Date(a.fromDateTime).getTime()
+        );
+      });
       return successResponse(response, "Got locations for device", {
         locations,
       });
@@ -1077,7 +1088,8 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
-      let contentType = request.get("Content-Type");
+      let contentType =
+        request.get("Content-Type") || request.get("Content-Disposition");
       if (
         !ALLOWED_MIME_TYPES.includes(contentType as unknown as ImageMimeTypes)
       ) {
@@ -1488,8 +1500,10 @@ export default function (app: Application, baseUrl: string) {
         } else {
           return next(new UnprocessableError("Could not get settings"));
         }
-      } catch (e) {
-        return next(new FatalError(e.message ?? "Could not get settings"));
+      } catch (e: unknown) {
+        return next(
+          new FatalError((e as Error).message ?? "Could not get settings"),
+        );
       }
     },
   );
@@ -1612,8 +1626,10 @@ export default function (app: Application, baseUrl: string) {
           ...(newLocation && { location: newLocation }),
           ...(newKind && { kind: newKind }),
         });
-      } catch (e) {
-        return next(new FatalError(`Failed to update device1: ${e.message}`));
+      } catch (e: unknown) {
+        return next(
+          new FatalError(`Failed to update device1: ${(e as Error).message}`),
+        );
       }
     },
   );
@@ -1638,7 +1654,8 @@ export default function (app: Application, baseUrl: string) {
     validateFields([idOf(param("id"))]),
     async (request: Request, response: Response, next: NextFunction) => {
       try {
-        const device = await Device.findByPk(request.params.id);
+        const deviceId = request.params.id as unknown as DeviceId;
+        const device = await Device.findByPk(deviceId);
         if (!device) {
           return next(new UnprocessableError("Device not found"));
         }
@@ -1779,10 +1796,14 @@ export default function (app: Application, baseUrl: string) {
         recordingDateTime: {
           [Op.gte]: fromDateTime as Date,
         } as Sequelize.WhereOptions,
-      } as Sequelize.WhereOptions;
+      } as Sequelize.WhereAttributeHash<{
+        recordingDateTime: WhereOptions;
+        StationId: WhereOptions;
+        DeviceId: DeviceId;
+      }>;
       if (laterLocation) {
         // FIXME: Is this a bit suspect?
-        recordingTimeWindow["recordingDateTime"] = {
+        recordingTimeWindow.recordingDateTime = {
           [Op.and]: [
             { [Op.gte]: fromDateTimeParsed },
             { [Op.lt]: laterLocation.fromDateTime },
@@ -1794,15 +1815,18 @@ export default function (app: Application, baseUrl: string) {
       }
 
       const affectedRecordings = await Recording.findAll({
-        where: recordingTimeWindow,
+        where: recordingTimeWindow as Sequelize.WhereOptions,
       });
       const stationsIdsToUpdateLatestRecordingFor = Object.keys(
-        affectedRecordings.reduce((acc, recording) => {
-          if (recording.StationId) {
-            acc[recording.StationId] = true;
-          }
-          return acc;
-        }, {}),
+        affectedRecordings.reduce(
+          (acc, recording) => {
+            if (recording.StationId) {
+              acc[recording.StationId] = true;
+            }
+            return acc;
+          },
+          {} as Record<LocationId, boolean>,
+        ),
       ).map(Number);
 
       const [affectedCount, affectedRows] = await Recording.update(
@@ -1811,7 +1835,7 @@ export default function (app: Application, baseUrl: string) {
           StationId: station.id,
         },
         {
-          where: recordingTimeWindow,
+          where: recordingTimeWindow as Sequelize.WhereOptions,
           returning: [
             "id",
             "StationId",
@@ -2403,87 +2427,6 @@ export default function (app: Application, baseUrl: string) {
         id: newDevice.id,
         token,
       });
-    },
-  );
-
-  /**
-   * @api {get} /api/v1/devices/{:deviceId}/cacophony-index-bulk Get the cacophony index for a device across a given range of time frames
-   * @apiName cacophony-index-bulk
-   * @apiGroup Device
-   * @apiDescription Get multiple Cacophony Index values
-   * for a given device.  These numbers are the averages of all the Cacophony Index values within the
-   * given windows of time.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiParam {Integer} deviceId ID of the device.
-   * @apiQuery {String} [from=now] ISO8601 date string
-   * @apiQuery {Integer} [steps=7] Number of time frames to return [default=7]
-   * @apiQuery {String} [interval=days] description of each time frame size
-   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
-   * @apiSuccess {Object} #TODO
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/:deviceId/cacophony-index-bulk`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      idOf(param("deviceId")),
-      query("from").isISO8601().toDate().default(new Date()),
-      integerOfWithDefault(query("steps"), 7), // Default to 7 day window
-      stringOf(query("interval"))
-        .isIn(Object.values(TimeInterval))
-        .default(TimeInterval.Days),
-      booleanOf(query("only-active"), false),
-    ]),
-    fetchAuthorizedRequiredDeviceById(param("deviceId")),
-    async function (request: Request, response: Response) {
-      const cacophonyIndexBulk = await Device.getCacophonyIndexBulk(
-        response.locals.device,
-        request.query.from as unknown as Date,
-        request.query.steps as unknown as number,
-        request.query.interval as unknown as TimeInterval,
-      );
-      return successResponse(response, { cacophonyIndexBulk });
-    },
-  );
-
-  /**
-   * @api {get} /api/v1/devices/{:deviceId}/cacophony-index-histogram Get the cacophony index 24hr histogram for a device
-   * @apiName cacophony-index-histogram
-   * @apiGroup Device
-   * @apiDescription Get a histogram of the Cacophony Index
-   * for a given device, bucketed by hour of the day.  These buckets are the average of all the Cacophony Index values
-   * for each hour of the day, taken from a given time (defaulting to 'Now'), within a given timespan (defaulting to 3 months)
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiParam {Integer} deviceId ID of the device.
-   * @apiQuery {String} [from=now] ISO8601 date string
-   * @apiQuery {Integer} [window-size=2160] length of window in hours going backwards in time from the `from` param.  Default is 2160 (90 days)
-   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
-   * @apiSuccess {Object} cacophonyIndex in the format `[{hour: number, index: number}, ...]`
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/:deviceId/cacophony-index-histogram`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      idOf(param("deviceId")),
-      query("from").isISO8601().toDate().default(new Date()),
-      integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
-      booleanOf(query("only-active"), false),
-    ]),
-    fetchAuthorizedRequiredDeviceById(param("deviceId")),
-    async function (request: Request, response: Response) {
-      const cacophonyIndex = await Device.getCacophonyIndexHistogram(
-        response.locals.device.id,
-        request.query.from as unknown as Date, // Get the current cacophony index
-        request.query["window-size"] as unknown as number,
-      );
-      return successResponse(response, { cacophonyIndex });
     },
   );
 

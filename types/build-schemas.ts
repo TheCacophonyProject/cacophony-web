@@ -95,7 +95,8 @@ class TypeAliasParser implements SubNodeParser {
   supportsNode(node: ts.Node): boolean {
     return (
       node.kind === ts.SyntaxKind.TypeAliasDeclaration &&
-      node["name"].escapedText === "integer"
+      (node as unknown as { name: { escapedText: string } }).name
+        .escapedText === "integer"
     );
   }
   createType(
@@ -111,7 +112,8 @@ class FloatZeroOneParser implements SubNodeParser {
   supportsNode(node: ts.Node): boolean {
     return (
       node.kind === ts.SyntaxKind.TypeAliasDeclaration &&
-      node["name"].escapedText === "FloatZeroToOne"
+      (node as unknown as { name: { escapedText: string } }).name
+        .escapedText === "FloatZeroToOne"
     );
   }
   createType(
@@ -127,7 +129,8 @@ class IsoFormattedDateStringParser implements SubNodeParser {
   supportsNode(node: ts.Node): boolean {
     return (
       node.kind === ts.SyntaxKind.TypeAliasDeclaration &&
-      node["name"].escapedText === "IsoFormattedDateString"
+      (node as unknown as { name: { escapedText: string } }).name
+        .escapedText === "IsoFormattedDateString"
     );
   }
   createType(

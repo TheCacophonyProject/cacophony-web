@@ -3,7 +3,12 @@ import { unwrapLoadedResource } from "./api.js";
 import type { CacophonyApiClient } from "./api.js";
 
 import type { FetchResult, LoadedResource, TestHandle } from "./types.js";
-import type { GroupId as ProjectId, UserId } from "../api/common.js";
+import type {
+  GroupId as ProjectId,
+  LatLng,
+  LocationId,
+  UserId,
+} from "../api/common.js";
 import type {
   ApiGroupResponse as ApiProjectResponse,
   ApiGroupSettings as ApiProjectSettings,
@@ -12,6 +17,7 @@ import type {
 import type { ApiDeviceResponse } from "../api/device.js";
 import type { ApiStationResponse as ApiLocationResponse } from "../api/station.js";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "../api/group.js";
+import { JsonDocument } from "@typedefs/api/event.js";
 
 const addNewProject =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
@@ -198,6 +204,30 @@ const getLocationsForProject =
     );
   };
 
+const createLocation =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    projectNameOrId: string | ProjectId,
+    location: { name: string; lat: number; lng: number },
+    fromDateTime?: Date,
+  ): Promise<LoadedResource<LocationId>> => {
+    const body: Record<string, JsonDocument> = {
+      station: location,
+    };
+    if (fromDateTime) {
+      body["from-date"] = fromDateTime.toISOString();
+    }
+
+    return unwrapLoadedResource(
+      api.post(
+        authKey,
+        `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/station`,
+        body,
+      ) as Promise<FetchResult<{ stationId: LocationId }>>,
+      "stationId",
+    );
+  };
+
 const getLocationByNameInProject =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (projectNameOrId: string | ProjectId, locationName: string) =>
@@ -244,6 +274,7 @@ export default (api: CacophonyApiClient) => {
     getLocationsForProject: getLocationsForProject(api),
     getLocationByNameInProject: getLocationByNameInProject(api),
     inviteSomeoneToProject: inviteSomeoneToProject(api),
+    createLocation: createLocation(api),
     withAuth: (authKey: TestHandle) => ({
       addNewProject: addNewProject(api, authKey),
       addToProjectRequest: addNewProject(api, authKey),
@@ -260,6 +291,7 @@ export default (api: CacophonyApiClient) => {
       getLocationsForProject: getLocationsForProject(api, authKey),
       getLocationByNameInProject: getLocationByNameInProject(api, authKey),
       inviteSomeoneToProject: inviteSomeoneToProject(api, authKey),
+      createLocation: createLocation(api, authKey),
     }),
   };
 };

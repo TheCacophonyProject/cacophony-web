@@ -23,20 +23,16 @@ import { jsonSchemaOf } from "@api/schema-validation.js";
 import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json" with { type: "json" };
 import { stationLocationHasChanged } from "@models/Group.js";
 import { initSequelize } from "@models/index.js";
-import util from "@api/V1/util.js";
-import { openS3 } from "@models/util/util.js";
-import { streamS3Object } from "@api/V1/signedUrl.js";
 import { ClientError } from "@api/customErrors.js";
 import {
   latLngApproxDistance,
   MIN_STATION_SEPARATION_METERS,
 } from "@models/util/locationUtils.js";
-import { Op, QueryTypes } from "sequelize";
+import { Attributes, Op, QueryTypes, Transaction } from "sequelize";
 import { mapDeviceResponse } from "./Device.js";
 import { Device } from "@/models/Device.js";
-import { Station, TimeInterval } from "@models/Station.js";
+import { Station } from "@models/Station.js";
 import { DeviceHistory } from "@models/DeviceHistory.js";
-import { RecordingType } from "@typedefs/api/consts.js";
 import { Recording } from "@models/Recording.js";
 
 const sequelize = await initSequelize();
@@ -263,127 +259,6 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {delete} /api/v1/stations/:id/reference-photo/:fileKey Delete a reference photo for a station given a fileKey
-   * @apiName DeleteReferencePhotoForStation
-   * @apiGroup Station
-   * @apiDescription Delete a reference photo for a station by station id and photo key.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.delete(
-    `${apiUrl}/:id/reference-photo/:fileKey`,
-    extractJwtAuthorizedUser,
-    validateFields([idOf(param("id")), param("fileKey").isString()]),
-    fetchAdminAuthorizedRequiredStationById(param("id")),
-    async (request: Request, response: Response, next: NextFunction) => {
-      // Make sure the fileKey exists in the station settings.
-      let referenceImages =
-        (response.locals.station as Station).settings.referenceImages || [];
-      const fileKey = request.params.fileKey.replace(/_/g, "/");
-      if (!referenceImages.includes(fileKey)) {
-        return next(new ClientError("Reference image not found for station"));
-      }
-      const s3 = openS3();
-      await s3.deleteObject(fileKey);
-      referenceImages = referenceImages.filter(
-        (imageKey) => imageKey !== fileKey,
-      );
-      await response.locals.station.update({
-        settings: {
-          ...(response.locals.station.settings || {}),
-          referenceImages,
-        },
-      });
-      return successResponse(response, "Removed reference image from station");
-    },
-  );
-
-  /**
-   * @api {get} /api/v1/stations/:id/reference-photo/:fileKey Return a reference photo for a station given a fileKey
-   * @apiName GetReferencePhotoForStation
-   * @apiGroup Station
-   * @apiDescription Get a reference photo for a station by station id and photo key.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/:id/reference-photo/:fileKey`,
-    extractJwtAuthorizedUser,
-    validateFields([idOf(param("id")), param("fileKey").isString()]),
-    fetchAuthorizedRequiredStationById(param("id")),
-    async (request: Request, response: Response, next: NextFunction) => {
-      // Make sure the fileKey exists in the station settings.
-      const referenceImages =
-        (response.locals.station as Station).settings.referenceImages || [];
-      const fileKey = request.params.fileKey.replace(/_/g, "/");
-      if (!referenceImages.includes(fileKey)) {
-        return next(new ClientError("Reference image not found for station"));
-      }
-      await streamS3Object(
-        request,
-        response,
-        fileKey,
-        "reference-image.jpg",
-        "image/jpeg",
-        response.locals.requestUser.id,
-        response.locals.station.GroupId,
-      );
-    },
-  );
-
-  /**
-   * @api {post} /api/v1/stations/:id/reference-photo Add a reference photo to a station.
-   * @apiName AddReferencePhotoToStation
-   * @apiGroup Station
-   * @apiDescription Add a reference photo to a station by id.  Must be an admin of the group that owns this station.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiSuccess {string} fileKey Unique fileKey of the newly added reference image.
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.post(
-    `${apiUrl}/:id/reference-photo`,
-    extractJwtAuthorizedUser,
-    fetchAuthorizedRequiredStationById(param("id")),
-    util.multipartUpload(
-      "f",
-      async (
-        _uploader,
-        _uploadingDevice,
-        _uploadingUser,
-        _data,
-        keys,
-        _uploadedFileDatas,
-        locals,
-      ): Promise<string> => {
-        console.assert(
-          keys.length === 1,
-          "Only expected 1 file-attachment for this end-point",
-        );
-        const key = keys[0];
-        const station = locals.station;
-        const stationSettings: ApiStationSettings = { ...station.settings };
-        stationSettings.referenceImages = [
-          ...(stationSettings.referenceImages || []),
-          key,
-        ];
-        await station.update({
-          settings: stationSettings,
-        });
-        return key;
-      },
-    ),
-  );
-
-  /**
    * @api {patch} /api/v1/stations/:id Update a station by id
    * @apiName UpdateStationById
    * @apiGroup Station
@@ -565,17 +440,17 @@ export default function (app: Application, baseUrl: string) {
         );
       }
 
-      const updates = {
+      const updates: Partial<Attributes<Station>> = {
         name: newName,
         lastUpdatedById: response.locals.requestUser.id,
       };
 
       // If the station was automatically created and needs renaming, update the flags
       if (station.needsRename === true) {
-        updates["needsRename"] = false;
+        updates.needsRename = false;
       }
       if (station.automatic === true) {
-        updates["automatic"] = false;
+        updates.automatic = false;
       }
 
       await station.update(updates);
@@ -615,56 +490,60 @@ export default function (app: Application, baseUrl: string) {
       //  create a new station for the entry, or should we just delete the entry?
       if (request.query["delete-recordings"]) {
         let deletedRecordingCount = 0;
-        await station.sequelize.transaction(async (transaction) => {
-          // Remove stationId from DeviceHistory entries
-          await DeviceHistory.update(
-            {
-              stationId: null,
-            },
-            {
-              where: {
-                stationId: response.locals.station.id,
+        await station.sequelize.transaction(
+          async (transaction: Transaction) => {
+            // Remove stationId from DeviceHistory entries
+            await DeviceHistory.update(
+              {
+                stationId: null,
               },
-              transaction,
-            },
-          );
-          // Delete this station, and mark delete recordings associated with it as deleted by this user.
-          const [affectedCount] = await Recording.update(
-            {
-              deletedAt: new Date(),
-              deletedBy: response.locals.requestUser.id,
-            },
-            {
-              where: {
-                StationId: response.locals.station.id,
+              {
+                where: {
+                  stationId: response.locals.station.id,
+                },
+                transaction,
               },
-              transaction,
-            },
-          );
-          deletedRecordingCount = affectedCount;
-          await response.locals.station.destroy({ transaction });
-        });
+            );
+            // Delete this station, and mark delete recordings associated with it as deleted by this user.
+            const [affectedCount] = await Recording.update(
+              {
+                deletedAt: new Date(),
+                deletedBy: response.locals.requestUser.id,
+              },
+              {
+                where: {
+                  StationId: response.locals.station.id,
+                },
+                transaction,
+              },
+            );
+            deletedRecordingCount = affectedCount;
+            await response.locals.station.destroy({ transaction });
+          },
+        );
 
         return successResponse(
           response,
           `Deleted station and ${deletedRecordingCount} associated recordings`,
         );
       } else {
-        await station.sequelize.transaction(async (transaction) => {
-          // Remove stationId from DeviceHistory entries
-          await DeviceHistory.update(
-            {
-              stationId: null,
-            },
-            {
-              where: {
-                stationId: response.locals.station.id,
+        await station.sequelize.transaction(
+          async (transaction: Transaction) => {
+            // Remove stationId from DeviceHistory entries
+            await DeviceHistory.update(
+              {
+                stationId: null,
               },
-              transaction,
-            },
-          );
-          await response.locals.station.destroy({ transaction });
-        });
+              {
+                where: {
+                  stationId: response.locals.station.id,
+                },
+                transaction,
+              },
+            );
+            await response.locals.station.destroy({ transaction });
+          },
+        );
         return successResponse(response, "Deleted station");
       }
     },
@@ -706,145 +585,6 @@ export default function (app: Application, baseUrl: string) {
         request.query["window-size"] as unknown as number,
       );
       return successResponse(response, { cacophonyIndex });
-    },
-  );
-
-  /**
-   * @api {get} /api/v1/stations/:stationId/cacophony-index-bulk Get the cacophony index for a station across a give range of times frames
-   * @apiName cacophony-index-Station-bulk
-   * @apiGroup Station
-   * @apiDescription Get multiple Cacophony Index values
-   * for a given station.  These numbers are the averages of all the Cacophony Index values from a
-   * given time (defaulting to 'Now'), within the time frames specified by windowsize and steps.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiParam {Integer} station ID of the device.
-   * @apiQuery {String} [from=now] ISO8601 date string
-   * @apiQuery {Integer} [steps=7] Number of time frames to return [default=7]
-   * @apiQuery {String} [interval=days] description of each time frame size
-   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
-   * @apiSuccess {Object} #TODO
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/:stationId/cacophony-index-bulk`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      idOf(param("stationId")),
-      query("from").isISO8601().toDate().default(new Date()),
-      integerOfWithDefault(query("steps"), 7), // Default to 7 day window
-      query("interval")
-        .optional()
-        .isIn(Object.values(TimeInterval))
-        .default(TimeInterval.Days),
-      query("only-active").optional().isBoolean().toBoolean(),
-    ]),
-    fetchAdminAuthorizedRequiredStationById(param("stationId")),
-    async (request: Request, response: Response) => {
-      const cacophonyIndexBulk = await Station.getCacophonyIndexBulk(
-        response.locals.requestUser,
-        response.locals.station.id,
-        request.query.from as unknown as Date,
-        request.query.steps as unknown as number,
-        request.query.interval as TimeInterval,
-      );
-      return successResponse(response, { cacophonyIndexBulk });
-    },
-  );
-
-  /**
-   * @api {get} /api/v1/stations/{:stationsId}/species-count Get the species breakdown for a station
-   * @apiName species-breakdown
-   * @apiGroup Station
-   * @apiDescription Get a species breakdown
-   * for a given station, showing the proportion of recordings that are of each species.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiParam {Integer} stationId ID of the device.
-   * @apiQuery {String} [from=now] ISO8601 date string
-   * @apiQuery {Integer} [window-size=2160] length of window in hours going backwards in time from the `from` param.  Default is 2160 (90 days)
-   * @apiQuery {Boolean} [type=audio] Type of recording to use.  Default is audio
-   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
-   * @apiSuccess {Object} #TODO
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/:stationId/species-count`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      idOf(param("stationId")),
-      query("from").isISO8601().toDate().default(new Date()),
-      integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
-      query("type")
-        .optional()
-        .isIn(Object.values(RecordingType))
-        .default(RecordingType.Audio),
-      query("only-active").optional().isBoolean().toBoolean(),
-    ]),
-    fetchAdminAuthorizedRequiredStationById(param("stationId")),
-    async function (request: Request, response: Response) {
-      const speciesCount = await Station.getSpeciesCount(
-        response.locals.requestUser,
-        response.locals.station.id,
-        request.query.from as unknown as Date, // Get the current cacophony index
-        request.query["window-size"] as unknown as number,
-        request.query.type as RecordingType,
-      );
-      return successResponse(response, { speciesCount });
-    },
-  );
-
-  /**
-   * @api {get} /api/v1/stations/{:stationId}/species-count-bulk Get the species breakdown for a station across a given range of time frames
-   * @apiName species-count-Station-bulk
-   * @apiGroup Station
-   * @apiDescription Get a species count
-   * for a given station, showing the count of recordings that are of each species across a give range of time frames
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiParam {Integer} stationId ID of the device.
-   * @apiQuery {String} [from=now] ISO8601 date string
-   * @apiQuery {Integer} [steps=7] Number of time frames to return [default=7]
-   * @apiQuery {String} [interval=days] description of each time frame size
-   * @apiQuery {Boolean} [type=audio] Type of recording to use.  Default is audio
-   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
-   * @apiSuccess {Object} #TODO
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/:stationId/species-count-bulk`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      idOf(param("stationId")),
-      query("from").isISO8601().toDate().default(new Date()),
-      integerOfWithDefault(query("steps"), 7), // Default to 7 day window
-      query("interval")
-        .optional()
-        .isIn(Object.values(TimeInterval))
-        .default(TimeInterval.Days),
-      query("type")
-        .optional()
-        .isIn(Object.values(RecordingType))
-        .default(RecordingType.Audio),
-      query("only-active").optional().isBoolean().toBoolean(),
-    ]),
-    fetchAdminAuthorizedRequiredStationById(param("stationId")),
-    async function (request: Request, response: Response) {
-      const speciesCountBulk = await Station.getSpeciesCountBulk(
-        response.locals.requestUser,
-        response.locals.station.id,
-        request.query.from as unknown as Date,
-        request.query.steps as unknown as number,
-        request.query.interval as TimeInterval,
-        request.query.type as RecordingType,
-      );
-      return successResponse(response, { speciesCountBulk });
     },
   );
 

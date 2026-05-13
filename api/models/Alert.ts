@@ -125,32 +125,30 @@ export class Alert extends ModelStaticCommon<Alert> {
     asAdmin = false,
   ): Promise<Alert[]> {
     let groupId: GroupId;
-    if (!where["GroupId"]) {
-      if (where["DeviceId"]) {
+    if ("GroupId" in where) {
+      if ("DeviceId" in where) {
         const device = await Device.findOne({
-          where: { id: where["DeviceId"] },
+          where: { id: where.DeviceId },
           include: [{ model: Group, attributes: ["id"] }],
         });
         if (device) {
           groupId = device.Group.id;
         } else {
-          logger.error(`Couldn't find Group for device ${where["DeviceId"]}`);
+          logger.error(`Couldn't find Group for device ${where.DeviceId}`);
           return [];
         }
-      } else if (where["StationId"]) {
+      } else if ("StationId" in where) {
         const station = await Station.findOne({
-          where: { id: where["StationId"] },
+          where: { id: where.StationId },
           include: [{ model: Group, attributes: ["id"] }],
         });
         if (station) {
           groupId = station.Group.id;
         } else {
-          logger.error(`Couldn't find Group for station ${where["StationId"]}`);
+          logger.error(`Couldn't find Group for station ${where.StationId}`);
           return [];
         }
       }
-    } else {
-      groupId = where["GroupId"];
     }
     let groupUserIds: UserId[] = [];
     if (groupId) {
@@ -170,12 +168,15 @@ export class Alert extends ModelStaticCommon<Alert> {
       );
       return [];
     }
-    const whereClause: Sequelize.FindOptions = {
+    const whereClause: Sequelize.FindOptions<Alert> = {
       where,
       attributes: ["id", "name", "frequencySeconds", "conditions", "lastAlert"],
     };
     if (userId) {
-      whereClause.where["UserId"] = userId;
+      whereClause.where = {
+        ...whereClause.where,
+        UserId: userId,
+      };
     }
     if (asAdmin) {
       // Only return user details if we're an admin.

@@ -24,7 +24,12 @@ import {
   extractJwtAuthorisedSuperAdminUser,
   fetchUnauthorizedRequiredUserByEmailOrId,
 } from "@api/extract-middleware.js";
-import { anyOf, idOf } from "@api/validation-middleware.js";
+import {
+  emailOf,
+  exactlyOneOf,
+  idOf,
+  stringOf,
+} from "@api/validation-middleware.js";
 import { ClientError } from "@api/customErrors.js";
 import { HttpStatusCode, UserGlobalPermission } from "@typedefs/api/consts.js";
 import { SuperUsers } from "@/Globals.js";
@@ -51,8 +56,11 @@ export default function (app: Application, baseUrl: string) {
       `${apiUrl}/global-permission/:userEmailOrId`,
       extractJwtAuthorisedSuperAdminUser,
       validateFields([
-        anyOf(param("userEmailOrId").isEmail(), idOf(param("userEmailOrId"))),
-        body("permission").isIn(Object.values(UserGlobalPermission)),
+        exactlyOneOf(
+          emailOf(param("userEmailOrId")),
+          idOf(param("userEmailOrId")),
+        ),
+        stringOf(body("permission")).isIn(Object.values(UserGlobalPermission)),
       ]),
       (_request: Request, response: Response, next: NextFunction) => {
         if (!response.locals.requestUser.hasGlobalWrite()) {

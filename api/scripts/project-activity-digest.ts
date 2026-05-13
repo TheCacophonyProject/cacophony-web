@@ -146,7 +146,7 @@ const currentHourInTimezone = (timeZone: string): number => {
     }));
     // TODO: Add in some bird tag stats if audio recording is happening
 
-    const recordingData = {};
+    const recordingData: Record<string, number> = {};
     // NOTE: If there was no activity, check to see if this is the *first* time there has been no activity for this time period.
     // If so, then send the email saying there was no activity, and that another email won't be sent until there is again.
     const visits = await allVisitsForProjectInTimespan(

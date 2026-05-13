@@ -15,7 +15,6 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-import _ from "lodash";
 import { CreationOptional, DataTypes, ForeignKey } from "sequelize";
 import sequelize from "sequelize";
 import { ModelStaticCommon } from "./index.js";
@@ -23,6 +22,7 @@ import type Sequelize from "sequelize";
 import type { FileId, UserId } from "@typedefs/api/common.js";
 import { AudiobaitDetails } from "@typedefs/api/file.js";
 import { User } from "@models/User.js";
+import { JsonDocument } from "@typedefs/api/event.js";
 
 const Op = sequelize.Op;
 
@@ -31,14 +31,14 @@ export class File extends ModelStaticCommon<File> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare UserId: ForeignKey<UserId>;
-  declare details: Record<string, unknown> | AudiobaitDetails;
+  declare details: JsonDocument | AudiobaitDetails;
   declare type: string;
   declare fileKey: string;
   declare fileSize: number;
   static apiSettableFields = Object.freeze(["type", "details"]);
 
-  static buildSafely(fields: object) {
-    return this.build(_.pick(fields, File.apiSettableFields));
+  static buildSafely(fields: { type: string; details: JsonDocument }) {
+    return this.build({ type: fields.type, details: fields.details || {} });
   }
 
   static addAssociations() {

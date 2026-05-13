@@ -36,8 +36,12 @@ import type { Application, NextFunction, Request, Response } from "express";
 import config from "@config";
 import { User } from "@models/User.js";
 import {
-  anyOf,
+  atLeastOneOf,
+  atMostOneOf,
   booleanOf,
+  deprecatedField,
+  emailOf,
+  exactlyOneOf,
   idOf,
   integerOf,
   validNameOf,
@@ -162,20 +166,31 @@ export default function (app: Application, baseUrl: string) {
   app.post(
     apiUrl,
     validateFields([
-      anyOf(validNameOf(body("username")), validNameOf(body("userName"))),
-      body("email").isEmail(),
+      exactlyOneOf(
+        deprecatedField(validNameOf(body("username"))),
+        validNameOf(body("userName")),
+      ),
+      emailOf(body("email")),
       validPasswordOf(body("password")),
       body("endUserAgreement").isInt().optional(),
       body("inviteTokenJWT").optional(),
     ]),
     fetchUnauthorizedOptionalUserByEmailOrId(body("email")),
     extractOptionalJWTInfo(body("inviteTokenJWT")),
-    async (_request: Request, response: Response, next: NextFunction) => {
+    async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.user) {
         return next(
-          new ValidationError([
-            { msg: "Email address in use", location: "body", param: "email" },
-          ]),
+          new ValidationError({
+            type: "field",
+            message: "Email address in use",
+            value: request.body.email,
+            meta: {
+              req: request,
+              path: "email",
+              location: "body",
+              pathValues: [],
+            },
+          }),
         );
       } else {
         next();
@@ -187,13 +202,17 @@ export default function (app: Application, baseUrl: string) {
         Number(request.body.endUserAgreement) !== config.euaVersion
       ) {
         return next(
-          new ValidationError([
-            {
-              msg: "Out of date end user agreement version specified",
+          new ValidationError({
+            type: "field",
+            message: "Out of date end user agreement version specified",
+            value: request.body.endUserAgreement,
+            meta: {
+              req: request,
               location: "body",
-              param: "endUserAgreement",
+              path: "endUserAgreement",
+              pathValues: [],
             },
-          ]),
+          }),
         );
       } else {
         next();
@@ -309,11 +328,12 @@ export default function (app: Application, baseUrl: string) {
     apiUrl,
     extractJwtAuthorizedUser,
     validateFields([
-      // FIXME - When passing unknown parameters here, the error returned isn't very useful.
-      anyOf(
-        validNameOf(body("username")),
-        validNameOf(body("userName")),
-        body("email").isEmail(),
+      atLeastOneOf(
+        atMostOneOf(
+          deprecatedField(validNameOf(body("username"))),
+          validNameOf(body("userName")),
+        ),
+        emailOf(body("email")),
         validPasswordOf(body("password")),
         integerOf(body("endUserAgreement")),
         body("settings").custom(jsonSchemaOf(ApiUserSettingsSchema)),
@@ -322,9 +342,17 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, _response: Response, next: NextFunction) => {
       if (request.body.email && !(await User.freeEmail(request.body.email))) {
         return next(
-          new ValidationError([
-            { msg: "Email address in use", location: "body", param: "email" },
-          ]),
+          new ValidationError({
+            message: "Email address in use",
+            value: request.body.email,
+            type: "field",
+            meta: {
+              location: "body",
+              path: "email",
+              req: request,
+              pathValues: [],
+            },
+          }),
         );
       } else {
         next();
@@ -334,7 +362,7 @@ export default function (app: Application, baseUrl: string) {
       // map matchedData to db fields.
       const dataToUpdate = matchedData(request);
       const requestUser = await User.findByPk(response.locals.requestUser.id);
-      if (dataToUpdate.email) {
+      if (dataToUpdate.email && dataToUpdate.email !== requestUser.email) {
         // If the user has changed their email, we'll need to send
         // another confirmation email.
         dataToUpdate.emailConfirmed = false;
@@ -348,7 +376,9 @@ export default function (app: Application, baseUrl: string) {
         );
         if (!emailSuccess && config.productionEnv) {
           return next(
-            new FatalError("Failed to send email confirmation email."),
+            new FatalError(
+              "Failed to send email confirmation email, user details not updated.",
+            ),
           );
         }
       }
@@ -374,7 +404,10 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       query("view-mode").optional().equals("user"),
-      anyOf(param("userEmailOrId").isEmail(), idOf(param("userEmailOrId"))),
+      exactlyOneOf(
+        emailOf(param("userEmailOrId")),
+        idOf(param("userEmailOrId")),
+      ),
     ]),
     fetchUnauthorizedRequiredUserByEmailOrId(param("userEmailOrId")),
     (_request: Request, response: Response, next: NextFunction) => {
@@ -574,7 +607,7 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/groups-for-admin-user/:emailAddress`,
     extractJwtAuthorizedUser,
-    validateFields([param("emailAddress").isEmail()]),
+    validateFields([emailOf(param("emailAddress"))]),
     fetchUnauthorizedRequiredUserByEmailOrId(param("emailAddress")),
     (_request: Request, response: Response, next: NextFunction) => {
       // This is a little bit hacky, but is safe in this context.
@@ -583,9 +616,17 @@ export default function (app: Application, baseUrl: string) {
     },
     fetchAdminAuthorizedRequiredGroups,
     async (_request: Request, response: Response) => {
-      const groups: ApiGroupResponse[] = response.locals.groups
-        .map(({ id, groupName }) => ({ id, groupName, admin: false }))
-        .filter(({ pending }) => pending === undefined);
+      const groups: ApiGroupResponse[] = (
+        response.locals.groups as Group[]
+      ).map(({ id, groupName }) => ({
+        id,
+        groupName,
+        admin: false,
+        owner: false,
+      }));
+      // FIXME: Did we mean to actually filter out pending users etc?  If so, then we need to type `response.locals.groups`
+      //  properly
+      //.filter(({ pending }) => pending === undefined);
       return successResponse(response, "Got groups for admin user", {
         groups,
       });
@@ -595,7 +636,7 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/groups-for-user/:emailAddress`,
     extractJwtAuthorisedSuperAdminUser,
-    validateFields([param("emailAddress").isEmail()]),
+    validateFields([emailOf(param("emailAddress"))]),
     fetchUnauthorizedRequiredUserByEmailOrId(param("emailAddress")),
     (_request: Request, response: Response, next: NextFunction) => {
       // This is a little bit hacky, but is safe in this context.
@@ -604,9 +645,17 @@ export default function (app: Application, baseUrl: string) {
     },
     fetchAuthorizedRequiredGroups,
     async (_request: Request, response: Response) => {
-      const groups: ApiGroupResponse[] = response.locals.groups
-        .map(({ id, groupName }) => ({ id, groupName, admin: false }))
-        .filter(({ pending }) => pending === undefined);
+      const groups: ApiGroupResponse[] = (
+        response.locals.groups as Group[]
+      ).map(({ id, groupName }) => ({
+        id,
+        groupName,
+        admin: false,
+        owner: false,
+      }));
+      // FIXME: Did we mean to actually filter out pending users etc?  If so, then we need to type `response.locals.groups`
+      //  properly
+      //.filter(({ pending }) => pending === undefined);
       return successResponse(response, "Got groups for user", {
         groups,
       });

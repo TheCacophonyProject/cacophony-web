@@ -433,7 +433,9 @@ class CacophonyApi {
     if (
       body &&
       typeof body === "object" &&
-      (body instanceof ArrayBuffer || body instanceof FormData)
+      (body instanceof ArrayBuffer ||
+        body instanceof FormData ||
+        body instanceof Buffer)
     ) {
       return cacophonyFetchWrapper(
         authKey,

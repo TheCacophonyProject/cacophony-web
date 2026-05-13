@@ -15,6 +15,7 @@ import { RecordingType } from "@typedefs/api/consts.js";
 import { Station } from "@models/Station.js";
 import { TrackTag } from "@models/TrackTag.js";
 import { Track } from "@models/Track.js";
+import { MinimalTrackRequestData } from "@typedefs/api/fileProcessing.js";
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;
@@ -133,7 +134,9 @@ export class Visit {
         let bestTag: string;
         for (const [tag, tracks] of bestAiTags) {
           for (const track of tracks) {
-            const data = await Track.getTrackData(track.id);
+            const data = (await Track.getTrackData(
+              track.id,
+            )) as MinimalTrackRequestData;
             track.mass =
               (data.positions &&
                 data.positions.reduce(
@@ -165,7 +168,9 @@ export class Visit {
       let bestTag: string;
       for (const [tag, tracks] of aiGuess) {
         for (const track of tracks) {
-          const data = await Track.getTrackData(track.id);
+          const data = (await Track.getTrackData(
+            track.id,
+          )) as MinimalTrackRequestData;
           track.mass =
             (data.positions &&
               data.positions.reduce(
@@ -246,7 +251,7 @@ const AI_ONLY = true;
 function getBestGuessFromSpecifiedAi(
   tracks: VisitTrack[],
 ): [TagName, VisitTrack[]][] {
-  const counts = {};
+  const counts: Record<string, VisitTrack[]> = {};
   tracks.forEach((track) => {
     const tag = track.aiTag;
     if (tag) {
@@ -403,7 +408,7 @@ export async function generateVisits(
     const { split } = await visit.calculateTags(search.compareAi);
     if (split) {
       // We need to create multiple visits from this visit, since there were multiple user tags for the period.
-      const userVisits = {};
+      const userVisits: Record<string, VisitRecording[]> = {};
       for (const recording of (split as Visit).recordings) {
         const userTag = recording.tracks.filter(
           (track) =>

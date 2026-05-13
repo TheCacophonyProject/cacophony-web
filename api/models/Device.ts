@@ -15,6 +15,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import bcrypt from "bcrypt";
 import {
+  Attributes,
   BelongsTo,
   CreationOptional,
   DataTypes,
@@ -135,8 +136,9 @@ export class Device extends ModelStaticCommon<Device> {
   static async stoppedDevices() {
     const oneDayAgo = new Date();
     const twoDaysAgo = new Date();
-    const audioOnlyDeviceIds = await this.sequelize.query(
-      `
+    const audioOnlyDeviceIds: { DeviceId: DeviceId }[] =
+      await this.sequelize.query(
+        `
     select "DeviceId" from (
       select
       distinct on
@@ -153,10 +155,10 @@ export class Device extends ModelStaticCommon<Device> {
     ) as latest_device_configs where 
     latest_device_configs.details->'audio-recording'->>'audio-mode' = 'AudioOnly';
     `,
-      {
-        type: QueryTypes.SELECT,
-      },
-    );
+        {
+          type: QueryTypes.SELECT,
+        },
+      );
 
     oneDayAgo.setHours(oneDayAgo.getHours() - 25);
     twoDaysAgo.setHours(twoDaysAgo.getHours() - 48);
@@ -165,7 +167,7 @@ export class Device extends ModelStaticCommon<Device> {
         lastConnectionTime: {
           [Op.and]: [{ [Op.lt]: oneDayAgo }, { [Op.ne]: null }],
         },
-        id: { [Op.notIn]: audioOnlyDeviceIds.map((d) => d["DeviceId"]) },
+        id: { [Op.notIn]: audioOnlyDeviceIds.map((d) => d.DeviceId) },
       },
       include: [
         {
@@ -213,94 +215,6 @@ where
       return Number(index);
     }
     return index;
-  }
-
-  static async getCacophonyIndexBulk(
-    device: Device,
-    from: Date,
-    steps: number,
-    interval: TimeInterval,
-  ): Promise<{ deviceId: DeviceId; from: string; cacophonyIndex: number }[]> {
-    const counts = [];
-    let stepSizeInMs: number;
-    switch (interval) {
-      case "hours":
-        stepSizeInMs = 60 * 60 * 1000;
-        break;
-      case "days":
-        stepSizeInMs = 24 * 60 * 60 * 1000;
-        break;
-      case "weeks":
-        stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
-        break;
-      case "months": {
-        const currMonthDays = new Date(
-          from.getFullYear(),
-          from.getMonth() + 1,
-          0,
-        ).getDate();
-        stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
-        break;
-      }
-      case "years": {
-        const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
-        stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
-        break;
-      }
-      default:
-        throw new Error(`Invalid interval: ${interval}`);
-    }
-    const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
-
-    for (let i = 0; i < steps; i++) {
-      const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
-      const result = await Device.getCacophonyIndex(
-        device,
-        windowEnd,
-        stepSizeInHours,
-      );
-      counts.push({
-        deviceId: device.id,
-        from: windowEnd.toISOString(),
-        cacophonyIndex: result,
-      });
-    }
-    return counts;
-  }
-
-  static async getCacophonyIndexHistogram(
-    deviceId: DeviceId,
-    from: Date,
-    windowSizeInHours: number,
-  ): Promise<{ hour: number; index: number }[]> {
-    windowSizeInHours = Math.abs(windowSizeInHours);
-    // We need to take the time down to the previous hour, so remove 1 second
-    const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
-    // Get a spread of 24 results with each result falling into an hour bucket.
-
-    const [results, _] = (await this.sequelize.query(`select
-	hour,
-	round((avg(scores))::numeric, 2) as index
-from
-(select
-	date_part('hour', "recordingDateTime") as hour,
-	(jsonb_array_elements("cacophonyIndex")->>'index_percent')::float as scores
-from
-	"Recordings"
-where
-	"DeviceId" = ${deviceId}
-	and "type" = 'audio'
-	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC'
-) as cacophonyIndex
-group by hour
-order by hour;
-`)) as [{ hour: number; index: number }[], unknown];
-    // TODO(jon): Do we want to validate that there is enough data in a given hour
-    //  to get a reasonable index histogram?
-    return results.map((item) => ({
-      hour: Number(item.hour),
-      index: Number(item.index),
-    }));
   }
 
   static async getSpeciesCount(
@@ -705,7 +619,7 @@ order by hour;
             );
           }
 
-          const newDeviceHistoryEntry = {
+          const newDeviceHistoryEntry: Partial<Attributes<DeviceHistory>> = {
             GroupId: newGroup.id,
             DeviceId: newDevice.id,
             location: this.location,

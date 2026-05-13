@@ -2,13 +2,18 @@ import config from "../config.js";
 import log from "../logging.js";
 import { sendDailyServiceErrorsEmail } from "@/emails/transactionalEmails.js";
 import { Event } from "@models/Event.js";
-import type { DeviceId } from "@typedefs/api/common.js";
+import type { DeviceId, EventId } from "@typedefs/api/common.js";
 import levenshteinEditDistance from "levenshtein-edit-distance";
 import { initSequelize } from "@models/index.js";
 import Sequelize, { Op } from "sequelize";
 import os from "os";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
 import { Device } from "@models/Device.js";
+import {
+  SaltUpdateEvent,
+  ServiceErrorEvent,
+  VersionDataEvent,
+} from "@typedefs/api/event.js";
 
 await initSequelize();
 
@@ -20,7 +25,7 @@ const ignoredSaltNodeGroups = [
 ];
 
 type LogLevel = "info" | "warn" | "error" | "fatal";
-type AugmentedEvent = Event & { unitVersion: string };
+type AugmentedServiceErrorEvent = ServiceErrorEvent & { unitVersion?: string };
 interface LogLine {
   line: string;
   level: LogLevel;
@@ -91,7 +96,7 @@ export interface GroupedServiceErrors {
 
 // group provided events by logs are that are similar
 const groupSystemErrors = (
-  events: AugmentedEvent[],
+  events: AugmentedServiceErrorEvent[],
 ): GroupedServiceErrors[] => {
   const serviceMap: Record<string, GroupedServiceErrors> = {};
   for (const errorEvent of events) {
@@ -102,8 +107,7 @@ const groupSystemErrors = (
     const unitName = details["unitName"].replace(".service", "");
     const serviceError = serviceMap[unitName] || {
       unit: unitName,
-      unitVersion: null,
-      errors: {},
+      errors: {} as Record<string, ServiceError[]>,
     };
     serviceError.errors[errorEvent.unitVersion] =
       serviceError.errors[errorEvent.unitVersion] || [];
@@ -198,7 +202,8 @@ const getDevicesFailingSaltUpdatesInReportingPeriod = async (
   ignoredNodeGroups: string[],
 ): Promise<Record<string, { id: DeviceId; name: string }[]>> => {
   const ignoredDevices = config.deviceErrorIgnoreList || [];
-  const saltEvents = await Event.findAll({
+
+  const saltEvents = (await Event.findAll({
     where: {
       DeviceId: { [Op.notIn]: ignoredDevices },
       createdAt: {
@@ -226,21 +231,28 @@ const getDevicesFailingSaltUpdatesInReportingPeriod = async (
       },
     ],
     attributes: { exclude: ["updatedAt", "EventDetailId"] },
-  });
-  let failingDevices: { id: DeviceId; name: string; nodeGroup: string }[] =
-    Object.values(
-      saltEvents
-        .map((event) => ({
-          id: event.DeviceId,
-          name: event.Device.deviceName,
-          nodeGroup: event.EventDetail.details.nodegroup,
-        }))
-        .reduce((acc, curr) => {
+  })) as SaltUpdateEvent[];
+  interface FailingDevice {
+    id: DeviceId;
+    name: string;
+    nodeGroup: string;
+  }
+  let failingDevices: FailingDevice[] = Object.values(
+    saltEvents
+      .map((event) => ({
+        id: event.DeviceId,
+        name: event.Device?.deviceName,
+        nodeGroup: event.EventDetail.details.nodegroup,
+      }))
+      .reduce(
+        (acc, curr) => {
           acc[curr.id] = curr;
           return acc;
-        }, {}),
-    );
-  const stillFailingPromises = [];
+        },
+        {} as Record<number, FailingDevice>,
+      ),
+  );
+  const stillFailingPromises: Promise<SaltUpdateEvent>[] = [];
   for (const device of failingDevices) {
     stillFailingPromises.push(
       Event.findOne({
@@ -260,7 +272,7 @@ const getDevicesFailingSaltUpdatesInReportingPeriod = async (
           },
         ],
         attributes: { exclude: ["updatedAt", "EventDetailId"] },
-      }),
+      }) as Promise<SaltUpdateEvent>,
     );
   }
   const stillFailingEvents = await Promise.all(stillFailingPromises);
@@ -272,11 +284,14 @@ const getDevicesFailingSaltUpdatesInReportingPeriod = async (
       );
     }
   }
-  return failingDevices.reduce((acc, item) => {
-    acc[item.nodeGroup] = acc[item.nodeGroup] || [];
-    acc[item.nodeGroup].push({ id: item.id, name: item.name });
-    return acc;
-  }, {});
+  return failingDevices.reduce(
+    (acc: Record<string, { id: EventId; name: string }[]>, item) => {
+      acc[item.nodeGroup] = acc[item.nodeGroup] || [];
+      acc[item.nodeGroup].push({ id: item.id, name: item.name });
+      return acc;
+    },
+    {},
+  );
 };
 
 const groupedSystemErrors = async (
@@ -295,7 +310,7 @@ const groupedSystemErrors = async (
   }
   const ignoredDevices = config.deviceErrorIgnoreList || [];
   const serviceErrorEvents = (
-    await Event.findAll({
+    (await Event.findAll({
       where,
       order: [["createdAt", "DESC"]],
       include: [
@@ -316,7 +331,7 @@ const groupedSystemErrors = async (
       ],
       attributes: { exclude: ["updatedAt", "EventDetailId"] },
       limit: 10000,
-    })
+    })) as AugmentedServiceErrorEvent[]
   )
     .filter(
       (event) =>
@@ -324,8 +339,7 @@ const groupedSystemErrors = async (
         "unitName" in event.EventDetail.details &&
         "logs" in event.EventDetail.details,
     )
-    .filter((event) => !ignoredDevices.includes(event.DeviceId))
-    .map((event) => event as AugmentedEvent);
+    .filter((event) => !ignoredDevices.includes(event.DeviceId));
 
   // Work out the node groups for each device of these events.
   // Get all the unique devices for the set of events:
@@ -344,8 +358,8 @@ const groupedSystemErrors = async (
     devices[errorEvent.DeviceId] = existingDeviceSpan;
   }
 
-  const saltUpdates = [];
-  const versionUpdates = [];
+  const saltUpdates: Promise<SaltUpdateEvent>[] = [];
+  const versionUpdates: Promise<VersionDataEvent>[] = [];
   for (const [deviceId, { maxDate }] of Object.entries(devices)) {
     // What node group is the device in during the time period?
     saltUpdates.push(
@@ -371,7 +385,7 @@ const groupedSystemErrors = async (
           },
         ],
         attributes: { exclude: ["updatedAt", "EventDetailId"] },
-      }),
+      }) as Promise<SaltUpdateEvent>,
     );
 
     versionUpdates.push(
@@ -396,11 +410,12 @@ const groupedSystemErrors = async (
           },
         ],
         attributes: { exclude: ["updatedAt", "EventDetailId"] },
-      }),
+      }) as Promise<VersionDataEvent>,
     );
   }
-  const saltEvents: Event[] = await Promise.all(saltUpdates);
-  const versionDataEvents: Event[] = await Promise.all(versionUpdates);
+  const saltEvents: SaltUpdateEvent[] = await Promise.all(saltUpdates);
+  const versionDataEvents: VersionDataEvent[] =
+    await Promise.all(versionUpdates);
   for (let i = 0; i < versionDataEvents.length; i++) {
     const deviceId = Number(Object.keys(devices)[i]);
     if (!versionDataEvents[i]) {
@@ -428,7 +443,7 @@ const groupedSystemErrors = async (
     }
   }
 
-  const eventsByNodeGroup = {};
+  const eventsByNodeGroup: Record<string, AugmentedServiceErrorEvent[]> = {};
   for (let i = 0; i < saltEvents.length; i++) {
     const deviceId = Number(Object.keys(devices)[i]);
     if (!saltEvents[i]) {
@@ -443,7 +458,7 @@ const groupedSystemErrors = async (
     const saltEvent = saltEvents[i];
     if (saltEvent.dateTime > devices[saltEvent.DeviceId].minDate) {
       // Get an earlier salt events for this device just in case the node-group changed
-      const earlierSaltEvent = await Event.findOne({
+      const earlierSaltEvent = (await Event.findOne({
         where: {
           DeviceId: saltEvent.DeviceId,
           dateTime: {
@@ -465,7 +480,7 @@ const groupedSystemErrors = async (
           },
         ],
         attributes: { exclude: ["updatedAt", "EventDetailId"] },
-      });
+      })) as SaltUpdateEvent;
       if (earlierSaltEvent) {
         // NOTE: If the node-group changed, it's possible we attribute events to the wrong version of a service,
         //  but probably not worth trying to be clever here.
@@ -505,10 +520,10 @@ const groupedSystemErrors = async (
       ),
     );
   }
-  const groupedErrorsByNodeGroup = {};
+  const groupedErrorsByNodeGroup: GroupedServiceErrorsByNodeGroup = {};
   for (const nodeGroupEvents of Object.entries(eventsByNodeGroup)) {
     groupedErrorsByNodeGroup[nodeGroupEvents[0]] = groupSystemErrors(
-      nodeGroupEvents[1] as AugmentedEvent[],
+      nodeGroupEvents[1] as AugmentedServiceErrorEvent[],
     );
   }
   return groupedErrorsByNodeGroup;

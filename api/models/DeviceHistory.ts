@@ -17,12 +17,14 @@ import Sequelize, {
   CreationOptional,
   DataTypes,
   ForeignKey,
+  ModelAttributes,
   NonAttribute,
 } from "sequelize";
 import { ModelStaticCommon } from "./index.js";
 import type {
   DeviceId,
   GroupId,
+  IsoFormattedDateString,
   LatLng,
   SaltId,
   StationId,
@@ -212,7 +214,7 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
   }
 }
 export const init = (sequelizeInstance: Sequelize.Sequelize) => {
-  const attributes = {
+  const attributes: ModelAttributes = {
     location: locationField(),
     fromDateTime: {
       type: DataTypes.DATE,
@@ -269,7 +271,9 @@ function mergeSettings(
   setBy: DeviceHistorySetBy,
 ): { settings: ApiDeviceHistorySettings; changed: boolean } {
   // FIXME: This function is currently untested and very likely broken.
-  const mergedSettings: ApiDeviceHistorySettings = { ...currentSettings };
+  const mergedSettings: ApiDeviceHistorySettings = {
+    ...currentSettings,
+  };
 
   let changed = false;
   for (const [key, value] of Object.entries(incomingSettings)) {
@@ -290,12 +294,16 @@ function mergeSettings(
       typeof currentSetting === "object" &&
       typeof incomingValue === "object" &&
       "updated" in incomingValue &&
-      "updatedAt" in currentSetting &&
+      "updated" in currentSetting &&
       incomingValue.updated &&
       currentSetting.updated
     ) {
-      const currentUpdated = new Date(currentSetting.updated);
-      const incomingUpdated = new Date(incomingValue.updated);
+      const currentUpdated = new Date(
+        currentSetting.updated as IsoFormattedDateString,
+      );
+      const incomingUpdated = new Date(
+        incomingValue.updated as IsoFormattedDateString,
+      );
 
       if (incomingUpdated > currentUpdated) {
         mergedSettings[key] = incomingValue;

@@ -13,6 +13,8 @@ import type {
 } from "../api/device.js";
 import type {
   ApiSubmitEventsRequestBody,
+  BatteryInfoEvent,
+  BatteryInfoEventDetail,
   DeviceConfigDetail,
   DeviceEvent,
   IsoFormattedString,
@@ -25,8 +27,6 @@ import type { ApiTrackResponse } from "../api/track.js";
 import type { CacophonyApiClient } from "./api.js";
 import { optionalQueryString, unwrapLoadedResource } from "./api.js";
 import type {
-  BatteryInfo,
-  BatteryInfoEvent,
   FetchResult,
   LoadedResource,
   LoggedInDeviceCredentials,
@@ -244,7 +244,7 @@ const getBatteryInfo =
     // eslint-disable-next-line no-async-promise-executor
     return new Promise(async (resolve) => {
       let stillHasEvents = true;
-      const events: BatteryInfoEvent[] = [];
+      const events: (BatteryInfoEventDetail & { dateTime: Date })[] = [];
       while (
         stillHasEvents &&
         (stopAfterNumResults === null || events.length !== stopAfterNumResults)
@@ -261,20 +261,16 @@ const getBatteryInfo =
         const response = (await api.get(
           authKey,
           `/api/v1/events?${params}`,
-        )) as unknown as FetchResult<{ rows: DeviceEvent[] }>;
+        )) as unknown as FetchResult<{ rows: BatteryInfoEvent[] }>;
         if (response && response.success) {
           const eventsSubset = response.result.rows.map((event) => {
             const {
               dateTime,
               EventDetail: { details },
             } = event;
-            const { voltage, battery, batteryType } = details as BatteryInfo;
-
             return {
               dateTime,
-              voltage,
-              battery,
-              batteryType,
+              ...details,
             };
           });
           events.push(...eventsSubset);
@@ -296,7 +292,9 @@ const getBatteryInfo =
       } else {
         resolve(false);
       }
-    }) as Promise<BatteryInfoEvent[] | false | null>;
+    }) as Promise<
+      (BatteryInfoEventDetail & { dateTime: Date })[] | false | null
+    >;
   };
 
 const getEarliestEventAfterTime =
@@ -575,12 +573,23 @@ const getTracksWithTagForDeviceInProject =
 
 const updateReferenceImageForDeviceAtCurrentLocation =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId, payload: ArrayBuffer) => {
-    //const params = new URLSearchParams();
+  (
+    deviceId: DeviceId,
+    payload: ArrayBuffer,
+    atTime?: Date,
+    type?: "pov" | "in-situ",
+  ) => {
+    const params = new URLSearchParams();
+    if (atTime) {
+      params.append("at-time", atTime.toISOString());
+    }
+    if (type) {
+      params.append("type", type);
+    }
     // Set the reference image for the location start time?  Or create a new entry for this reference image starting now?
     return api.post(
       authKey,
-      `/api/v1/devices/${deviceId}/reference-image`,
+      `/api/v1/devices/${deviceId}/reference-image${optionalQueryString(params)}`,
       payload,
     ) as Promise<FetchResult<{ key: string; size: number }>>;
   };
@@ -630,12 +639,24 @@ const getSettingsForDevice =
     >;
   };
 
+const updateDeviceLocation =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (deviceId: DeviceId, location: LatLng) => {
+    return api.post(authKey, `/api/v1/devices/${deviceId}/settings`, {
+      location,
+    }) as Promise<
+      FetchResult<{ settings: ApiDeviceHistorySettings; location?: LatLng }>
+    >;
+  };
+
 const updateDeviceSettings =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (deviceId: DeviceId, settings: ApiDeviceHistorySettings) => {
     return api.post(authKey, `/api/v1/devices/${deviceId}/settings`, {
       settings,
-    }) as Promise<FetchResult<{ settings: ApiDeviceHistorySettings }>>;
+    }) as Promise<
+      FetchResult<{ settings: ApiDeviceHistorySettings; location?: LatLng }>
+    >;
   };
 
 const updateMaskRegionsForDevice =
@@ -707,7 +728,9 @@ const hasReferenceImageForDeviceAtCurrentLocation =
 
 const getLastKnownDeviceBatteryLevel =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId): Promise<BatteryInfoEvent | false | null> => {
+  (
+    deviceId: DeviceId,
+  ): Promise<(BatteryInfoEventDetail & { dateTime: Date }) | false | null> => {
     const lastThirtyDays = new Date();
     lastThirtyDays.setDate(lastThirtyDays.getDate() - 30);
     return new Promise((resolve) => {
@@ -718,7 +741,9 @@ const getLastKnownDeviceBatteryLevel =
           } else if (result === false || result.length === 0) {
             resolve(false);
           }
-          resolve((result as BatteryInfoEvent[])[0]);
+          resolve(
+            (result as (BatteryInfoEventDetail & { dateTime: Date })[])[0],
+          );
         },
       );
     });
@@ -806,6 +831,7 @@ export default (api: CacophonyApiClient) => {
     getMaskRegionsForDevice: getMaskRegionsForDevice(api),
     getSettingsForDevice: getSettingsForDevice(api),
     updateDeviceSettings: updateDeviceSettings(api),
+    updateDeviceLocation: updateDeviceLocation(api),
     updateMaskRegionsForDevice: updateMaskRegionsForDevice(api),
     getReferenceImageForDeviceAtTime: getReferenceImageForDeviceAtTime(api),
     hasReferenceImageForDeviceAtTime: hasReferenceImageForDeviceAtTime(api),
@@ -859,6 +885,7 @@ export default (api: CacophonyApiClient) => {
       getMaskRegionsForDevice: getMaskRegionsForDevice(api, authKey),
       getSettingsForDevice: getSettingsForDevice(api, authKey),
       updateDeviceSettings: updateDeviceSettings(api, authKey),
+      updateDeviceLocation: updateDeviceLocation(api, authKey),
       updateMaskRegionsForDevice: updateMaskRegionsForDevice(api, authKey),
       getReferenceImageForDeviceAtTime: getReferenceImageForDeviceAtTime(
         api,

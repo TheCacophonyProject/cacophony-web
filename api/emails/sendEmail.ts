@@ -62,7 +62,7 @@ export async function sendEmail(
       subject,
       from: config.smtpDetails.fromName,
       attachment: [{ data: html, alternative: true }],
-      bcc: [],
+      bcc: [] as string[],
     };
     if (adminEmails && adminEmails.length) {
       messageHeaders.bcc = adminEmails;

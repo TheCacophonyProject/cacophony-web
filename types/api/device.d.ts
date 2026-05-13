@@ -83,7 +83,7 @@ export type ImageMimeTypes =
   | "image/png"
   | "image/webp"
   | "image/gif";
-export interface ApiDeviceHistorySettings {
+export interface ApiDeviceHistorySettings extends Record<string, unknown> {
   referenceImagePOV?: string; // S3 Key for a device reference image
   referenceImagePOVFileSize?: number;
   referenceImagePOVMimeType?: ImageMimeTypes;
@@ -104,6 +104,9 @@ export interface ApiDeviceHistorySettings {
   audioRecording?: AudioRecordingSettings;
   windows?: WindowsSettings;
   battery?: BatterySettings;
+
+  location?: LatLng;
+
   synced?: boolean;
 }
 

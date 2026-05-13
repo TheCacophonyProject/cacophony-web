@@ -2,12 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { ExtractJwt } from "passport-jwt";
 import type { DecodedJWTToken } from "./auth.js";
 import { getVerifiedJWTFromBody } from "./auth.js";
-import {
-  checkAccess,
-  getDecodedToken,
-  getVerifiedJWT,
-  lookupEntity,
-} from "./auth.js";
+import { getDecodedToken, getVerifiedJWT, lookupEntity } from "./auth.js";
 import type { ModelStaticCommon } from "@models";
 import log from "../logging.js";
 import { createHash } from "crypto";
@@ -19,7 +14,13 @@ import {
   ClientError,
 } from "./customErrors.js";
 import { User } from "@models/User.js";
-import Sequelize, { Includeable, Model, Op } from "sequelize";
+import Sequelize, {
+  FindOptions,
+  Includeable,
+  Model,
+  Op,
+  WhereOptions,
+} from "sequelize";
 import { Device } from "@models/Device.js";
 import type { RecordingId, ScheduleId, UserId } from "@typedefs/api/common.js";
 import { Group } from "@models/Group.js";
@@ -39,9 +40,21 @@ import { Tag } from "@models/Tag.js";
 import { File } from "@models/File.js";
 import { GroupInvites } from "@models/GroupInvites.js";
 import { TrackTagUserData } from "@models/TrackTagUserData.js";
+import { GroupUsers } from "@models/GroupUsers.js";
+import { ApiTrackDataRequest } from "@typedefs/api/track.js";
+import jwt from "jsonwebtoken";
+import config from "@config";
+import { MinimalTrackRequestData } from "@typedefs/api/fileProcessing.js";
 
 export interface RequestContext {
-  requestUser?: User | { id: number; userName: string };
+  requestUser?:
+    | User
+    | {
+        id: number;
+        userName: string;
+        hasGlobalRead: () => boolean;
+        hasGlobalWrite: () => boolean;
+      };
   onlyActive?: boolean;
   withRecordings?: boolean;
   viewAsSuperUser?: boolean;
@@ -58,7 +71,6 @@ const extractJwtAuthenticatedEntityCommon = async (
   request: Request,
   response: Response,
   next: NextFunction,
-  reqAccess?: { devices?: unknown },
   requireSuperAdmin = false,
   requireActivatedUser = false,
 ): Promise<void> => {
@@ -84,11 +96,6 @@ const extractJwtAuthenticatedEntityCommon = async (
         "You must have confirmed your email address to activate your account in order to access this API.",
       ),
     );
-  }
-
-  const hasAccess = checkAccess(reqAccess, jwtDecoded);
-  if (!hasAccess) {
-    return next(new AuthenticationError("JWT does not have access."));
   }
 
   if (requireSuperAdmin && type !== "user") {
@@ -164,12 +171,7 @@ const extractJwtAuthenticatedEntityCommon = async (
 };
 
 const extractJwtAuthenticatedEntity =
-  (
-    types: string[],
-    reqAccess?: { devices?: unknown },
-    requireSuperAdmin = false,
-    requireActivatedUser = false,
-  ) =>
+  (types: string[], requireSuperAdmin = false, requireActivatedUser = false) =>
   async (
     request: Request,
     response: Response,
@@ -184,7 +186,6 @@ const extractJwtAuthenticatedEntity =
         request,
         response,
         next,
-        reqAccess,
         requireSuperAdmin,
         requireActivatedUser,
       );
@@ -211,24 +212,30 @@ const extractJwtAuthenticatedEntity =
             globalPermission: UserGlobalPermission.Off,
           };
         }
-      }
-      if (token && token._type && token._type === "user") {
-        response.locals.requestUser = {
-          id: token.id || -1,
-          hasGlobalRead: () => false,
-          hasGlobalWrite: () => false,
-          globalPermission: UserGlobalPermission.Off,
-        };
-        const isCiRequest =
-          "user-agent" in request.headers &&
-          request.headers["user-agent"].includes("Cypress");
+      } else {
+        const decodedToken = jwt.verify(token, config.server.passportSecret);
         if (
-          !isCiRequest &&
-          userShouldBeRateLimited(response.locals.requestUser.id)
+          typeof decodedToken !== "string" &&
+          decodedToken._type &&
+          decodedToken._type === "user"
         ) {
-          response.locals.requestUser.wasRateLimited = true;
-          // Stagger the amount of rate-limiting to try and spread out repeat requests
-          await delayMs(3000 + Math.floor(Math.random() * 4000));
+          response.locals.requestUser = {
+            id: decodedToken.id || -1,
+            hasGlobalRead: () => false,
+            hasGlobalWrite: () => false,
+            globalPermission: UserGlobalPermission.Off,
+          };
+          const isCiRequest =
+            "user-agent" in request.headers &&
+            request.headers["user-agent"].includes("Cypress");
+          if (
+            !isCiRequest &&
+            userShouldBeRateLimited(response.locals.requestUser.id)
+          ) {
+            response.locals.requestUser.wasRateLimited = true;
+            // Stagger the amount of rate-limiting to try and spread out repeat requests
+            await delayMs(3000 + Math.floor(Math.random() * 4000));
+          }
         }
       }
       return next(e);
@@ -239,7 +246,6 @@ const extractJwtAuthenticatedEntityFromBody =
   (
     tokenField: string,
     types: string[],
-    reqAccess?: { devices?: unknown },
     requireSuperAdmin = false,
     requireActivatedUser = false,
   ) =>
@@ -260,7 +266,6 @@ const extractJwtAuthenticatedEntityFromBody =
         request,
         response,
         next,
-        reqAccess,
         requireSuperAdmin,
         requireActivatedUser,
       );
@@ -272,7 +277,6 @@ const extractJwtAuthenticatedEntityFromBody =
 export const extractJwtAuthorizedUser = extractJwtAuthenticatedEntity(["user"]);
 export const extractJwtAuthorizedActivatedUser = extractJwtAuthenticatedEntity(
   ["user"],
-  undefined,
   false,
   true,
 );
@@ -282,7 +286,6 @@ export const extractJwtAuthorizedUserOrDevice = extractJwtAuthenticatedEntity([
 ]);
 export const extractJwtAuthorisedSuperAdminUser = extractJwtAuthenticatedEntity(
   ["user"],
-  undefined,
   true,
 );
 export const extractJwtAuthorisedDevice = extractJwtAuthenticatedEntity([
@@ -323,8 +326,8 @@ const getGroupInclude = (
       through: {
         where: {
           ...useAdminAccess,
-          removedAt: { [Op.eq]: null },
-        },
+          removedAt: null,
+        } as WhereOptions<GroupUsers>,
         attributes: ["admin", "settings", "owner", "pending"],
       },
       where: { id: requestUserId },
@@ -337,7 +340,13 @@ const getDeviceInclude =
   (useAdminAccess: { admin?: true }, requestUserId: UserId) => ({
     where: {
       ...deviceWhere,
-      [Op.or]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
+      [Op.or]: [
+        Sequelize.where(
+          Sequelize.col("Group.Users.GroupUsers.UserId"),
+          Op.ne,
+          null,
+        ),
+      ],
     },
     attributes: deviceAttributes,
     include: [
@@ -356,9 +365,9 @@ const getDeviceInclude =
             through: {
               where: {
                 ...useAdminAccess,
-                removedAt: { [Op.eq]: null },
-                pending: { [Op.eq]: null },
-              },
+                removedAt: null,
+                pending: null,
+              } as WhereOptions<GroupUsers>,
               attributes: ["admin", "UserId"],
             },
             where: { id: requestUserId },
@@ -388,9 +397,9 @@ const getStationInclude =
             through: {
               where: {
                 ...useAdminAccess,
-                removedAt: { [Op.eq]: null },
-                pending: { [Op.eq]: null },
-              },
+                removedAt: null,
+                pending: null,
+              } as WhereOptions<GroupUsers>,
               attributes: ["UserId"],
             },
             where: { id: requestUserId },
@@ -404,7 +413,13 @@ const getScheduleInclude =
   (groupWhere: Sequelize.WhereOptions) =>
   (useAdminAccess: { admin?: true }, requestUserId: UserId) => ({
     where: {
-      [Op.and]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
+      [Op.and]: [
+        Sequelize.where(
+          Sequelize.col("Group.Users.GroupUsers.UserId"),
+          Op.ne,
+          null,
+        ),
+      ],
     },
     include: [
       {
@@ -420,9 +435,9 @@ const getScheduleInclude =
             through: {
               where: {
                 ...useAdminAccess,
-                removedAt: { [Op.eq]: null },
-                pending: { [Op.eq]: null },
-              },
+                removedAt: null,
+                pending: null,
+              } as WhereOptions<GroupUsers>,
               attributes: ["admin", "UserId"],
             },
             where: { id: requestUserId },
@@ -441,7 +456,13 @@ const getRecordingInclude =
   (useAdminAccess: { admin?: true }, requestUserId: UserId) => ({
     where: {
       ...recordingsWhere,
-      [Op.or]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
+      [Op.or]: [
+        Sequelize.where(
+          Sequelize.col("Group.Users.GroupUsers.UserId"),
+          Op.ne,
+          null,
+        ),
+      ],
     },
     // TODO - RecordingAttributes
     //attributes: deviceAttributes,
@@ -459,9 +480,9 @@ const getRecordingInclude =
             through: {
               where: {
                 ...useAdminAccess,
-                removedAt: { [Op.eq]: null },
-                pending: { [Op.eq]: null },
-              },
+                removedAt: null,
+                pending: null,
+              } as WhereOptions<GroupUsers>,
               attributes: ["admin", "UserId"],
             },
             where: { id: requestUserId },
@@ -507,10 +528,13 @@ export const extractValFromRequest = (
 ): string | undefined => {
   if (valGetter) {
     // NOTE: Accessing private field 'locations'
-    const location = valGetter.builder["locations"][0];
+    const location = valGetter.builder["locations"][0] as
+      | "query"
+      | "body"
+      | "params";
     // If fields is an array, take the first one that exists.
     // NOTE: Accessing private field 'fields'
-    for (const field of valGetter.builder["fields"]) {
+    for (const field of valGetter.builder["fields"] as string[]) {
       if (request[location][field]) {
         return request[location][field];
       }
@@ -524,11 +548,15 @@ const extractFieldNameFromRequest = (
 ): string | undefined => {
   if (valGetter) {
     // NOTE: Accessing private field 'locations'
-    const location = valGetter.builder["locations"][0];
+    const location = valGetter.builder["locations"][0] as
+      | "body"
+      | "query"
+      | "params"
+      | undefined;
     // If fields is an array, take the first one that exists.
     // NOTE: Accessing private field 'fields'
     for (const field of valGetter.builder["fields"]) {
-      if (request[location][field]) {
+      if (location in request && request[location][field]) {
         return field;
       }
     }
@@ -536,9 +564,9 @@ const extractFieldNameFromRequest = (
 };
 
 const extractFieldLocationFromRequest = (
-  request: Request,
+  _request: Request,
   valGetter?: ValidationChain,
-): string | undefined => {
+): "body" | "query" | "params" | undefined => {
   if (valGetter) {
     // NOTE: Accessing private field 'locations'
     return valGetter.builder["locations"][0];
@@ -570,46 +598,49 @@ export const fetchModel =
   async (request: Request, response: Response, next: NextFunction) => {
     const modelName = modelTypeName(modelType);
 
-    let id;
+    let id: string;
     if (typeof primary === "number" || typeof primary === "string") {
-      id = primary;
+      id = primary.toString();
     } else {
       id = extractValFromRequest(request, primary) as string;
     }
     if (!id && !required) {
       return next();
     }
-    let id2;
+    let id2: string;
     if (typeof secondary === "number" || typeof secondary === "string") {
-      id2 = secondary;
-    } else {
+      id2 = secondary.toString();
+    } else if (secondary) {
       id2 = extractValFromRequest(request, secondary) as string;
     }
     response.locals.onlyActive = true; // Default to only showing active devices.
     response.locals.withRecordings = false; // Default to showing stations without any recordings.
     if (
       ("onlyActive" in request.query &&
-        Boolean(request.query.onlyActive) === false) ||
+        (request.query.onlyActive as unknown as boolean) === false) ||
       ("only-active" in request.query &&
-        Boolean(request.query["only-active"]) === false)
+        (request.query["only-active"] as unknown as boolean) === false)
     ) {
       response.locals.onlyActive = false;
     }
     if (
       "with-recordings" in request.query &&
-      Boolean(request.query["with-recordings"]) === true
+      (request.query["with-recordings"] as unknown as boolean) === true
     ) {
       response.locals.withRecordings = true;
     }
     if ("deleted" in request.query) {
-      response.locals.deleted = Boolean(request.query.deleted);
+      response.locals.deleted =
+        (request.query.deleted as unknown as boolean) === true;
     }
 
     let model;
     try {
       model = await modelGetter(id, id2, response.locals);
-    } catch (e) {
-      log.error("%s", e.sql);
+    } catch (e: unknown) {
+      if ("sql" in (e as object)) {
+        log.error("%s", (e as { sql: string }).sql);
+      }
       return next(e);
     }
     if (model instanceof ClientError) {
@@ -746,8 +777,10 @@ const getDevices =
     }
 
     if (context.onlyActive) {
-      getDeviceOptions.where = getDeviceOptions.where || {};
-      getDeviceOptions.where["active"] = true;
+      getDeviceOptions.where = {
+        ...(getDeviceOptions.where || {}),
+        active: true,
+      };
     }
     getDeviceOptions.subQuery = false;
     return Device.findAll({
@@ -811,25 +844,29 @@ const getStations =
     }
 
     if (context.onlyActive) {
-      getStationsOptions.where = getStationsOptions.where || {};
-      getStationsOptions.where["retiredAt"] = { [Op.eq]: null };
+      getStationsOptions.where = {
+        ...(getStationsOptions.where || {}),
+        retiredAt: null,
+      };
     }
     if (context.withRecordings) {
-      getStationsOptions.where = getStationsOptions.where || {};
-      getStationsOptions.where[Op.and] = [
-        {
-          [Op.or]: [
-            {
-              lastThermalRecordingTime: { [Op.ne]: null },
-              lastAudioRecordingTime: { [Op.ne]: null },
-              automatic: true,
-            },
-            {
-              automatic: false,
-            },
-          ],
-        },
-      ];
+      getStationsOptions.where = {
+        ...(getStationsOptions.where || {}),
+        [Op.and]: [
+          {
+            [Op.or]: [
+              {
+                lastThermalRecordingTime: { [Op.ne]: null },
+                lastAudioRecordingTime: { [Op.ne]: null },
+                automatic: true,
+              },
+              {
+                automatic: false,
+              },
+            ],
+          },
+        ],
+      };
     }
 
     return Station.findAll({
@@ -855,7 +892,7 @@ const getStation =
       !isNaN(parseInt(stationNameOrId)) &&
       parseInt(stationNameOrId).toString() === String(stationNameOrId);
 
-    let stationWhere;
+    let stationWhere: WhereOptions<Station>;
     let groupWhere = {};
 
     let groupNameMatch: Sequelize.WhereOptions | string = groupNameOrId;
@@ -879,7 +916,11 @@ const getStation =
     } else if (stationIsId && groupNameOrId) {
       stationWhere = {
         id: parseInt(stationNameOrId),
-        "$Group.groupName$": groupNameMatch,
+        [Op.and]: Sequelize.where(
+          Sequelize.col("Group.groupName"),
+          Op.eq,
+          groupNameMatch,
+        ),
       };
     } else if (stationIsId && !groupNameOrId) {
       stationWhere = {
@@ -893,8 +934,12 @@ const getStation =
     } else {
       stationWhere = {
         name: stationNameMatch,
-        "$Group.groupName$": groupNameMatch,
-      };
+        [Op.and]: Sequelize.where(
+          Sequelize.col("Group.groupName"),
+          Op.eq,
+          groupNameMatch,
+        ),
+      } as WhereOptions<Station>;
     }
     if (groupIsId) {
       groupWhere = {
@@ -947,8 +992,10 @@ const getStation =
     }
 
     if (context.onlyActive || !stationIsId) {
-      getStationOptions.where = getStationOptions.where || {};
-      getStationOptions.where["retiredAt"] = { [Op.eq]: null };
+      getStationOptions.where = {
+        ...(getStationOptions.where || {}),
+        retiredAt: null,
+      };
     }
     getStationOptions.subQuery = false;
     return Station.findOne(getStationOptions);
@@ -1223,16 +1270,19 @@ const getRecording =
     );
     return Recording.findOne(getRecordingOptions).then((rec) => {
       if (includeTrackMetadata) {
-        // TODO: M Fetch all the metadata for tracks.
         if (rec) {
-          const trackMetas = [];
+          const trackMetas: Promise<MinimalTrackRequestData>[] = [];
           for (const track of rec.Tracks) {
-            trackMetas.push(Track.getTrackData(track.id));
+            trackMetas.push(
+              Track.getTrackData(track.id) as Promise<MinimalTrackRequestData>,
+            );
           }
           return Promise.all(trackMetas).then((trackMetadatas) => {
             for (let i = 0; i < trackMetadatas.length; i++) {
               if (Object.keys(trackMetadatas[i]).length > 0) {
-                rec.Tracks[i].data = trackMetadatas[i];
+                rec.Tracks[i].data = trackMetadatas[
+                  i
+                ] as MinimalTrackRequestData;
               }
             }
             return rec;
@@ -1319,7 +1369,7 @@ const getDevice =
       !isNaN(parseInt(groupNameOrId)) &&
       parseInt(groupNameOrId).toString() === String(groupNameOrId);
 
-    let deviceWhere;
+    let deviceWhere: WhereOptions<Device>;
     let groupWhere = {};
 
     let groupNameMatch: string | Sequelize.WhereOptions = groupNameOrId;
@@ -1343,7 +1393,11 @@ const getDevice =
     } else if (deviceIsId && groupNameOrId) {
       deviceWhere = {
         id: parseInt(deviceNameOrId),
-        "$Group.groupName$": groupNameMatch,
+        [Op.and]: Sequelize.where(
+          Sequelize.col("Group.groupName"),
+          Op.eq,
+          groupNameMatch,
+        ),
       };
     } else if (deviceIsId && !groupNameOrId) {
       deviceWhere = {
@@ -1353,12 +1407,16 @@ const getDevice =
       deviceWhere = {
         deviceName: deviceNameMatch,
         GroupId: parseInt(groupNameOrId),
-      };
+      } as WhereOptions<Device>;
     } else {
       deviceWhere = {
         deviceName: deviceNameMatch,
-        "$Group.groupName$": groupNameMatch,
-      };
+        [Op.and]: Sequelize.where(
+          Sequelize.col("Group.groupName"),
+          Op.eq,
+          groupNameMatch,
+        ),
+      } as WhereOptions<Device>;
     }
     if (groupIsId) {
       groupWhere = {
@@ -1368,7 +1426,7 @@ const getDevice =
       groupWhere = { groupName: groupNameMatch };
     }
 
-    let getDeviceOptions: Sequelize.FindOptions;
+    let getDeviceOptions: Sequelize.FindOptions<Device>;
     if (forRequestUser) {
       if (context && context.requestUser) {
         // Insert request user constraints
@@ -1413,8 +1471,10 @@ const getDevice =
     // FIXME(ManageStations) - When re-registering we can actually have two devices in the same group with the same name - but one
     //  will be inactive.  Maybe we should change the name of the inactive device to disambiguate it?
     if (context.onlyActive) {
-      getDeviceOptions.where = getDeviceOptions.where || {};
-      getDeviceOptions.where["active"] = true;
+      getDeviceOptions.where = {
+        ...(getDeviceOptions.where || {}),
+        active: true,
+      };
     }
     getDeviceOptions.subQuery = false;
     return Device.findOne(getDeviceOptions);
@@ -1456,7 +1516,7 @@ const getGroup =
       groupNameOrId &&
       !isNaN(parseInt(groupNameOrId)) &&
       parseInt(groupNameOrId).toString() === String(groupNameOrId);
-    let groupWhere;
+    let groupWhere: WhereOptions<Group>;
     if (groupIsId) {
       groupWhere = {
         id: parseInt(groupNameOrId),
@@ -1468,9 +1528,9 @@ const getGroup =
           [Op.in]: [groupNameOrId, urlNormaliseName(groupNameOrId)],
         } as Sequelize.WhereOptions;
       }
-      groupWhere = { groupName: groupNameMatch };
+      groupWhere = { groupName: groupNameMatch } as WhereOptions<Group>;
     }
-    let getGroupOptions;
+    let getGroupOptions: FindOptions<Group>;
     if (forRequestUser) {
       if (context && context.requestUser) {
         // Insert request user constraints
@@ -1649,14 +1709,20 @@ const getFlatRecordingsForRequestUser = getRecordings(true, false, false);
 
 const getFlatRecordingForRequestUser = getRecording(true, false, false, false);
 
-const getFullRecordingForRequestUser = async (a, b, c) => {
+const getFullRecordingForRequestUser = async (
+  a: string,
+  b: string,
+  c?: object,
+) => {
   const result = await getRecording(true, false, true, true)(a, b, c);
   if (result === null || result instanceof ClientError) {
     return result;
   }
   // Get all track data for recording
   for (const track of (result as Recording).Tracks) {
-    track.data = await Track.getTrackData(track.id);
+    track.data = (await Track.getTrackData(
+      track.id,
+    )) as MinimalTrackRequestData;
   }
   return result;
 };

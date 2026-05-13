@@ -185,7 +185,10 @@ describe("User: manage global access permissions", () => {
         "gapUser1",
         "badPermission",
         HttpStatusCode.Unprocessable,
-        { message: "body.permission: Invalid value" },
+        {
+          message: "Invalid value",
+          errors: [{ location: "body", path: "permission" }],
+        },
       );
     });
   } else {
@@ -208,7 +211,10 @@ describe("User: manage global access permissions", () => {
         "gapUser1",
         "badPermission",
         HttpStatusCode.Unprocessable,
-        { message: "body.permission: Invalid value" },
+        {
+          message: "Invalid value",
+          errors: [{ location: "body", path: "permission" }],
+        },
       );
     });
   } else {

@@ -22,9 +22,13 @@ test.beforeEach(async ({ request }) => {
 
 test.afterEach(async () => {
     global.fetch = global.nodeFetch;
-})
+});
 
 test("Device is able to upload a test thermal recording, and have it marked as such", async ({smallCptv}) => {
+
+
+    // TODO: Fixture
+
     // Upload a test recording, and then check that the returned recording metadata has it marked as test.
     const project = await createProjectWithUserAndDevice();
     const AdminUser = project.api();
@@ -36,6 +40,7 @@ test("Device is able to upload a test thermal recording, and have it marked as s
     });
 
     const uploadedRecording = await getRecordingAsUser(AdminUser, recordingId) as ApiThermalRecordingResponse;
+    console.log(uploadedRecording);
     expect(
         uploadedRecording.additionalMetadata.status,
         "recording is a test recording",

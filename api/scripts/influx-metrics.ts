@@ -1,10 +1,12 @@
 import * as Influx from "influx";
 import process from "process";
 import pg from "pg";
+import type { Client as PgClient } from "pg";
 import moment from "moment";
 import os from "os";
 import { RecordingProcessingState } from "@typedefs/api/consts.js";
 import config from "../config.js";
+import { InfluxDB } from "influx";
 
 const timeout = 1000;
 
@@ -28,18 +30,23 @@ const timeout = 1000;
   process.exit(0);
 })();
 
-async function pgQuery(client, query) {
+async function pgQuery(client: PgClient, query: string) {
   const res = await client.query({
     text: `SET statement_timeout = ${timeout}; ${query}`,
   });
-  return res[1];
+  // FIXME: Check this
+  return res;
 }
 
-async function writePoints(influx, measurement, fields) {
+async function writePoints(
+  influx: InfluxDB,
+  measurement: string,
+  fields: Record<string, unknown>,
+) {
   return await influx.writePoints([
     {
       measurement: measurement,
-      tags: { host: os.hostname },
+      tags: { host: os.hostname() },
       fields: fields,
     },
   ]);
@@ -47,7 +54,7 @@ async function writePoints(influx, measurement, fields) {
 
 const processingWaitTimeMeasurement = "processing_wait_time";
 
-async function measureProcessingWaitTime(influx, pgClient) {
+async function measureProcessingWaitTime(influx: InfluxDB, pgClient: PgClient) {
   const res = await pgQuery(
     pgClient,
     `select "createdAt" from "Recordings"
@@ -76,8 +83,8 @@ const countStates = Object.values(RecordingProcessingState).filter(
 
 const stateCountMeasurement = "processing_state_count";
 
-async function stateCount(influx, pgClient) {
-  const fields = {};
+async function stateCount(influx: InfluxDB, pgClient: PgClient) {
+  const fields: Record<string, number> = {};
   for (const state of countStates) {
     fields[state] = await getCount(
       pgClient,
@@ -91,7 +98,7 @@ async function stateCount(influx, pgClient) {
 
 const inPast24Measurement = "in_past_24";
 
-async function inPast24(influx, pgClient) {
+async function inPast24(influx: InfluxDB, pgClient: PgClient) {
   const thermalRawQuery = `SELECT COUNT(id) FROM "Recordings"
     WHERE "recordingDateTime" > (NOW() - INTERVAL '1 day')
     AND TYPE = 'thermalRaw'`;
@@ -107,15 +114,18 @@ async function inPast24(influx, pgClient) {
   await writePoints(influx, inPast24Measurement, fields);
 }
 
-async function getCount(pgClient, query: string) {
+async function getCount(pgClient: PgClient, query: string) {
   const res = await pgQuery(pgClient, query);
   return Number(res.rows[0].count);
 }
 
 async function influxConnect() {
-  const processingFields = {};
-  countStates.forEach(
-    (val) => (processingFields[val] = Influx.FieldType.INTEGER),
+  const processingFields = countStates.reduce(
+    (acc, val) => {
+      acc[val] = Influx.FieldType.INTEGER;
+      return acc;
+    },
+    {} as Record<string, Influx.FieldType.INTEGER>,
   );
   return new Influx.InfluxDB({
     host: config.influx.host,

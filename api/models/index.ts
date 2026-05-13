@@ -166,8 +166,8 @@ export const initSequelize = async () => {
     }
     //  It's important to only resolve all the model associations after all the models are loaded and initialised.
     for (const model of Object.values(models)) {
-      if (model["addAssociations"]) {
-        model["addAssociations"]();
+      if ("addAssociations" in model) {
+        (model as { addAssociations: () => void }).addAssociations();
       }
     }
   }

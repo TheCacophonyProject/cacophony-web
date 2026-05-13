@@ -16,9 +16,8 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, { validateFields } from "../middleware.js";
+import { validateFields } from "../middleware.js";
 import {
-  authenticateUser,
   createEntityJWT,
   generateAuthTokensForUser,
   getEmailConfirmationToken,
@@ -28,7 +27,13 @@ import {
 import { body } from "express-validator";
 import { serverErrorResponse, successResponse } from "./responseUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
-import { anyOf, idOf, validPasswordOf } from "../validation-middleware.js";
+import {
+  deprecatedField,
+  emailOf,
+  exactlyOneOf,
+  idOf,
+  validPasswordOf,
+} from "../validation-middleware.js";
 import {
   extractJwtAuthorisedSuperAdminUser,
   extractJwtAuthorizedUser,
@@ -79,11 +84,12 @@ export default function (app: Application, baseUrl: string) {
   //  of refresh tokens?
 
   // NOTE: nameOrEmail is just in here until we can update sidekick to just use email.
+  // FIXME: Check what sidekick is using currently.
   const authenticateUserOptions = [
     validateFields([
-      anyOf(
-        body("nameOrEmail").isEmail().optional(),
-        body("email").isEmail().optional(),
+      exactlyOneOf(
+        deprecatedField(emailOf(body("nameOrEmail"))),
+        emailOf(emailOf(body("email"))),
       ),
       validPasswordOf(body("password")),
     ]),
@@ -275,7 +281,9 @@ export default function (app: Application, baseUrl: string) {
 
   const authenticateAsOtherUserOptions = [
     extractJwtAuthorisedSuperAdminUser,
-    validateFields([anyOf(body("email").isEmail(), idOf(body("userId")))]),
+    validateFields([
+      exactlyOneOf(emailOf(body("email")), idOf(body("userId"))),
+    ]),
     fetchUnauthorizedRequiredUserByEmailOrId(body(["email", "userId"])),
     async (request: Request, response: Response) => {
       const isNewEndPoint = request.path.endsWith(
@@ -342,44 +350,8 @@ export default function (app: Application, baseUrl: string) {
     ...authenticateAsOtherUserOptions,
   );
 
-  /**
-   * @api {post} /token Generate temporary JWT
-   * @apiName Token
-   * @apiGroup Authentication
-   * @apiDeprecated No longer maintained, not supported by all API endpoints and may be removed in future
-   * @apiDescription It is sometimes necessary to include an
-   * authentication token in a URL but it is not safe to provide a
-   * user's primary JWT as it can easily leak into logs etc. This API
-   * generates a short-lived token which can be used as part of URLs.
-   *
-   * @apiParam {String} [ttl] short,medium,long defining token expiry time
-   * @apiParam {JSON} [access] dictionary of access to different entities
-   *
-   * @apiParamExample  {JSON} access:
-   * {"devices":"r"}
-   *
-   * @apiUse V1UserAuthorizationHeader
-   * @apiSuccess {JSON} token JWT that may be used to call the report endpoint. Token will require
-   * prefixing with "JWT " before use in Authorization header fields.
-   */
-  app.post(
-    "/token",
-    validateFields([body("ttl").optional(), body("access").optional()]),
-    authenticateUser(),
-    async (request: Request, response: Response) => {
-      // FIXME - deprecate or remove this if not used anywhere?
-      const expiry = ttlTypes[request.body.ttl] || ttlTypes["short"];
-      const token = createEntityJWT(
-        response.locals.user,
-        { expiresIn: expiry },
-        request.body.access,
-      );
-      return successResponse(response, "Token generated.", { token });
-    },
-  );
-
   const resetPasswordOptions = [
-    validateFields([body("email").isEmail()]),
+    validateFields([emailOf(body("email"))]),
     fetchUnauthorizedOptionalUserByEmailOrId(body("email")),
     async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.user) {
@@ -540,7 +512,7 @@ export default function (app: Application, baseUrl: string) {
     // NOTE: This exists only for cypress e2e browser tests, and is unauthenticated.
     app.post(
       `${apiUrl}/get-email-confirmation-token`,
-      validateFields([body("email")]),
+      validateFields([emailOf(body("email"))]),
       async (request: Request, response: Response, next: NextFunction) => {
         const email = request.body.email.toLowerCase();
         const user = await User.findOne({

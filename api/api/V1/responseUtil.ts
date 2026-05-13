@@ -17,23 +17,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import log from "@log";
-import jwt from "jsonwebtoken";
-import config from "@config";
 import type { Response, Request } from "express";
 import { CACOPHONY_WEB_VERSION } from "@/Globals.js";
 import { HttpStatusCode } from "@/../types/api/consts.js";
 import type { DecodedJWTToken } from "@api/auth.js";
 import { getVerifiedJWT } from "@api/auth.js";
-
-const VALID_DATAPOINT_UPLOAD_REQUEST = "Thanks for the data.";
-const VALID_DATAPOINT_UPDATE_REQUEST = "Datapoint was updated.";
-const VALID_DATAPOINT_GET_REQUEST = "Successful datapoint get request.";
-const VALID_FILE_REQUEST = "Successful file request.";
-
-const INVALID_DATAPOINT_UPLOAD_REQUEST =
-  "Request for uploading a datapoint was invalid.";
-const INVALID_DATAPOINT_UPDATE_REQUEST =
-  "Request for updating a datapoint was invalid.";
+import { ExtractJwt } from "passport-jwt";
 
 function send(
   response: Response,
@@ -65,74 +54,6 @@ function send(
   if (!response.headersSent) {
     return response.status(statusCode).json(data);
   }
-}
-
-function invalidDatapointUpload(response: Response, message: string) {
-  badRequest(response, [INVALID_DATAPOINT_UPLOAD_REQUEST, message]);
-}
-
-function invalidDatapointUpdate(response: Response, message: string) {
-  badRequest(response, [INVALID_DATAPOINT_UPDATE_REQUEST, message]);
-}
-
-function badRequest(response: Response, messages: string[]) {
-  send(response, { statusCode: HttpStatusCode.BadRequest, messages });
-}
-
-//======VALID REQUESTS=========
-function validRecordingUpload(response, idOfRecording, message = "") {
-  send(response, {
-    statusCode: HttpStatusCode.Ok,
-    messages: [message || VALID_DATAPOINT_UPLOAD_REQUEST],
-    recordingId: idOfRecording,
-  });
-}
-
-function validAudiobaitUpload(response, id, message = "") {
-  send(response, {
-    statusCode: HttpStatusCode.Ok,
-    messages: [message || VALID_DATAPOINT_UPLOAD_REQUEST],
-    id,
-  });
-}
-
-function validEventThumbnailUpload(response, id, message = "") {
-  send(response, {
-    statusCode: HttpStatusCode.Ok,
-    messages: [message || VALID_DATAPOINT_UPLOAD_REQUEST],
-    id,
-  });
-}
-
-function validFileUpload(response, key) {
-  send(response, {
-    statusCode: HttpStatusCode.Ok,
-    messages: [VALID_DATAPOINT_UPLOAD_REQUEST],
-    fileKey: key,
-  });
-}
-
-function validDatapointUpdate(response) {
-  send(response, {
-    statusCode: HttpStatusCode.Ok,
-    messages: [VALID_DATAPOINT_UPDATE_REQUEST],
-  });
-}
-
-function validDatapointGet(response, result) {
-  send(response, {
-    statusCode: HttpStatusCode.Ok,
-    messages: [VALID_DATAPOINT_GET_REQUEST],
-    result,
-  });
-}
-
-function validFileRequest(response, data) {
-  send(response, {
-    statusCode: HttpStatusCode.Ok,
-    messages: [VALID_FILE_REQUEST],
-    jwt: jwt.sign(data, config.server.passportSecret, { expiresIn: 60 * 10 }),
-  });
 }
 
 export const someResponse = (
@@ -192,11 +113,16 @@ export const serverErrorResponse = async (
       token.id,
     );
   } catch (_e) {
-    log.error(
-      "SERVER ERROR (JWT token): %s, %s",
-      error.toString(),
-      error.stack,
-    );
+    const hasToken = ExtractJwt.fromAuthHeaderWithScheme("jwt")(request);
+    if (hasToken) {
+      log.error(
+        "SERVER ERROR (JWT token): %s, %s",
+        error.toString(),
+        error.stack,
+      );
+    } else {
+      log.error("SERVER ERROR: %s, %s", error.toString(), error.stack);
+    }
   }
   try {
     return someResponse(
@@ -208,17 +134,4 @@ export const serverErrorResponse = async (
   } catch (e) {
     log.error(e);
   }
-};
-
-export default {
-  send,
-  invalidDatapointUpdate,
-  validFileUpload,
-  invalidDatapointUpload,
-  validDatapointGet,
-  validDatapointUpdate,
-  validRecordingUpload,
-  validAudiobaitUpload,
-  validEventThumbnailUpload,
-  validFileRequest,
 };

@@ -31,7 +31,7 @@ import { GroupUsers } from "@models/GroupUsers.js";
 import { User } from "@models/User.js";
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { once } from "events";
-import { body, query } from "express-validator";
+import { query } from "express-validator";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 
 export const streamS3Object = async (
@@ -228,9 +228,9 @@ export const streamS3Object = async (
     if (!canceled && !response.writableEnded) {
       response.end();
     }
-  } catch (err) {
+  } catch (err: unknown) {
     if (!canceled) {
-      return serverErrorResponse(request, response, err);
+      return serverErrorResponse(request, response, err as Error);
     }
   } finally {
     request.off("aborted", onRequestAborted);

@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 
 const SEPARATOR_LINE = "-----------";
 
-const depthFirstTraversal = (emailRootElement) => {
+const depthFirstTraversal = (emailRootElement: HTMLElement) => {
   let rawText = "";
   const nodesToVisit = [];
   const visitedNodes = [];
@@ -25,7 +25,7 @@ const depthFirstTraversal = (emailRootElement) => {
       rawText += currentNode.textContent;
     }
     if (currentNode.parentNode.nodeName === "A") {
-      rawText += ` (${currentNode.parentNode.href})`;
+      rawText += ` (${(currentNode.parentNode as HTMLAnchorElement).href})`;
     }
     [].slice
       .call(currentNode.childNodes)

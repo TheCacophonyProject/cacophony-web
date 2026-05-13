@@ -21,8 +21,11 @@ import { body, query } from "express-validator";
 import { successResponse } from "./responseUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
 import {
-  anyOf,
+  allOrNoneOf,
+  atMostOneOf,
   deprecatedField,
+  exactlyOneOf,
+  exactlyOneOfOrDefault,
   idOf,
   validNameOf,
   validPasswordOf,
@@ -59,21 +62,25 @@ export default function (app: Application) {
     "/authenticate_device",
     validateFields([
       validPasswordOf(body("password")),
-      anyOf(
-        deprecatedField(validNameOf(body("devicename"))).optional(),
-        validNameOf(body("deviceName")).optional(),
+      exactlyOneOf(
+        atMostOneOf(
+          validNameOf(body("deviceName")).optional(),
+          deprecatedField(validNameOf(body("devicename"))).optional(),
+        ),
+        allOrNoneOf(
+          atMostOneOf(
+            validNameOf(body("groupName")).optional(),
+            deprecatedField(validNameOf(body("groupname"))).optional(),
+          ),
+          atMostOneOf(
+            idOf(body("deviceId")).optional(),
+            deprecatedField(idOf(body("deviceID"))).optional(),
+          ),
+        ),
       ),
-      anyOf(
-        deprecatedField(validNameOf(body("groupname"))).optional(),
-        validNameOf(body("groupName")).optional(),
-      ),
-      anyOf(
-        idOf(body("deviceId")).optional(),
-        deprecatedField(idOf(body("deviceID"))).optional(),
-      ),
-      anyOf(
-        query("onlyActive").default(false).isBoolean().toBoolean(),
-        query("only-active").default(false).isBoolean().toBoolean(),
+      exactlyOneOfOrDefault(false)(
+        query("only-active").optional().isBoolean().toBoolean(),
+        deprecatedField(query("onlyActive").optional().isBoolean().toBoolean()),
       ),
     ]),
     async (request: Request, _response: Response, next: NextFunction) => {

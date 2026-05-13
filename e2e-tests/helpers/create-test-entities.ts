@@ -154,20 +154,11 @@ export const createProjectWithUserAndDevice = async (options?: {
     nameBase?: string;
     locationBase?: LatLng;
 }): Promise<ProjectBundle> => {
-    // const testFixtures = await getTestFixtures([
-    //     "oneframe.cptv",
-    //     "audio-60s-tc2.m4a",
-    //     "invalid.cptv",
-    //     "small.cptv",
-    //     "startup-status.cptv",
-    //     "shutdown-status.cptv",
-    //     "audio-test-recording-tc2.m4a",
-    //     ...(options?.testFixtures ?? []),
-    // ]);
     const nameBase = (options && options.nameBase) || "Test";
     const locationBase =
         (options && options.locationBase) || testLocation(-42.0, 172.0, 5.0);
 
+    console.log("HERE");
     // const superUserLoginCredentials: {
     //     name: string;
     //     password: string;

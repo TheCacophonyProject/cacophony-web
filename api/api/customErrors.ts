@@ -22,6 +22,12 @@ import { asyncLocalStorage } from "@/Globals.js";
 import type { NextFunction, Request, Response } from "express";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 import { serverErrorResponse, someResponse } from "@api/V1/responseUtil.js";
+import { ValidationError as ExpressValidationError } from "express-validator";
+import {
+  ResultWithContext,
+  ResultWithContextImpl,
+} from "express-validator/lib/chain/index.js";
+import { AddErrorOptions, Context } from "express-validator/lib/context.js";
 
 function errorHandler(
   err: Error,
@@ -29,7 +35,11 @@ function errorHandler(
   response: Response,
   _next: NextFunction,
 ) {
-  if (err instanceof SyntaxError && err["type"] === "entity.parse.failed") {
+  if (
+    err instanceof SyntaxError &&
+    "type" in err &&
+    err.type === "entity.parse.failed"
+  ) {
     err = new ClientError(err.message, HttpStatusCode.Unprocessable); // Convert invalid JSON body error to UnprocessableEntity
   }
   const session = asyncLocalStorage.getStore();
@@ -50,7 +60,7 @@ function errorHandler(
       return someResponse(
         response,
         (err as CustomError).statusCode,
-        err.message,
+        err.messages,
         {
           ...error,
           requestId,
@@ -74,13 +84,21 @@ function errorHandler(
 
 export class CustomError extends Error {
   statusCode: HttpStatusCode;
+  messages: string[] | string;
   constructor(
-    message = "Internal server error.",
+    message: string[] | string = "Internal server error.",
     statusCode: HttpStatusCode = HttpStatusCode.ServerError,
   ) {
     super();
     this.name = this.constructor.name;
-    this.message = message;
+
+    if (typeof message !== "string") {
+      this.message = message.join("; ");
+      this.messages = message;
+    } else {
+      this.message = message;
+      this.messages = [message];
+    }
     this.statusCode = statusCode;
   }
 
@@ -97,32 +115,29 @@ export class CustomError extends Error {
 
   toJson() {
     return {
-      message: this.message,
+      message: this.messages,
       errorType: this.getErrorType(),
     };
   }
 }
 
 export class ValidationError extends CustomError {
-  errors: Record<string, unknown>;
-  constructor(errors) {
-    let message;
-    if (errors.array) {
-      message = errors.array();
-    } else if (typeof errors === "object" && Array.isArray(errors)) {
-      message = errors;
+  errors: ExpressValidationError[];
+  constructor(result: ResultWithContext | AddErrorOptions) {
+    let resultWithContext: ResultWithContext;
+    if ("type" in result && result.type === "field") {
+      const context = new Context([], [], [], false, false);
+      context.addError(result);
+      resultWithContext = new ResultWithContextImpl(context);
+    } else {
+      resultWithContext = result as ResultWithContext;
     }
-    message = message
-      .filter((error) => typeof error.msg === "string")
-      .map(({ msg, location, path }) => {
-        if (location) {
-          return `${location}.${path}: ${msg}`;
-        }
-        return msg;
-      })
-      .join("; ");
-    super(message, HttpStatusCode.Unprocessable);
-    this.errors = errors;
+    const allErrors = resultWithContext.array();
+    super(
+      allErrors.map((e) => e.msg),
+      HttpStatusCode.Unprocessable,
+    );
+    this.errors = allErrors;
   }
 
   toJson() {

@@ -293,7 +293,7 @@ const _getBestGuessFromAi = (
 ): [TagName, VisitTrack[]][] => {
   return getBestGuess2(
     Object.entries(
-      tracks.reduce((acc, track) => {
+      tracks.reduce((acc: Record<string, VisitTrack[]>, track) => {
         const tag = track.aiTag;
         if (tag) {
           acc[tag] = acc[tag] || [];
@@ -470,7 +470,7 @@ function _groupRecordingsIntoVisits2(
 
 const getBestAiGuess = (allTracks: VisitTrack[]): [TagName, VisitTrack[]][] => {
   const tracks: VisitTrack[] = aiTracks(allTracks);
-  const counts: Record<string, VisitTrack[]> = tracks.reduce((acc, track) => {
+  const counts = tracks.reduce((acc: Record<string, VisitTrack[]>, track) => {
     const tag = track.tag;
     if (tag) {
       acc[tag] = acc[tag] || [];
@@ -489,7 +489,7 @@ const _getBestGuessOverall2 = (
   const tracks: VisitTrack[] = isAi
     ? aiTracks(allTracks)
     : userTracks(allTracks);
-  const counts: Record<string, VisitTrack[]> = tracks.reduce((acc, track) => {
+  const counts = tracks.reduce((acc: Record<string, VisitTrack[]>, track) => {
     const tag = track.tag;
     if (tag) {
       acc[tag] = acc[tag] || [];
@@ -550,7 +550,7 @@ const getBestUserGuess = (
   allTracks: VisitTrack[],
 ): [TagName, VisitTrack[]][] => {
   const tracks: VisitTrack[] = userTracks(allTracks);
-  const counts: Record<string, VisitTrack[]> = tracks.reduce((acc, track) => {
+  const counts = tracks.reduce((acc: Record<string, VisitTrack[]>, track) => {
     const tag = track.tag;
     if (tag) {
       acc[tag] = acc[tag] || [];
@@ -646,24 +646,27 @@ const clusterRecordings = (
   recordings: Recording[],
 ): Record<StationId, Recording[][]> => {
   // Does reduce have deterministic order?
-  return recordings.reduce((acc, recording) => {
-    acc[recording.StationId] = acc[recording.StationId] || [];
-    const prevCluster = last(acc[recording.StationId]) as Recording[];
-    const prevRecording = prevCluster && last(prevCluster);
-    // We're iterating through the recordings from newest to oldest.
-    if (
-      prevRecording &&
-      (prevRecording as Recording).recordingDateTime <
-        endTimePlusVisitOffset(recording)
-    ) {
-      // Append existing cluster if recording end is less than 10 mins before the beginning of the last one.
-      prevCluster.push(recording);
-    } else {
-      // Start a new cluster
-      acc[recording.StationId].push([recording]);
-    }
-    return acc;
-  }, {});
+  return recordings.reduce(
+    (acc: Record<StationId, Recording[][]>, recording) => {
+      acc[recording.StationId] = acc[recording.StationId] || [];
+      const prevCluster = last(acc[recording.StationId]) as Recording[];
+      const prevRecording = prevCluster && last(prevCluster);
+      // We're iterating through the recordings from newest to oldest.
+      if (
+        prevRecording &&
+        (prevRecording as Recording).recordingDateTime <
+          endTimePlusVisitOffset(recording)
+      ) {
+        // Append existing cluster if recording end is less than 10 mins before the beginning of the last one.
+        prevCluster.push(recording);
+      } else {
+        // Start a new cluster
+        acc[recording.StationId].push([recording]);
+      }
+      return acc;
+    },
+    {},
+  );
 };
 
 const getCanonicalTrackTag2 = (trackTags: TrackTag[]): TrackTag | null => {

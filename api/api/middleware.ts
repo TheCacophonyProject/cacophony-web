@@ -16,20 +16,17 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import type {
+import {
   CustomValidator,
   ValidationChain,
-  Result,
+  ContextRunner,
+  Meta,
 } from "express-validator";
-import { body, matchedData, query, validationResult } from "express-validator";
+import { body, matchedData, query } from "express-validator";
 import { ModelStaticCommon } from "@/models/index.js";
 import { format } from "util";
 import log from "../logging.js";
-import customErrors, {
-  ClientError,
-  UnprocessableError,
-  ValidationError,
-} from "./customErrors.js";
+import { ClientError, ValidationError } from "./customErrors.js";
 import type { NextFunction, Request, Response } from "express";
 import type { DecodedJWTToken } from "./auth.js";
 import levenshteinEditDistance from "levenshtein-edit-distance";
@@ -38,11 +35,22 @@ import { Recording } from "@models/Recording.js";
 import { File } from "@/models/File.js";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
 import { Model } from "sequelize";
+import {
+  ErrorMessage,
+  FieldInstance,
+  FieldMessageFactory,
+  FieldValidationError,
+  UnknownFieldInstance,
+  ValidationError as ExpressValidationError,
+} from "express-validator/lib/base.js";
+import { extractUnknownFields } from "@api/validation-middleware.js";
+import { Context } from "express-validator/lib/context.js";
+import { ResultWithContextImpl } from "express-validator/lib/chain/index.js";
 
 export const getModelByIdChain = (
   modelType: typeof ModelStaticCommon<Model>,
   fieldName: string,
-  checkFunc,
+  checkFunc: ValidationMiddleware,
 ) => {
   return checkFunc(fieldName).custom(async (val, { req }) => {
     log.info("Get id %s for %s", val, modelTypeName(modelType));
@@ -136,7 +144,7 @@ export const convertToIdArray = function (idsAsString: string): number[] {
 
 export const isDateArray = function (
   fieldName: string,
-  customError,
+  customError: FieldMessageFactory | ErrorMessage,
 ): ValidationChain {
   return body(fieldName, customError)
     .exists()
@@ -175,8 +183,6 @@ export const getRecordingByIdChain = (
   checkFunc: ValidationMiddleware,
 ): ValidationChain => getModelByIdChain(Recording, "id", checkFunc);
 
-export const getRecordingById = (): CustomValidator => getModelById(Recording);
-
 export const isValidName = function (
   checkFunc: ValidationMiddleware,
   field: string,
@@ -189,26 +195,11 @@ export const isValidName = function (
     .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/);
 };
 
-export const isValidName2 = (val) =>
-  val
-    .isLength({ min: 3 })
-    .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/)
-    .withMessage(
-      "password must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter",
-    );
-
 export const checkNewPassword = function (field: string): ValidationChain {
   return body(field, "Password must be at least 8 characters long").isLength({
     min: 8,
   });
 };
-
-export const checkNewPassword2 = (val) =>
-  val
-    .isLength({
-      min: 8,
-    })
-    .withMessage("Password must be at least 8 characters long");
 
 export const viewMode = function (): ValidationChain {
   // All api listing commands will automatically return all results if the user is a super-admin
@@ -236,7 +227,10 @@ export const parseJSON = function (
   return checkFunc(field).custom(parseJSONInternal);
 };
 
-export const parseJSONInternal = (value, { req, location, path }) => {
+export const parseJSONInternal: CustomValidator = (
+  value,
+  { req, location, path },
+) => {
   if (typeof req[location][path] === "string") {
     let result = value;
     while (typeof result === "string") {
@@ -302,145 +296,142 @@ export const parseBool = function (value: unknown): boolean {
 
 export const expectedTypeOf =
   (...type: string[]) =>
-  (val) => {
+  (val: unknown, meta: Meta) => {
     let typeOf = typeof val as string;
     if (typeOf === "object" && Array.isArray(val)) {
       typeOf = "array";
     }
     if (type.length > 1) {
-      return `expected one of ${(type as string[])
+      return `${meta.location}.${meta.path}: Expected one of ${(
+        type as string[]
+      )
         .map((t) => `'${t}'`)
         .join(", ")}, got ${typeOf}`;
     }
-    return `expected ${type[0]}, got ${typeOf} : (${val})`;
+    if (typeOf === "undefined" && val === undefined) {
+      return `${meta.location}.${meta.path}: Expected ${type[0]}, got ${typeOf}`;
+    }
+    return `${meta.location}.${meta.path}: Expected ${type[0]}, got ${typeOf} : (${val})`;
   };
 
-export const isIntArray = (val) => {
+export const isIntArray = (val: unknown) => {
   if (Array.isArray(val)) {
     return !(val as string[]).some(
       (v) => isNaN(parseInt(v)) || parseInt(v).toString() !== String(v),
     );
   }
-  return !(isNaN(parseInt(val)) || parseInt(val).toString() !== String(val));
+  return !(
+    isNaN(parseInt(val as string)) ||
+    parseInt(val as string).toString() !== String(val)
+  );
 };
 
-const checkForUnknownFields = (
-  validators,
-  req: Request,
-): { unknownFields: string[]; suggestions: Record<string, string> } => {
-  const allowedFieldsKnown = validators.reduce((fields, rule) => {
-    if (rule.fieldNames) {
-      fields.push(...rule.fieldNames);
-    } else if (rule.builder) {
-      for (const field of rule.builder.fields) {
-        fields.push(field);
-      }
-    }
-    return fields;
-  }, []);
-  const matchedAllowedFields = Object.keys(
-    matchedData(req, { onlyValidData: false, includeOptionals: true }),
-  );
-  const allowed = new Set();
-  for (const field of allowedFieldsKnown) {
-    allowed.add(field);
-  }
-  for (const field of matchedAllowedFields) {
-    allowed.add(field);
-  }
-  const allowedFields: string[] = Array.from(
-    allowed.keys(),
-  ) as unknown as string[];
-
-  // Check for all common request inputs
-  let requestInput;
-  // TODO Only process the body if the content-type is json
-  if (req.headers["content-type"] !== "application/octet-stream") {
-    requestInput = { ...req.query, ...req.params, ...req.body };
-  } else {
-    requestInput = { ...req.query, ...req.params };
-  }
-  const requestFields = Object.keys(requestInput);
-  const unusedAllowedFields = allowedFields.filter(
-    (field) => !requestFields.includes(field),
-  );
-  const unknownFields = requestFields.filter(
-    (item) => !allowedFields.includes(item),
-  );
-  const suggestions = {};
-  if (unusedAllowedFields.length && unknownFields.length) {
+const getSuggestionsForUnknownFields = (
+  unusedKnownFields: FieldInstance[],
+  unknownFields: UnknownFieldInstance[],
+) => {
+  const suggestions: Record<string, FieldInstance> = {};
+  if (unusedKnownFields.length && unknownFields.length) {
     // We have unused allowed fields, see if any of our unknown fields is potentially a typo
     // of an allowed field.
     for (const unknownField of unknownFields) {
       let bestDistance = 3;
-      for (const unusedField of unusedAllowedFields) {
+      for (const unusedField of unusedKnownFields) {
         const distance = levenshteinEditDistance(
-          unknownField,
-          unusedField,
+          unknownField.path,
+          unusedField.path,
           true,
         );
         if (distance < bestDistance) {
           bestDistance = distance;
-          suggestions[unknownField] = unusedField;
+          suggestions[unknownField.path] = unusedField;
         }
       }
     }
   }
-  return { unknownFields, suggestions };
+  return suggestions;
 };
 
-// sequential processing, stops running validations chain if the previous one have failed.
-export const validateFields = (
-  validations: (
-    | (((
-        req: Request,
-        res: Response,
-        next: (err?: unknown) => void,
-      ) => void) & {
-        run: (req: Request) => Promise<Result>;
-      })
-    | ValidationChain
-  )[],
-  sequentially = false,
-) => {
+export const validateFields = (validations: ContextRunner[]) => {
   return async (request: Request, response: Response, next: NextFunction) => {
-    if (sequentially) {
-      for (const validation of validations) {
-        const result = await validation.run(request);
-        if (!result.isEmpty()) {
-          break;
+    console.log("VALIDATE FIELDS");
+    const validationPromises = [];
+    for (const validation of validations) {
+      validationPromises.push(validation.run(request));
+    }
+    const validationResults = await Promise.all(validationPromises);
+    const knownFields = [];
+    const context = new Context([], [], [], false, false);
+    const errors: ExpressValidationError[] = [];
+    for (const { result } of validationResults.map((result, index) => ({
+      field: validations[index],
+      result,
+    }))) {
+      knownFields.push(...result.context.getData());
+      errors.push(...result.array());
+    }
+    const unknownFields = extractUnknownFields(request, knownFields);
+    if (unknownFields.length !== 0) {
+      const suggestions = getSuggestionsForUnknownFields(
+        knownFields.filter((field) => field.value === undefined),
+        unknownFields,
+      );
+      context.addError({
+        type: "unknown_fields",
+        req: request,
+        message: `Unknown fields found: ${unknownFields
+          .map((item) => {
+            let field = `'${item.location}.${item.path}'`;
+            if (suggestions[item.path]) {
+              field += ` - did you mean '${suggestions[item.path].location}.${suggestions[item.path].path}'?`;
+            }
+            return field;
+          })
+          .join(", ")}`,
+        fields: unknownFields,
+      });
+    }
+    if (errors.length) {
+      // NOTE: We want to take all the sub-resultWithContext fields and merge them into a single context.
+      for (const error of errors) {
+        switch (error.type) {
+          case "field":
+            context.addError({
+              type: "field",
+              message: error.msg,
+              value: error.value,
+              meta: {
+                req: request,
+                path: error.path,
+                location: error.location,
+                pathValues: [],
+              },
+            });
+            break;
+          case "alternative":
+            context.addError({
+              type: "alternative",
+              message: error.msg,
+              req: request,
+              nestedErrors: error.nestedErrors as FieldValidationError[],
+            });
+            break;
+          case "alternative_grouped":
+            context.addError({
+              type: "alternative_grouped",
+              message: error.msg,
+              req: request,
+              nestedErrors: error.nestedErrors as FieldValidationError[][],
+            });
+            break;
+          case "unknown_fields":
+            // Already handled
+            break;
         }
       }
-    } else {
-      // FIXME - Properly handle nested anyOf groupings.
-      const validationPromises = [];
-      for (const validation of validations) {
-        validationPromises.push(validation.run(request));
-      }
-      await Promise.all(validationPromises);
     }
-
-    const { unknownFields, suggestions } = checkForUnknownFields(
-      validations,
-      request,
-    );
-    if (unknownFields.length) {
-      return next(
-        new UnprocessableError(
-          `Unknown fields found: ${unknownFields
-            .map((item) => {
-              let field = `'${item}'`;
-              if (suggestions[item]) {
-                field += ` - did you mean '${suggestions[item]}'?`;
-              }
-              return field;
-            })
-            .join(", ")}`,
-        ),
-      );
-    }
-
     {
+      // Logging - should this really go here?
       const safeUrl = request.url.replaceAll("{", "%7B").replaceAll("}", "%7D");
       const logMessage = format("%s %s", request.method, safeUrl);
       const requester =
@@ -464,25 +455,21 @@ export const validateFields = (
       } else {
         log.info("\n\t\t NEW REQUEST\n\t\t %s", logMessage);
       }
-      const validationErrors = validationResult(request);
-      if (!validationErrors.isEmpty()) {
-        return next(new ValidationError(validationErrors));
-      } else {
-        return next();
-      }
+    }
+    if (context.errors.length === 0) {
+      return next();
+    } else {
+      return next(new ValidationError(new ResultWithContextImpl(context)));
     }
   };
 };
 
 export default {
-  getUserById,
   getDetailSnapshotById,
   getFileById,
   getRecordingById: getRecordingByIdChain,
   isValidName,
-  isValidName2,
   checkNewPassword,
-  checkNewPassword2,
   parseJSON,
   parseArray,
   parseBool,

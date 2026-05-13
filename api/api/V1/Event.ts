@@ -35,9 +35,9 @@ import EventDescriptionSchema from "@schemas/api/event/EventDescription.schema.j
 import type { EventDescription, JsonDocument } from "@typedefs/api/event.js";
 import logger from "@log";
 import {
-  anyOf,
   booleanOf,
   deprecatedField,
+  exactlyOneOf,
   idOf,
   integerOf,
 } from "../validation-middleware.js";
@@ -74,42 +74,53 @@ const uploadEvent = async (
   let env = "unknown";
   if (!detailsId) {
     const description: EventDescription = request.body.description;
-
-    let details: Sequelize.WhereOptions | JsonDocument =
-      description.details || {};
-    if (typeof description.details === "string") {
-      try {
-        details = JSON.parse(description.details as string);
-      } catch (e) {
-        //
-        logger.error(
-          "Failed to parse JSON %s: %s",
-          e,
-          typeof description.details,
-        );
+    let resolvedDetails: Record<string, JsonDocument>;
+    {
+      let details: JsonDocument = description.details || {};
+      if (typeof description.details === "string") {
+        try {
+          details = JSON.parse(description.details as string);
+        } catch (e) {
+          //
+          logger.error(
+            "Failed to parse JSON %s: %s",
+            e,
+            typeof description.details,
+          );
+        }
       }
+      resolvedDetails = details as Record<string, JsonDocument>;
     }
 
-    env = details["env"] || "unknown";
+    env = (resolvedDetails["env"] as string) || "unknown";
     if (!["tc2-dev", "tc2-test", "tc2-prod", "unknown"].includes(env)) {
       env = "unknown";
     }
-    delete details["env"];
+    delete resolvedDetails["env"];
     const detail = await DetailSnapshot.getOrCreateMatching(
       description.type,
-      details,
+      resolvedDetails,
     );
     detailsId = detail.id;
 
     // Maybe update the device history entry on config change if location has updated.
     if (description.type === "config") {
+      interface ConfigEvent {
+        location?: {
+          latitude: number;
+          longitude: number;
+          updated: IsoFormattedDateString;
+        };
+      }
+      const configEventDetails = resolvedDetails as unknown as ConfigEvent;
+
       if (
-        details["location"] &&
-        details["location"].latitude !== undefined &&
-        details["location"].longitude !== undefined
+        configEventDetails.location &&
+        configEventDetails.location.latitude !== undefined &&
+        configEventDetails.location.longitude !== undefined
       ) {
-        const lat = details["location"].latitude;
-        const lng = details["location"].longitude;
+        const lat = configEventDetails.location.latitude;
+        const lng = configEventDetails.location.longitude;
         // Pre-validate to avoid server-side crashes on invalid inputs
         if (!isLatLon({ lat, lng }, false)) {
           return next(
@@ -122,7 +133,7 @@ const uploadEvent = async (
           const result = await maybeUpdateDeviceHistory(
             device,
             { lat, lng },
-            new Date(details["location"].updated),
+            new Date(configEventDetails.location.updated),
             "config",
           );
           if (typeof result === "string") {
@@ -130,17 +141,20 @@ const uploadEvent = async (
               new ClientError(`Failed to update device history: ${result}`),
             );
           }
-        } catch (e) {
-          const message = e?.message || "unknown error";
-          if (
-            e?.name === "SequelizeValidationError" ||
-            message.includes("Location is not valid")
-          ) {
-            return next(
-              new UnprocessableError(
-                `Invalid location '{"lat":${lat},"lng":${lng}}'`,
-              ),
-            );
+        } catch (e: unknown) {
+          const message = "unknown error";
+          if (e) {
+            const message = (e as Error).message;
+            if (
+              (e as Error).name === "SequelizeValidationError" ||
+              message.includes("Location is not valid")
+            ) {
+              return next(
+                new UnprocessableError(
+                  `Invalid location '{"lat":${lat},"lng":${lng}}'`,
+                ),
+              );
+            }
           }
           return next(
             new ClientError(`Failed to update device history: ${message}`),
@@ -178,10 +192,12 @@ const uploadEvent = async (
         eventList.slice(i, Math.min(i + 100, eventList.length)),
       );
     }
-  } catch (exception) {
-    return next(
-      new ClientError(`Failed to record events. ${exception.message}`),
-    );
+  } catch (e: unknown) {
+    let message = "unknown error";
+    if (e) {
+      message = (e as Error).message;
+    }
+    return next(new ClientError(`Failed to record events. ${message}`));
   }
   return successResponse(response, "Added events.", {
     eventsAdded: count,
@@ -198,7 +214,7 @@ export interface ApiEventsRequestBody {
 
 const commonEventFields = [
   deprecatedField(body("Timestamp")),
-  anyOf(
+  exactlyOneOf(
     idOf(body("eventDetailId")),
     body("description")
       .exists()
@@ -282,6 +298,9 @@ export default function (app: Application, baseUrl: string) {
    * @apiSuccess {String} success
    * @apiUse V1ResponseError
    */
+
+  /*
+  // FIXME: re-enable when we have some tests
   app.post(
     `${apiUrl}/thumbnail`,
     extractJwtAuthorisedDevice,
@@ -328,6 +347,7 @@ export default function (app: Application, baseUrl: string) {
       },
     ),
   );
+   */
 
   /**
    * @api {get} /api/v1/events/:id/thumbnail Return an event thumbnail given an event id.
@@ -491,20 +511,27 @@ export default function (app: Application, baseUrl: string) {
         query.endTime as string,
         Number(query.deviceId),
         offset,
-        query.limit as unknown as number,
+        query.limit as unknown as number | undefined,
         query.latest as unknown as boolean,
         query.type as unknown as string,
         includeCount,
       );
-      const payload = {
-        limit: query.limit,
+      const payload: {
+        limit?: number;
+        offset: number;
+        rows: Event[];
+        count?: number;
+      } = {
         offset,
         rows: includeCount
           ? (result as { rows: Event[]; count: number }).rows
-          : result,
+          : (result as Event[]),
       };
+      if (query.limit) {
+        payload.limit = Number(query.limit);
+      }
       if (includeCount) {
-        payload["count"] = (result as { rows: Event[]; count: number }).count;
+        payload.count = (result as { rows: Event[]; count: number }).count;
       }
       return successResponse(response, "Completed query.", payload);
     },

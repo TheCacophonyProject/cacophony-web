@@ -23,12 +23,12 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
     gender: {
       type: DataTypes.ENUM("male", "female"),
       allowNull: true,
-      defaultValue: null,
+      defaultValue: null as "male" | "female" | null,
     },
     maturity: {
       type: DataTypes.ENUM("juvenile", "adult"),
       allowNull: true,
-      defaultValue: null,
+      defaultValue: null as "juvenile" | "adult" | null,
     },
     createdAt: {
       type: DataTypes.DATE,

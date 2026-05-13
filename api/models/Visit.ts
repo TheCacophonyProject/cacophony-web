@@ -32,6 +32,7 @@ import { Recording } from "@models/Recording.js";
 import { RecordingType } from "@typedefs/api/consts.js";
 import { TrackTag } from "@models/TrackTag.js";
 import { Track } from "@models/Track.js";
+import { DeletedRecording } from "@api/V1/recordingUtil.js";
 
 export type VisitId = number;
 
@@ -129,7 +130,7 @@ export class Visit extends ModelStaticCommon<Visit> {
   // -----------------------
 
   static async rebuildForRecording(
-    recording: Recording,
+    recording: Recording | DeletedRecording,
     transaction?: Transaction,
   ): Promise<void> {
     return;
@@ -217,7 +218,9 @@ export class Visit extends ModelStaticCommon<Visit> {
     );
   }
 
-  private static recordingEndTime(recording: Recording): Date {
+  private static recordingEndTime(
+    recording: Recording | DeletedRecording,
+  ): Date {
     const end = new Date(recording.recordingDateTime);
     end.setTime(end.getTime() + recording.duration * 1000);
     return end;
@@ -556,7 +559,7 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
     recordingIds: {
       type: DataTypes.JSONB,
       allowNull: false,
-      defaultValue: [],
+      defaultValue: [] as RecordingId[],
     },
     createdAt: {
       type: DataTypes.DATE,

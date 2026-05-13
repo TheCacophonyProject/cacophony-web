@@ -14,8 +14,10 @@
 // load the global Cypress types
 /// <reference types="cypress" />
 
-// eslint-disable-next-line no-unused-vars
-module.exports = (on, config) => {
+import PluginEvents = Cypress.PluginEvents;
+import PluginConfigOptions = Cypress.PluginConfigOptions;
+
+export default (on: PluginEvents, config: PluginConfigOptions) => {
   // on('after:spec', (spec) => {
   //   const path = spec.relative + '.md';
   //   cy.writeFile(path, 'helloworld');

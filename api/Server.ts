@@ -30,7 +30,6 @@ import type { UserId } from "@typedefs/api/common.js";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 import { User } from "@models/User.js";
 import os from "os";
-import { type DecodedJWTToken, getVerifiedJWT } from "@api/auth.js";
 import jwt, { type JwtPayload } from "jsonwebtoken";
 
 const asyncExec = promisify(exec);
@@ -57,7 +56,7 @@ const loadCacophonyWebVersion = async (): Promise<void> => {
   }
 };
 
-const openHttpServer = (app): Promise<void> => {
+const openHttpServer = (app: Application): Promise<void> => {
   return new Promise((resolve, reject) => {
     if (!config.server.http.active) {
       resolve();
@@ -322,7 +321,7 @@ const grafanaLabelRestart = async () => {
           dbQueryCount
             ? `${dbQueryCount} DB queries taking ${dbQueryTime}ms `
             : ""
-        }[${response["responseTime"] || 0}ms total response time${
+        }[${(response as { responseTime?: number }).responseTime || 0}ms total response time${
           wasRateLimited ? ", was rate limited" : ""
         }]`;
       },

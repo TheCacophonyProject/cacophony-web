@@ -176,6 +176,7 @@ declare global {
           useRawRecordingId?: boolean;
           useRawTrackId?: boolean;
           message?: string;
+          errors?: { location: string; path: string }[];
         },
       ): Chainable<void>;
 

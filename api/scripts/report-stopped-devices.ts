@@ -31,7 +31,7 @@ type GroupUserDevices = Record<
 >;
 
 const getUserEvents = async (devices: Device[]): Promise<GroupUserDevices> => {
-  const recipientUsers = {};
+  const recipientUsers: Record<GroupId, User[]> = {};
   for (const device of devices) {
     if (!Object.prototype.hasOwnProperty.call(recipientUsers, device.GroupId)) {
       recipientUsers[device.GroupId] = await device.Group.getUsers({
@@ -56,7 +56,7 @@ const getUserEvents = async (devices: Device[]): Promise<GroupUserDevices> => {
       } as BelongsToManyGetAssociationsMixinOptions);
     }
   }
-  const groupUserDevices = {};
+  const groupUserDevices: GroupUserDevices = {};
   for (const device of devices) {
     groupUserDevices[device.GroupId] = groupUserDevices[device.GroupId] || {
       stoppedDevices: [],
@@ -133,8 +133,12 @@ async function main() {
   }
   try {
     await Event.bulkCreate(eventList);
-  } catch (exception) {
-    log.error("Failed to record stop-reported events. %s", exception.message);
+  } catch (exception: unknown) {
+    let message = "unknown error";
+    if (exception instanceof Error) {
+      message = exception.message;
+    }
+    log.error("Failed to record stop-reported events. %s", message);
   }
 }
 

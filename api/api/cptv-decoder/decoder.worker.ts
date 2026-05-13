@@ -155,8 +155,10 @@ class CptvDecoderInterface {
       );
       this.inited = true;
       result = true;
-    } catch (e) {
-      this.streamError = e;
+    } catch (e: unknown) {
+      if (typeof e === "string") {
+        this.streamError = e;
+      }
       result = `Failed to load CPTV file, ${e}`;
     }
     unlocker.unlock();
@@ -192,8 +194,10 @@ class CptvDecoderInterface {
       );
       this.inited = true;
       result = true;
-    } catch (e) {
-      this.streamError = e;
+    } catch (e: unknown) {
+      if (typeof e === "string") {
+        this.streamError = e;
+      }
       result = `Failed to load CPTV file, ${e}`;
     }
     unlocker.unlock();

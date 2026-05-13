@@ -67,8 +67,11 @@ echo "---- Compiling JSON schemas ----"
 cd /app/types
 npm run generate-schemas
 cd /app/api
-
+echo "---- Install tsgo"
+npm install -D @typescript/native-preview@beta
 echo "---- Compiling typescript and starting module ----"
-./node_modules/.bin/tsc
+./node_modules/.bin/tsgo
 chmod a+x ./node_modules/.bin/tsc-watch
-./node_modules/.bin/tsc-watch --noClear --onSuccess "node --loader esm-module-alias/loader --no-warnings --disable-warning=ExperimentalWarning --inspect=0.0.0.0:9229 ./Server.js --config=$CONFIG"
+chmod a+x ./node_modules/.bin/tsgo
+node -v
+./node_modules/.bin/tsc-watch --compileCommand ./node_modules/.bin/tsgo --noClear --onSuccess "node --enable-source-maps --loader esm-module-alias/loader --no-warnings --disable-warning=ExperimentalWarning --inspect=0.0.0.0:9229 ./Server.js --config=$CONFIG"

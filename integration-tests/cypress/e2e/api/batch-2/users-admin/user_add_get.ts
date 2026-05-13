@@ -173,7 +173,8 @@ describe("User: add, get", () => {
       undefined,
       HttpStatusCode.Unprocessable,
       {
-        message: "body.email: Invalid value",
+        message: "body.email: Expected email address, got ''",
+        errors: [{ location: "body", path: "email" }],
       },
     );
     cy.log("leading space");
@@ -183,7 +184,11 @@ describe("User: add, get", () => {
       " startwithspace@email.com",
       undefined,
       HttpStatusCode.Unprocessable,
-      { message: "body.email: Invalid value" },
+      {
+        message:
+          "body.email: Expected email address, got ' startwithspace@email.com'",
+        errors: [{ location: "body", path: "email" }],
+      },
     );
     cy.apiUserAdd(
       "uagUser8-1",
@@ -191,7 +196,7 @@ describe("User: add, get", () => {
       "noatinemail",
       undefined,
       HttpStatusCode.Unprocessable,
-      { message: "body.email: Invalid value" },
+      { message: "body.email: Expected email address, got 'noatinemail'" },
     );
     cy.log("Email with no user");
     cy.apiUserAdd(
@@ -200,7 +205,7 @@ describe("User: add, get", () => {
       "user@",
       undefined,
       HttpStatusCode.Unprocessable,
-      { message: "body.email: Invalid value" },
+      { message: "body.email: Expected email address, got 'user@'" },
     );
     cy.log("Email with no domain");
     cy.apiUserAdd(
@@ -209,7 +214,7 @@ describe("User: add, get", () => {
       "@email.com",
       undefined,
       HttpStatusCode.Unprocessable,
-      { message: "body.email: Invalid value" },
+      { message: "body.email: Expected email address, got '@email.com'" },
     );
   });
 
@@ -223,7 +228,8 @@ describe("User: add, get", () => {
       HttpStatusCode.Unprocessable,
       {
         useRawUserName: true,
-        message: "'userName' is required",
+        message:
+          "body.userName: Expected string of minimum length 3, got length of 0.|body.userName: Must only contain letters, numbers, dash, underscore and space. Must contain at least one letter.",
       },
     );
     cy.apiUserAdd(

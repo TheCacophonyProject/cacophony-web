@@ -45,9 +45,11 @@ import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationDat
 import ApiGroupSettingsSchema from "@schemas/api/group/ApiGroupSettings.schema.json" with { type: "json" };
 import ApiGroupUserSettingsSchema from "@schemas/api/group/ApiGroupUserSettings.schema.json" with { type: "json" };
 import {
-  anyOf,
+  atMostOneOf,
   booleanOf,
   deprecatedField,
+  emailOf,
+  exactlyOneOf,
   idOf,
   nameOf,
   nameOrIdOf,
@@ -241,7 +243,10 @@ export default function (app: Application, baseUrl: string) {
     apiUrl,
     extractJwtAuthorizedUser,
     validateFields([
-      anyOf(validNameOf(body("groupname")), validNameOf(body("groupName"))),
+      exactlyOneOf(
+        validNameOf(body("groupname")),
+        validNameOf(body("groupName")),
+      ),
     ]),
     fetchUnauthorizedOptionalGroupByNameOrId(body(["groupname", "groupName"])),
     async (request: Request, response: Response, next: NextFunction) => {
@@ -432,8 +437,8 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       query("view-mode").optional().equals("user"),
       nameOrIdOf(param("groupIdOrName")),
-      anyOf(
-        query("onlyActive").optional().isBoolean().toBoolean(),
+      atMostOneOf(
+        deprecatedField(query("onlyActive").optional().isBoolean().toBoolean()),
         query("only-active").optional().isBoolean().toBoolean(),
       ),
     ]),
@@ -473,7 +478,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     async (_request: Request, response: Response) => {
-      const users = await response.locals.group.getUsers({
+      const users: User[] = await response.locals.group.getUsers({
         attributes: ["id", "userName"],
         through: { where: { removedAt: { [Op.eq]: null } } },
       });
@@ -550,7 +555,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiBody {String} email Email address of the user to add to the group.
    * @apiBody {Boolean} admin If the user should be an admin for the group.
    * @apiBody {Boolean} [owner] If the user should be marked as a group owner.
-   *
+   *a
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
@@ -558,8 +563,8 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/users`,
     extractJwtAuthorizedUser,
     validateFields([
-      anyOf(nameOf(body("group")), idOf(body("groupId"))),
-      anyOf(body("email").isEmail(), idOf(body("userId"))),
+      exactlyOneOf(nameOf(body("group")), idOf(body("groupId"))),
+      exactlyOneOf(emailOf(body("email")), idOf(body("userId"))),
       booleanOf(body("admin")).optional().default(false),
       booleanOf(body("owner")).optional().default(false),
     ]),
@@ -693,8 +698,8 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/users`,
     extractJwtAuthorizedUser,
     validateFields([
-      anyOf(nameOf(body("group")), idOf(body("groupId"))),
-      anyOf(body("email").isEmail(), idOf(body("userId"))),
+      exactlyOneOf(nameOf(body("group")), idOf(body("groupId"))),
+      exactlyOneOf(emailOf(body("email")), idOf(body("userId"))),
     ]),
     // Extract required resources to check permissions
     fetchAdminAuthorizedRequiredGroupByNameOrId(body(["group", "groupId"])),
@@ -1269,7 +1274,7 @@ export default function (app: Application, baseUrl: string) {
       extractJwtAuthorizedUser,
       validateFields([
         nameOrIdOf(param("groupIdOrName")),
-        body("email").exists(),
+        emailOf(body("email")).exists(),
         booleanOf(body("admin")).default(false),
         booleanOf(body("owner")).default(false),
       ]),
@@ -1322,7 +1327,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       nameOrIdOf(param("groupIdOrName")),
-      body("email").exists(),
+      emailOf(body("email")).exists(),
       booleanOf(body("admin")).default(false),
       booleanOf(body("owner")).default(false),
     ]),

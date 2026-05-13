@@ -174,7 +174,7 @@ const mergeEmbeddedDataWithSuppliedRecordingData = (
   return mergedData;
 };
 
-const uploadStream = (
+export const uploadStream = (
   key: string,
   readableWebStream: WebReadableStream,
   fileName?: string,
@@ -197,9 +197,13 @@ const validateDataPart = async (
     for await (const { stream } of files) {
       await stream.resume();
     }
-    throw new UnprocessableError(`Could not validate data part: ${data}`);
+    throw new UnprocessableError(
+      `Could not validate data part: ${JSON.stringify(data)}`,
+    );
   }
-  const dataObj = data as RecordingUploadSuppliedData;
+  const dataObj = data as RecordingUploadSuppliedData & {
+    duplicate?: Recording;
+  };
   if ("recordingDateTime" in dataObj) {
     if (isNaN(Date.parse((dataObj.recordingDateTime || "").toString()))) {
       for await (const { stream } of files) {
@@ -242,10 +246,7 @@ const validateDataPart = async (
       for await (const { stream } of files) {
         await stream.resume();
       }
-      throw new ClientError(
-        `Duplicate recording found for device: ${existingRecordingWithHashForDevice.DeviceId}, (recording #${existingRecordingWithHashForDevice.id})`,
-        HttpStatusCode.Ok,
-      );
+      dataObj.duplicate = existingRecordingWithHashForDevice;
     }
   }
   return dataObj;
@@ -575,7 +576,7 @@ export const uploadGenericRecording =
       "YYYY/MM/DD/",
     )}${uuidv4()}`;
     let uploadResult: RecordingFileUploadResult;
-    let recordingData: RecordingUploadSuppliedData;
+    let recordingData: RecordingUploadSuppliedData & { duplicate?: Recording };
     try {
       const { fields, files } = await parseFormData(request, {
         maxTotalFileFieldCount: Infinity,
@@ -589,6 +590,18 @@ export const uploadGenericRecording =
           recordingDeviceId,
           files,
         );
+        if (recordingData.duplicate) {
+          log.warning(
+            `Duplicate recording found for device: ${recordingData.duplicate.DeviceId} (#${recordingData.duplicate.id})`,
+          );
+          return successResponse(
+            response,
+            `Duplicate recording found for device: ${recordingData.duplicate.DeviceId}`,
+            {
+              recordingId: recordingData.duplicate.id,
+            },
+          );
+        }
       }
 
       for await (const {
@@ -692,20 +705,17 @@ export const uploadGenericRecording =
       });
       if (duplicateRecording) {
         // A file hash wasn't supplied (maybe because this was a Sidekick upload with the FormData fields out of order)
-
         // In this case,
-
         await deleteUpload(uploadResult.objectStorageKey);
         log.warning(
-          "Recording with hash %s for device %s already exists, discarding duplicate",
-          uploadResult.sha1Hash,
-          recordingDeviceId,
+          `Duplicate recording found for device: ${recordingData.duplicate.DeviceId} (#${recordingData.duplicate.id})`,
         );
-        return next(
-          new ClientError(
-            `Duplicate recording found for device: ${duplicateRecording.DeviceId}, (recording #${duplicateRecording.id})`,
-            HttpStatusCode.Ok,
-          ),
+        return successResponse(
+          response,
+          `Duplicate recording found for device: ${duplicateRecording.DeviceId}`,
+          {
+            recordingId: duplicateRecording.id,
+          },
         );
       }
     }
@@ -881,7 +891,7 @@ export const uploadGenericRecording =
     }
   };
 
-const deleteUpload = async (objectStorageKey: string) => {
+export const deleteUpload = async (objectStorageKey: string) => {
   return openS3()
     .deleteObject(objectStorageKey)
     .catch((err) => {

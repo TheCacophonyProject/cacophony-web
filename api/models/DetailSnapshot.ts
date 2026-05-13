@@ -27,13 +27,14 @@ export type DetailSnapshotId = number;
 export class DetailSnapshot extends ModelStaticCommon<DetailSnapshot> {
   declare id: CreationOptional<DetailSnapshotId>;
   declare type: string;
-  declare details: JsonDocument & {
-    unitName?: string;
-    logs?: string[];
-    nodegroup?: string;
-    fileId?: number;
-    volume?: number; // audiobait
-  };
+  declare details: JsonDocument; // FIXME: SaltUpdateEventDetail etc
+  // & {
+  //   unitName?: string;
+  //   logs?: string[];
+  //   nodegroup?: string;
+  //   fileId?: number;
+  //   volume?: number; // audiobait
+  // };
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -62,7 +63,7 @@ export class DetailSnapshot extends ModelStaticCommon<DetailSnapshot> {
       details: searchDetails,
     });
   };
-  static apiSettableFields = [];
+  static apiSettableFields: string[] = [];
   static addAssociations() {
     this.hasMany(Event, {
       foreignKey: "EventDetailId",

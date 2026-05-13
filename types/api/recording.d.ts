@@ -43,18 +43,25 @@ export interface ApiThermalRecordingMetadataResponse extends Record<
   previewSecs?: Seconds;
   totalFrames?: number;
   algorithm?: number;
-  thumbnailRegion?: {
+  thumbnail_region?: {
     x: number;
     y: number;
     width: number;
     height: number;
-    frameNumber: number;
+    frame_number: number;
+    mass?: number;
+    blank?: boolean;
+    pixel_variance?: number;
+    in_trap?: boolean;
   };
   metadataSource?: string;
   status?: "test" | "startup" | "shutdown";
 }
 
-export interface ApiAudioRecordingMetadataResponse {
+export interface ApiAudioRecordingMetadataResponse extends Record<
+  string,
+  unknown
+> {
   analysis?: {
     speech_detection?: boolean;
     speech_detection_version?: string;

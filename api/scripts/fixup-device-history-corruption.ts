@@ -3,9 +3,13 @@ import { initSequelize } from "@models/index.js";
 import { Op } from "sequelize";
 import type { ApiDeviceHistorySettings } from "@typedefs/api/device.js";
 import { DeviceHistory } from "@models/DeviceHistory.js";
+import { DeviceId, GroupId } from "@typedefs/api/common.js";
 const sequelize = await initSequelize();
+
+// NOTE: Not sure if we'd ever want to run this in its current form - delete?
+
 (async () => {
-  const results = await sequelize.query(`
+  const results = (await sequelize.query(`
     select distinct on
       (dh."uuid") dh."DeviceId",
       dh."GroupId",
@@ -20,12 +24,18 @@ const sequelize = await initSequelize();
     order by
       dh."uuid" ,
       dh."fromDateTime" desc
-  `);
+  `)) as unknown as [
+    {
+      DeviceId: DeviceId;
+      GroupId: GroupId;
+    }[],
+    unknown,
+  ];
   for (const item of results[0]) {
     const allEntries = await DeviceHistory.findAll({
       where: {
-        DeviceId: item["DeviceId"],
-        GroupId: item["GroupId"],
+        DeviceId: item.DeviceId,
+        GroupId: item.GroupId,
         settings: { [Op.ne]: null },
       },
       order: [["fromDateTime", "asc"]],
@@ -87,8 +97,8 @@ const sequelize = await initSequelize();
       prevEntry = entry;
     }
     await DeviceHistory.updateDeviceSettings(
-      item["DeviceId"],
-      item["GroupId"],
+      item.DeviceId,
+      item.GroupId,
       settings,
       "user",
     );

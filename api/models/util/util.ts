@@ -34,13 +34,13 @@ import {
 import { Upload } from "@aws-sdk/lib-storage";
 import config from "@config";
 import type { LatLng } from "@typedefs/api/common.js";
-import { DataTypes } from "sequelize";
+import { DataTypes, Model } from "sequelize";
 import { canonicalLatLng } from "@models/util/locationUtils.js";
 import { isLatLon } from "@models/util/validation.js";
 import { NodeHttpHandler } from "@aws-sdk/node-http-handler";
 import * as https from "node:https";
 
-const providers = {
+const providers: Record<string, S3Client | null> = {
   s3Local: null,
   s3Archive: null,
 };
@@ -215,14 +215,16 @@ export async function deleteFile(fileKey: string) {
   return s3.deleteObject(fileKey);
 }
 
+type PossibleLocationInput =
+  | { coordinates: [number, number] }
+  | [number, number]
+  | LatLng
+  | string
+  | undefined
+  | null;
+
 export const geometrySetter = (
-  val:
-    | { coordinates: [number, number] }
-    | [number, number]
-    | LatLng
-    | string
-    | undefined
-    | null,
+  val: PossibleLocationInput,
 ): { type: "Point"; coordinates: [number, number] } | null | string => {
   if (val === undefined || val === null || typeof val === "string") {
     if (typeof val === "string" && val.includes("case")) {
@@ -242,11 +244,11 @@ export const geometrySetter = (
 export function locationField(fieldName = "location") {
   return {
     type: DataTypes.GEOMETRY,
-    set(value) {
-      this.setDataValue(fieldName, geometrySetter(value));
+    set(value: PossibleLocationInput) {
+      (this as unknown as Model).setDataValue(fieldName, geometrySetter(value));
     },
-    get() {
-      const location = this.getDataValue(fieldName);
+    get(): LatLng | null {
+      const location = (this as unknown as Model).getDataValue(fieldName);
       if (location) {
         return canonicalLatLng(location);
       }

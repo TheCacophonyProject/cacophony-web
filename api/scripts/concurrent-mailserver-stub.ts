@@ -49,7 +49,7 @@ const checkOnlyInstanceOfScriptRunning = async () => {
       const {
         email: { headers, body, html },
         id,
-      } = await mailServer.captureOne(request.query.address, {
+      } = await mailServer.captureOne(request.query.address as string, {
         wait: 5000,
       });
       await mailServer.remove(id);

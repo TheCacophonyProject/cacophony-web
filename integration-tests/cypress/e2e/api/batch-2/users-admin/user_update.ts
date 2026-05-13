@@ -265,11 +265,12 @@ describe("User: update", () => {
     });
   });
 
-  it("Invalid passwords rejected", () => {
-    cy.apiUserAdd("uupUser8").then(() => {
+  it.only("Invalid passwords rejected", () => {
+    cy.apiUserAdd("uupUser8").then((user) => {
+      cy.log("Added user", user);
       cy.log("Blank password");
       cy.apiUserUpdate(
-        "uupUser7",
+        "uupUser8",
         { password: "" },
         HttpStatusCode.Unprocessable,
         {
@@ -278,7 +279,7 @@ describe("User: update", () => {
       );
       cy.log("Short password");
       cy.apiUserUpdate(
-        "uupUser7",
+        "uupUser8",
         { password: "1234567" },
         HttpStatusCode.Unprocessable,
         { useRawUserName: true },

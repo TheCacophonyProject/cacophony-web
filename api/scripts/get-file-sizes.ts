@@ -7,11 +7,10 @@ import pg from "pg";
 import process from "process";
 import log from "../logging.js";
 import { loadConfig } from "@config";
+import { DatabaseConfig } from "@typedefs/api/serverConfig.js";
 const exec = util.promisify(cp_exec);
-let Config;
 
-const pgConnect = async (): Promise<pg.Client> => {
-  const dbconf = Config.database;
+const pgConnect = async (dbconf: DatabaseConfig): Promise<pg.Client> => {
   const client = new pg.Client({
     host: dbconf.host,
     port: dbconf.port,
@@ -57,7 +56,7 @@ const checkOnlyInstanceOfScriptRunning = async () => {
     .parse(process.argv);
   const options = program.opts();
 
-  Config = {
+  const Config = {
     ...config.default,
     ...(await loadConfig(options.config)),
   };
@@ -76,7 +75,7 @@ const checkOnlyInstanceOfScriptRunning = async () => {
     process.exit(0);
   }
 
-  const client = await pgConnect();
+  const client = await pgConnect(Config.database);
   const s3 = openS3();
   let run = true;
   while (run) {

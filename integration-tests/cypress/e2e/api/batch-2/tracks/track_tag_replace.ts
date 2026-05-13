@@ -1077,7 +1077,10 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTag13",
       tagB,
       HttpStatusCode.Unprocessable,
-      { message: "body.confidence:" },
+      {
+        message: "Invalid value",
+        errors: [{ path: "confidence", location: "body" }],
+      },
     );
 
     cy.log("Missing 'automatic'");
@@ -1090,7 +1093,10 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTag13",
       tagC,
       HttpStatusCode.Unprocessable,
-      { message: "body.automatic:" },
+      {
+        message: "Invalid value",
+        errors: [{ path: "automatic", location: "body" }],
+      },
     );
 
     cy.log("Invalid confidence");
@@ -1103,7 +1109,10 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTag13",
       tagD,
       HttpStatusCode.Unprocessable,
-      { message: "body.confidence:" },
+      {
+        message: "Invalid value",
+        errors: [{ path: "confidence", location: "body" }],
+      },
     );
 
     cy.log("Invalid automatic");
@@ -1116,7 +1125,10 @@ describe("Track Tags: replaceTag, check, delete", () => {
       "ttgTag13",
       tagE,
       HttpStatusCode.Unprocessable,
-      { message: "body.automatic:" },
+      {
+        message: "Invalid value",
+        errors: [{ path: "automatic", location: "body" }],
+      },
     );
   });
 });

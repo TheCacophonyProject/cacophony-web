@@ -1,7 +1,7 @@
 import { createProjectWithUserAndDevice } from "@/helpers/create-test-entities";
 import { uploadThermalRecordingFromDeviceForProject } from "@/helpers/recording-uploads";
 import { ImageMimeTypes } from "@shared/api/device";
-
+//TODO
 describe.skip("DeviceHistory settings", () => {
   it.only("DeviceHistory settings should get synced with devices", async () => {
     const project = await createProjectWithUserAndDevice();

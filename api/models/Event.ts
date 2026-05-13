@@ -68,17 +68,22 @@ export class Event extends ModelStaticCommon<Event> {
     eventType?: string,
     includeCount?: boolean,
   ): Promise<Event[] | { rows: Event[]; count: number }> {
-    const where: Sequelize.WhereOptions = {};
+    const where: Sequelize.WhereOptions<Event> = {};
     offset = offset || 0;
     limit = limit || 100;
 
     if (startTime || endTime) {
-      const dateTime = {};
+      let dateTime = {};
       if (startTime) {
-        dateTime[Op.gte] = startTime;
+        dateTime = {
+          [Op.gte]: startTime,
+        };
       }
       if (endTime) {
-        dateTime[Op.lt] = endTime;
+        dateTime = {
+          ...(dateTime || {}),
+          [Op.lt]: endTime,
+        };
       }
       where.dateTime = dateTime;
     }

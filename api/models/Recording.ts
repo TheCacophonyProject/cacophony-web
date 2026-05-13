@@ -18,10 +18,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import mime from "mime";
 import moment from "moment-timezone";
 import Sequelize, {
+  Attributes,
   BelongsTo,
   CreationOptional,
   DataTypes,
   FindAttributeOptions,
+  FindOptions,
   ForeignKey,
   HasMany,
   HasManyCreateAssociationMixin,
@@ -29,6 +31,7 @@ import Sequelize, {
   NonAttribute,
   Order,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 import config from "../config.js";
@@ -63,17 +66,17 @@ import type {
   CacophonyIndex,
 } from "@typedefs/api/recording.js";
 import labelPath from "../classifications/label_paths.json" with { type: "json" };
-import { DetailSnapshotId } from "@models/DetailSnapshot.js";
 import { locationField } from "@models/util/util.js";
 import type { ApiTrackPosition } from "@typedefs/api/track.js";
 import { User } from "@models/User.js";
+import { MinimalTrackRequestData } from "@typedefs/api/fileProcessing.js";
 
 const maxQueryResults = 10000;
 class RecordingQueryBuilder {
   constructor() {
     return;
   }
-  query: Sequelize.FindOptions;
+  query: Sequelize.FindOptions<Recording>;
   init(userId: UserId, options: RecordingQueryOptions) {
     const {
       tagMode,
@@ -107,7 +110,7 @@ class RecordingQueryBuilder {
         RecordingQueryBuilder.handleTagMode(tagMode, tags, exclusive),
       ),
     ];
-    const noArchived = { archivedAt: null };
+    const noArchived = { archivedAt: null } as WhereOptions<Track | TrackTag>;
     const onlyMasterModel = options.filterModel
       ? {
           used: true,
@@ -132,7 +135,7 @@ class RecordingQueryBuilder {
       : [
           {
             model: User,
-            attributes: [],
+            attributes: [] as FindAttributeOptions,
             required: true,
             where: { id: userId },
             ...(options.checkIsGroupAdmin && {
@@ -210,19 +213,19 @@ class RecordingQueryBuilder {
       limit,
       offset,
       attributes: Recording.queryGetAttributes,
-    };
+    } as Sequelize.FindOptions;
 
     if (!includeAttributes) {
-      const recursiveDelete = (obj: object) => {
+      const recursiveDelete = (obj: Record<string, unknown>) => {
         for (const key in obj) {
           if (key === "attributes") {
             delete obj[key];
           } else if (typeof obj[key] === "object") {
-            recursiveDelete(obj[key]);
+            recursiveDelete(obj[key] as Record<string, unknown>);
           }
         }
       };
-      recursiveDelete(this.query);
+      recursiveDelete(this.query as Record<string, unknown>);
     }
     return this;
   }
@@ -413,7 +416,7 @@ class RecordingQueryBuilder {
           `("Tags"."what" != 'bird' AND "Tags"."what" != 'false positive')`,
         );
       } else {
-        const path = labelPath[tag.toLowerCase()];
+        const path = (labelPath as Record<string, string>)[tag.toLowerCase()];
         if (path) {
           parts.push(`"Tags".path ~ '${path}${exclusive ? "" : ".*"}'`);
         } else {
@@ -717,9 +720,9 @@ export class Recording extends ModelStaticCommon<Recording> {
     type: RecordingType,
     states: RecordingProcessingState[],
   ) {
-    const where = {
+    const where: WhereOptions<Recording> = {
       type: type,
-      deletedAt: { [Op.eq]: null },
+      deletedAt: null,
       [Op.or]: [
         {
           processingState: { [Op.in]: states },
@@ -1024,9 +1027,10 @@ export class Recording extends ModelStaticCommon<Recording> {
     const tags = await this.getTags();
     if (tags.length > 0) {
       const meta = this.additionalMetadata || {};
-      // FIXME What happens if we reprocess more than once?
-      //  :We lose initial archived tags.
-      meta["oldTags"] = tags;
+      meta.oldTags = {
+        ...((meta.oldTags || []) as Tag[]),
+        ...tags.map((tag) => tag.dataValues),
+      };
       this.additionalMetadata = meta;
       await this.save();
     }
@@ -1061,35 +1065,12 @@ export class Recording extends ModelStaticCommon<Recording> {
     return track;
   }
 
-  async addTrack({
-    data,
-    startSeconds,
-    endSeconds,
-    minFreqHz,
-    maxFreqHz,
-    AlgorithmId,
-    filtered,
-    archivedAt,
-  }: {
-    data: unknown;
-    startSeconds: number;
-    endSeconds: number;
-    minFreqHz: number | null;
-    maxFreqHz: number | null;
-    AlgorithmId: DetailSnapshotId;
-    filtered?: boolean;
-    archivedAt?: Date;
-  }): Promise<Track> {
-    const track = await this.createTrack({
-      startSeconds,
-      endSeconds,
-      minFreqHz,
-      maxFreqHz,
-      AlgorithmId,
-      filtered,
-      archivedAt,
-    });
-    await Track.saveTrackData(track.id, data);
+  async addTrack(
+    trackData: Partial<Attributes<Track>>,
+    trackMetadata?: MinimalTrackRequestData,
+  ): Promise<Track> {
+    const track = await this.createTrack(trackData);
+    await Track.saveTrackData(track.id, trackMetadata);
     return track;
   }
 

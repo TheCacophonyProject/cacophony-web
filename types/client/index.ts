@@ -82,6 +82,7 @@ const credentialsResolvers = {
       // Device credentials don't currently expire.
       return loggedInDeviceCredentials.token;
     }
+    return false;
   },
   forgetCredentials: (authKey: TestHandle) => {
     if (authKey.startsWith("cy_user-")) {

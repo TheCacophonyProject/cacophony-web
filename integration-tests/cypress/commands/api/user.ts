@@ -43,6 +43,7 @@ declare global {
           useRawUserName?: boolean;
           additionalParams?: object;
           message?: string;
+          errors?: { location: string; path: string }[];
         },
         inviteToken?: string,
       ): Cypress.Chainable<UserId>;
@@ -60,7 +61,11 @@ declare global {
         updateUserNameOrId: string,
         permission: string,
         statusCode?: HttpStatusCode,
-        additionalChecks?: { useRawUserName?: boolean; message?: string },
+        additionalChecks?: {
+          useRawUserName?: boolean;
+          message?: string;
+          errors?: { path: string; location: string }[];
+        },
       ): Cypress.Chainable<void>;
 
       /**
@@ -196,6 +201,7 @@ Cypress.Commands.add(
       useRawUserName?: boolean;
       additionalParams?: object;
       message?: string;
+      errors?: { path: string; location: string }[];
     } = {},
     inviteToken: string | undefined = undefined,
   ) => {

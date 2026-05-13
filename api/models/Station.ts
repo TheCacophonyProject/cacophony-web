@@ -29,7 +29,6 @@ import { ModelStaticCommon } from "@models/index.js";
 import { LatLng, StationId, GroupId } from "@typedefs/api/common.js";
 import { ApiStationSettings } from "@typedefs/api/station.js";
 import { User } from "@models/User.js";
-import { RecordingType } from "@typedefs/api/consts.js";
 import { Group } from "@models/Group.js";
 import { Recording } from "@models/Recording.js";
 
@@ -104,7 +103,7 @@ export class Station extends ModelStaticCommon<Station> {
     const findClause = [
       {
         [Op.and]: [
-          { retiredAt: { [Op.eq]: null } },
+          { retiredAt: null as Date | null },
           { activeAt: { [Op.lte]: untilTime } },
         ],
       },
@@ -116,7 +115,7 @@ export class Station extends ModelStaticCommon<Station> {
     ];
     if (orAutomatic) {
       (findClause as object[]).push({
-        [Op.and]: [{ retiredAt: { [Op.eq]: null } }, { automatic: true }],
+        [Op.and]: [{ retiredAt: null }, { automatic: true }],
       });
     }
     return await this.findAll({
@@ -202,148 +201,6 @@ export class Station extends ModelStaticCommon<Station> {
       });
     }
     return counts;
-  }
-
-  static async getSpeciesCount(
-    authUser: User,
-    stationId: StationId,
-    from: Date,
-    windowSizeInHours: number,
-    type: RecordingType,
-  ): Promise<{ what: string; count: number }[]> {
-    windowSizeInHours = Math.abs(windowSizeInHours);
-    // We need to take the time down to the previous hour, so remove 1 second
-    const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
-    // Get a spread of 24 results with each result falling into an hour bucket.
-
-    const [results, _] = (await this.sequelize
-      .query(`SELECT tt.what, count(*) as count
-      FROM "Recordings" r
-      JOIN "Tracks" t ON r.id = t."RecordingId"
-      JOIN "TrackTags" tt ON t.id = tt."TrackId"
-      WHERE r."StationId" = ${stationId}
-      AND r."type" = '${type}'
-      AND r."recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC'
-      GROUP BY tt.what;
-    `)) as [{ what: string; count: number }[], unknown];
-
-    return results.map((item) => ({
-      what: String(item.what),
-      count: Number(item.count),
-    }));
-  }
-
-  // FIXME: It's entirely possible that there are no consumers of these APIs, and maybe they should be removed?
-  static async getSpeciesCountBulk(
-    authUser: User,
-    stationId: StationId,
-    from: Date,
-    steps: number,
-    interval: TimeInterval,
-    type: RecordingType,
-  ): Promise<
-    { stationId: StationId; from: string; what: string; count: number }[]
-  > {
-    const counts = [];
-    let stepSizeInMs;
-    switch (interval) {
-      case "hours":
-        stepSizeInMs = 60 * 60 * 1000;
-        break;
-      case "days":
-        stepSizeInMs = 24 * 60 * 60 * 1000;
-        break;
-      case "weeks":
-        stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
-        break;
-      case "months": {
-        const currMonthDays = new Date(
-          from.getFullYear(),
-          from.getMonth() + 1,
-          0,
-        ).getDate();
-        stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
-        break;
-      }
-      case "years": {
-        const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
-        stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
-        break;
-      }
-      default:
-        throw new Error(`Invalid interval: ${interval}`);
-    }
-    const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
-
-    for (let i = 0; i < steps; i++) {
-      const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
-      const result = await this.getSpeciesCount(
-        authUser,
-        stationId,
-        windowEnd,
-        stepSizeInHours,
-        type,
-      );
-      counts.push(
-        ...result.map((item) => ({
-          deviceId: stationId,
-          from: windowEnd.toISOString(),
-          what: item.what,
-          count: item.count,
-        })),
-      );
-    }
-    // FIXME: this.getDaysActive(authUser, 2, new Date("2023-04-20T05:02:07.000Z"), 168);
-    return counts;
-  }
-
-  // FIXME: Unused?
-  static async getDaysActive(
-    authUser: User,
-    stationId: StationId,
-    from: Date,
-    windowSizeInHours: number,
-  ): Promise<number> {
-    windowSizeInHours = Math.abs(windowSizeInHours);
-    const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
-    const timezoneOffset = from.getTimezoneOffset() * 60;
-    const query = `
-      SELECT DISTINCT DATE("recordingDateTime" AT TIME ZONE 'UTC' AT TIME ZONE INTERVAL '${timezoneOffset} seconds') as DATE
-      FROM "Recordings"
-      WHERE "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC'
-      AND "StationId" = ${stationId}
-      ORDER BY DATE DESC
-    `;
-    const [results, _] = (await this.sequelize.query(query)) as [
-      { date: string; has_recordings: boolean }[],
-      unknown,
-    ];
-
-    const eventQuery = `
-    SELECT DISTINCT DATE(e."dateTime" AT TIME ZONE 'UTC' AT TIME ZONE INTERVAL '${timezoneOffset} seconds') as DATE
-    FROM "Events" e
-    JOIN "Recordings" r ON e."DeviceId" = r."DeviceId"
-    WHERE r."StationId" = ${stationId}
-    AND e."dateTime" AT TIME ZONE 'UTC' BETWEEN
-        (to_timestamp(${windowEndTimestampUtc}) AT TIME ZONE 'UTC' - INTERVAL '${windowSizeInHours} hours') AND
-        to_timestamp(${windowEndTimestampUtc}) AT TIME ZONE 'UTC'
-    AND e."dateTime" >= r."recordingDateTime"
-    AND NOT EXISTS (
-        SELECT 1
-        FROM "Recordings" r2
-        WHERE r2."DeviceId" = r."DeviceId"
-        AND r2."recordingDateTime" > r."recordingDateTime"
-        AND r2."recordingDateTime" <= e."dateTime"
-    )
-    `;
-    const [eventResults, __] = (await this.sequelize.query(eventQuery)) as [
-      { date: string; has_recordings: boolean }[],
-      unknown,
-    ];
-    const activeDates = new Set();
-    results.forEach((item) => activeDates.add(item.date));
-    eventResults.forEach((item) => activeDates.add(item.date));
-    return activeDates.size;
   }
 }
 

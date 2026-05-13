@@ -1,5 +1,5 @@
 import { ClientError } from "./customErrors.js";
-import type { DefinedError, ValidateFunction } from "ajv";
+import type { DefinedError, ErrorObject, ValidateFunction } from "ajv";
 import { Ajv } from "ajv";
 import addFormats from "ajv-formats";
 
@@ -92,7 +92,10 @@ export const arrayOf = (schemaOriginal: Schema): Schema => {
 
 export const jsonSchemaOf =
   (schema: Schema) =>
-  (val: string | object, { location, path: requestPath }) => {
+  (
+    val: string | object,
+    { location, path: requestPath }: { location: string; path: string },
+  ) => {
     if (typeof val === "string") {
       try {
         val = JSON.parse(val);
@@ -120,7 +123,7 @@ export const jsonSchemaOf =
 
     const errors = validator.errors as DefinedError[];
     const path = `${location}.${requestPath}`.split(".");
-    const formattedErrors = errors.map((error) => {
+    const formattedErrors = errors.map((error: ErrorObject) => {
       switch (error.keyword) {
         case "format":
         case "type":

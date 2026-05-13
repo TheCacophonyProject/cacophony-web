@@ -36,7 +36,7 @@ import {
 import { Track } from "@/models/Track.js";
 
 import { DeviceHistory } from "@models/DeviceHistory.js";
-import Sequelize, { Op } from "sequelize";
+import Sequelize, { Attributes, Op } from "sequelize";
 import { openS3 } from "@models/util/util.js";
 
 import type { TrackTagData } from "@/../types/api/trackTag.js";
@@ -51,6 +51,8 @@ import type {
 } from "@/../types/api/fileProcessing.js";
 import { Visit } from "@models/Visit.js";
 import LabelPaths from "@/classifications/label_paths.json" with { type: "json" };
+import { RecordingId, type TrackId } from "@typedefs/api/common.js";
+import { ApiThermalRecordingMetadataResponse } from "@typedefs/api/recording.js";
 
 const NULL_TRACK_ID = 1;
 
@@ -122,7 +124,7 @@ export default function (app: Application, baseUrl: string) {
         const rec = recording.dataValues;
         if (rec.location) {
           // Some versions of postgres seem to put this in.
-          delete rec.location["crs"];
+          delete (rec.location as unknown as { crs: unknown }).crs;
         }
         return successResponse(response, {
           recording: rec,
@@ -130,33 +132,6 @@ export default function (app: Application, baseUrl: string) {
         });
       }
     },
-  );
-
-  /**
-   * @api {post} /api/v1/processing/processed Upload a processed file to object storage
-   * @apiName PostProcessedFile
-   * @apiGroup Processing
-   *
-   * Requires super-admin user credentials
-   * @apiUse V1ResponseSuccess
-   * @apiSuccess {String} fileKey of uploaded file
-   *
-   * @apiUse V1ResponseError
-   */
-  app.post(
-    `${apiUrl}/processed`,
-    extractJwtAuthorisedSuperAdminUser,
-    util.multipartUpload(
-      "file",
-      async (_uploader, _uploadingDevice, _uploadingUser, _data, keys) => {
-        // Expect only one file to be uploaded at a time
-        console.assert(
-          keys.length === 1,
-          "Only expected 1 file attachment for this end-point",
-        );
-        return keys[0];
-      },
-    ),
   );
 
   /**
@@ -218,7 +193,7 @@ export default function (app: Application, baseUrl: string) {
             recording.fileKey = newProcessedFileKey;
           }
           const nextJob = recording.getNextState();
-          const complete = nextJob == Recording.finishedState();
+          const complete = nextJob === Recording.finishedState();
           recording.processingState = nextJob;
           recording.processingEndTime = new Date().toISOString();
           recording.processingFailedCount = 0;
@@ -255,7 +230,9 @@ export default function (app: Application, baseUrl: string) {
           ) {
             // NOTE: If we already calculated "filtered" in trackAndAnalyse, we don't need to do it here.
             for (const track of tracks) {
-              track.data = await Track.getTrackData(track.id);
+              track.data = (await Track.getTrackData(
+                track.id,
+              )) as MinimalTrackRequestData;
               // FIXME: Not even sure we need "filtered" anymore, it's not used on browse-next, is probably a legacy browse thing.
               await track.updateIsFiltered();
             }
@@ -309,7 +286,7 @@ export default function (app: Application, baseUrl: string) {
             // existing clip thumbnail from the initial upload process.
             const results = await saveThumbnailInfo(
               recording,
-              tracks,
+              tracks as { id: TrackId; data: MinimalTrackRequestData }[],
               recording.additionalMetadata?.thumbnail_region,
             );
             if (results) {
@@ -409,11 +386,12 @@ export default function (app: Application, baseUrl: string) {
     ]),
     parseJSONField(body("data")),
     async (request: Request, response: Response, next: NextFunction) => {
-      const recording = await Recording.findByPk(request.params.id);
+      const recordingId = request.params.id as unknown as RecordingId;
+      const recording = await Recording.findByPk(recordingId);
       if (!recording) {
         return next(
           new AuthorizationError(
-            `Could not find a Recording with an id of '${request.params.id}'`,
+            `Could not find a Recording with an id of '${recordingId}'`,
           ),
         );
       }
@@ -466,7 +444,7 @@ export default function (app: Application, baseUrl: string) {
           const what = pred.tag;
           const path =
             what in LabelPaths
-              ? LabelPaths[what]
+              ? (LabelPaths as Record<string, string>)[what]
               : `all.${what.replace(" ", "_")}`;
           const tag = {
             TrackId: modelTracks[i].id,
@@ -502,7 +480,8 @@ export default function (app: Application, baseUrl: string) {
         const results = await saveThumbnailInfo(
           recording,
           tracksAndData,
-          recording.additionalMetadata["thumbnail_region"],
+          (recording.additionalMetadata as ApiThermalRecordingMetadataResponse)
+            .thumbnail_region,
         );
         if (results) {
           for (const result of results) {
@@ -579,7 +558,7 @@ export default function (app: Application, baseUrl: string) {
       }
     }
 
-    const newTrack = {
+    const newTrack: MinimalTrack = {
       AlgorithmId: algorithmId,
       startSeconds: trackData.start_s,
       endSeconds: trackData.end_s,
@@ -606,8 +585,7 @@ export default function (app: Application, baseUrl: string) {
     if (discardMaskedTrack) {
       return 1;
     }
-    const newTrack = {
-      data: trackData,
+    const newTrack: Partial<Attributes<Track>> = {
       AlgorithmId: algorithmId,
       startSeconds: trackData.start_s || 0,
       endSeconds: trackData.end_s || 0,
@@ -615,12 +593,13 @@ export default function (app: Application, baseUrl: string) {
       maxFreqHz: null,
       RecordingId: recording.id,
     };
-    delete newTrack.data.predictions;
+    // FIXME: Do we really want to delete predictions?
+    delete trackData.predictions;
     if (recording.type === RecordingType.Audio) {
       newTrack.minFreqHz = trackData.minFreq || 0;
       newTrack.maxFreqHz = trackData.maxFreq || 0;
     }
-    const track = await recording.addTrack(newTrack);
+    const track = await recording.addTrack(newTrack, trackData);
     return track.id;
   };
   /**
@@ -651,7 +630,8 @@ export default function (app: Application, baseUrl: string) {
     ]),
     parseJSONField(body("data")),
     async (request: Request, response: Response, next: NextFunction) => {
-      const recording = await Recording.findByPk(request.params.id);
+      const recordingId = request.params.id as unknown as RecordingId;
+      const recording = await Recording.findByPk(recordingId);
       if (!recording) {
         return next(
           new AuthorizationError(
@@ -819,7 +799,7 @@ export default function (app: Application, baseUrl: string) {
           const what = pred.tag;
           const path =
             what in LabelPaths
-              ? LabelPaths[what]
+              ? (LabelPaths as Record<string, string>)[what]
               : `all.${what.replace(" ", "_")}`;
           const tag = {
             TrackId: response.locals.track.id,
@@ -934,7 +914,9 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     parseJSONField(body("data")),
     async (_request: Request, response) => {
-      const existingData = await Track.getTrackData(response.locals.track.id);
+      const existingData = (await Track.getTrackData(
+        response.locals.track.id,
+      )) as MinimalTrackRequestData;
       existingData.thumbnail = response.locals.data;
       await Track.saveTrackData(response.locals.track.id, existingData);
       return successResponse(response, "Track updated");
@@ -973,7 +955,15 @@ export default function (app: Application, baseUrl: string) {
       } else {
         d = oldData;
       }
-      const archivedDataCopy = {
+      const archivedDataCopy: {
+        AlgorithmId: number;
+        archivedAt: Date;
+        filtered: boolean;
+        startSeconds: number;
+        endSeconds: number;
+        minFreqHz: number | null;
+        maxFreqHz: number | null;
+      } = {
         AlgorithmId,
         filtered,
         startSeconds: d.start_s || 0,
@@ -988,7 +978,12 @@ export default function (app: Application, baseUrl: string) {
       }
       await response.locals.recording.addTrack(archivedDataCopy);
       const newData = response.locals.data;
-      const update = {
+      const update: {
+        startSeconds: number;
+        endSeconds: number;
+        minFreqHz: number | null;
+        maxFreqHz: number | null;
+      } = {
         startSeconds: newData.start_s || 0,
         endSeconds: newData.end_s || 0,
         minFreqHz: null,

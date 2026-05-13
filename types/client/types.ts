@@ -57,29 +57,6 @@ export interface FieldValidationError {
   location: "body" | "query" | "param";
   param: string;
 }
-export interface BatteryInfo {
-  voltage: number;
-  battery: number;
-
-  // Old format, but some cameras still haven't update to new as of 3/12/2025
-  batteryType?:
-    | "lime"
-    | "lead-acid-12v"
-    | "li-ion"
-    | "unknown_battery_type"
-    | "mains";
-  // New format
-  cellCount?: number;
-  chemistry?: "lead-acid" | "lifepo4" | "li-ion";
-  rtcVoltage?: number;
-  rail?: "lv" | "hv";
-
-  // NOTE: There is also a bunch of 'depletion_method' etc fields in newer events, but it's not clear
-  // yet how or if we'd use those in the front-end.
-}
-export interface BatteryInfoEvent extends BatteryInfo {
-  dateTime: IsoFormattedString;
-}
 
 export interface ErrorResult {
   messages: string[];

@@ -26,7 +26,6 @@ files:
   "_release/cacophony-api-housekeeping": "/etc/cron.d/cacophony-api-housekeeping"
 
 #  "_release/cacophony-api-prune-objects": "/etc/cron.d/cacophony-api-prune-objects"
-#  "_release/cacophony-api-remove-dups": "/etc/cron.d/cacophony-api-remove-dups"
 #  "_release/cacophony-api-archive-objects": "/etc/cron.d/cacophony-api-archive-objects"
   "_release/cacophony-api-influx-metrics": "/etc/cron.d/cacophony-api-influx-metrics"
 

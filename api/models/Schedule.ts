@@ -16,7 +16,6 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import _ from "lodash";
 import { ModelStaticCommon } from "./index.js";
 import Sequelize, { CreationOptional, DataTypes, ForeignKey } from "sequelize";
 import type { ScheduleId, UserId } from "@typedefs/api/common.js";
@@ -35,8 +34,8 @@ export class Schedule extends ModelStaticCommon<Schedule> {
     this.belongsTo(User);
     this.hasMany(Device);
   }
-  static buildSafely(fields) {
-    return Schedule.build(_.pick(fields, ["schedule"]));
+  static buildSafely(fields: { schedule: ScheduleConfig }) {
+    return Schedule.build({ schedule: fields.schedule });
   }
 }
 export const init = (sequelizeInstance: Sequelize.Sequelize) => {

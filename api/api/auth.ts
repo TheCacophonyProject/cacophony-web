@@ -248,35 +248,6 @@ export const getVerifiedJWTFromBody = (
   }
 };
 
-/**
- * check requested auth access exists in jwt access object
- */
-export const checkAccess = (
-  reqAccess,
-  jwtDecoded: DecodedJWTToken,
-): boolean => {
-  if (!reqAccess && jwtDecoded.access) {
-    return false;
-  }
-  if (!jwtDecoded.access) {
-    return true;
-  }
-
-  const reqKeys = Object.keys(reqAccess);
-  if (reqKeys.length == 0 && jwtDecoded.access) {
-    return false;
-  }
-  for (const key of reqKeys) {
-    if (
-      !jwtDecoded.access[key] ||
-      jwtDecoded.access[key].indexOf(reqAccess[key]) == -1
-    ) {
-      return false;
-    }
-  }
-  return true;
-};
-
 export async function lookupEntity(jwtDecoded: DecodedJWTToken) {
   switch (jwtDecoded._type) {
     case "user":
@@ -293,18 +264,19 @@ export async function lookupEntity(jwtDecoded: DecodedJWTToken) {
 /*
  * Authenticate a JWT in the 'Authorization' header of the given type
  */
-const authenticate = (
-  types: string[] | null,
-  reqAccess?: Record<string, unknown>,
-) => {
+const authenticate = (types: string[] | null) => {
   return async (request: Request, response: Response, next: NextFunction) => {
     let jwtDecoded: DecodedJWTToken;
     try {
       jwtDecoded = getVerifiedJWT(request) as DecodedJWTToken;
-    } catch (e) {
+    } catch (e: unknown) {
+      let message = "unknown error";
+      if (e instanceof Error) {
+        message = e.message;
+      }
       return response
         .status(HttpStatusCode.AuthorizationError)
-        .json({ messages: [e.message] });
+        .json({ messages: [message] });
     }
 
     if (types && !types.includes(jwtDecoded._type)) {
@@ -315,13 +287,6 @@ const authenticate = (
           }${types.map((t) => `'${t}'`).join(", ")}`,
         ],
       });
-      return;
-    }
-    const hasAccess = checkAccess(reqAccess, jwtDecoded);
-    if (!hasAccess) {
-      response
-        .status(HttpStatusCode.AuthorizationError)
-        .json({ messages: ["JWT does not have access."] });
       return;
     }
     const result = await lookupEntity(jwtDecoded);

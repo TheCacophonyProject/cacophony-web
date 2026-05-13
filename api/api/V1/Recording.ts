@@ -26,10 +26,11 @@ import { Recording } from "@models/Recording.js";
 import { mapPosition } from "@models/Recording.js";
 import { Tag } from "@models/Tag.js";
 import { Track } from "@models/Track.js";
-import { TrackTag } from "@models/TrackTag.js";
+import { TrackTag, TrackTagId } from "@models/TrackTag.js";
 import ApiRecordingUpdateRequestSchema from "@schemas/api/recording/ApiRecordingUpdateRequest.schema.json" with { type: "json" };
 import ApiRecordingTagRequestSchema from "@schemas/api/tag/ApiRecordingTagRequest.schema.json" with { type: "json" };
 import ApiTrackDataRequestSchema from "@schemas/api/track/ApiTrackDataRequest.schema.json" with { type: "json" };
+import ApiAlgorithmDataRequestSchema from "@schemas/api/track/AlgorithmRequest.schema.json" with { type: "json" };
 import ApiTrackTagAttributesSchema from "@schemas/api/trackTag/ApiTrackTagAttributes.schema.json" with { type: "json" };
 import {
   HttpStatusCode,
@@ -59,7 +60,7 @@ import type { Application, NextFunction, Request, Response } from "express";
 import { body, param, query } from "express-validator";
 import type { JwtPayload } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
-import { Op } from "sequelize";
+import { FindAndCountOptions, FindAttributeOptions, Op } from "sequelize";
 import LabelPaths from "../../classifications/label_paths.json" with { type: "json" };
 
 import {
@@ -85,7 +86,6 @@ import {
 } from "../extract-middleware.js";
 import { expectedTypeOf, isIntArray, validateFields } from "../middleware.js";
 import {
-  anyOf,
   booleanOf,
   idOf,
   integerOf,
@@ -110,7 +110,7 @@ import {
   uploadGenericRecordingOnBehalfOfDevice,
 } from "@api/fileUploaders/uploadGenericRecording.js";
 import { trackIsMasked } from "@api/V1/trackMasking.js";
-import type { TrackId } from "@typedefs/api/common.js";
+import type { RecordingId, TrackId } from "@typedefs/api/common.js";
 import { format } from "util";
 import { asyncLocalStorage } from "@/Globals.js";
 import {
@@ -125,6 +125,7 @@ import { TrackTagUserData } from "@models/TrackTagUserData.js";
 import { Device } from "@models/Device.js";
 import { Station } from "@models/Station.js";
 import { Visit } from "@models/Visit.js";
+import { MinimalTrackRequestData } from "@typedefs/api/fileProcessing.js";
 
 const sequelize = await initSequelize();
 
@@ -212,7 +213,9 @@ export const mapTracks = async (
   if (!minimal) {
     // TODO: Parallelize with a pool of S3Clients
     for (const track of tracks) {
-      track.data = await Track.getTrackData(track.id);
+      track.data = (await Track.getTrackData(
+        track.id,
+      )) as MinimalTrackRequestData;
     }
   }
   const t = tracks.map((x) => mapTrack(x, minimal));
@@ -261,7 +264,7 @@ export const mapRecordingResponse = async (
   minimal = false,
 ): Promise<ApiThermalRecordingResponse | ApiAudioRecordingResponse> => {
   const cameraTypes = [RecordingType.ThermalRaw, RecordingType.InfraredVideo];
-  let tracks = [];
+  let tracks: ApiTrackResponse[] = [];
   if (recording.Tracks) {
     tracks = await mapTracks(recording.Tracks, minimal);
   }
@@ -569,7 +572,7 @@ export default (app: Application, baseUrl: string) => {
     fetchAuthorizedRequiredDevices,
     (request: Request, response: Response, next: NextFunction) => {
       const targetDeviceName = request.params.deviceName;
-      const devices = response.locals.devices.filter(
+      const devices = (response.locals.devices as Device[]).filter(
         ({ deviceName }) => deviceName === targetDeviceName,
       );
       if (devices.length !== 1) {
@@ -772,9 +775,13 @@ export default (app: Application, baseUrl: string) => {
           `Deleted Recordings: ${JSON.stringify(values)}`,
           { ids: values },
         );
-      } catch (e) {
-        log.error(e);
-        return next(new ClientError(e.message));
+      } catch (e: unknown) {
+        let message = "unknown error";
+        if (e) {
+          log.error(e);
+          message = (e as Error).message;
+        }
+        return next(new ClientError(message));
       }
     },
   );
@@ -804,7 +811,7 @@ export default (app: Application, baseUrl: string) => {
           : [
               {
                 model: User,
-                attributes: [],
+                attributes: [] as FindAttributeOptions,
                 required: true,
                 where: { id: userId },
                 through: { where: { admin: true } },
@@ -1008,13 +1015,19 @@ export default (app: Application, baseUrl: string) => {
         options.where = { ...options.where, type };
       }
       const builder = new Recording.queryBuilder().init(user.id, options);
-      builder.query["distinct"] = true;
+
+      // FIXME: Are we ever actually a `findAndCountAll` context where distinct: true makes sense?
+      (builder.query as FindAndCountOptions<Recording>).distinct = true;
       try {
         const count = await Recording.count(builder.get());
         return successResponse(response, "Completed query.", { count });
-      } catch (e) {
-        log.error(e);
-        return next(new ClientError(e.message));
+      } catch (e: unknown) {
+        let message = "unknown error";
+        if (e) {
+          log.error(e);
+          message = (e as Error).message;
+        }
+        return next(new ClientError(message));
       }
     },
   );
@@ -1619,10 +1632,9 @@ export default (app: Application, baseUrl: string) => {
     validateFields([
       idOf(param("id")),
       body("data").custom(jsonSchemaOf(ApiTrackDataRequestSchema)),
-      anyOf(
-        body("algorithm").isJSON().optional(),
-        body("algorithm").isArray().optional(),
-      ),
+      body("algorithm")
+        .optional()
+        .custom(jsonSchemaOf(ApiAlgorithmDataRequestSchema)),
     ]),
     parseJSONField(body("data")),
     parseJSONField(body("algorithm")),
@@ -1658,7 +1670,14 @@ export default (app: Application, baseUrl: string) => {
         );
       }
       if (!discardMaskedTrack) {
-        const newTrack = {
+        const newTrack: {
+          startSeconds: number;
+          endSeconds: number;
+          minFreqHz: number | null;
+          maxFreqHz: number | null;
+          data: unknown;
+          AlgorithmId: number;
+        } = {
           startSeconds: data.start_s || 0,
           endSeconds: data.end_s || 0,
           minFreqHz: null,
@@ -1849,7 +1868,9 @@ export default (app: Application, baseUrl: string) => {
         request.body.what = "unidentified";
       }
       const path =
-        request.body.what in LabelPaths ? LabelPaths[request.body.what] : null;
+        request.body.what in LabelPaths
+          ? (LabelPaths as Record<string, string>)[request.body.what]
+          : null;
       try {
         const newTag = TrackTag.build({
           what: request.body.what,
@@ -2095,10 +2116,7 @@ export default (app: Application, baseUrl: string) => {
       body("confidence").isFloat().toFloat(),
       booleanOf(body("automatic")),
       body("tagJWT").optional().isString(),
-      anyOf(
-        body("data").isJSON().optional(),
-        body("data").isObject().optional(),
-      ),
+      body("data").isJSON().optional(),
     ]),
     // FIXME - JSON schema for allowed data? At least a limit to how many
     // chars etc?
@@ -2116,8 +2134,9 @@ export default (app: Application, baseUrl: string) => {
     },
     async (request: Request, response: Response, next: NextFunction) => {
       let track: Track;
-
-      if (Number(request.params.trackId) === 1 && request.body.automatic) {
+      const trackId = request.params.trackId as unknown as TrackId;
+      const recordingId = request.params.id as unknown as RecordingId;
+      if (trackId === 1 && request.body.automatic) {
         // NOTE: Dummy track that was masked out by mask regions.
         // Just succeed here so that processing doesn't break when trying to add tags.
         return successResponse(response, "Track tag added.", {
@@ -2136,9 +2155,9 @@ export default (app: Application, baseUrl: string) => {
           ) as JwtPayload;
           if (
             jwtDecoded._type === "tagPermission" &&
-            jwtDecoded.recordingId === request.params.id
+            jwtDecoded.recordingId === recordingId
           ) {
-            track = await Track.findByPk(request.params.trackId);
+            track = await Track.findByPk(trackId);
           } else {
             return next(
               new AuthorizationError(
@@ -2152,14 +2171,14 @@ export default (app: Application, baseUrl: string) => {
       } else {
         // Otherwise, just check that the user can update this track.
         track = await (response.locals.recording as Recording).getTrack(
-          Number(request.params.trackId),
+          trackId,
         );
       }
       if (!track) {
         return next(new ClientError("Track does not exist"));
       }
       // Ensure track belongs to this recording.
-      if (track.RecordingId !== Number(request.params.id)) {
+      if (track.RecordingId !== recordingId) {
         return next(new ClientError("Track does not belong to recording"));
       }
       if (request.body.what === "unknown") {
@@ -2201,6 +2220,9 @@ export default (app: Application, baseUrl: string) => {
     fetchAuthorizedRequiredFlatRecordingById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
       let track: Track;
+      const trackId = request.params.trackId as unknown as TrackId;
+      const recordingId = request.params.id as unknown as RecordingId;
+      const trackTagId = request.params.trackTagId as unknown as TrackTagId;
       if (request.query.tagJWT) {
         // If there's a tagJWT, then we don't need to check the users'
         // recording update permissions.
@@ -2212,9 +2234,9 @@ export default (app: Application, baseUrl: string) => {
           ) as JwtPayload;
           if (
             jwtDecoded._type === "tagPermission" &&
-            jwtDecoded.recordingId === request.params.id
+            jwtDecoded.recordingId === recordingId
           ) {
-            track = await Track.findByPk(request.params.trackId);
+            track = await Track.findByPk(trackId);
           } else {
             return next(
               new AuthorizationError(
@@ -2226,9 +2248,7 @@ export default (app: Application, baseUrl: string) => {
           return next(new AuthorizationError("Failed to verify JWT."));
         }
       } else {
-        track = await response.locals.recording.getTrack(
-          request.params.trackId,
-        );
+        track = await response.locals.recording.getTrack(trackId);
       }
       if (!track) {
         return next(new AuthorizationError("Track does not exist"));
@@ -2240,7 +2260,7 @@ export default (app: Application, baseUrl: string) => {
         );
       }
 
-      const tag = await track.getTrackTag(Number(request.params.trackTagId));
+      const tag = await track.getTrackTag(trackTagId);
       if (!tag) {
         return next(new AuthorizationError("No such track tag."));
       }
@@ -2691,7 +2711,7 @@ export default (app: Application, baseUrl: string) => {
           }
         }
         // NOTE: Finally, just query for the recordings we want by their ids.
-        let fullRecordings = [];
+        let fullRecordings: Recording[] = [];
         if (accumulatedRecordingIds.length) {
           fullRecordings = await Recording.findAll({
             where: {

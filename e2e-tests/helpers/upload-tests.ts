@@ -20,7 +20,9 @@ export type FileFixtures = {
     corruptFile: ArrayBuffer;
 
     // TODO: Worth having a corrupt CPTV which is actually a real one, just truncated
+    deviceReferenceImage: ArrayBuffer;
 };
+// TODO: maybe include mime type?
 
 export const test = base.extend<FileFixtures>({
     startupCptv: async ({}, use) => {
@@ -69,6 +71,10 @@ export const test = base.extend<FileFixtures>({
     },
     corruptFile: async ({}, use) => {
         const file = await readFile("./file-fixtures/invalid");
+        await use(file.buffer as ArrayBuffer);
+    },
+    deviceReferenceImage: async ({}, use) => {
+        const file = await readFile("./file-fixtures/reference-image.jpeg");
         await use(file.buffer as ArrayBuffer);
     },
 });

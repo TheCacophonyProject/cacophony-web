@@ -100,7 +100,7 @@ async function getDatesForSearch(
     USER_PERMISSIONS: await makeGroupsPermissions(user, viewAsSuperAdmin),
     RECORDING_TYPES: makeRecordingTypes(params.types),
     DATE_SELECTION: makeDatesCriteria(params),
-    PAGING: null,
+    PAGING: null as null | string,
   };
 
   const countRet = await sequelize.query(

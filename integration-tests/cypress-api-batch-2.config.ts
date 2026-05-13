@@ -1,5 +1,5 @@
 import { defineConfig } from "cypress";
-import registerPlugins from "./cypress/plugins/index.js";
+import registerPlugins from "./cypress/plugins";
 export default defineConfig({
   projectId: "dyez6t",
 

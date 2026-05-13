@@ -24,6 +24,7 @@ import {
   HasMany,
   HasManyCreateAssociationMixin,
   HasManyGetAssociationsMixin,
+  ModelAttributes,
   NonAttribute,
   Transaction,
 } from "sequelize";
@@ -32,7 +33,7 @@ import { ModelStaticCommon } from "./index.js";
 import { TrackTag, TrackTagId } from "./TrackTag.js";
 import { AI_MASTER } from "./TrackTag.js";
 import { Recording } from "@models/Recording.js";
-import type { RecordingId, TrackId } from "@typedefs/api/common.js";
+import type { RecordingId, TrackId, UserId } from "@typedefs/api/common.js";
 import type { TrackTagData } from "@/../types/api/trackTag.js";
 import { openS3 } from "@models/util/util.js";
 import { promisify } from "util";
@@ -44,9 +45,9 @@ import {
 } from "@aws-sdk/client-s3";
 import config from "@config";
 import { DetailSnapshot, DetailSnapshotId } from "@models/DetailSnapshot.js";
-import { ApiTrackDataRequest } from "@typedefs/api/track.js";
 import { TrackTagUserData } from "@models/TrackTagUserData.js";
 import LabelPaths from "@/classifications/label_paths.json" with { type: "json" };
+import { MinimalTrackRequestData } from "@typedefs/api/fileProcessing.js";
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
@@ -65,7 +66,8 @@ export class Track extends ModelStaticCommon<Track> {
   declare endSeconds: CreationOptional<number>;
   declare minFreqHz: CreationOptional<number>;
   declare maxFreqHz: CreationOptional<number>;
-  declare data: NonAttribute<ApiTrackDataRequest>;
+
+  declare data: NonAttribute<MinimalTrackRequestData>;
   declare thumbnailScore: NonAttribute<number>;
 
   declare getTrackTags: HasManyGetAssociationsMixin<TrackTag>;
@@ -84,7 +86,7 @@ export class Track extends ModelStaticCommon<Track> {
   static apiSettableFields = Object.freeze(["algorithm", "archivedAt"]);
   static userGetAttributes = Object.freeze([...Track.apiSettableFields, "id"]);
 
-  static async getTrackData(trackId: TrackId) {
+  static async getTrackData(trackId: TrackId): Promise<object> {
     try {
       const data = await openS3().getObject(`Track/${trackId}`);
       const compressedData = await data.Body.transformToByteArray();
@@ -95,7 +97,7 @@ export class Track extends ModelStaticCommon<Track> {
     }
   }
 
-  static async getTrackTagData(trackTagId: TrackTagId) {
+  static async getTrackTagData(trackTagId: TrackTagId): Promise<object> {
     try {
       const data = await openS3().getObject(`TrackTag/${trackTagId}`);
       const compressedData = await data.Body.transformToByteArray();
@@ -246,7 +248,7 @@ export class Track extends ModelStaticCommon<Track> {
     confidence: number,
     automatic: boolean,
     data: TrackTagData | "",
-    userId = null,
+    userId: UserId | null = null,
     updateFiltered = true,
   ): Promise<TrackTag> {
     const modelName =
@@ -259,7 +261,9 @@ export class Track extends ModelStaticCommon<Track> {
       confidence = Math.round(100 * confidence);
     }
     const path =
-      what in LabelPaths ? LabelPaths[what] : `all.${what.replace(" ", "_")}`;
+      what in LabelPaths
+        ? (LabelPaths as Record<string, string>)[what]
+        : `all.${what.replace(" ", "_")}`;
     const tag = (await this.createTrackTag({
       what,
       path,
@@ -390,7 +394,7 @@ export class Track extends ModelStaticCommon<Track> {
 }
 
 export const init = (sequelizeInstance: Sequelize.Sequelize) => {
-  const attributes = {
+  const attributes: ModelAttributes = {
     id: {
       type: DataTypes.INTEGER.UNSIGNED,
       autoIncrement: true,
@@ -413,12 +417,12 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
     minFreqHz: {
       type: Sequelize.FLOAT,
       allowNull: true,
-      defaultValue: null,
+      defaultValue: null as number | null,
     },
     maxFreqHz: {
       type: Sequelize.FLOAT,
       allowNull: true,
-      defaultValue: null,
+      defaultValue: null as number | null,
     },
     filtered: DataTypes.BOOLEAN,
   };

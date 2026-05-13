@@ -27,9 +27,11 @@ export interface ApiTrackResponse {
   tracking_score?: number;
 }
 
+export type AlgorithmRequest = object | number[];
+
 export interface ApiTrackRequest {
   data: ApiTrackDataRequest;
-  algorithm?: object | number[];
+  algorithm?: AlgorithmRequest;
 }
 
 export interface ApiTrackDataRequest {

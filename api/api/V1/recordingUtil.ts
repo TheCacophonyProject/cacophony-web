@@ -25,7 +25,14 @@ import type { RecordingQueryOptions } from "@models/Recording.js";
 import { Recording } from "@models/Recording.js";
 import { Event } from "@models/Event.js";
 import { User } from "@models/User.js";
-import Sequelize, { Op, QueryTypes, Transaction } from "sequelize";
+import Sequelize, {
+  Attributes,
+  FindAndCountOptions,
+  FindAttributeOptions,
+  Op,
+  QueryTypes,
+  Transaction,
+} from "sequelize";
 import { getCanonicalTrackTag, NON_ANIMAL_TAGS } from "./tagUtil.js";
 import { Station } from "@models/Station.js";
 import { Device } from "@models/Device.js";
@@ -45,10 +52,12 @@ import type {
   LatLng,
   RecordingId,
   StationId,
+  TrackId,
   UserId,
 } from "@typedefs/api/common.js";
 import { RecordingType } from "@typedefs/api/consts.js";
 import type {
+  MinimalTrackRequestData,
   RecordingDataSuppliedMetadata,
   TrackFramePosition,
 } from "@typedefs/api/fileProcessing.js";
@@ -79,6 +88,7 @@ import type {
   ApiThermalRecordingMetadataResponse,
 } from "@typedefs/api/recording.js";
 import { Visit } from "@models/Visit.js";
+import { TrackTagData } from "@typedefs/api/trackTag.js";
 
 const ffmpegPath = "/usr/bin/ffmpeg";
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -129,10 +139,9 @@ export async function getIRFrame(
   // probably can get around this by uploading the mp4 in a different format
   try {
     fs.writeFileSync(tempName, bodyBuffer);
-
-    const frames = {};
+    const frames: Record<number, IRFrame> = {};
     for (const frameNumber of frameNumbers) {
-      await new Promise((resolve, reject) => {
+      await new Promise((resolve: (frame: IRFrame) => void, reject) => {
         const screenData = new Uint8Array(640 * 480);
         let index = 0;
 
@@ -161,10 +170,10 @@ export async function getIRFrame(
             return resolve(frame);
           })
           .on("error", (err) => {
-            return reject(new Error(err));
+            return reject(new Error(err.message));
           })
           .run();
-      }).then((response: IRFrame) => {
+      }).then((response: IRFrame): void => {
         frames[response.frameNumber] = response;
       });
     }
@@ -198,13 +207,15 @@ export async function getThumbnail(
       }
       const data = await s3.getObject(thumbKey);
       return data.Body.transformToByteArray();
-    } catch (err) {
-      log.error(
-        "Error getting thumbnail from s3 for recordingId %s, trackId: %s, %s",
-        rec.id,
-        trackId,
-        err.message,
-      );
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        log.error(
+          "Error getting thumbnail from s3 for recordingId %s, trackId: %s, %s",
+          rec.id,
+          trackId,
+          err.message,
+        );
+      }
 
       // Fallback to recording thumb
       thumbKey = `${fileKey}-thumb`;
@@ -214,12 +225,14 @@ export async function getThumbnail(
         }
         const data = await s3.getObject(thumbKey);
         return data.Body.transformToByteArray();
-      } catch (err) {
-        log.error(
-          "Error getting fallback thumbnail from s3 for recordingId %s, %s",
-          rec.id,
-          err.message,
-        );
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          log.error(
+            "Error getting fallback thumbnail from s3 for recordingId %s, %s",
+            rec.id,
+            err.message,
+          );
+        }
       }
     }
   } else {
@@ -227,7 +240,10 @@ export async function getThumbnail(
     if (rec.Tracks.length !== 0) {
       const trackTags: Record<
         string,
-        { count: number; tracks: Record<number, Track> }
+        {
+          count: number;
+          tracks: Record<TrackId, Track>;
+        }
       > = {};
       for (const track of rec.Tracks) {
         if (track.TrackTags && track.TrackTags.length !== 0) {
@@ -239,7 +255,7 @@ export async function getThumbnail(
               tracks: {},
             };
             trackTags[trackTag].count += 1;
-            trackTags[trackTag].tracks[track.id] = track;
+            trackTags[trackTag].tracks[track.id] = track as Track;
           }
         }
       }
@@ -247,31 +263,24 @@ export async function getThumbnail(
       const sortedTags = Object.entries(trackTags).sort(
         (a, b) => a[1].count - b[1].count,
       );
-      let bestTracks = [];
+      let bestTracks: Track[] = [];
       if (sortedTags.length !== 0) {
         commonTag = sortedTags[0][0];
         bestTracks = Object.values(sortedTags[0][1].tracks);
       }
 
-      if (commonTag !== null) {
-        if (!bestTracks.some((track) => "thumbnailScore" in track.dataValues)) {
+      if (commonTag !== null && bestTracks.length !== 0) {
+        // FIXME: Store thumbnailScore in Track in the DB so we don't have to pull all this data out.
+        if (!bestTracks.some((track) => !!track.thumbnailScore)) {
           for (const track of bestTracks) {
-            track.data = await Track.getTrackData(track.id);
-            if (!track.data.thumbnail) {
-              track.data.thumbnail = {
-                score: 0,
-              };
-            }
+            track.data = (await Track.getTrackData(
+              track.id,
+            )) as MinimalTrackRequestData;
+            track.thumbnailScore = track.data.thumbnail?.score || 0;
           }
         }
         bestTracks.sort((a, b) => {
-          if (
-            "thumbnailScore" in a.dataValues &&
-            "thumbnailScore" in b.dataValues
-          ) {
-            return b.dataValues.thumbnailScore - a.dataValues.thumbnailScore;
-          }
-          return b.data.thumbnail.score - a.data.thumbnail.score;
+          return b.thumbnailScore - a.thumbnailScore;
         });
         thumbKey = `${fileKey}-${bestTracks[0].id}-thumb`;
       }
@@ -281,12 +290,14 @@ export async function getThumbnail(
         }
         const data = await s3.getObject(thumbKey);
         return data.Body.transformToByteArray();
-      } catch (err) {
-        log.warning(
-          "Error getting best thumbnail from s3 for recordingId %s, %s",
-          rec.id,
-          err.message,
-        );
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          log.warning(
+            "Error getting best thumbnail from s3 for recordingId %s, %s",
+            rec.id,
+            err.message,
+          );
+        }
 
         if (bestTracks.length !== 0) {
           // Fallback to recording thumb
@@ -297,12 +308,14 @@ export async function getThumbnail(
             }
             const data = await s3.getObject(thumbKey);
             return data.Body.transformToByteArray();
-          } catch (err) {
-            log.warning(
-              "Error getting clip thumbnail from s3 for recordingId %s, %s",
-              rec.id,
-              err.message,
-            );
+          } catch (err: unknown) {
+            if (err instanceof Error) {
+              log.warning(
+                "Error getting clip thumbnail from s3 for recordingId %s, %s",
+                rec.id,
+                err.message,
+              );
+            }
             return null;
           }
         }
@@ -316,12 +329,14 @@ export async function getThumbnail(
       }
       const data = await s3.getObject(thumbKey);
       return data.Body.transformToByteArray();
-    } catch (err) {
-      log.error(
-        "Error getting clip thumbnail from s3 for recordingId %s, %s",
-        rec.id,
-        err.message,
-      );
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        log.error(
+          "Error getting clip thumbnail from s3 for recordingId %s, %s",
+          rec.id,
+          err.message,
+        );
+      }
       return null;
     }
   }
@@ -392,7 +407,7 @@ export interface ThumbnailData {
 // Creates and saves a thumbnail for a recording using specified thumbnail info
 export async function saveThumbnailInfo(
   recording: Recording,
-  tracks: Track[],
+  tracks: { id: TrackId; data: MinimalTrackRequestData }[],
   clip_thumbnail: TrackFramePosition,
 ): Promise<PutObjectCommandOutput[] | Error[]> {
   const fileKey = recording.rawFileKey;
@@ -795,7 +810,7 @@ export const maybeUpdateDeviceHistory = async (
     if (shouldInsertLocation) {
       // If we are going to insert a location, then we need to match to existing stations
       // or create a new station that is active from this point in time.
-      const newDeviceHistoryEntry = {
+      const newDeviceHistoryEntry: Partial<Attributes<DeviceHistory>> = {
         location,
         setBy,
         fromDateTime: dateTime,
@@ -804,8 +819,6 @@ export const maybeUpdateDeviceHistory = async (
         GroupId: device.GroupId,
         saltId: device.saltId,
         uuid: device.uuid,
-        settings: null,
-        stationId: null,
       };
       if (priorLocation && priorLocation.settings) {
         // Preserve any non-location-specific settings
@@ -1059,7 +1072,7 @@ export async function queryRecordings(
     options.where = { ...options.where, type };
   }
   const builder = new Recording.queryBuilder().init(requestUserId, options);
-  builder.query["distinct"] = true;
+  (builder.query as FindAndCountOptions).distinct = true;
 
   // FIXME - If getting count as super-user, we don't care about joining on all of the other tables.
   //  Even if getting count as regular user, we only care about joining through GroupUsers.
@@ -1076,7 +1089,7 @@ export async function queryRecordings(
 }
 
 export async function updateRecordingTimeBookkeepingForBulkDeletedRecordings(
-  recordings: Recording[],
+  recordings: DeletedRecording[],
   transaction?: Transaction,
 ): Promise<void> {
   // For each set of recordings to delete or undelete, we need to get the unique stations and devices,
@@ -1113,6 +1126,16 @@ export async function updateRecordingTimeBookkeepingForBulkDeletedRecordings(
   }
 }
 
+export interface DeletedRecording {
+  id: number;
+  GroupId: GroupId;
+  StationId: StationId;
+  DeviceId: DeviceId;
+  type: RecordingType;
+  recordingDateTime: Date;
+  duration: number;
+}
+
 export async function bulkDelete(
   requestUserId: UserId,
   type: RecordingType,
@@ -1130,6 +1153,7 @@ export async function bulkDelete(
   }
   const deletion = { deletedAt: new Date(), deletedBy: requestUserId };
   const ids = recordings.map((value) => value.id);
+
   const deletedRecordings = (await Recording.update(deletion, {
     where: { id: ids, deletedAt: { [Op.eq]: null } },
     returning: [
@@ -1141,20 +1165,7 @@ export async function bulkDelete(
       "recordingDateTime",
       "duration",
     ],
-  })) as unknown as Promise<
-    [
-      number,
-      {
-        id: number;
-        GroupId: GroupId;
-        StationId: StationId;
-        DeviceId: DeviceId;
-        type: RecordingType;
-        recordingDateTime: Date;
-        duration: number;
-      }[],
-    ]
-  >;
+  })) as unknown as [number, DeletedRecording[]];
   if (deletedRecordings[0] !== 0) {
     await updateRecordingTimeBookkeepingForBulkDeletedRecordings(
       deletedRecordings[1],
@@ -1172,7 +1183,7 @@ export async function getTrackTags(
   viewAsSuperUser: boolean,
   includeAI: boolean,
   recordingType: string,
-  excludeTags = [],
+  excludeTags: string[] = [],
   offset?: number,
   limit?: number,
 ) {
@@ -1181,7 +1192,7 @@ export async function getTrackTags(
     : [
         {
           model: User,
-          attributes: [],
+          attributes: [] as FindAttributeOptions,
           required: true,
           where: { id: userId },
         },
@@ -1381,17 +1392,24 @@ export function signedToken(
   userId?: UserId,
   groupId?: GroupId,
 ) {
-  const payload = {
+  const payload: {
+    _type: "fileDownload";
+    key: string;
+    filename: string;
+    mimeType: string;
+    userId?: UserId;
+    groupId?: GroupId;
+  } = {
     _type: "fileDownload",
     key,
     filename,
     mimeType,
   };
   if (userId) {
-    payload["userId"] = userId;
+    payload.userId = userId;
   }
   if (groupId) {
-    payload["groupId"] = groupId;
+    payload.groupId = groupId;
   }
   return jsonwebtoken.sign(payload, config.server.passportSecret, {
     expiresIn: 60 * 10,
@@ -1446,10 +1464,9 @@ export const tracksFromMeta = async (
     );
 
     const promises = [];
-    const tracks = [];
+    const tracks: Track[] = [];
     for (const trackMeta of metadata.tracks) {
-      const newTrack = {
-        data: trackMeta,
+      const newTrack: Partial<Attributes<Track>> = {
         startSeconds: trackMeta.start_s || 0,
         endSeconds: trackMeta.end_s || 0,
         minFreqHz: null,
@@ -1462,7 +1479,7 @@ export const tracksFromMeta = async (
       }
       promises.push(
         new Promise((resolve, _reject) => {
-          recording.addTrack(newTrack).then((track) => {
+          recording.addTrack(newTrack, trackMeta).then((track) => {
             if (!trackMeta.predictions || trackMeta.predictions.length === 0) {
               track.updateIsFiltered().then(resolve);
             } else {
@@ -1486,12 +1503,12 @@ export const tracksFromMeta = async (
                 }
 
                 // FIXME: Nail down what the classifier actually outputs, or just make this a generic black box.
-                const tag_data = { name: modelName };
+                const tag_data: TrackTagData = { name: modelName };
                 if (prediction.clarity) {
-                  tag_data["clarity"] = prediction.clarity;
+                  tag_data.clarity = prediction.clarity;
                 }
                 if (prediction.classify_time) {
-                  tag_data["classify_time"] = prediction["classify_time"];
+                  tag_data.classify_time = prediction.classify_time;
                 }
                 //GP 2025 Dec dont think we are using this at all
                 // if (prediction.predictions) {
@@ -1499,7 +1516,7 @@ export const tracksFromMeta = async (
                 // }
 
                 if (prediction.all_class_confidences) {
-                  tag_data["all_class_confidences"] =
+                  tag_data.all_class_confidences =
                     prediction.all_class_confidences;
                 }
                 let tag = "unidentified";
@@ -1507,16 +1524,16 @@ export const tracksFromMeta = async (
                   tag = prediction.confident_tag;
                 }
                 if (prediction.label) {
-                  tag_data["raw_tag"] = prediction["label"];
+                  tag_data.raw_tag = prediction.label;
+                } else {
+                  tag_data.raw_tag = prediction.tag;
                 }
-
-                tag_data["raw_tag"] = prediction["tag"];
                 if (prediction.confident) {
-                  tag = prediction["tag"];
+                  tag = prediction.tag;
                 }
 
                 trackPromises.push(
-                  track.addTag(tag, prediction["confidence"], true, tag_data),
+                  track.addTag(tag, prediction.confidence, true, tag_data),
                 );
               }
               Promise.all(trackPromises).then(resolve);
@@ -1600,9 +1617,11 @@ export async function sendAlerts(recId: RecordingId, debug = false) {
   }
 
   for (const track of recording.Tracks) {
-    const trackData = await Track.getTrackData(track.id);
-    if (trackData.thumbnail) {
-      track.thumbnailScore = trackData.thumbnail.score;
+    if (!track.thumbnailScore) {
+      const trackData = (await Track.getTrackData(
+        track.id,
+      )) as MinimalTrackRequestData;
+      track.thumbnailScore = trackData.thumbnail?.score || 0;
     }
   }
 

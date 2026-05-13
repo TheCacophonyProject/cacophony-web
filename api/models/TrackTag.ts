@@ -31,7 +31,6 @@ export const AI_MASTER = "Master";
 export type TrackTagId = number;
 import { Track } from "@models/Track.js";
 import { User } from "@models/User.js";
-import log from "@log";
 
 export interface TrackTagData {
   name: string;
@@ -92,7 +91,9 @@ export class TrackTag extends ModelStaticCommon<TrackTag> {
       // All paths are lower case, and spaces are replaced with underscores. eg. all.path_name.example
       const what = (trackTag.what as string).toLowerCase();
       const path =
-        what in LabelPaths ? LabelPaths[what] : `all.${what.replace(" ", "_")}`;
+        what in LabelPaths
+          ? (LabelPaths as Record<string, string>)[what]
+          : `all.${what.replace(" ", "_")}`;
       this.sequelize.query(
         `UPDATE "TrackTags"
            SET "path" = text2ltree(:path)
@@ -134,7 +135,7 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
     model: {
       type: DataTypes.STRING,
       allowNull: true,
-      defaultValue: null,
+      defaultValue: null as string | null,
     },
   };
   TrackTag.init(attributes, {

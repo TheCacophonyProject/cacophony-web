@@ -30,14 +30,27 @@ import {
 } from "../extract-middleware.js";
 import { Op } from "sequelize";
 import { idOf } from "@api/validation-middleware.js";
-import { AuthorizationError } from "@api/customErrors.js";
+import { AuthorizationError, UnprocessableError } from "@api/customErrors.js";
 import type {
   ApiAudiobaitFileResponse,
   AudiobaitDetails,
 } from "@typedefs/api/file.js";
 import classification from "@/classifications/classification.json" with { type: "json" };
-import type { User } from "@models/User.js";
 import { File } from "@models/File.js";
+import { DeviceId, UserId } from "@typedefs/api/common.js";
+import moment from "moment/moment.js";
+import { v4 as uuidv4 } from "uuid";
+import { parseFormData } from "pechkin";
+import { JsonDocument } from "@typedefs/api/event.js";
+import {
+  deleteUpload,
+  uploadStream,
+} from "@api/fileUploaders/uploadGenericRecording.js";
+import {
+  ReadableStream as WebReadableStream,
+  TransformStream,
+} from "stream/web";
+import { Readable } from "stream";
 
 const mapAudiobaitFile = (file: File): ApiAudiobaitFileResponse => {
   return {
@@ -106,28 +119,91 @@ export default (app: Application, baseUrl: string) => {
   app.post(
     apiUrl,
     extractJwtAuthorizedUser,
-    util.multipartUpload(
-      "f",
-      async (
-        _uploader,
-        _uploadingDevice,
-        uploadingUser,
-        data,
-        keys,
-        uploadedFileDatas,
-      ) => {
-        console.assert(
-          keys.length === 1,
-          "Only expected 1 file attachment for this end-point",
-        );
-        const dbRecord = File.buildSafely(data);
-        dbRecord.UserId = (uploadingUser as User).id;
-        dbRecord.fileKey = keys[0];
-        dbRecord.fileSize = uploadedFileDatas[0].data.length;
-        await dbRecord.save();
-        return dbRecord;
-      },
-    ),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const key = `f/${moment().format("YYYY/MM/DD")}/${uuidv4()}`;
+      let data: { type: string; details: JsonDocument };
+      let fileLength = 0;
+      try {
+        const { fields, files } = await parseFormData(request, {
+          maxTotalFileFieldCount: Infinity,
+          maxFileCountPerField: Infinity,
+          maxTotalFileCount: 1,
+          maxFieldValueByteLength: 1024 * 1024, // 1MB - why would anything be bigger?
+        });
+        let validData = true;
+        if ("data" in fields) {
+          data = JSON.parse(fields.data) as {
+            type: string;
+            details: JsonDocument;
+          };
+          if (typeof data !== "object") {
+            validData = false;
+          } else if (!("type" in data)) {
+            validData = false;
+          }
+        }
+        if (!validData) {
+          for await (const { stream } of files) {
+            await stream.resume();
+          }
+          return next(
+            new UnprocessableError(
+              `Could not validate data part: ${JSON.stringify(data)}`,
+            ),
+          );
+        }
+
+        let uploadSucceeded = true;
+        let errorMessage = "unknown error";
+        // TODO: Reject multiple file attachments?
+        for await (const {
+          filename: originalFilename,
+          stream,
+          ...file
+        } of files) {
+          if (file.field === "file") {
+            const transform = new TransformStream({
+              transform(chunk, controller) {
+                fileLength += chunk.length;
+                controller.enqueue(chunk);
+              },
+            });
+            const fileStream: WebReadableStream = Readable.toWeb(stream);
+            fileStream.pipeThrough(transform);
+            // Upload part, while piping it through a transform that performs sha1 + checks length.
+            await uploadStream(key, fileStream, originalFilename)
+              .done()
+              .catch((e: unknown) => {
+                if (e instanceof Error) {
+                  errorMessage = e.message;
+                }
+                // Upload failed, rollback
+                uploadSucceeded = false;
+              });
+          } else {
+            await stream.resume();
+          }
+        }
+        if (uploadSucceeded) {
+          const dbRecord = File.buildSafely(data);
+          dbRecord.UserId = response.locals.requestUser.id;
+          dbRecord.fileKey = key;
+          dbRecord.fileSize = fileLength;
+          await dbRecord.save();
+          return successResponse(response, "Thanks for the data", {
+            fileKey: key,
+          });
+        } else {
+          await deleteUpload(key);
+          return next(
+            new UnprocessableError(`File upload failed: ${errorMessage}`),
+          );
+        }
+      } catch (err) {
+        // What kind of errors can we have?
+        return next(err);
+      }
+    },
   );
 
   /**
@@ -184,14 +260,19 @@ export default (app: Application, baseUrl: string) => {
       const file = response.locals.file as File;
       const user = response.locals.requestUser;
       const device = response.locals.requestDevice;
-      const downloadFileData = {
+      const downloadFileData: {
+        _type: string;
+        key: string;
+        userId?: UserId;
+        deviceId?: DeviceId;
+      } = {
         _type: "fileDownload",
         key: file.fileKey,
       };
       if (user) {
-        downloadFileData["userId"] = user.id;
+        downloadFileData.userId = user.id;
       } else if (device) {
-        downloadFileData["deviceId"] = device.id;
+        downloadFileData.deviceId = device.id;
       }
 
       return successResponse(response, "", {

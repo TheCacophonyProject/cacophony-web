@@ -30,12 +30,17 @@ import {
   fetchAuthorizedRequiredStationById,
   parseJSONField,
 } from "../extract-middleware.js";
-import { anyOf, idOf, integerOfWithDefault } from "../validation-middleware.js";
+import {
+  atLeastOneOf,
+  idOf,
+  integerOfWithDefault,
+} from "../validation-middleware.js";
 import type {
   DeviceId,
   GroupId,
   Seconds,
   StationId,
+  UserId,
 } from "@typedefs/api/common.js";
 import type {
   ApiAlertCondition,
@@ -119,7 +124,7 @@ export default function (app: Application, baseUrl: string) {
         .custom(jsonSchemaOf(arrayOf(ApiAlertConditionSchema))),
       body("name").exists(),
       integerOfWithDefault(body("frequencySeconds"), DEFAULT_FREQUENCY),
-      anyOf(
+      atLeastOneOf(
         idOf(body("deviceId")),
         idOf(body("stationId")),
         idOf(body("projectId")),
@@ -148,7 +153,17 @@ export default function (app: Application, baseUrl: string) {
     },
     parseJSONField(body("conditions")),
     async (request: Request, response: Response, next: NextFunction) => {
-      const alert = {
+      interface AlertCreationOptions {
+        name: string;
+        conditions: ApiAlertCondition[];
+        frequencySeconds?: Seconds;
+        UserId: UserId;
+        DeviceId?: DeviceId;
+        StationId?: StationId;
+        GroupId?: GroupId;
+      }
+
+      const alert: AlertCreationOptions = {
         name: request.body.name,
         conditions: response.locals.conditions,
         frequencySeconds: request.body.frequencySeconds,

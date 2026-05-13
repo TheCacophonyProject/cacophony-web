@@ -66,7 +66,7 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
     pending: {
       type: DataTypes.ENUM("requested", "invited"),
       allowNull: true,
-      defaultValue: null,
+      defaultValue: null as "requested" | "invited" | null,
     },
     settings: {
       type: DataTypes.JSONB,
