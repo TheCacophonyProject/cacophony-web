@@ -711,6 +711,38 @@ export class Recording extends ModelStaticCommon<Recording> {
     return validTagModes.has(mode);
   }
 
+  static processingStateOrClause(states: RecordingProcessingState[]) {
+    return [
+      {
+        processingState: { [Op.in]: states },
+        [Op.or]: [
+          {
+            // Ready to be processed
+            processing: { [Op.is]: Sequelize.literal("distinct from true") },
+          },
+          {
+            // Set to processing but older than 30mins, means processing job was abandoned.
+            currentStateStartTime: {
+              [Op.lt]: Sequelize.literal("NOW() - INTERVAL '30 minutes'"),
+            },
+            processing: true,
+            processingFailedCount: { [Op.lt]: MaxProcessingRetries },
+          },
+        ],
+      },
+      {
+        // Retry a failed recording, if failed more than 12 hours ago
+        processingFailedCount: { [Op.lte]: MaxProcessingRetries },
+        currentStateStartTime: {
+          [Op.lt]: Sequelize.literal("NOW() - INTERVAL '12 hours'"),
+        },
+        processingState: {
+          [Op.in]: states.map((state) => `${state}.failed`),
+        },
+      },
+    ];
+  }
+
   /**
    * Return a recording for processing under a transaction
    * and sets the processingStartTime and jobKey for recording
@@ -720,38 +752,10 @@ export class Recording extends ModelStaticCommon<Recording> {
     type: RecordingType,
     states: RecordingProcessingState[],
   ) {
-    const where: WhereOptions<Recording> = {
+    const where = {
       type: type,
-      deletedAt: null,
-      [Op.or]: [
-        {
-          processingState: { [Op.in]: states },
-          [Op.or]: [
-            {
-              // Ready to be processed
-              processing: { [Op.is]: Sequelize.literal("distinct from true") },
-            },
-            {
-              // Set to processing but older than 30mins, means processing job was abandoned.
-              currentStateStartTime: {
-                [Op.lt]: Sequelize.literal("NOW() - INTERVAL '30 minutes'"),
-              },
-              processing: true,
-              processingFailedCount: { [Op.lt]: MaxProcessingRetries },
-            },
-          ],
-        },
-        {
-          // Retry a failed recording, if failed more than 12 hours ago
-          processingFailedCount: { [Op.lte]: MaxProcessingRetries },
-          currentStateStartTime: {
-            [Op.lt]: Sequelize.literal("NOW() - INTERVAL '12 hours'"),
-          },
-          processingState: {
-            [Op.in]: states.map((state) => `${state}.failed`),
-          },
-        },
-      ],
+      deletedAt: { [Op.eq]: null },
+      [Op.or]: Recording.processingStateOrClause(states),
     };
     let sortOrder: Order = [
       Sequelize.literal(
@@ -838,6 +842,12 @@ export class Recording extends ModelStaticCommon<Recording> {
           (!states.includes(RecordingProcessingState.Finished) ||
             states.length > 1)
         ) {
+          if (type == RecordingType.Audio) {
+            states = states.filter(
+              (state) => state != RecordingProcessingState.Finished,
+            );
+            where[Op.or] = Recording.processingStateOrClause(states);
+          }
           // Look for regular recordings to be processed, *not* audio recordings that are finished with no track-tags
           recording = await this.findOne({
             subQuery: false,
