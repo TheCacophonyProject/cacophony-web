@@ -23,7 +23,6 @@ import Sequelize, {
   CreationOptional,
   DataTypes,
   FindAttributeOptions,
-  FindOptions,
   ForeignKey,
   HasMany,
   HasManyCreateAssociationMixin,
@@ -752,7 +751,7 @@ export class Recording extends ModelStaticCommon<Recording> {
     type: RecordingType,
     states: RecordingProcessingState[],
   ) {
-    const where = {
+    let where: WhereOptions<Recording> = {
       type: type,
       deletedAt: { [Op.eq]: null },
       [Op.or]: Recording.processingStateOrClause(states),
@@ -846,12 +845,15 @@ export class Recording extends ModelStaticCommon<Recording> {
             states = states.filter(
               (state) => state != RecordingProcessingState.Finished,
             );
-            where[Op.or] = Recording.processingStateOrClause(states);
+            where = {
+              ...where,
+              [Op.or]: Recording.processingStateOrClause(states),
+            };
           }
           // Look for regular recordings to be processed, *not* audio recordings that are finished with no track-tags
           recording = await this.findOne({
             subQuery: false,
-            where: where,
+            where,
             attributes,
             order: sortOrder,
             skipLocked: true,
