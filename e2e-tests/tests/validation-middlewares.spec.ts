@@ -755,8 +755,8 @@ test("exactlyOneOf all checks refer to the same location", async () => {
         const json = await response.json();
         expect(json.success).toBe(true);
         expect(json).toMatchObject({
-            a: "1"
-        })
+            a: 1
+        });
     });
 });
 
