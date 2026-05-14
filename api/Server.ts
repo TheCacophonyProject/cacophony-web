@@ -362,7 +362,7 @@ const grafanaLabelRestart = async () => {
             }
           }
           if (requesterInfo) {
-            requesterInfo = `Requested by ${requesterInfo}\n`;
+            requesterInfo = `Requester: ${requesterInfo}\n`;
           }
         }
 
