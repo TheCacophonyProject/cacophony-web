@@ -12,7 +12,6 @@ import { body, param, query } from "express-validator";
 import type {
   ApiCreateStationData,
   ApiStationResponse,
-  ApiStationSettings,
 } from "@typedefs/api/station.js";
 import {
   booleanOf,

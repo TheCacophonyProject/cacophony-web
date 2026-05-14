@@ -1,12 +1,7 @@
 import log from "@log";
-import {
-  BadRequestError,
-  ClientError,
-  UnprocessableError,
-} from "@api/customErrors.js";
+import { BadRequestError, UnprocessableError } from "@api/customErrors.js";
 import {
   DeviceType,
-  HttpStatusCode,
   RecordingProcessingState,
   RecordingType,
 } from "@typedefs/api/consts.js";

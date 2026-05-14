@@ -41,7 +41,6 @@ import { File } from "@models/File.js";
 import { GroupInvites } from "@models/GroupInvites.js";
 import { TrackTagUserData } from "@models/TrackTagUserData.js";
 import { GroupUsers } from "@models/GroupUsers.js";
-import { ApiTrackDataRequest } from "@typedefs/api/track.js";
 import jwt from "jsonwebtoken";
 import config from "@config";
 import { MinimalTrackRequestData } from "@typedefs/api/fileProcessing.js";
