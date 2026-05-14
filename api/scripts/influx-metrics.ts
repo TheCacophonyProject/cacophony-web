@@ -13,6 +13,11 @@ import config from "../config.js";
 const PROCESSING_WAIT_TIME = "processing_wait_time";
 const PROCESSING_STATE_COUNT = "processing_state_count";
 const IN_PAST_24_HRS = "in_past_24";
+const countStates = Object.values(RecordingProcessingState).filter(
+  (state) =>
+    state !== RecordingProcessingState.Finished &&
+    state !== RecordingProcessingState.AnalyseTest,
+) as string[];
 const timeout = 1000;
 
 (async function main() {
@@ -29,7 +34,7 @@ const timeout = 1000;
 
     if (config.cronScriptProcessingHostname !== os.hostname()) {
       console.log("Influx metrics: not running on cron script host, exiting.");
-      return;
+      process.exit(0);
     } else {
       const influx = await influxConnect();
       await Promise.all(
@@ -58,7 +63,7 @@ async function writePoints(
   measurement: string,
   fields: Record<string, unknown>,
 ) {
-  return await influx.writePoints([
+  return influx.writePoints([
     {
       measurement,
       tags: { host: os.hostname() },
@@ -87,11 +92,7 @@ async function measureProcessingWaitTime(pgClient: PgClient) {
     fields: { waitMinutes },
   };
 }
-const countStates = Object.values(RecordingProcessingState).filter(
-  (state) =>
-    state !== RecordingProcessingState.Finished &&
-    state !== RecordingProcessingState.AnalyseTest,
-) as string[];
+
 async function stateCount(pgClient: PgClient) {
   const fields = (
     await Promise.all(
