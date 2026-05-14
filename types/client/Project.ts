@@ -5,7 +5,6 @@ import type { CacophonyApiClient } from "./api.js";
 import type { FetchResult, LoadedResource, TestHandle } from "./types.js";
 import type {
   GroupId as ProjectId,
-  LatLng,
   LocationId,
   UserId,
 } from "../api/common.js";
