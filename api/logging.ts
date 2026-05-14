@@ -7,6 +7,8 @@ const { format } = winston;
 export const colourForStatusCode = (code: number | HttpStatusCode): string => {
   if (code >= 200 && code < 300) {
     return `\x1b[32m${code}\x1b[0m`;
+  } else if (code >= 300 && code < 400) {
+    return `\x1b[36m${code}\x1b[0m`;
   } else if (code >= 400 && code < 500) {
     return `\x1b[33m${code}\x1b[0m`;
   } else {
