@@ -80,7 +80,7 @@ export default function (app: Application) {
       ),
       exactlyOneOfOrDefault(false)(
         query("only-active").optional().isBoolean().toBoolean(),
-        deprecatedField(query("onlyActive").optional().isBoolean().toBoolean()),
+        deprecatedField(query("onlyActive")).optional().isBoolean().toBoolean(),
       ),
     ]),
     async (request: Request, _response: Response, next: NextFunction) => {

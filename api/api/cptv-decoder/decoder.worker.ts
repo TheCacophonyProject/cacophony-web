@@ -13,7 +13,9 @@ import { readFileSync } from "fs";
 import type { ReadableStream } from "stream/web";
 import { fileURLToPath } from "url";
 import path from "path";
-
+console.log = () => {
+  /* empty */
+};
 // This lock is intended to prevent multiple commands from the parent thread running at once.
 // Can that even happen in a single-threaded model though?  Will the new message be received before the
 // previous one completes?

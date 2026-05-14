@@ -358,6 +358,7 @@ export default function (app: Application, baseUrl: string) {
           id: deviceId,
         });
       } else {
+        logger.info("Deleting device %s with no recordings", deviceId);
         await DeviceHistory.destroy({
           where: {
             uuid: response.locals.device.uuid,
@@ -391,8 +392,8 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("deviceId")),
       nameOrIdOf(body("group")),
       exactlyOneOfOrDefault(false)(
-        query("only-active").isBoolean().toBoolean(),
-        deprecatedField(query("onlyActive").isBoolean().toBoolean()),
+        query("only-active").optional().isBoolean().toBoolean(),
+        deprecatedField(query("onlyActive")).optional().isBoolean().toBoolean(),
       ),
     ]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(body("group")),
@@ -537,8 +538,8 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
       deprecatedField(query("where")), // Sidekick
       exactlyOneOfOrDefault(false)(
-        query("only-active").isBoolean().toBoolean(),
-        deprecatedField(query("onlyActive").isBoolean().toBoolean()),
+        query("only-active").optional().isBoolean().toBoolean(),
+        deprecatedField(query("onlyActive")).optional().isBoolean().toBoolean(),
       ),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
@@ -561,8 +562,8 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
       deprecatedField(query("where")), // Sidekick
       exactlyOneOfOrDefault(false)(
-        query("only-active").isBoolean().toBoolean(),
-        deprecatedField(query("onlyActive").isBoolean().toBoolean()),
+        query("only-active").optional().isBoolean().toBoolean(),
+        deprecatedField(query("onlyActive")).optional().isBoolean().toBoolean(),
       ),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),

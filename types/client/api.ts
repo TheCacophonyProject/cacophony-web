@@ -368,6 +368,16 @@ const cacophonyFetchWrapper = async <T>(
   }
 };
 
+const isPlainObject = (obj: unknown): boolean => {
+  return (
+    typeof obj === "object" && // Must be an object
+    obj !== null && // Not null (typeof null is 'object')
+    !Array.isArray(obj) && // Not an array
+    (Object.getPrototypeOf(obj) === Object.prototype ||
+      Object.getPrototypeOf(obj) === null)
+  );
+};
+
 export interface CacophonyApiClient {
   get: (
     authKey: TestHandle | null,
@@ -430,17 +440,11 @@ class CacophonyApi {
     body?: object,
     abortable = false,
   ) {
-    if (
-      body &&
-      typeof body === "object" &&
-      (body instanceof ArrayBuffer ||
-        body instanceof FormData ||
-        body instanceof Buffer)
-    ) {
+    if (body && !isPlainObject(body)) {
       return cacophonyFetchWrapper(
         authKey,
         this.url(endpoint),
-        { method: "POST", body },
+        { method: "POST", body } as { method: string; body: BodyInit },
         abortable,
         this.credentialsResolver,
       );

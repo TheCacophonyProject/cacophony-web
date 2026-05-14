@@ -48,6 +48,8 @@ class DecoderWorkerPool {
       workerData: {
         port: port2,
       },
+      stdout: true, // Prevents automatic piping of console.log to main thread
+      stderr: true,
       transferList: [port2],
       resourceLimits: {
         maxOldGenerationSizeMb: 20, // Limit heap to 20MB, seems to be all that's needed for CPTV files

@@ -1,21 +1,21 @@
 import type { Application, NextFunction, Request, Response } from "express";
 import express from "express";
 import passport from "passport";
-import { ExtractJwt } from "passport-jwt";
 import process from "process";
 import http from "http";
 import config from "./config.js";
 import { initSequelize } from "@models/index.js";
-import log, { consoleTransport } from "@log";
+import log, { consoleTransport, colourForStatusCode } from "@log";
 import customErrors from "./api/customErrors.js";
 import { openS3 } from "./models/util/util.js";
 import initialiseApi from "./api/V1/index.js";
 import expressWinston from "express-winston";
 import { exec } from "child_process";
-import { format, promisify } from "util";
+import { promisify } from "util";
 import { v4 as uuidv4 } from "uuid";
 import qs from "qs";
 import { Op } from "sequelize";
+import { DecodedJWTToken } from "@api/auth.js";
 import {
   asyncLocalStorage,
   CACOPHONY_WEB_VERSION,
@@ -30,7 +30,6 @@ import type { UserId } from "@typedefs/api/common.js";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 import { User } from "@models/User.js";
 import os from "os";
-import jwt, { type JwtPayload } from "jsonwebtoken";
 
 const asyncExec = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
@@ -192,35 +191,6 @@ const grafanaLabelRestart = async () => {
       const startUsage = process.cpuUsage();
       store.set("cpuUsage", startUsage);
     }
-    // Make sure user agent doesn't trigger mustache template parsing.
-    if (request.headers["user-agent"]) {
-      const safeUserAgent = request.headers["user-agent"]
-        .replaceAll("{", "%7B")
-        .replaceAll("}", "%7D");
-      if (safeUserAgent === "Go-http-client/1.1") {
-        const token = ExtractJwt.fromAuthHeaderWithScheme("jwt")(request);
-        let deviceId = "unknown";
-        if (token) {
-          const decodedToken = jwt.decode(token) as JwtPayload | null;
-          if (decodedToken) {
-            deviceId = decodedToken.id;
-          }
-        }
-        const safeUrl = request.url
-          .replaceAll("{", "%7B")
-          .replaceAll("}", "%7D");
-        const logMessage = format("%s %s", request.method, safeUrl);
-        log.info(
-          "UA: %s, (%s) #%s -> %s",
-          safeUserAgent,
-          request.ip,
-          deviceId,
-          logMessage,
-        );
-      } else {
-        log.info("UA: %s", safeUserAgent);
-      }
-    }
     next();
   });
   app.use(
@@ -312,18 +282,100 @@ const grafanaLabelRestart = async () => {
 
         // NOTE: We need to sanitize request.url here to prevent
         // some kind of mustache template injection.
+        let userAgentString = "unknown";
+        if (request.headers["user-agent"]) {
+          // Make sure user agent doesn't trigger mustache template parsing.
+          const safeUserAgent = request.headers["user-agent"]
+            .replaceAll("{", "%7B")
+            .replaceAll("}", "%7D");
+          // if (safeUserAgent === "Go-http-client/1.1") {
+          //   const token = ExtractJwt.fromAuthHeaderWithScheme("jwt")(request);
+          //   let deviceId = "unknown";
+          //   if (token) {
+          //     const decodedToken = jwt.decode(token) as JwtPayload | null;
+          //     if (decodedToken) {
+          //       deviceId = decodedToken.id;
+          //     }
+          //   }
+          //   const safeUrl = request.url
+          //     .replaceAll("{", "%7B")
+          //     .replaceAll("}", "%7D");
+          //   const logMessage = format("%s %s", request.method, safeUrl);
+          //   userAgentString = `${safeUserAgent}, (${request.ip}) #${deviceId}\n${logMessage}`;
+          // } else {
+          //   userAgentString = safeUserAgent;
+          // }
+
+          if (safeUserAgent.startsWith("Go-http-client")) {
+            userAgentString = "Thermal camera";
+          } else if (safeUserAgent.startsWith("Ktor")) {
+            userAgentString = "Sidekick";
+          } else if (safeUserAgent.startsWith("Mozilla")) {
+            // Check for mobile browser or web browser
+            if (safeUserAgent.includes("iPhone")) {
+              userAgentString = "Browser (iPhone)";
+            } else if (safeUserAgent.includes("Android")) {
+              userAgentString = "Browser (Android)";
+            } else {
+              userAgentString = "Browser";
+            }
+          } else if (safeUserAgent.startsWith("python")) {
+            userAgentString = "Cacophony processing / python";
+          }
+        }
+
+        let requesterInfo = "";
+        {
+          const requester =
+            response.locals.token &&
+            (response.locals.token as DecodedJWTToken)._type;
+          const requestId =
+            (response.locals.user && response.locals.user.id) ||
+            (response.locals.device && response.locals.device.id) ||
+            (requester && (response.locals.token as DecodedJWTToken).id) ||
+            "unknown";
+          if (requester) {
+            const userOrDevice = requester || "unauthenticated";
+            const asSuperUser = response.locals.viewAsSuperUser
+              ? "::SUPER_USER"
+              : "";
+            if (response.locals.hasValidationErrors) {
+              let requesterName = "unknown";
+              if (requester === "device") {
+                requesterName =
+                  (response.locals.device &&
+                    response.locals.deviceName.userName) ||
+                  "unknown";
+              } else if (requester === "user") {
+                requesterName =
+                  (response.locals.user && response.locals.user.userName) ||
+                  "unknown";
+              }
+              // NOTE: If we have errors, log the device/userName too
+              const requestIdWithUserName = requestId
+                ? `#${requestId} (${requesterName}) `
+                : "";
+              requesterInfo = `${userOrDevice}: ${requestIdWithUserName}${asSuperUser}`;
+            } else {
+              const requesterId = requestId ? `#${requestId}` : "";
+              requesterInfo = `${userOrDevice}: ${requesterId}${asSuperUser}`;
+            }
+          }
+          if (requesterInfo) {
+            requesterInfo = `Requested by ${requesterInfo}\n`;
+          }
+        }
+
         const safeUrl = request.url
           .replaceAll("{", "%7B")
           .replaceAll("}", "%7D");
-        return `${request.method} ${safeUrl}\n\t\t Status(${
-          response.statusCode
-        })\n\t\t ${
+        return `${request.method}(${colourForStatusCode(response.statusCode)}) ${safeUrl}\nUA: ${userAgentString}\n${requesterInfo}${
           dbQueryCount
-            ? `${dbQueryCount} DB queries taking ${dbQueryTime}ms `
+            ? `\x1b[2;37m${dbQueryCount} DB queries taking ${dbQueryTime}ms, \x1b[0m`
             : ""
-        }[${(response as { responseTime?: number }).responseTime || 0}ms total response time${
+        }\x1b[2;37m${(response as { responseTime?: number }).responseTime || 0}ms total response time${
           wasRateLimited ? ", was rate limited" : ""
-        }]`;
+        }\x1b[0m`;
       },
     }),
   );

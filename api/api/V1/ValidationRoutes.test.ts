@@ -116,7 +116,7 @@ export default (app: Application, baseUrl: string) => {
     validateFields([
       exactlyOneOfOrDefault(false)(
         query("a").optional().isBoolean().toBoolean(),
-        deprecatedField(query("A").optional().isBoolean().toBoolean()),
+        deprecatedField(query("A")).optional().isBoolean().toBoolean(),
       ),
     ]),
     (request: Request, response: Response, _next: NextFunction) => {

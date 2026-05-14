@@ -1,7 +1,6 @@
 import type { DeviceId, GroupId, SaltId, UserId } from "../api/common.js";
 import type { HttpStatusCode } from "../api/consts.js";
 import type { ApiLoggedInUserResponse } from "../api/user.js";
-import type { IsoFormattedString } from "../api/event.js";
 import type { ProjectId } from "../api/common.js";
 
 export type JwtToken<_T> = string;

@@ -582,6 +582,7 @@ export const uploadGenericRecording =
         maxTotalFileFieldCount: Infinity,
         maxFileCountPerField: Infinity,
         maxTotalFileCount: 1,
+        maxFileByteLength: 200 * 1024 * 1024, // 200MB, largest we've seen to date is ~170MB
         maxFieldValueByteLength: 1024 * 1024, // 1MB - why would anything be bigger?
       });
       if ("data" in fields) {
@@ -592,11 +593,11 @@ export const uploadGenericRecording =
         );
         if (recordingData.duplicate) {
           log.warning(
-            `Duplicate recording found for device: ${recordingData.duplicate.DeviceId} (#${recordingData.duplicate.id})`,
+            `| Duplicate recording found for device: ${recordingData.duplicate.DeviceId} (#${recordingData.duplicate.id})`,
           );
           return successResponse(
             response,
-            `Duplicate recording found for device: ${recordingData.duplicate.DeviceId}`,
+            `| Duplicate recording found for device: ${recordingData.duplicate.DeviceId}`,
             {
               recordingId: recordingData.duplicate.id,
             },
@@ -708,7 +709,7 @@ export const uploadGenericRecording =
         // In this case,
         await deleteUpload(uploadResult.objectStorageKey);
         log.warning(
-          `Duplicate recording found for device: ${recordingData.duplicate.DeviceId} (#${recordingData.duplicate.id})`,
+          `Duplicate recording found for device: ${duplicateRecording.DeviceId} (#${duplicateRecording.id})`,
         );
         return successResponse(
           response,

@@ -19,6 +19,7 @@ import {
   BelongsTo,
   CreationOptional,
   DataTypes,
+  Error,
   ForeignKey,
   HasMany,
   NonAttribute,
@@ -39,7 +40,7 @@ import type {
 import { Station, TimeInterval } from "@models/Station.js";
 import { tryToMatchLocationToStationInGroup } from "@models/util/locationUtils.js";
 import { locationField } from "@models/util/util.js";
-import { ClientError } from "@api/customErrors.js";
+import { ClientError, CustomError } from "@api/customErrors.js";
 import { Recording } from "@models/Recording.js";
 import { DeviceHistory } from "@models/DeviceHistory.js";
 import { Event } from "@models/Event.js";
@@ -286,7 +287,7 @@ where
         break;
       }
       default:
-        throw new Error(`Invalid interval: ${interval}`);
+        throw new CustomError(`Invalid interval: ${interval}`);
     }
     const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
     for (let i = 0; i < steps; i++) {
@@ -657,8 +658,14 @@ where
           }
         },
       );
-    } catch (e) {
-      logger.error("Failed to re-register device %s: %s", this.deviceName, e);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        logger.error(
+          "Failed to re-register device %s: %s",
+          this.deviceName,
+          e as Error,
+        );
+      }
       return false;
     }
     return newDevice;

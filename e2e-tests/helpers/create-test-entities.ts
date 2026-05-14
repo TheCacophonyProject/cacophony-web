@@ -19,7 +19,7 @@ export interface ProjectBundle {
     getOwner: () => TestUserHandle;
     getTestSuperUser: () => TestUserHandle;
     getNonAdmin: () => TestUserHandle | null;
-    api: (userOrDevice?: TestUserHandle | TestDeviceHandle) => TestApi;
+    api: (userOrDevice: TestUserHandle | TestDeviceHandle) => TestApi;
 }
 
 const getTestName = (str: string) =>
@@ -73,7 +73,7 @@ export const createSuperAdminUser = async (
 
 export const createUser = async (
     userName: string,
-): Promise<TestUserHandle | null> => {
+): Promise<TestUserHandle> => {
     const userHandle = getTestName(`cy_user-${userName}`);
     return await test.step(`Create user '${userHandle}'`, async () => {
         const userResponse = await TestApiImpl.Users.register(
@@ -96,14 +96,14 @@ export const createUser = async (
                 type: "user",
             };
         }
-        return null;
+        throw new Error("Failed to create user");
     });
 };
 
 export const createProject = async (
     projectName: string,
     userHandle: TestUserHandle,
-): Promise<TestProjectHandle | null> => {
+): Promise<TestProjectHandle> => {
     const projectHandle = getTestName(`cy_project-${projectName}`);
     return await test.step(`Create project '${projectHandle}'`, async () => {
         const projectResponse = await TestApiImpl.Projects.withAuth(
@@ -121,14 +121,14 @@ export const createProject = async (
                 type: "project",
             };
         }
-        return null;
+        throw new Error("Failed to create project");
     });
 };
 
 export const addDeviceToProject = async (
     deviceName: string,
     projectHandle: TestProjectHandle,
-): Promise<TestDeviceHandle | null> => {
+): Promise<TestDeviceHandle> => {
     const deviceHandle = getTestName(`cy_device-${deviceName}`);
     return await test.step(`Create device '${deviceHandle}'`, async () => {
         const deviceResponse = await TestApiImpl.Devices.registerDevice(
@@ -146,7 +146,7 @@ export const addDeviceToProject = async (
                 type: "device",
             };
         }
-        return null;
+        throw new Error("Failed to create device");
     });
 };
 
@@ -195,7 +195,7 @@ export const createProjectWithUserAndDevice = async (options?: {
             // There may not be non-admin users.
             return null;
         },
-        api: (user: TestUserHandle = userHandle) => {
+        api: (user: TestUserHandle | TestDeviceHandle = userHandle) => {
             return TestApiImpl.withAuth(user.testId);
         },
     };

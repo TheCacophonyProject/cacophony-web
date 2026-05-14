@@ -16,7 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import log from "../logging.js";
+import log, { colourForStatusCode } from "../logging.js";
 import { format } from "util";
 import { asyncLocalStorage } from "@/Globals.js";
 import type { NextFunction, Request, Response } from "express";
@@ -110,7 +110,12 @@ export class CustomError extends Error {
   }
 
   toString() {
-    return format("%s [%d]: %s", this.name, this.statusCode, this.message);
+    return format(
+      "%s %s: %s",
+      this.name,
+      `${colourForStatusCode(Number(this.statusCode))}`,
+      this.message,
+    );
   }
 
   toJson() {

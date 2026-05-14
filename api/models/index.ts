@@ -133,15 +133,9 @@ export const initSequelize = async () => {
                   log.warning("Slow query: %s [%d]ms", msg, timeMs);
                 } else if (IS_DEBUG) {
                   log.info(
-                    "QUERY %dms\n\t\t %s",
+                    "QUERY %dms\n %s",
                     timeMs,
                     msg.replace("Executed (default): ", ""),
-                    // sqlFormat(msg.replace("Executed (default): ", ""), {
-                    //   language: "postgresql",
-                    // }),
-                    // .replace(/\n/g, "")
-                    // .replace(/\t/, " ")
-                    // .replace(/\s+/g, " "),
                   );
                 }
               }

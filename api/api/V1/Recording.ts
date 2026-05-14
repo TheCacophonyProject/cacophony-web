@@ -463,8 +463,7 @@ export default (app: Application, baseUrl: string) => {
   app.post(
     apiUrl,
     extractJwtAuthorisedDevice,
-    async (request, response, next) =>
-      uploadGenericRecordingFromDevice()(request, response, next),
+    uploadGenericRecordingFromDevice(),
   );
 
   /**
@@ -503,8 +502,7 @@ export default (app: Application, baseUrl: string) => {
       param("deviceName"),
       param("groupName"),
     ),
-    async (request, response, next) =>
-      uploadGenericRecordingOnBehalfOfDevice()(request, response, next),
+    uploadGenericRecordingOnBehalfOfDevice(),
   );
 
   /**
@@ -541,8 +539,7 @@ export default (app: Application, baseUrl: string) => {
       booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
-    async (request, response, next) =>
-      uploadGenericRecordingOnBehalfOfDevice()(request, response, next),
+    uploadGenericRecordingOnBehalfOfDevice(),
   );
 
   /**
@@ -585,8 +582,7 @@ export default (app: Application, baseUrl: string) => {
       response.locals.device = devices.pop();
       next();
     },
-    async (request, response, next) =>
-      uploadGenericRecordingOnBehalfOfDevice()(request, response, next),
+    uploadGenericRecordingOnBehalfOfDevice(),
   );
 
   /**

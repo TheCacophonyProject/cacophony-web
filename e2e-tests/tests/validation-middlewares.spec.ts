@@ -626,6 +626,17 @@ test("exactlyOneOfOrDefault validation middleware", async () => {
         });
     });
 
+    await test.step("exactlyOneOfOrDefault succeeds with single valid param which is the same as the default value", async () => {
+        const params = new URLSearchParams();
+        params.append("a", "false");
+        const response = await fetch(`${TEST_VALIDATORS_URL}/exactly-one-of-or-default?${params}`);
+        const json = await response.json();
+        expect(json.success).toBe(true);
+        expect(json).toMatchObject({
+            a: false,
+        });
+    });
+
     await test.step("exactlyOneOfOrDefault fails with two valid params", async () => {
         const params = new URLSearchParams();
         params.append("a", "true");

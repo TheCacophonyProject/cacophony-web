@@ -22,13 +22,12 @@ import {
   ContextRunner,
   Meta,
 } from "express-validator";
-import { body, matchedData, query } from "express-validator";
+import { body, query } from "express-validator";
 import { ModelStaticCommon } from "@/models/index.js";
 import { format } from "util";
 import log from "../logging.js";
 import { ClientError, ValidationError } from "./customErrors.js";
 import type { NextFunction, Request, Response } from "express";
-import type { DecodedJWTToken } from "./auth.js";
 import levenshteinEditDistance from "levenshtein-edit-distance";
 import { User } from "@/models/User.js";
 import { Recording } from "@models/Recording.js";
@@ -46,6 +45,7 @@ import {
 import { extractUnknownFields } from "@api/validation-middleware.js";
 import { Context } from "express-validator/lib/context.js";
 import { ResultWithContextImpl } from "express-validator/lib/chain/index.js";
+import { Device } from "@models/Device.js";
 
 export const getModelByIdChain = (
   modelType: typeof ModelStaticCommon<Model>,
@@ -354,7 +354,6 @@ const getSuggestionsForUnknownFields = (
 
 export const validateFields = (validations: ContextRunner[]) => {
   return async (request: Request, response: Response, next: NextFunction) => {
-    console.log("VALIDATE FIELDS");
     const validationPromises = [];
     for (const validation of validations) {
       validationPromises.push(validation.run(request));
@@ -430,37 +429,27 @@ export const validateFields = (validations: ContextRunner[]) => {
         }
       }
     }
-    {
-      // Logging - should this really go here?
-      const safeUrl = request.url.replaceAll("{", "%7B").replaceAll("}", "%7D");
-      const logMessage = format("%s %s", request.method, safeUrl);
-      const requester =
-        response.locals.token &&
-        (response.locals.token as DecodedJWTToken)._type;
-      const requestId =
-        (response.locals.user && response.locals.user.userName) ||
-        (response.locals.device && response.locals.device.devicename) ||
-        (requester && (response.locals.token as DecodedJWTToken).id) ||
-        "unknown";
-
-      // TODO: At this point *if* we have errors, we may want to lookup the userName or deviceName?
-      if (requester) {
-        log.info(
-          "\n\t\t NEW REQUEST\n\t\t %s\n\t\t %s: %s%s",
-          logMessage,
-          requester || "unauthenticated",
-          requestId,
-          response.locals.viewAsSuperUser ? "::SUPER_USER" : "",
-        );
-      } else {
-        log.info("\n\t\t NEW REQUEST\n\t\t %s", logMessage);
+    const hasValidationErrors = context.errors.length !== 0;
+    if (hasValidationErrors) {
+      // Pull out full requester for logging at the end of the request.
+      response.locals.hasValidationErrors = true;
+      if (response.locals.user && !response.locals.user.userName) {
+        const user = await User.findByPk(response.locals.user.id);
+        if (user) {
+          response.locals.user = user;
+        }
+      } else if (response.locals.device && !response.locals.device.deviceName) {
+        const device = await Device.findByPk(response.locals.device.id);
+        if (device) {
+          response.locals.device = device;
+        }
       }
     }
-    if (context.errors.length === 0) {
-      return next();
-    } else {
+
+    if (hasValidationErrors) {
       return next(new ValidationError(new ResultWithContextImpl(context)));
     }
+    return next();
   };
 };
 
