@@ -366,9 +366,11 @@ const grafanaLabelRestart = async () => {
           }
         }
 
-        const safeUrl = request.url
-          .replaceAll("{", "%7B")
-          .replaceAll("}", "%7D");
+        let safeUrl = request.url.replaceAll("{", "%7B").replaceAll("}", "%7D");
+        const signedUrlStart = "/api/v1/signedUrl?jwt=";
+        if (safeUrl.startsWith(signedUrlStart)) {
+          safeUrl = `${signedUrlStart}<omitted>`;
+        }
         return `${request.method}(${colourForStatusCode(response.statusCode)}) ${safeUrl}\nUA: ${userAgentString}\n${requesterInfo}${
           dbQueryCount
             ? `\x1b[2;37m${dbQueryCount} DB queries taking ${dbQueryTime}ms, \x1b[0m`
