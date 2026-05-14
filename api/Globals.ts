@@ -9,8 +9,9 @@ export interface SessionTimingInfo {
 
 type AsyncStoreValue = number | string | SessionTimingInfo[] | NodeJS.CpuUsage;
 
-interface ApiAsyncLocalStorage
-  extends AsyncLocalStorage<Map<string, AsyncStoreValue>> {
+interface ApiAsyncLocalStorage extends AsyncLocalStorage<
+  Map<string, AsyncStoreValue>
+> {
   getStore: () => Map<string, AsyncStoreValue>;
 }
 
