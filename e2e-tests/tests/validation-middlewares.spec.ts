@@ -7,10 +7,12 @@ test.beforeEach(async ({ request }) => {
     const nodeFetch = global.fetch;
     // @ts-ignore
     global.fetch = request.fetch.bind(request);
+    // @ts-ignore
     global.nodeFetch = nodeFetch;
 });
 
 test.afterEach(async () => {
+    // @ts-ignore
     global.fetch = global.nodeFetch;
 });
 

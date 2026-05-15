@@ -19,17 +19,22 @@ import { DecodedJWTToken } from "@api/auth.js";
 import {
   asyncLocalStorage,
   CACOPHONY_WEB_VERSION,
+  DeviceGroupNamesByDeviceId,
+  DeviceNamesById,
   RequesterStore,
   RouteStore,
   SessionTimingInfo,
   SuperUsers,
+  UserNamesById,
 } from "./Globals.js";
 import path from "path";
 import { fileURLToPath } from "url";
-import type { UserId } from "@typedefs/api/common.js";
+import type { DeviceId, UserId } from "@typedefs/api/common.js";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 import { User } from "@models/User.js";
 import os from "os";
+import { Device } from "@models/Device.js";
+import { Group } from "@models/Group.js";
 
 const asyncExec = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
@@ -329,40 +334,42 @@ const grafanaLabelRestart = async () => {
           const requester =
             response.locals.token &&
             (response.locals.token as DecodedJWTToken)._type;
-          const requestId =
-            (response.locals.user && response.locals.user.id) ||
-            (response.locals.device && response.locals.device.id) ||
-            (requester && (response.locals.token as DecodedJWTToken).id) ||
-            "unknown";
+          let requestId: UserId | DeviceId | string;
+          if (requester === "user") {
+            requestId =
+              (response.locals.requestUser && response.locals.requestUser.id) ||
+              (response.locals.user && response.locals.user.id) ||
+              (requester && (response.locals.token as DecodedJWTToken).id) ||
+              "unknown";
+          } else if (requester === "device") {
+            requestId =
+              (response.locals.device && response.locals.device.id) ||
+              (requester && (response.locals.token as DecodedJWTToken).id) ||
+              "unknown";
+          }
           if (requester) {
             const userOrDevice = requester || "unauthenticated";
             const asSuperUser = response.locals.viewAsSuperUser
               ? "::SUPER_USER"
               : "";
-            if (response.locals.hasValidationErrors) {
-              let requesterName = "unknown";
-              if (requester === "device") {
-                requesterName =
-                  (response.locals.device &&
-                    response.locals.deviceName.userName) ||
-                  "unknown";
-              } else if (requester === "user") {
-                requesterName =
-                  (response.locals.user && response.locals.user.userName) ||
-                  "unknown";
-              }
-              // NOTE: If we have errors, log the device/userName too
-              const requestIdWithUserName = requestId
-                ? `#${requestId} (${requesterName}) `
-                : "";
-              requesterInfo = `${userOrDevice}: ${requestIdWithUserName}${asSuperUser}`;
-            } else {
-              const requesterId = requestId ? `#${requestId}` : "";
-              requesterInfo = `${userOrDevice}: ${requesterId}${asSuperUser}`;
+            let requesterName = "unknown";
+            let deviceGroupName = "";
+            if (requester === "device") {
+              requesterName =
+                DeviceNamesById.get(requestId as DeviceId) ||
+                (response.locals.device && response.locals.device.deviceName) ||
+                "unknown";
+              deviceGroupName = `, ${DeviceGroupNamesByDeviceId.get(requestId as DeviceId) || "unknown project"}`;
+            } else if (requester === "user") {
+              requesterName =
+                UserNamesById.get(requestId as UserId) ||
+                (response.locals.user && response.locals.user.userName) ||
+                "unknown";
             }
-          }
-          if (requesterInfo) {
-            requesterInfo = `Requester: ${requesterInfo}\n`;
+            const requestIdWithUserName = requestId
+              ? `#${requestId}${asSuperUser} (${requesterName}${deviceGroupName})`
+              : "";
+            requesterInfo = `Requester: ${userOrDevice} ${requestIdWithUserName}\n`;
           }
         }
 
@@ -371,6 +378,7 @@ const grafanaLabelRestart = async () => {
         if (safeUrl.startsWith(signedUrlStart)) {
           safeUrl = `${signedUrlStart}<omitted>`;
         }
+        // FIXME: SafeUrl is being incorrectly parsed/truncated for bulk-recording queries
         return `${request.method}(${colourForStatusCode(response.statusCode)}) ${safeUrl}\nUA: ${userAgentString}\n${requesterInfo}${
           dbQueryCount
             ? `\x1b[2;37m${dbQueryCount} DB queries taking ${dbQueryTime}ms, \x1b[0m`
@@ -539,6 +547,22 @@ const grafanaLabelRestart = async () => {
       const superUsers = await User.findAll({
         where: { globalPermission: { [Op.ne]: "off" } },
       });
+      const users = await User.findAll({
+        where: {},
+        attributes: ["id", "userName"],
+      });
+      const devices = await Device.findAll({
+        where: {},
+        attributes: ["id", "deviceName"],
+        include: [{ model: Group, attributes: ["groupName"] }],
+      });
+      for (const device of devices) {
+        DeviceNamesById.set(device.id, device.deviceName);
+        DeviceGroupNamesByDeviceId.set(device.id, device.Group.groupName);
+      }
+      for (const user of users) {
+        UserNamesById.set(user.id, user.userName);
+      }
       for (const superUser of superUsers) {
         SuperUsers.set(superUser.id, {
           userName: superUser.userName,
