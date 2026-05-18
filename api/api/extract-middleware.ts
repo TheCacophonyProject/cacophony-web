@@ -1497,9 +1497,6 @@ const getIncludeForUser = (
     return includeFn(asAdmin ? { admin: true } : {}, context.requestUser.id);
   } else {
     // Don't add any permission constraints when getting the resource
-    log.info(
-      `Accessing model by user #${context.requestUser.id} (${context.requestUser.userName}) as super-admin`,
-    );
     return {};
   }
 };
