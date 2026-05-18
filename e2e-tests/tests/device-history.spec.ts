@@ -1,7 +1,7 @@
 import {test} from "@/helpers/upload-tests"
 import {createProjectWithUserAndDevice} from "@/helpers/create-test-entities";
 import {expect} from "@playwright/test";
-//import type {Request, RequestInit, Response} from "node/web-globals/fetch";
+import { SidekickSim } from "@/helpers/sidekick-sim";
 
 test.beforeEach(async ({ request }) => {
     const nodeFetch = global.fetch;
@@ -77,11 +77,14 @@ test(`When setting up a new device via sidekick, with a modem, when sidekick has
 
 test(`When setting up a new device and setting a new location via sidekick - without internet connectivity - 
             device location and history location should be updated, backdated to the correct time.`, async () => {
+
+
+
     // Create a device
     const project = await createProjectWithUserAndDevice();
     const AdminUser = project.api();
     const device = project.deviceHandles[0];
-    const sideKickSim = new SideKickSim();
+    const sideKickSim = new SidekickSim();
 
     // Set a location via sidekick (simulating offline state)
     const initialLocation = { ...project.locationBase, name: "Initial Offline Location" };

@@ -55,10 +55,10 @@ test("Existing new user is able to request to join an existing project from setu
   });
   await test.step(`${user1} (Project admin) gets a join request via email`, async () => {
     await signInExistingUser(page, user1, password1);
-    await waitToNavigateToProject(page, urlNormaliseProjectName(project));
+    await waitToNavigateToProject(page, project);
     await openJoinProjectRequestEmail(page, user1);
     await page.getByTestId("confirm project membership request").click();
-    await waitToNavigateToProject(page, urlNormaliseProjectName(project));
+    await waitToNavigateToProject(page, project);
     await signOut(page);
   });
   await test.step(`${user2} (requester) receives email confirmation that their request was accepted`, async () => {
@@ -68,7 +68,7 @@ test("Existing new user is able to request to join an existing project from setu
   });
   await test.step(`${user2} signs in and is taken to project ${project}`, async () => {
     await signInExistingUser(page, user2, password2);
-    await waitToNavigateToProject(page, urlNormaliseProjectName(project));
+    await waitToNavigateToProject(page, project);
   });
 });
 
@@ -286,6 +286,7 @@ test("Logged in user is able to accept a project invite", async ({ page }) => {
   });
   await test.step(`${user2} receives invite email, accepts while logged in`, async () => {
     await signInExistingUser(page, user2, password2);
+    await waitToNavigateToProject(page, project2)
     await openJoinProjectInviteEmailForExistingUser(page, user2); // Ignore
     await page.getByTestId("existing user join project").click();
     await waitToNavigateToProject(page, project);
@@ -326,10 +327,10 @@ test("Existing user (with projects) is able to request to join an existing proje
   });
   await test.step(`${user1} signs in and, opens the email and accepts join request`, async () => {
     await signInExistingUser(page, user1, password1);
-    await waitToNavigateToProject(page, urlNormaliseProjectName(project1));
+    await waitToNavigateToProject(page, project1);
     await openJoinProjectRequestEmail(page, user1);
     await page.getByTestId("confirm project membership request").click();
-    await waitToNavigateToProject(page, urlNormaliseProjectName(project1));
+    await waitToNavigateToProject(page, project1);
     await signOut(page);
   });
   await test.step(`${user2} signs in and can see the project in her projects list`, async () => {
@@ -337,6 +338,6 @@ test("Existing user (with projects) is able to request to join an existing proje
     await expect(page.getByTestId("switch project button")).toBeAttached();
     await page.getByTestId("switch project button").click();
     await page.getByTestId(urlNormaliseProjectName(project1)).click();
-    await waitToNavigateToProject(page, urlNormaliseProjectName(project1));
+    await waitToNavigateToProject(page, project1);
   });
 });

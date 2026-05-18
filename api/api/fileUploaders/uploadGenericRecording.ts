@@ -1086,11 +1086,20 @@ const maybeUpdateDeviceMetadata = async (
     // or there is no previous lastConnectionTime, we can null out the lastConnectionTime,
     // which indicates that this device is now "offline".
     // As such, it will no longer be targeted by stopped device emails, and can show up as offline in browse.
-
-    // FIXME: Test NULLING out lastConnectionTime
-    uploadingDeviceUpdatePayload = {
-      lastConnectionTime: null,
-    };
+    
+    // Only set the device offline if the lastConnectionTime < 25 hours ago, and lastRecordingTime is greater than that.
+    const twentyFiveHoursAgo = new Date();
+    twentyFiveHoursAgo.setHours(twentyFiveHoursAgo.getHours() - 25);
+    if (
+      uploadingDevice.lastConnectionTime &&
+      new Date(uploadingDevice.lastConnectionTime) < twentyFiveHoursAgo &&
+      new Date(recording.recordingDateTime) > new Date(uploadingDevice.lastConnectionTime)
+    ) {
+      // FIXME: Test NULLING out lastConnectionTime
+      uploadingDeviceUpdatePayload = {
+        lastConnectionTime: null,
+      };
+    }
     if (shouldSetActive) {
       uploadingDeviceUpdatePayload.active = true;
     }
