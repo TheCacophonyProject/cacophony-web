@@ -25,6 +25,7 @@ import {
   RouteStore,
   SessionTimingInfo,
   SuperUsers,
+  UserGroupNamesById,
   UserNamesById,
 } from "./Globals.js";
 import path from "path";
@@ -350,7 +351,7 @@ const grafanaLabelRestart = async () => {
           if (requester) {
             const userOrDevice = requester || "unauthenticated";
             const asSuperUser = response.locals.viewAsSuperUser
-              ? "::SUPER_USER"
+              ? " - as Super User"
               : "";
             let requesterName = "unknown";
             let deviceGroupName = "";
@@ -550,6 +551,13 @@ const grafanaLabelRestart = async () => {
       const users = await User.findAll({
         where: {},
         attributes: ["id", "userName"],
+        include: [
+          {
+            model: Group,
+            attributes: ["groupName"],
+            through: { attributes: [] },
+          },
+        ],
       });
       const devices = await Device.findAll({
         where: {},
@@ -561,6 +569,14 @@ const grafanaLabelRestart = async () => {
         DeviceGroupNamesByDeviceId.set(device.id, device.Group.groupName);
       }
       for (const user of users) {
+        if (user.Groups.length === 1) {
+          UserGroupNamesById.set(user.id, user.Groups[0].groupName);
+        } else if (user.Groups.length === 2) {
+          UserGroupNamesById.set(
+            user.id,
+            user.Groups.map((g) => g.groupName).join(", "),
+          );
+        }
         UserNamesById.set(user.id, user.userName);
       }
       for (const superUser of superUsers) {

@@ -56,6 +56,7 @@ export class User extends ModelStaticCommon<User> {
   declare getGroups: BelongsToManyGetAssociationsMixin<Group>;
 
   declare GroupUsers?: NonAttribute<GroupUsers>;
+  declare Groups?: NonAttribute<Group[]>;
 
   // static associations = {
   //   GroupUsers?: HasOne<GroupUsers>;

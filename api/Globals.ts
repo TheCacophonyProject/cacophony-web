@@ -24,6 +24,7 @@ export const SuperUsers = new Map<
   { userName: string; globalPermission: UserGlobalPermission }
 >();
 export const UserNamesById = new Map<UserId, string>();
+export const UserGroupNamesById = new Map<UserId, string>();
 export const DeviceNamesById = new Map<DeviceId, string>();
 export const DeviceGroupNamesByDeviceId = new Map<DeviceId, string>();
 export const RequesterStore = new Map<string, SessionTimingInfo[]>();
