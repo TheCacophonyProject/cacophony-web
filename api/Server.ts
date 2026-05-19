@@ -354,21 +354,22 @@ const grafanaLabelRestart = async () => {
               ? " - as Super User"
               : "";
             let requesterName = "unknown";
-            let deviceGroupName = "";
+            let groupName = "";
             if (requester === "device") {
               requesterName =
                 DeviceNamesById.get(requestId as DeviceId) ||
                 (response.locals.device && response.locals.device.deviceName) ||
                 "unknown";
-              deviceGroupName = `, ${DeviceGroupNamesByDeviceId.get(requestId as DeviceId) || "unknown project"}`;
+              groupName = `, ${DeviceGroupNamesByDeviceId.get(requestId as DeviceId) || "unknown project"}`;
             } else if (requester === "user") {
               requesterName =
                 UserNamesById.get(requestId as UserId) ||
                 (response.locals.user && response.locals.user.userName) ||
                 "unknown";
+              groupName = `, ${UserGroupNamesById.get(requestId as UserId) || "unknown project"}`;
             }
             const requestIdWithUserName = requestId
-              ? `#${requestId}${asSuperUser} (${requesterName}${deviceGroupName})`
+              ? `#${requestId}${asSuperUser} (${requesterName}${groupName})`
               : "";
             requesterInfo = `Requester: ${userOrDevice} ${requestIdWithUserName}\n`;
           }

@@ -107,9 +107,8 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
         <p v-html="activeBetween(location)" />
       </div>
       <div class="location-buttons d-flex align-items-center">
-        <span class="py-1 py-sm-2">
+        <span class="py-1 py-sm-2" v-if="locationHasThermalRecordings(location)">
           <b-button
-            v-if="locationHasThermalRecordings(location)"
             class="align-items-center justify-content-between d-flex btn-icon"
             variant="light"
             :to="{
@@ -129,10 +128,9 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
           </b-button>
         </span>
         <div v-if="locationHasThermalRecordings(location)" class="vr"></div>
-        <span class="py-1 py-sm-2">
+        <span class="py-1 py-sm-2" v-if="locationHasThermalRecordings(location)">
           <b-button
             class="align-items-center justify-content-between d-flex btn-icon"
-            v-if="locationHasThermalRecordings(location)"
             variant="light"
             :to="{
               name: 'activity',
@@ -154,11 +152,10 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
             >
           </b-button>
         </span>
-        <div v-if="locationHasAudioRecordings(location)" class="vr"></div>
-        <span class="py-1 py-sm-2">
+        <div v-if="locationHasAudioRecordings(location) && locationHasThermalRecordings(location)" class="vr"></div>
+        <span class="py-1 py-sm-2" v-if="locationHasAudioRecordings(location)">
           <b-button
             class="align-items-center justify-content-between d-flex btn-icon"
-            v-if="locationHasAudioRecordings(location)"
             variant="light"
             :to="{
               name: 'activity',
