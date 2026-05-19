@@ -190,6 +190,7 @@ const _deviceType = computed<string>(() => {
           { active: activeTabPath.includes('device-configuration') },
         ]"
         title="Configuration"
+        data-cy="device configuration"
         :to="{
           name: 'device-configuration',
         }"

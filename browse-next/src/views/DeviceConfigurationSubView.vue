@@ -113,6 +113,7 @@ const isDesktopView = useMediaQuery("(min-width: 992px)");
             :to="{ name: 'reference-photo' }"
             :active="activeTabPath.includes('reference-photo')"
             :link-class="{ 'py-2': isMobileView }"
+            data-cy="reference photo"
           >
             <span
               class="d-flex"

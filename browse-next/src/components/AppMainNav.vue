@@ -273,6 +273,7 @@ onMounted(() => {
           data-bs-toggle="tooltip"
           data-bs-placement="right"
           data-bs-original-title="Devices"
+          data-cy="manage devices"
         >
           <span class="nav-icon-wrapper d-flex">
             <material-symbol name="memory" />

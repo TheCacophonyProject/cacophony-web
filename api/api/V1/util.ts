@@ -61,16 +61,15 @@ export const uploadFileStream = async (
       controller.enqueue(chunk);
     },
   });
-  stream.pipeThrough(transform);
-  const upload = openS3().uploadStreaming(
-    fullKey,
-    stream as unknown as ReadableStream,
-  );
+  const transformedStream = stream.pipeThrough(transform);
+  const upload = openS3().uploadStreaming(fullKey, transformedStream);
   await upload.done().catch((err) => {
+    log.error(`upload error: ${err}`);
     return err;
   });
+  const digest = hash.digest("hex");
   return {
-    hash: hash.digest("hex"),
+    hash: digest,
     key: fullKey,
     size: dataLength,
   };

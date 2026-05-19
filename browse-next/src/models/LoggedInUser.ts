@@ -378,10 +378,14 @@ export const switchCurrentProject = (newGroup: {
 }): boolean => {
   // Save the current (new) group to the local user settings, and persist it to the server.
   const loggedInUser = CurrentUser.value as LoggedInUser;
+  console.log("Switching to ", newGroup);
   if (newGroup.id !== loggedInUser.settings?.currentSelectedGroup?.id) {
     if (currentSelectedProject.value) {
       // Abort requests for the previous group.
-      console.warn("!!! Abort requests");
+      console.warn(
+        "!!! Abort requests for ",
+        JSON.stringify(currentSelectedProject.value),
+      );
       CurrentViewAbortController.newView();
     }
     DevicesForCurrentProject.value = null;

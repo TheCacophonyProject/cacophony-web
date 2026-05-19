@@ -12,7 +12,7 @@ export const uniqueName = (str: string): string => {
 
 //export const getEmailConfirmationToken = `${apiRoot}/users/get-email-confirmation-token`;
 export const getEmail = (userName: string) =>
-  `${userName.replace(/ /g, "-")}@api.created.com`.toLowerCase();
+  `${userName.replace(/ /g, "-")}@api-test.cacophony.org.nz`.toLowerCase();
 export const urlNormaliseProjectName = (name: string): string => {
   return decodeURIComponent(name).trim().replace(/ /g, "-").toLowerCase();
 };
@@ -82,6 +82,15 @@ export const signInExistingUser = async (page: Page, userName: string, password:
 export const waitToNavigateToProject = async (page: Page, project: string) => {
   // We should be taken to the project page (probably the dashboard page?)
   const url = `*/${urlNormaliseProjectName(project)}*`;
+  const pattern = new URLPattern({ pathname: url });
+  await test.step(`Wait for URL ${url}`, async () => {
+    await expect(page).toHaveURL((url) => pattern.test(url));
+  });
+};
+
+export const waitToNavigateToProjectPage = async (page: Page, project: string, urlExtra: string) => {
+  // We should be taken to the project page (probably the dashboard page?)
+  const url = `*/${urlNormaliseProjectName(project)}/${urlExtra}`;
   const pattern = new URLPattern({ pathname: url });
   await test.step(`Wait for URL ${url}`, async () => {
     await expect(page).toHaveURL((url) => pattern.test(url));

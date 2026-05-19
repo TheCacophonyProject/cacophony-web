@@ -635,6 +635,7 @@ const helpInfo = ref(true);
               <input
                 type="file"
                 class="form-control select-reference-image"
+                data-cy="select reference image"
                 @change="onSelectReferenceImage"
                 v-if="!referenceImage"
                 accept="image/png, image/jpeg, image/heif"
@@ -723,6 +724,7 @@ const helpInfo = ref(true);
                   type="button"
                   class="btn btn-primary"
                   @click="saveReferenceImage"
+                  data-cy="save reference image"
                 >
                   Save
                   <span class="d-xl-none d-xxl-inline-block"> image </span>
@@ -868,6 +870,7 @@ const helpInfo = ref(true);
             <button
               type="button"
               class="btn btn-primary d-flex justify-content-center"
+              data-cy="add new reference image"
               @click="replaceExistingReferenceImage"
             >
               <material-symbol
@@ -880,6 +883,7 @@ const helpInfo = ref(true);
             <button
               v-if="!editingReferenceImage"
               type="button"
+              data-cy="edit existing reference image"
               class="btn btn-outline-secondary d-flex justify-content-center"
               @click="editExistingReferenceImage"
             >

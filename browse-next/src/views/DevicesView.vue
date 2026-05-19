@@ -745,7 +745,7 @@ const iconForPowerStatus = (powerStatus: DeviceStatus): IconsProp => {
         class="mb-3"
       >
         <template #deviceName="{ cell, row }">
-          <div class="d-flex align-items-center">
+          <div class="d-flex align-items-center" :data-cy="`device ${cell}`">
             <device-name
               :name="cell"
               :type="row['__type']"

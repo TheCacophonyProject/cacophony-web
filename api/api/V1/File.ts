@@ -169,9 +169,9 @@ export default (app: Application, baseUrl: string) => {
               },
             });
             const fileStream: WebReadableStream = Readable.toWeb(stream);
-            fileStream.pipeThrough(transform);
+            const transformed = fileStream.pipeThrough(transform);
             // Upload part, while piping it through a transform that performs sha1 + checks length.
-            await uploadStream(key, fileStream, originalFilename)
+            await uploadStream(key, transformed, originalFilename)
               .done()
               .catch((e: unknown) => {
                 if (e instanceof Error) {
