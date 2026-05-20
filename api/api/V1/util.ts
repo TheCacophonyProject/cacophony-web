@@ -51,7 +51,8 @@ export const uploadFileStream = async (
     dataLength = request.body.length;
     hasLength = true;
   }
-  const stream: WebReadableStream = Readable.toWeb(request);
+  const body = Readable.from(request.body);
+  const stream: WebReadableStream = Readable.toWeb(body);
   const transform = new TransformStream({
     transform(chunk, controller) {
       if (!hasLength) {
@@ -67,6 +68,8 @@ export const uploadFileStream = async (
     log.error(`upload error: ${err}`);
     return err;
   });
+
+  const head = await openS3().headObject(fullKey);
   const digest = hash.digest("hex");
   return {
     hash: digest,
