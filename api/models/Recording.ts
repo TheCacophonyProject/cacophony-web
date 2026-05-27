@@ -899,6 +899,24 @@ export class Recording extends ModelStaticCommon<Recording> {
     );
   }
 
+  static nextState(
+    type: RecordingType,
+    processingState: RecordingProcessingState,
+  ): RecordingProcessingState {
+    const jobs = Recording.processingStates[type];
+    let nextState: RecordingProcessingState;
+    if (processingState == RecordingProcessingState.Reprocess) {
+      nextState = Recording.finishedState();
+    } else if (processingState == RecordingProcessingState.ReTrack) {
+      nextState = RecordingProcessingState.Analyse;
+    } else if (processingState == RecordingProcessingState.TrackAndAnalyse) {
+      nextState = RecordingProcessingState.Finished;
+    } else {
+      nextState = processingState;
+    }
+    return nextState;
+  }
+
   //------------------
   // INSTANCE METHODS
   //------------------
@@ -906,34 +924,30 @@ export class Recording extends ModelStaticCommon<Recording> {
     return this.processingState.endsWith(".failed");
   }
 
-  getNextState(): RecordingProcessingState {
-    const jobs = Recording.processingStates[this.type];
-    let nextState: RecordingProcessingState;
-    if (this.processingState == RecordingProcessingState.Reprocess) {
-      nextState = Recording.finishedState();
-    } else if (this.processingState == RecordingProcessingState.ReTrack) {
-      nextState = RecordingProcessingState.Analyse;
-    } else if (
-      this.processingState == RecordingProcessingState.TrackAndAnalyse
-    ) {
-      nextState = RecordingProcessingState.Finished;
-    } else {
-      const job_index = jobs.indexOf(
-        (this.processingState as string).replace(
-          ".failed",
-          "",
-        ) as RecordingProcessingState,
-      );
-      if (job_index === -1) {
-        throw new Error(`Recording state unknown - ${this.processingState}`);
-      } else if (job_index < jobs.length - 1) {
-        nextState = jobs[job_index + 1];
-      } else {
-        nextState = this.processingState;
-      }
+  unfailedState(): RecordingProcessingState {
+    if (!this.isFailed()) {
+      return this.processingState;
     }
-    return nextState;
+    const state = (this.processingState as string).replace(
+      ".failed",
+      "",
+    ) as RecordingProcessingState;
+    if (
+      !Object.values(RecordingProcessingState)
+        .map((v) => v as string)
+        .includes(state)
+    ) {
+      throw new Error(
+        `Attempted to set invalid failed processing state: ${state}`,
+      );
+    }
+    return state;
   }
+
+  getNextState(): RecordingProcessingState {
+    return Recording.nextState(this.type, this.unfailedState());
+  }
+
   getFileBaseName(): string {
     return moment(new Date(this.recordingDateTime))
       .tz(config.timeZone)
@@ -996,19 +1010,10 @@ export class Recording extends ModelStaticCommon<Recording> {
   }
 
   unsetProcessingFailureState() {
-    if (!this.processingState.endsWith(".failed")) {
+    if (!this.isFailed()) {
       return false;
     }
-    const newProcessingState = this.processingState.replace(".failed", "");
-    if (
-      !Object.values(RecordingProcessingState)
-        .map((v) => v as string)
-        .includes(newProcessingState)
-    ) {
-      throw new Error(
-        `Attempted to set invalid failed processing state: ${newProcessingState}`,
-      );
-    }
+    const newProcessingState = this.unfailedState();
   }
   // retry processing this recording
   async retryFailed() {
