@@ -1013,7 +1013,7 @@ export class Recording extends ModelStaticCommon<Recording> {
     if (!this.isFailed()) {
       return false;
     }
-    const newProcessingState = this.unfailedState();
+    this.processingState = this.unfailedState();
   }
   // retry processing this recording
   async retryFailed() {
