@@ -1461,7 +1461,7 @@ test("Synchronisation of user settings to the device, and device set settings to
     audioRecording: {
       audioMode: AudioRecordingMode.Disabled,
       updated: addMinutes(initialDateTime, 3).toISOString(),
-    }
+    },
   };
 
   await test.step("Add user settings and then confirm they were added", async () => {

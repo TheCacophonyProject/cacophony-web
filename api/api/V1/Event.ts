@@ -51,8 +51,7 @@ import { Device } from "@models/Device.js";
 import { Event } from "@models/Event.js";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
 import { maybeUpdateDeviceHistoryLocation } from "@api/V1/deviceHistoryUpdates.js";
-import { DeviceHistory } from "../../models/DeviceHistory.js";
-import logging from "@log";
+import { DeviceHistory } from "@/models/DeviceHistory.js";
 
 const sequelize = await initSequelize();
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
