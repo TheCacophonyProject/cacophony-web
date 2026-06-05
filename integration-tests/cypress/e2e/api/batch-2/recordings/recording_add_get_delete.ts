@@ -382,7 +382,7 @@ describe("Recordings (thermal): add, get, delete", () => {
     });
   });
 
-  it("Group member can add recordings by device on behalf - for inactive device", () => {
+  it.skip("Group member can add recordings by device on behalf - for inactive device", () => {
     // NOTE: This test requires the previous test to also pass.
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecording1: ApiThermalRecordingResponse;

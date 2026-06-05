@@ -4,6 +4,7 @@ import type {
   IsoFormattedDateString,
   LatLng,
   ScheduleId,
+  UserId,
 } from "../api/common.js";
 import type {
   ApiDeviceHistory,
@@ -20,7 +21,6 @@ import type {
   IsoFormattedString,
 } from "../api/event.js";
 import type { DeviceEventType, DeviceTypeUnion } from "../api/consts.js";
-import { DeviceType } from "../api/consts.js";
 import type { ApiStationResponse as ApiLocationResponse } from "../api/station.js";
 import type { ApiRecordingResponse } from "../api/recording.js";
 import type { ApiTrackResponse } from "../api/track.js";
@@ -28,6 +28,7 @@ import type { CacophonyApiClient } from "./api.js";
 import { optionalQueryString, unwrapLoadedResource } from "./api.js";
 import type {
   FetchResult,
+  JwtToken,
   LoadedResource,
   LoggedInDeviceCredentials,
   TestHandle,
@@ -51,11 +52,9 @@ const setDeviceActive =
 
 const getDeviceById =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId, activeAndInactive = false) => {
+  (deviceId: DeviceId, activeAndInactive = true) => {
     const params = new URLSearchParams();
-    if (activeAndInactive) {
-      params.append("only-active", false.toString());
-    }
+    params.append("only-active", (!activeAndInactive).toString());
     return unwrapLoadedResource(
       api.get(
         authKey,
@@ -571,7 +570,7 @@ const getTracksWithTagForDeviceInProject =
     );
   };
 
-const updateReferenceImageForDeviceAtCurrentLocation =
+const addReferenceImageForDeviceAtTime =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (
     deviceId: DeviceId,
@@ -641,20 +640,40 @@ const getSettingsForDevice =
 
 const updateDeviceLocation =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId, location: LatLng) => {
-    return api.post(authKey, `/api/v1/devices/${deviceId}/settings`, {
-      location,
-    }) as Promise<
+  (deviceId: DeviceId, location: LatLng, atTime?: Date) => {
+    const payload: { location: LatLng; fromDateTime?: IsoFormattedDateString } =
+      {
+        location,
+      };
+    if (atTime) {
+      payload.fromDateTime = atTime.toISOString();
+    }
+    return api.post(
+      authKey,
+      `/api/v1/devices/${deviceId}/settings`,
+      payload,
+    ) as Promise<
       FetchResult<{ settings: ApiDeviceHistorySettings; location?: LatLng }>
     >;
   };
 
 const updateDeviceSettings =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId, settings: ApiDeviceHistorySettings) => {
-    return api.post(authKey, `/api/v1/devices/${deviceId}/settings`, {
+  (deviceId: DeviceId, settings: ApiDeviceHistorySettings, atTime?: Date) => {
+    const payload: {
+      settings?: ApiDeviceHistorySettings;
+      fromDateTime?: IsoFormattedDateString;
+    } = {
       settings,
-    }) as Promise<
+    };
+    if (atTime) {
+      payload.fromDateTime = atTime.toISOString();
+    }
+    return api.post(
+      authKey,
+      `/api/v1/devices/${deviceId}/settings`,
+      payload,
+    ) as Promise<
       FetchResult<{ settings: ApiDeviceHistorySettings; location?: LatLng }>
     >;
   };
@@ -671,9 +690,11 @@ const updateMaskRegionsForDevice =
 
 const getReferenceImageForDeviceAtTime =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId, atTime: Date, activeAndInactive = false) => {
+  (deviceId: DeviceId, atTime?: Date, activeAndInactive = false) => {
     const params = new URLSearchParams();
-    params.append("at-time", atTime.toISOString());
+    if (atTime) {
+      params.append("at-time", atTime.toISOString());
+    }
     if (!activeAndInactive) {
       params.append("only-active", true.toString());
     }
@@ -685,34 +706,14 @@ const getReferenceImageForDeviceAtTime =
 
 const hasReferenceImageForDeviceAtTime =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId, atTime: Date, activeAndInactive = false) => {
+  (deviceId: DeviceId, atTime?: Date, activeAndInactive = false) => {
     const params = new URLSearchParams();
-    params.append("at-time", atTime.toISOString());
+    if (atTime) {
+      params.append("at-time", atTime.toISOString());
+    }
     if (!activeAndInactive) {
       params.append("only-active", true.toString());
     }
-    // Set the reference image for the location start time?  Or create a new entry for this reference image starting now?
-    return api.get(
-      authKey,
-      `/api/v1/devices/${deviceId}/reference-image/exists${optionalQueryString(
-        params,
-      )}`,
-    ) as Promise<
-      FetchResult<{
-        fromDateTime: IsoFormattedDateString;
-        untilDateTime?: IsoFormattedDateString;
-      }>
-    >;
-  };
-
-const hasReferenceImageForDeviceAtCurrentLocation =
-  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId, activeAndInactive = false) => {
-    const params = new URLSearchParams();
-    if (!activeAndInactive) {
-      params.append("only-active", true.toString());
-    }
-    // Set the reference image for the location start time?  Or create a new entry for this reference image starting now?
     return api.get(
       authKey,
       `/api/v1/devices/${deviceId}/reference-image/exists${optionalQueryString(
@@ -763,25 +764,92 @@ const registerDevice =
     projectName: string,
     deviceName: string,
     password: string,
-    deviceType = DeviceType.Unknown,
+    initialDateTime?: Date,
   ) => {
-    const payload = {
+    const payload: {
+      deviceName: string;
+      group: string;
+      password: string;
+      fromDateTime?: IsoFormattedDateString;
+    } = {
       deviceName,
       group: projectName,
       password,
-      deviceType,
     };
+    if (initialDateTime) {
+      payload.fromDateTime = initialDateTime.toISOString();
+    }
     return api.post(authKey, "/api/v1/devices", payload) as Promise<
       FetchResult<LoggedInDeviceCredentials>
     >;
   };
 
-const submitEvents =
+const reRegisterDevice =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (eventsPayload: ApiSubmitEventsRequestBody) => {
-    return api.post(authKey, "/api/v1/events", eventsPayload) as Promise<
-      FetchResult<{ success: boolean }>
-    >;
+  (
+    adminUserAuthJWT: JwtToken<UserId>,
+    projectNameOrId?: string | ProjectId,
+    initialDateTime?: Date,
+    newDeviceName?: string,
+    newDevicePassword?: string,
+  ) => {
+    if (!projectNameOrId && !newDeviceName && !newDevicePassword) {
+      throw new Error(
+        "Must have one of 'projectNameOrId', 'newDeviceName', 'newDevicePassword'",
+      );
+    }
+    const payload: {
+      newName?: string;
+      newGroup?: string | ProjectId;
+      newPassword?: string;
+      fromDateTime?: IsoFormattedDateString;
+      authorizedToken: JwtToken<UserId>;
+    } = {
+      authorizedToken: adminUserAuthJWT,
+    };
+
+    if (initialDateTime) {
+      payload.fromDateTime = initialDateTime.toISOString();
+    }
+    if (projectNameOrId) {
+      payload.newGroup = projectNameOrId;
+    }
+    if (newDeviceName) {
+      payload.newName = newDeviceName;
+    }
+    if (newDevicePassword) {
+      payload.newPassword = newDevicePassword;
+    }
+
+    return api.post(
+      authKey,
+      "/api/v1/devices/reregister-authorized",
+      payload,
+    ) as Promise<FetchResult<LoggedInDeviceCredentials>>;
+  };
+
+const submitEventsFromDevice =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (eventsPayload: ApiSubmitEventsRequestBody, atTime?: Date) => {
+    const params = new URLSearchParams();
+    if (atTime) {
+      params.append("atTime", atTime.toISOString());
+    }
+    return api.post(
+      authKey,
+      `/api/v1/events${optionalQueryString(params)}`,
+      eventsPayload,
+    ) as Promise<FetchResult<{ success: boolean }>>;
+  };
+
+const submitEventsOnBehalfOfDevice =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (deviceId: DeviceId, eventsPayload: ApiSubmitEventsRequestBody) => {
+    return api.post(
+      authKey,
+      `/api/v1/events/device/${deviceId}`,
+      eventsPayload,
+    ) as Promise<FetchResult<{ success: boolean }>>;
   };
 
 const getDeviceHistoryInTest =
@@ -824,8 +892,7 @@ export default (api: CacophonyApiClient) => {
     getUniqueTrackTagsForDeviceInProject:
       getUniqueTrackTagsForDeviceInProject(api),
     getTracksWithTagForDeviceInProject: getTracksWithTagForDeviceInProject(api),
-    updateReferenceImageForDeviceAtCurrentLocation:
-      updateReferenceImageForDeviceAtCurrentLocation(api),
+    addReferenceImageForDeviceAtTime: addReferenceImageForDeviceAtTime(api),
     getReferenceImageForDeviceAtCurrentLocation:
       getReferenceImageForDeviceAtCurrentLocation(api),
     getMaskRegionsForDevice: getMaskRegionsForDevice(api),
@@ -835,13 +902,13 @@ export default (api: CacophonyApiClient) => {
     updateMaskRegionsForDevice: updateMaskRegionsForDevice(api),
     getReferenceImageForDeviceAtTime: getReferenceImageForDeviceAtTime(api),
     hasReferenceImageForDeviceAtTime: hasReferenceImageForDeviceAtTime(api),
-    hasReferenceImageForDeviceAtCurrentLocation:
-      hasReferenceImageForDeviceAtCurrentLocation(api),
     getLastKnownDeviceBatteryLevel: getLastKnownDeviceBatteryLevel(api),
     getDeviceModel: getDeviceModel(api),
     registerDevice: registerDevice(api),
+    reRegisterDevice: reRegisterDevice(api),
     getDeviceHistoryInTest: getDeviceHistoryInTest(api),
-    submitEvents: submitEvents(api),
+    submitEventsFromDevice: submitEventsFromDevice(api),
+    submitEventsOnBehalfOfDevice: submitEventsOnBehalfOfDevice(api),
     withAuth: (authKey: TestHandle) => ({
       deleteDevice: deleteDevice(api, authKey),
       setDeviceActive: setDeviceActive(api, authKey),
@@ -878,8 +945,10 @@ export default (api: CacophonyApiClient) => {
         api,
         authKey,
       ),
-      updateReferenceImageForDeviceAtCurrentLocation:
-        updateReferenceImageForDeviceAtCurrentLocation(api, authKey),
+      addReferenceImageForDeviceAtTime: addReferenceImageForDeviceAtTime(
+        api,
+        authKey,
+      ),
       getReferenceImageForDeviceAtCurrentLocation:
         getReferenceImageForDeviceAtCurrentLocation(api, authKey),
       getMaskRegionsForDevice: getMaskRegionsForDevice(api, authKey),
@@ -895,16 +964,16 @@ export default (api: CacophonyApiClient) => {
         api,
         authKey,
       ),
-      hasReferenceImageForDeviceAtCurrentLocation:
-        hasReferenceImageForDeviceAtCurrentLocation(api, authKey),
       getLastKnownDeviceBatteryLevel: getLastKnownDeviceBatteryLevel(
         api,
         authKey,
       ),
       getDeviceModel: getDeviceModel(api, authKey),
       registerDevice: registerDevice(api, authKey),
+      reRegisterDevice: reRegisterDevice(api, authKey),
       getDeviceHistoryInTest: getDeviceHistoryInTest(api, authKey),
-      submitEvents: submitEvents(api, authKey),
+      submitEventsFromDevice: submitEventsFromDevice(api, authKey),
+      submitEventsOnBehalfOfDevice: submitEventsOnBehalfOfDevice(api, authKey),
     }),
   };
 };

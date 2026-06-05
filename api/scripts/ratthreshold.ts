@@ -54,10 +54,13 @@ async function main() {
           latestHumanTaggedRodentDateTime = tagTime;
         }
       }
-      const latestDeviceHistoryEntry = await DeviceHistory.latest(
-        deviceId,
-        groupId,
-      );
+      // An assumption is made that the latest entry is still in the same location as the `earliestDateTimeAtLocation`
+      const latestDeviceHistoryEntry =
+        await DeviceHistory.latestWithAnyLocationAtTime(
+          deviceId,
+          groupId,
+          new Date(),
+        );
       const latestRatThreshTime =
         (latestDeviceHistoryEntry.settings &&
           latestDeviceHistoryEntry.settings.ratThresh?.version) ||
@@ -112,6 +115,7 @@ async function main() {
             },
           },
           setBy,
+          new Date(),
         );
       }
     }

@@ -33,6 +33,7 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 import { once } from "events";
 import { query } from "express-validator";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
+import logging from "@log";
 
 export const streamS3Object = async (
   request: Request,
@@ -229,6 +230,9 @@ export const streamS3Object = async (
       response.end();
     }
   } catch (err: unknown) {
+    logging.warning(
+      `Failed to stream file from object storage with key ${key}`,
+    );
     if (!canceled) {
       return serverErrorResponse(request, response, err as Error);
     }

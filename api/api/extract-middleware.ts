@@ -774,7 +774,6 @@ const getDevices =
     if (!getDeviceOptions.where) {
       getDeviceOptions = allDevicesOptions;
     }
-
     if (context.onlyActive) {
       getDeviceOptions.where = {
         ...(getDeviceOptions.where || {}),
@@ -855,12 +854,10 @@ const getStations =
           {
             [Op.or]: [
               {
-                lastThermalRecordingTime: { [Op.ne]: null },
-                lastAudioRecordingTime: { [Op.ne]: null },
-                automatic: true,
+                earliestThermalRecordingTime: { [Op.ne]: null },
               },
               {
-                automatic: false,
+                earliestAudioRecordingTime: { [Op.ne]: null },
               },
             ],
           },

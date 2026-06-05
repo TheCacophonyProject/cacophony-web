@@ -14,14 +14,14 @@ import {
   uniqueName,
   urlNormaliseProjectName,
   waitToNavigateToProject,
-} from "../helpers/browse-helpers";
+} from "@/helpers/browse-helpers";
 import {
   openJoinProjectInviteEmailForExistingUser,
   openJoinProjectInviteEmailForNewUser,
   openJoinProjectRequestEmail,
   waitForEmail,
   waitForEmailAndRenderEmailHtml,
-} from "../helpers/email-utils";
+} from "@/helpers/email-utils";
 
 test("Existing new user is able to request to join an existing project from setup view", async ({
   page,
@@ -286,7 +286,7 @@ test("Logged in user is able to accept a project invite", async ({ page }) => {
   });
   await test.step(`${user2} receives invite email, accepts while logged in`, async () => {
     await signInExistingUser(page, user2, password2);
-    await waitToNavigateToProject(page, project2)
+    await waitToNavigateToProject(page, project2);
     await openJoinProjectInviteEmailForExistingUser(page, user2); // Ignore
     await page.getByTestId("existing user join project").click();
     await waitToNavigateToProject(page, project);

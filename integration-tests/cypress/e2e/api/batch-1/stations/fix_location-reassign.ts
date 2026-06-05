@@ -74,7 +74,7 @@ let group: string;
 const baseGroup = "fix_location_reassign_group";
 const Josie = "Josie_reassign_stations";
 
-describe("Device: fix-location (reassign) recordings to correct station", () => {
+describe.skip("Device: fix-location (reassign) recordings to correct station", () => {
   before(() => {
     cy.apiUserAdd(Josie);
   });

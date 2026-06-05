@@ -175,7 +175,7 @@ export class User extends ModelStaticCommon<User> {
 export const init = (sequelizeInstance: Sequelize.Sequelize) => {
   const attributes: ModelAttributes = {
     id: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },

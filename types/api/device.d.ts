@@ -98,7 +98,7 @@ export interface ApiDeviceHistorySettings extends Record<string, unknown> {
     bottomLeft: [number, number];
     bottomRight: [number, number];
   };
-  maskRegions?: MaskRegions;
+  maskRegions?: MaskRegions; // FIXME: Should also have settings base?
   ratThresh?: { version?: number; gridSize?: number; thresholds?: unknown[][] };
   thermalRecording?: ThermalRecordingSettings;
   audioRecording?: AudioRecordingSettings;

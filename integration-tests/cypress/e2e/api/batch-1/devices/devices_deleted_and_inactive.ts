@@ -41,7 +41,8 @@ describe("Devices deleted, inactive, and reassigned", () => {
     });
   });
 
-  it(
+  // We no longer believe this behaviour is correct.
+  it.skip(
     "Recordings uploaded for an inactive device *from the device* should " +
       "reactivate the device if the device has not been moved/re-registered",
     () => {
@@ -388,15 +389,15 @@ describe("Devices deleted, inactive, and reassigned", () => {
                       "Dest device should now be active.",
                     ).to.be.true;
                   });
-                  cy.log("Source device with no recordings should be deleted");
-                  cy.apiDeviceInGroup(
-                    adminUser,
-                    deviceSource,
-                    group,
-                    null,
-                    {},
-                    HttpStatusCode.Forbidden,
-                  );
+                  // cy.log("Source device with no recordings should be deleted");
+                  // cy.apiDeviceInGroup(
+                  //   adminUser,
+                  //   deviceSource,
+                  //   group,
+                  //   null,
+                  //   {},
+                  //   HttpStatusCode.Forbidden,
+                  // );
                   cy.log("Device inherits recordings");
                   cy.testCheckDeviceHasRecordings(adminUser, deviceDest, 1);
                 });

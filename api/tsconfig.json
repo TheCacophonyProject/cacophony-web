@@ -41,7 +41,6 @@
     ],
     "exclude": [
         "./node_modules/*",
-        "../types/client/*",
         "../types/build-schemas.ts"
     ],
     "watchOptions": {

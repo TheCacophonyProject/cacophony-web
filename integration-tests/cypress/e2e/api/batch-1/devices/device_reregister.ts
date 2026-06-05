@@ -72,46 +72,43 @@ describe("Device reregister", () => {
 
   it("Reregistering device creates valid deviceHistory entry", () => {
     cy.log("Register new device");
-    cy.apiDeviceAdd("RR_history_cam", "RR_group1", 1234567).then(() => {
-      cy.log("Check deviceHistory created correctly for new device");
-      const expectedHistory = TestCreateExpectedHistoryEntry(
-        "RR_history_cam",
-        "RR_group1",
-        NOT_NULL_STRING,
-        null,
-        "register",
-        null,
-      );
-      expectedHistory.saltId = 1234567;
-      cy.apiDeviceHistoryCheck("RR_user1", "RR_history_cam", [expectedHistory]);
-
-      cy.apiDeviceReregister(
-        "RR_history_cam",
-        "RR_history_cam2",
-        "RR_group1",
-      ).then(() => {
+    cy.apiDeviceAdd("RR_history_cam", "RR_group1", undefined, 1234567).then(
+      () => {
         cy.log("Check deviceHistory created correctly for new device");
-        const expectedNewHistory = TestCreateExpectedHistoryEntry(
-          "RR_history_cam2",
+        const expectedHistory = TestCreateExpectedHistoryEntry(
+          "RR_history_cam",
           "RR_group1",
           NOT_NULL_STRING,
           null,
-          "re-register",
+          "register",
           null,
         );
-        expectedNewHistory.saltId = 1234567;
-        cy.apiDeviceHistoryCheck("RR_user1", "RR_history_cam2", [
-          expectedNewHistory,
+        expectedHistory.saltId = 1234567;
+        cy.apiDeviceHistoryCheck("RR_user1", "RR_history_cam", [
+          expectedHistory,
         ]);
-        cy.log("Check deviceHistory for old device no longer exists");
-        cy.apiDeviceHistoryCheck(
-          "RR_user1",
+
+        cy.apiDeviceReregister(
           "RR_history_cam",
-          [],
-          HttpStatusCode.Forbidden,
-        );
-      });
-    });
+          "RR_history_cam2",
+          "RR_group1",
+        ).then(() => {
+          cy.log("Check deviceHistory created correctly for new device");
+          const expectedNewHistory = TestCreateExpectedHistoryEntry(
+            "RR_history_cam2",
+            "RR_group1",
+            NOT_NULL_STRING,
+            null,
+            "re-register",
+            null,
+          );
+          expectedNewHistory.saltId = 1234567;
+          cy.apiDeviceHistoryCheck("RR_user1", "RR_history_cam2", [
+            expectedNewHistory,
+          ]);
+        });
+      },
+    );
   });
 
   it("re-register a device in new group with same name", () => {
@@ -347,7 +344,7 @@ describe("Device reregister", () => {
 
   it("Reregistered device can keep specified salt id", () => {
     cy.testCreateUserAndGroup("RR_user8", "RR_group8").then(() => {
-      cy.apiDeviceAdd("specify salt", "RR_group8", 9997);
+      cy.apiDeviceAdd("specify salt", "RR_group8", undefined, 9997);
       cy.apiDeviceReregister("specify salt", "specify salt2", "RR_group8").then(
         () => {
           cy.log("Test with Salt Id = device id by default");

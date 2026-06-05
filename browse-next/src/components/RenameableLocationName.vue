@@ -62,8 +62,8 @@ const saveLocationName = async () => {
   ) {
     savingLocation.value = true;
     const response = await ClientApi.Locations.changeLocationName(
-      locationName.value,
       location.id,
+      locationName.value,
     );
     savingLocation.value = false;
     if (!response.success) {

@@ -21,7 +21,7 @@ import type { LatLng } from "@typedefs/api/common.js";
 import logger from "@log";
 import { canonicalLatLng } from "@models/util/locationUtils.js";
 
-export function isLatLon(
+export function isLatLng(
   point: { coordinates: [number, number] } | [number, number] | LatLng,
   shouldThrow = true,
 ) {

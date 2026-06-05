@@ -463,6 +463,10 @@ export default (app: Application, baseUrl: string) => {
   app.post(
     apiUrl,
     extractJwtAuthorisedDevice,
+    validateFields([
+      // NOTE: Primarily used in testing, allows us to backdate the last connection time of an uploading device
+      query("atTime").default(new Date().toISOString()).isISO8601().toDate(),
+    ]),
     uploadGenericRecordingFromDevice(),
   );
 

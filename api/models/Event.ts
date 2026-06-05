@@ -129,7 +129,7 @@ export class Event extends ModelStaticCommon<Event> {
    * Return the latest event of each type grouped by device id
    */
   static async latestEventsOfTypes(eventTypes: string[]): Promise<Event[]> {
-    // This is called by the stopped-devices report, and only ever called as admin.
+    // This is currently only called by the stopped-devices report, and only ever called as admin.
     return this.findAll({
       where: {},
       include: [
@@ -137,7 +137,7 @@ export class Event extends ModelStaticCommon<Event> {
           model: DetailSnapshot,
           as: "EventDetail",
           attributes: ["type", "details"],
-          where: { [Op.in]: eventTypes } as Sequelize.WhereOptions,
+          where: { type: { [Op.in]: eventTypes } },
         },
         {
           model: Device,
@@ -181,7 +181,7 @@ export class Event extends ModelStaticCommon<Event> {
 export const init = (sequelizeInstance: Sequelize.Sequelize) => {
   const attributes = {
     id: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },

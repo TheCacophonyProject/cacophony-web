@@ -89,7 +89,7 @@ export class Tag extends ModelStaticCommon<Tag> {
 export const init = (sequelizeInstance: Sequelize.Sequelize) => {
   const attributes = {
     id: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },

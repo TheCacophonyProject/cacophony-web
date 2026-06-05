@@ -10,10 +10,12 @@ describe.skip("DeviceHistory settings", () => {
     const initialDeviceHistory =
       await AdminUser.Devices.getDeviceHistoryInTest(deviceId);
     expect(initialDeviceHistory).to.be.an("array").and.to.have.length(1);
-    expect(
-      initialDeviceHistory[0].settings,
-      "initial settings for new device are null",
-    ).to.be.null;
+    if (initialDeviceHistory) {
+      expect(
+        initialDeviceHistory[0].settings,
+        "initial settings for new device are null",
+      ).to.be.null;
+    }
     const oneHourAgo = new Date(new Date().setHours(new Date().getHours() - 1));
     await uploadThermalRecordingFromDeviceForProject({
       project,
@@ -28,10 +30,12 @@ describe.skip("DeviceHistory settings", () => {
     expect(deviceSettingsAfterInitialRecording)
       .to.be.an("array")
       .and.to.have.length(2);
-    expect(
-      deviceSettingsAfterInitialRecording[1].settings,
-      "updated settings after recording upload are null",
-    ).to.be.null;
+    if (deviceSettingsAfterInitialRecording) {
+      expect(
+        deviceSettingsAfterInitialRecording[1].settings,
+        "updated settings after recording upload are null",
+      ).to.be.null;
+    }
 
     const userAddedReferenceImage = {
       referenceImagePOV: "referenceImagePOV_S3Key",
@@ -50,17 +54,19 @@ describe.skip("DeviceHistory settings", () => {
     )
       .to.be.an("array")
       .and.to.have.length(3);
-    expect(deviceHistoryAfterUserSettings[2].settings).to.deep.equal({
-      ...userAddedReferenceImage,
-      synced: false,
-    });
+    if (deviceHistoryAfterUserSettings) {
+      expect(deviceHistoryAfterUserSettings[2].settings).to.deep.equal({
+        ...userAddedReferenceImage,
+        synced: false,
+      });
+    }
 
     // TODO: Add some settings that set some non-standard recording window and power mode
     // TODO: Device sends an initial "config" event for settings added while at the camera via sidekick.
     // TODO: Lots of settings config events happen in quick succession, as the user changes settings via sidekick or management interface
     const Device = project.api(project.deviceHandles[0]);
     // TODO: Does it matter whether the config event was sent by the device, or on behalf of the device?
-    await Device.Devices.submitEvents({
+    await Device.Devices.submitEventsFromDevice({
       dateTimes: [new Date().toISOString()],
       description: {
         type: "config",
@@ -126,12 +132,15 @@ describe.skip("DeviceHistory settings", () => {
 
     const deviceSettingsAfterConfigEvent =
       await AdminUser.Devices.getDeviceHistoryInTest(deviceId);
-    console.clear();
-    console.log("deviceSettings", deviceSettingsAfterConfigEvent);
-    expect(
-      deviceSettingsAfterConfigEvent[3].settings,
-      "user settings are preserved after config event in same location",
-    ).is.not.null;
+    expect(deviceSettingsAfterConfigEvent).to.be.an("array");
+    if (deviceSettingsAfterConfigEvent) {
+      console.clear();
+      console.log("deviceSettings", deviceSettingsAfterConfigEvent);
+      expect(
+        deviceSettingsAfterConfigEvent[3].settings,
+        "user settings are preserved after config event in same location",
+      ).is.not.null;
+    }
     return;
   });
   it("Config events should get properly merged with device history", () => {

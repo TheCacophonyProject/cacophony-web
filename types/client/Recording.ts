@@ -23,7 +23,7 @@ import type {
   WrappedFetchResult,
 } from "./types.js";
 import { DEFAULT_AUTH_ID } from "./types.js";
-import type { CacophonyApiClient } from "./api.js";
+import { CacophonyApiClient, optionalQueryString } from "./api.js";
 
 import { unwrapLoadedResource } from "./api.js";
 import type { ApiRecordingUploadData } from "../api/recording.js";
@@ -253,19 +253,15 @@ const queryRecordingsInProjectNew =
       // For exports, we don't care as much.
       params.append("time-sensitive", true.toString());
     }
-    console.log("API params", params.toString());
 
     // TODO: We need to know if we reached the limit, in which case we can increment the cursor,
     //  or we need to hold onto the pagination value.
-    //return unwrapLoadedResource(
     const ABORTABLE = true;
     return api.get(
       authKey,
       `/api/v1/recordings/for-project/${projectId}?${params}`,
       ABORTABLE,
     ) as Promise<FetchResult<{ recordings: ApiRecordingResponse[] }>>;
-    //"rows"
-    //);
   };
 
 const getRecordingsForDeviceInProject =
@@ -463,16 +459,28 @@ const prepareUploadedRecordingData = (
 
 const uploadRecordingFromDevice =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (data: ApiRecordingUploadData, rawFile: ArrayBuffer, rawFileName: string) => {
+  (
+    data: ApiRecordingUploadData,
+    rawFile: ArrayBuffer,
+    rawFileName: string,
+    uploadTime?: Date,
+  ) => {
     const formData = prepareUploadedRecordingData(
       data,
       rawFile,
       rawFileName,
       false,
     );
-    return api.post(authKey, `/api/v1/recordings`, formData, true) as Promise<
-      FetchResult<{ recordingId: RecordingId; messages: string[] }>
-    >;
+    const params = new URLSearchParams();
+    if (uploadTime) {
+      params.append("atTime", uploadTime.toISOString());
+    }
+    return api.post(
+      authKey,
+      `/api/v1/recordings${optionalQueryString(params)}`,
+      formData,
+      true,
+    ) as Promise<FetchResult<{ recordingId: RecordingId; messages: string[] }>>;
   };
 
 const getRawRecording =

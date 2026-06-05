@@ -181,7 +181,7 @@ const getDevicesForProject =
 const getLocationsForProject =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (
-    projectNameOrId: string,
+    projectNameOrId: string | ProjectId,
     activeAndInactive = false, // Only active locations by default (non-retired)
     withRecordings = true, // Only locations with recordings - locations with all recordings deleted won't show.
   ): Promise<LoadedResource<ApiLocationResponse[]>> => {

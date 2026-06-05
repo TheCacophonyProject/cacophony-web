@@ -88,7 +88,11 @@ export const waitToNavigateToProject = async (page: Page, project: string) => {
   });
 };
 
-export const waitToNavigateToProjectPage = async (page: Page, project: string, urlExtra: string) => {
+export const waitToNavigateToProjectPage = async (
+  page: Page,
+  project: string,
+  urlExtra: string,
+) => {
   // We should be taken to the project page (probably the dashboard page?)
   const url = `*/${urlNormaliseProjectName(project)}/${urlExtra}`;
   const pattern = new URLPattern({ pathname: url });

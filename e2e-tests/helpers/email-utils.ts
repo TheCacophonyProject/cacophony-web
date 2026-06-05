@@ -3,6 +3,7 @@ import * as child_process from "node:child_process";
 const exec = util.promisify(child_process.exec);
 import { expect, Page, test } from "@playwright/test";
 import { getEmail } from "./browse-helpers";
+import { dockerExecNodeTestScript } from "@/helpers/docker-exec";
 
 export const ACCEPT_INVITE_PREFIX = "/accept-invite/";
 export const CONFIRM_EMAIL_PREFIX = "/confirm-account-email/";
@@ -23,21 +24,29 @@ export interface TestEmail {
   };
   body: string;
   html: string;
+  // If email failed
+  error?: string;
 }
 
 export const startMailServerStub = async () => {
   return test.step("Initialize mail server stub", async () => {
-    await exec(
-      `cd ../api && docker exec cacophony-web bash -lic "node ./api/scripts/concurrent-mailserver-stub.js > /dev/null &"`,
-    );
+    await dockerExecNodeTestScript("concurrent-mailserver-stub.js");
   });
 };
 
-export const waitForEmail = async (toUser: string, type = ""): Promise<TestEmail> => {
+export const waitForEmail = async (
+  toUser: string,
+  type = "",
+  timeout?: number,
+): Promise<TestEmail> => {
   const to = getEmail(toUser);
   return await test.step(`Wait for${type.length ? ` '${type}' ` : " "}email to ${to}`, async () => {
     const params = new URLSearchParams();
     params.append("address", to);
+    if (timeout) {
+      params.append("timeout", timeout.toString());
+    }
+
     const emailResponse = await fetch(`http://localhost:8888/get-mail?${params}`);
     if (emailResponse.ok) {
       return await emailResponse.json();
@@ -70,7 +79,7 @@ export const openSignupConfirmationEmail = async (page: Page, user: string) => {
   });
 };
 
-export const receiveAndIgnoreConfirmationEmail = async (page: Page, user: string) => {
+export const receiveAndIgnoreConfirmationEmail = async (user: string) => {
   const email = await waitForEmail(user, "sign-up confirmation");
   const { payload } = await extractTokenStartingWith(email, CONFIRM_EMAIL_PREFIX);
   expect(payload, "token payload is correct").toMatchObject({
@@ -111,11 +120,11 @@ export const extractTokenStartingWith = async (
   return await test.step(`Extract token from email`, async () => {
     expect(
       email.body.includes(tokenUrlPrefix),
-      `Email contains expected token '${tokenUrlPrefix}'`,
+      `Email contains expected token prefix '${tokenUrlPrefix}'`,
     ).toEqual(true);
-    const tokenString = email.body
-      .match(new RegExp(`${tokenUrlPrefix}[A-Za-z0-9.:_-]*`))
-      .toString();
+    const tokenMatch = email.body.match(new RegExp(`${tokenUrlPrefix}[A-Za-z0-9.:_-]*`));
+    expect(tokenMatch, "Email contains token").not.toBeNull();
+    const tokenString = tokenMatch!.toString();
     const token = tokenString.substring(tokenUrlPrefix.length);
     let payload;
     if (token.includes(":")) {

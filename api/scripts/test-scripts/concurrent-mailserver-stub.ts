@@ -46,13 +46,21 @@ const checkOnlyInstanceOfScriptRunning = async () => {
   server.get("/get-mail", async (request: Request, response: Response) => {
     try {
       // Maybe get all the emails from this address and return the latest one, since order isn't guaranteed?
+      let suppliedTimeout: string | number = request.query.timeout as string;
+      if (suppliedTimeout) {
+        suppliedTimeout = Number(suppliedTimeout);
+      }
+      const params = {
+        wait: 5000,
+      };
+      if (suppliedTimeout) {
+        params.wait = suppliedTimeout as number;
+      }
       const {
         email: { headers, body, html },
         id,
-      } = await mailServer.captureOne(request.query.address as string, {
-        wait: 5000,
-      });
-      await mailServer.remove(id);
+      } = await mailServer.captureOne(request.query.address as string, params);
+      mailServer.remove(id);
       response.json({ headers, body, html });
     } catch (e) {
       response.json({
@@ -63,7 +71,7 @@ const checkOnlyInstanceOfScriptRunning = async () => {
   server.get(
     "/clear-mailbox",
     async (_request: Request, response: Response) => {
-      await mailServer.removeAll();
+      mailServer.removeAll();
       response.json({
         message: "cleared mailbox",
       });

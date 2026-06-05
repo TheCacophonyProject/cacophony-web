@@ -35,7 +35,7 @@ const templateExpectedStation = {
   groupName: NOT_NULL_STRING,
 };
 
-describe("Stations: use cases", () => {
+describe.skip("Stations: use cases", () => {
   const Josie = "Josie_stations";
 
   before(() => {

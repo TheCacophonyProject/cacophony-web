@@ -1,4 +1,4 @@
-import { startMailServerStub } from "../helpers/email-utils";
+import { startMailServerStub } from "@/helpers/email-utils";
 import { test as setup } from "@playwright/test";
 
 setup("startup mail-server stub", async () => {

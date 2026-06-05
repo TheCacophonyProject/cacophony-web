@@ -2,6 +2,7 @@
 import type { LatLng } from "@typedefs/api/common.js";
 import { Station } from "@models/Station.js";
 import type { GroupId } from "@typedefs/api/common.js";
+import { ApiDeviceHistorySettings } from "@typedefs/api/device.js";
 export const MIN_STATION_SEPARATION_METERS = 60;
 // The radius of the station is half the max distance between stations: any recording inside the radius can
 // be considered to belong to that station.
@@ -57,6 +58,34 @@ export async function tryToMatchLocationToStationInGroup(
   return null;
 }
 
+export const removeLocationSpecificSettings = (
+  settings?: ApiDeviceHistorySettings,
+): ApiDeviceHistorySettings | null => {
+  if (!settings) {
+    return null;
+  }
+  const newSettings = structuredClone(settings || {});
+  const keysToRemove = [
+    "referenceImagePOV",
+    "referenceImagePOVFileSize",
+    "referenceImagePOVMimeType",
+    "referenceImageInSitu",
+    "referenceImageInSituFileSize",
+    "referenceImageInSituMimeType",
+    "maskRegions",
+    "ratThresh",
+    "warp",
+    "location",
+  ];
+  for (const key of keysToRemove) {
+    delete newSettings[key];
+  }
+  if (Object.keys(newSettings).length === 0) {
+    return null;
+  }
+  return newSettings;
+};
+
 export const canonicalLatLng = (
   location: LatLng | { coordinates: [number, number] } | [number, number],
 ): LatLng => {
@@ -110,4 +139,42 @@ export const locationsAreEqual = (
   const toleranceInMeters = 5; // 5 meters tolerance
 
   return haversineDistance(canonicalA, canonicalB) < toleranceInMeters;
+};
+
+export const locationsAreExactlyEqual = (
+  a: LatLng | { coordinates: [number, number] },
+  b: LatLng | { coordinates: [number, number] },
+): boolean => {
+  const canonicalA = canonicalLatLng(a);
+  const canonicalB = canonicalLatLng(b);
+  const numDecimalPlaces = 7;
+  // Still allow for different systems storing numbers with different numbers
+  // of floating point precision.  If it's the same to 6 decimal places, that's probably
+  // the same location (~10cm accuracy).  Because toFixed() will round the last digit,
+  // require 7 rather than 6 so that we can ensure the first six are identical
+  let latA = canonicalA.lat.toFixed(numDecimalPlaces);
+  if (!latA.includes(".")) {
+    latA = `${latA}.0`;
+  }
+  let latB = canonicalB.lat.toFixed(numDecimalPlaces);
+  if (!latB.includes(".")) {
+    latB = `${latB}.0`;
+  }
+  let lngA = canonicalA.lng.toFixed(numDecimalPlaces);
+  if (!lngA.includes(".")) {
+    lngA = `${lngA}.0`;
+  }
+  let lngB = canonicalB.lng.toFixed(numDecimalPlaces);
+  if (!lngB.includes(".")) {
+    lngB = `${lngB}.0`;
+  }
+  const latAPieces = latA.split(".");
+  latA = `${latAPieces[0]}.${latAPieces[1].padEnd(6, "0").slice(0, 6)}`;
+  const latBPieces = latB.split(".");
+  latB = `${latBPieces[0]}.${latBPieces[1].padEnd(6, "0").slice(0, 6)}`;
+  const lngAPieces = lngA.split(".");
+  lngA = `${lngAPieces[0]}.${lngAPieces[1].padEnd(6, "0").slice(0, 6)}`;
+  const lngBPieces = lngB.split(".");
+  lngB = `${lngBPieces[0]}.${lngBPieces[1].padEnd(6, "0").slice(0, 6)}`;
+  return latA === latB && lngA === lngB;
 };

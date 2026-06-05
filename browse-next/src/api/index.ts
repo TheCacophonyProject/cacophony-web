@@ -2,7 +2,6 @@ import {
   DEFAULT_AUTH_ID,
   type FetchResult,
   type JwtToken,
-  type JwtTokenPayload,
   type JwtUserAuthTokenPayload,
   type LoggedInDeviceCredentials,
   type LoggedInUserAuth,
@@ -20,10 +19,9 @@ import locationsInit from "@apiClient/Location";
 import monitoringInit from "@apiClient/Monitoring";
 import classificationsInit from "@apiClient/Classifications.ts";
 import { computed, reactive, ref, type Ref } from "vue";
-import type { AuthId, UserId } from "@typedefs/api/common";
+import type { AuthId } from "@typedefs/api/common";
 import { HttpStatusCode } from "@typedefs/api/consts.ts";
-import { StorageSerializers, useLocalStorage, useStorage } from "@vueuse/core";
-import User from "@apiClient/User.ts";
+import { useLocalStorage } from "@vueuse/core";
 import type { LoggedInUser } from "@models/LoggedInUser.ts";
 
 export const INITIAL_RETRY_INTERVAL = 3000;
@@ -280,7 +278,6 @@ export const ClientApi = {
     authKey: TestHandle,
     creds: LoggedInDeviceCredentials | LoggedInUserAuth,
   ) => api.registerCredentials(authKey, creds),
-  getCredentials: (authKey: TestHandle | null = null) =>
-    api.getCredentials(authKey),
+  getCredentials: (authKey: TestHandle) => api.getCredentials(authKey),
   getApiRoot: () => api.getApiRoot(),
 };

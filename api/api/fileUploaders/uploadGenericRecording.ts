@@ -31,20 +31,18 @@ import type {
   GroupId,
   IsoFormattedDateString,
   LatLng,
+  LocationId,
 } from "@typedefs/api/common.js";
 import {
   createThumbnail,
-  getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime,
   guessMimeType,
-  maybeUpdateDeviceHistory,
   sendAlerts,
   ThumbnailData,
   tracksFromMeta,
   updateRecordingTimeBookkeeping,
 } from "@api/V1/recordingUtil.js";
-import { Station } from "@models/Station.js";
 import { Group } from "@models/Group.js";
-import { isLatLon } from "@models/util/validation.js";
+import { isLatLng } from "@models/util/validation.js";
 import { tryReadingM4aMetadata } from "@api/m4a-metadata-reader/m4a-metadata-reader.js";
 import { RecordingDataSuppliedMetadata } from "@typedefs/api/fileProcessing.js";
 import { Fn } from "sequelize/lib/utils";
@@ -55,6 +53,7 @@ import { parseFormData, Pechkin } from "pechkin";
 import { ByteLengthTruncateStream } from "pechkin/dist/ByteLengthTruncateStream.js";
 import tzLookup from "tz-lookup-oss";
 import { asyncLocalStorage } from "@/Globals.js";
+import { maybeUpdateDeviceHistoryLocation } from "@api/V1/deviceHistoryUpdates.js";
 
 interface RecordingUploadSuppliedData {
   type: RecordingType;
@@ -523,7 +522,7 @@ export const uploadGenericRecording =
     // If it was the actual device uploading the recording, not a user
     // on the devices' behalf, set the lastConnectionTime for the device.
     const uploader = fromDevice ? "device" : "user";
-
+    const atTime = (request.params.atTime as unknown as Date) || new Date();
     // NOTE: Get the real device - do we always have this here, or just the device.id?
     let uploadingUser: User;
     const recordingDeviceId: DeviceId =
@@ -661,7 +660,7 @@ export const uploadGenericRecording =
     if (
       !("location" in recordingData) ||
       ("location" in recordingData && !recordingData.location) ||
-      ("location" in recordingData && !isLatLon(recordingData.location, false))
+      ("location" in recordingData && !isLatLng(recordingData.location, false))
     ) {
       await deleteUpload(uploadResult.objectStorageKey);
       log.warning(
@@ -771,26 +770,28 @@ export const uploadGenericRecording =
     // Work out which group and station to assign based on recordingDateTime, device history etc.
     // This is intended to correctly assign recordings from moved devices to the correct historical
     // project.
-    const groupAndStation = await assignGroupAndStationToRecording(
-      recordingDevice,
-      recordingTemplate.recordingDateTime,
-      recordingTemplate.location,
-    );
-    if (typeof groupAndStation === "string") {
+    let groupAndStation;
+    try {
+      groupAndStation = await assignGroupAndStationToRecording(
+        recordingDevice,
+        recordingTemplate.recordingDateTime,
+        recordingTemplate.location,
+      );
+    } catch (e: unknown) {
+      let message = "unknown error";
+      if (e instanceof Error) {
+        message = e.message;
+      }
       // Lat/lng was zero and we couldn't find a last location where the device was in the device history.
       // Can this actually happen in practice?
       await deleteUpload(uploadResult.objectStorageKey);
-      log.warning(groupAndStation);
-      return next(new UnprocessableError(groupAndStation));
+      log.warning(message);
+      return next(new UnprocessableError(message));
     }
-    const {
-      deviceId,
-      groupId,
-      station: stationToAssignToRecording,
-    } = groupAndStation;
-
+    const { deviceId, groupId, stationId } = groupAndStation;
     recordingTemplate.DeviceId = deviceId;
     recordingTemplate.GroupId = groupId;
+    recordingTemplate.StationId = stationId;
     if (deviceId !== recordingDevice.id) {
       // Get the actual device at the recording time.
       recordingDevice = await Device.findByPk(deviceId, {
@@ -815,9 +816,6 @@ export const uploadGenericRecording =
         metadataSource: recordingData.metadata.metadata_source,
       };
     }
-    if (stationToAssignToRecording) {
-      recordingTemplate.StationId = stationToAssignToRecording.id;
-    }
 
     // Actually create the recording in the database
     let recording: Recording;
@@ -838,6 +836,7 @@ export const uploadGenericRecording =
         recordingTemplate,
         recordingDevice,
         fromDevice,
+        atTime,
         transaction,
       );
       await updateRecordingTimeBookkeeping(recording, fromDevice, transaction);
@@ -959,47 +958,23 @@ const setInitialProcessingState = (
 const assignGroupAndStationToRecording = async (
   deviceForRecording: Device,
   recordingDateTime: Date,
-  recordingLocation?: LatLng,
-): Promise<
-  | {
-      groupId: GroupId;
-      deviceId: DeviceId;
-      station?: Station;
-    }
-  | string
-> => {
-  let groupId: GroupId;
-  let deviceId: DeviceId;
-  let station: Station;
-  if (recordingLocation) {
-    const result = await maybeUpdateDeviceHistory(
-      deviceForRecording,
-      recordingLocation,
-      recordingDateTime,
-    );
-    if (typeof result === "string") {
-      return result;
-    }
-    const { stationToAssignToRecording, deviceHistoryEntry } = result;
-    station = stationToAssignToRecording;
-    deviceId = deviceHistoryEntry.DeviceId;
-    groupId = deviceHistoryEntry.GroupId;
-  }
-
-  if (!deviceId && !groupId) {
-    // Check what group the uploading device (or the device embedded in the recording) was part of at the time the recording was made.
-    const { deviceId: d, groupId: g } =
-      await getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime(
-        deviceForRecording,
-        recordingDateTime,
-      );
-    deviceId = d;
-    groupId = g;
-  }
+  recordingLocation: LatLng,
+): Promise<{
+  groupId: GroupId;
+  deviceId: DeviceId;
+  stationId: LocationId;
+}> => {
+  // When this comes in, don't make assumptions about which group the device is part of at this time.
+  // Check for historical locations using the device uuid
+  const deviceHistoryEntry = await maybeUpdateDeviceHistoryLocation(
+    deviceForRecording,
+    recordingLocation,
+    recordingDateTime,
+  );
   return {
-    groupId,
-    deviceId,
-    station,
+    groupId: deviceHistoryEntry.GroupId,
+    deviceId: deviceHistoryEntry.DeviceId,
+    stationId: deviceHistoryEntry.stationId,
   };
 };
 
@@ -1037,56 +1012,24 @@ const maybeUpdateDeviceMetadata = async (
   recording: Recording,
   uploadingDevice: Device,
   fromDevice: boolean,
+  atTime: Date,
   transaction?: Transaction,
 ): Promise<unknown> => {
-  // TODO: Streamline logic
   let uploadingDeviceUpdatePayload: UpdateDevicePayload = {};
   if (fromDevice) {
-    let shouldSetActive = false;
-    if (!uploadingDevice.active) {
-      // Check if the device has been re-assigned to another group:
-      const activeDevice = await Device.findOne({
-        where: {
-          saltId: uploadingDevice.saltId,
-          active: true,
-        },
-        transaction,
-      });
-      if (!activeDevice) {
-        shouldSetActive = true;
-      }
-    }
-    // Set the device active and update its connection time.
+    // Update the device last connection time.
     uploadingDeviceUpdatePayload = {
-      lastConnectionTime: greaterDate(new Date(), "lastConnectionTime"),
+      lastConnectionTime: greaterDate(atTime, "lastConnectionTime"),
     };
-    if (shouldSetActive) {
-      uploadingDeviceUpdatePayload.active = true;
-    }
   } else if (
     !fromDevice &&
     (recording.recordingDateTime > uploadingDevice.lastConnectionTime ||
       !uploadingDevice.lastConnectionTime)
   ) {
-    let shouldSetActive = false;
-    if (!uploadingDevice.active) {
-      // Check if the device has been re-assigned to another group:
-      const activeDevice = await Device.findOne({
-        where: {
-          saltId: uploadingDevice.saltId,
-          active: true,
-        },
-        transaction,
-      });
-      if (!activeDevice) {
-        shouldSetActive = true;
-      }
-    }
     // If we're getting a recording via sidekick that's later than a previous lastConnectionTime,
     // or there is no previous lastConnectionTime, we can null out the lastConnectionTime,
     // which indicates that this device is now "offline".
     // As such, it will no longer be targeted by stopped device emails, and can show up as offline in browse.
-
     // Only set the device offline if the lastConnectionTime < 25 hours ago, and lastRecordingTime is greater than that.
     const twentyFiveHoursAgo = new Date();
     twentyFiveHoursAgo.setHours(twentyFiveHoursAgo.getHours() - 25);
@@ -1096,13 +1039,9 @@ const maybeUpdateDeviceMetadata = async (
       new Date(recording.recordingDateTime) >
         new Date(uploadingDevice.lastConnectionTime)
     ) {
-      // FIXME: Test NULLING out lastConnectionTime
       uploadingDeviceUpdatePayload = {
         lastConnectionTime: null,
       };
-    }
-    if (shouldSetActive) {
-      uploadingDeviceUpdatePayload.active = true;
     }
   }
   return Device.update(

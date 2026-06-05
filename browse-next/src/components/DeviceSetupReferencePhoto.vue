@@ -559,11 +559,10 @@ const saveReferenceImage = async () => {
 
   const webp = await convertImageDataToWebP(imageData);
   const ab = await webp.arrayBuffer();
-  const response =
-    await ClientApi.Devices.updateReferenceImageForDeviceAtCurrentLocation(
-      device.value!.id,
-      ab,
-    );
+  const response = await ClientApi.Devices.addReferenceImageForDeviceAtTime(
+    device.value!.id,
+    ab,
+  );
   if (response.success) {
     // Create a local blob URL to show the updated image immediately
     const newUrl = URL.createObjectURL(webp);

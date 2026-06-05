@@ -35,6 +35,7 @@ const getUserEvents = async (devices: Device[]): Promise<GroupUserDevices> => {
   for (const device of devices) {
     if (!Object.prototype.hasOwnProperty.call(recipientUsers, device.GroupId)) {
       recipientUsers[device.GroupId] = await device.Group.getUsers({
+        where: { emailConfirmed: true },
         through: {
           where: {
             [Op.or]: [
@@ -69,14 +70,15 @@ const getUserEvents = async (devices: Device[]): Promise<GroupUserDevices> => {
 };
 
 async function main() {
-  if (config.cronScriptProcessingHostname !== os.hostname()) {
+  const args = process.argv.slice(2); // Remove the first two default paths
+  const forceRun = args.length !== 0 && args[0] === "--force";
+  if (config.cronScriptProcessingHostname !== os.hostname() && !forceRun) {
     return;
   }
   if (!config.smtpDetails) {
     throw "No SMTP details found in config/app.js";
   }
   const stoppedEvents = await Event.latestEventsOfTypes(["stop-reported"]);
-
   // filter devices which have already been alerted on
   const devices = (await Device.stoppedDevices()).filter((device) => {
     const hasAlerted =
@@ -87,7 +89,6 @@ async function main() {
       ) !== undefined;
     return !hasAlerted;
   });
-
   if (devices.length == 0) {
     log.info("No new stopped devices");
     return;

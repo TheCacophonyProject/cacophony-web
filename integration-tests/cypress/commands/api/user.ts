@@ -167,6 +167,7 @@ declare global {
         userName: string,
         group: string,
         camera: string,
+        atTime?: Date,
       ): Chainable<void>;
 
       /**
@@ -576,14 +577,14 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "testCreateUserGroupAndDevice",
-  (userName, group, camera) => {
+  (userName, group, camera, atTime) => {
     logTestDescription(
       `Create user '${userName}' with camera '${camera}' in group '${group}'`,
       { user: userName, group: group, camera: camera },
     );
     cy.apiUserAdd(userName);
     cy.apiGroupAdd(userName, group, false);
-    cy.apiDeviceAdd(camera, group, null, null);
+    cy.apiDeviceAdd(camera, group, atTime, null, null);
   },
 );
 

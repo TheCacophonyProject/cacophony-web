@@ -77,7 +77,6 @@ interface RequestStateResolvers {
     authKey: TestHandle,
     credentials: LoggedInUserAuth | LoggedInDeviceCredentials,
   ) => void;
-  //getCredentials: (authKey?: TestHandle | null) => Promise<JwtToken<UserId> | false>;
 }
 
 const getScreenOrientation = (): string => {
@@ -151,22 +150,15 @@ const cacophonyFetchWrapper = async <T>(
       ...request.headers,
     },
   };
-  if (!inBrowserContext && request.body) {
-    // NOTE: When running via node/playwright, request.body becomes request.data/request.multipart
-    if (request.body instanceof FormData) {
-      request["multipart"] = request.body;
-    } else {
-      request["data"] = request.body;
-    }
-    delete request.body;
-  }
   if (abortable) {
     request.signal = CurrentViewAbortController.controller.signal;
     request.signal?.addEventListener("onabort", (e) => {
       console.warn("Aborted", e, request.signal);
     });
   }
-  const credentials = await stateResolvers.requestCredentialsResolver(authKey);
+  const credentials = (await stateResolvers.requestCredentialsResolver(
+    authKey,
+  )) as string | false;
   // Check if the credentials are stale?
   // If so, attempt to refresh them
   // Then use them
@@ -203,10 +195,10 @@ const cacophonyFetchWrapper = async <T>(
     // If we have an authorization error,
 
     // !NON_AUTH_API_ENDPOINTS.some((route) => response.url.endsWith(route))
-
+    const responseUrl = response.url;
     if (
       response.status === HttpStatusCode.AuthorizationError &&
-      !response.url.endsWith("/api/v1/users/authenticate")
+      !responseUrl.endsWith("/api/v1/users/authenticate")
     ) {
       stateResolvers.forgetCredentials(authKey);
       return {
@@ -220,14 +212,11 @@ const cacophonyFetchWrapper = async <T>(
       };
     }
 
-    const headerEntries =
-      typeof response.headers === "function"
-        ? (
-            response as unknown as { headers: () => [string, string][] }
-          ).headers()
-        : response.headers.entries();
+    const headerEntries = response.headers.entries();
     let isJSON: boolean;
-    if ((headerEntries["content-type"] || "").includes("application/json")) {
+    if (
+      (response.headers.get("content-type") || "").includes("application/json")
+    ) {
       isJSON = true;
     } else {
       isJSON = !!(Array.from(headerEntries) as [string, string][]).find(
@@ -240,33 +229,21 @@ const cacophonyFetchWrapper = async <T>(
     let status: HttpSuccessCode | HttpFailureCode;
     let ok: boolean;
     if (isJSON) {
-      // FIXME: Can this fail?  Check if we need try/catch
       result = await response.json();
-      status =
-        typeof response.status === "function"
-          ? (
-              response as unknown as {
-                status: () => HttpSuccessCode | HttpFailureCode;
-              }
-            ).status()
-          : response.status;
-      ok =
-        typeof response.ok === "function"
-          ? (
-              response as unknown as {
-                ok: () => boolean;
-              }
-            ).ok()
-          : response.ok;
+      status = response.status;
+      ok = response.ok;
 
       // TODO: Check where we return forbidden, and consider whether the front-end should actually log out for those cases.
       // FIXME:(auth): We should handle this elsewhere?
-
+      /*
+      NOTE: We used to log a user out if they tried to access an unauthorised resource, but it's not clear
+      that there's a good reason for doing this.
       if (
         status === HttpStatusCode.Forbidden &&
         result.errorType === "authorization" &&
-        !response.url.endsWith("/api/v1/users/authenticate") &&
-        !response.url.endsWith("/api/v1/users/refresh-session-token")
+        responseUrl &&
+        !responseUrl.endsWith("/api/v1/users/authenticate") &&
+        !responseUrl.endsWith("/api/v1/users/refresh-session-token")
       ) {
         stateResolvers.forgetCredentials(authKey);
         return {
@@ -279,6 +256,7 @@ const cacophonyFetchWrapper = async <T>(
           success: false,
         };
       }
+       */
 
       if (result.cwVersion) {
         if (inBrowserContext) {
@@ -299,30 +277,9 @@ const cacophonyFetchWrapper = async <T>(
         delete result.cwVersion;
       }
     } else {
-      if (inBrowserContext) {
-        result = await response.blob();
-      } else {
-        const buffer = await (
-          response as unknown as { body: () => Promise<ArrayBuffer> }
-        ).body();
-        result = new Blob([buffer]);
-      }
-      status =
-        typeof response.status === "function"
-          ? (
-              response as unknown as {
-                status: () => HttpSuccessCode | HttpFailureCode;
-              }
-            ).status()
-          : response.status;
-      ok =
-        typeof response.ok === "function"
-          ? (
-              response as unknown as {
-                ok: () => boolean;
-              }
-            ).ok()
-          : response.ok;
+      result = await response.blob();
+      status = response.status;
+      ok = response.ok;
     }
     return {
       result,
@@ -407,7 +364,7 @@ export interface CacophonyApiClient {
     credentials: LoggedInUserAuth | LoggedInDeviceCredentials,
   ) => void;
   getCredentials: (
-    authKey: TestHandle | null,
+    authKey: TestHandle,
   ) => Promise<JwtToken<UserId | DeviceId> | false>;
   getApiRoot: () => string;
 }
@@ -499,9 +456,9 @@ class CacophonyApi {
   }
 
   getCredentials(
-    authKey: TestHandle | null,
-  ): Promise<JwtToken<UserId> | false> {
-    return this.credentialsResolver.requestCredentialsResolver(authKey);
+    testHandle: TestHandle,
+  ): Promise<JwtToken<UserId | DeviceId> | false> {
+    return this.credentialsResolver.requestCredentialsResolver(testHandle);
   }
 
   getApiRoot() {

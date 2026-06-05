@@ -42,15 +42,17 @@ import {
   integerOf,
 } from "../validation-middleware.js";
 import { ClientError, UnprocessableError } from "@api/customErrors.js";
-import type { IsoFormattedDateString } from "@typedefs/api/common.js";
-import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil.js";
-import { HttpStatusCode } from "@typedefs/api/consts.js";
-import { isLatLon } from "@models/util/validation.js";
+import type { DeviceId, IsoFormattedDateString } from "@typedefs/api/common.js";
+import { EventEnv, HttpStatusCode } from "@typedefs/api/consts.js";
+import { isLatLng } from "@models/util/validation.js";
 import { streamS3Object } from "@api/V1/signedUrl.js";
 import { QueryTypes } from "sequelize";
 import { Device } from "@models/Device.js";
 import { Event } from "@models/Event.js";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
+import { maybeUpdateDeviceHistoryLocation } from "@api/V1/deviceHistoryUpdates.js";
+import { DeviceHistory } from "../../models/DeviceHistory.js";
+import logging from "@log";
 
 const sequelize = await initSequelize();
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
@@ -61,16 +63,18 @@ const uploadEvent = async (
   next: NextFunction,
 ) => {
   let device = response.locals.device || response.locals.requestDevice;
+  const now = request.query.atTime as unknown as Date;
+  if (!device.deviceName) {
+    // If we just have a device JWT id, get the actual device at this point.
+    device = await Device.findByPk(device.id);
+  }
   if (response.locals.requestDevice) {
     // The device is connecting directly, so update the last connected time.
-    if (!device.deviceName) {
-      // If we just have a device JWT id, get the actual device at this point.
-      device = await Device.findByPk(device.id);
-    }
-    await device.update({ lastConnectionTime: new Date() });
+    await device.update({ lastConnectionTime: now });
   }
+
   let detailsId = response.locals.detailsnapshot?.id;
-  let env = "unknown";
+  let env: EventEnv = EventEnv.Unknown;
   if (!detailsId) {
     const description: EventDescription = request.body.description;
     let resolvedDetails: Record<string, JsonDocument>;
@@ -91,9 +95,9 @@ const uploadEvent = async (
       resolvedDetails = details as Record<string, JsonDocument>;
     }
 
-    env = (resolvedDetails["env"] as string) || "unknown";
+    env = (resolvedDetails["env"] as EventEnv) || EventEnv.Unknown;
     if (!["tc2-dev", "tc2-test", "tc2-prod", "unknown"].includes(env)) {
-      env = "unknown";
+      env = EventEnv.Unknown;
     }
     delete resolvedDetails["env"];
     const detail = await DetailSnapshot.getOrCreateMatching(
@@ -110,6 +114,9 @@ const uploadEvent = async (
           longitude: number;
           updated: IsoFormattedDateString;
         };
+        device?: {
+          id: DeviceId;
+        };
       }
       const configEventDetails = resolvedDetails as unknown as ConfigEvent;
 
@@ -118,35 +125,42 @@ const uploadEvent = async (
         configEventDetails.location.latitude !== undefined &&
         configEventDetails.location.longitude !== undefined
       ) {
-        const lat = configEventDetails.location.latitude;
-        const lng = configEventDetails.location.longitude;
-        // Pre-validate to avoid server-side crashes on invalid inputs
-        if (!isLatLon({ lat, lng }, false)) {
-          return next(
-            new UnprocessableError(
-              `Invalid location '{"lat":${lat},"lng":${lng}}'`,
-            ),
-          );
+        const deviceId =
+          (configEventDetails.device && configEventDetails.device.id) ||
+          device.id;
+        let configDevice = device;
+        if (
+          configEventDetails.device &&
+          configEventDetails.device.id !== device.id
+        ) {
+          configDevice = await Device.findByPk(deviceId);
         }
-        try {
-          const result = await maybeUpdateDeviceHistory(
-            device,
-            { lat, lng },
-            new Date(configEventDetails.location.updated),
-            "config",
-          );
-          if (typeof result === "string") {
+        if (configDevice) {
+          const lat = configEventDetails.location.latitude;
+          const lng = configEventDetails.location.longitude;
+          // Pre-validate to avoid server-side crashes on invalid inputs
+          if (!isLatLng({ lat, lng }, false)) {
             return next(
-              new ClientError(`Failed to update device history: ${result}`),
+              new UnprocessableError(
+                `Invalid location '{"lat":${lat},"lng":${lng}}'`,
+              ),
             );
           }
-        } catch (e: unknown) {
-          const message = "unknown error";
-          if (e) {
-            const message = (e as Error).message;
+          try {
+            await maybeUpdateDeviceHistoryLocation(
+              configDevice,
+              { lat, lng },
+              new Date(configEventDetails.location.updated),
+              "config",
+            );
+          } catch (e: unknown) {
+            let message = "unknown error";
+            if (e instanceof Error) {
+              message = e.message;
+            }
             if (
-              (e as Error).name === "SequelizeValidationError" ||
-              message.includes("Location is not valid")
+              (e && (e as Error).name === "SequelizeValidationError") ||
+              message.includes("Invalid location")
             ) {
               return next(
                 new UnprocessableError(
@@ -154,9 +168,15 @@ const uploadEvent = async (
                 ),
               );
             }
+            return next(
+              new ClientError(`Failed to update device history: ${message}`),
+            );
           }
+        } else {
           return next(
-            new ClientError(`Failed to update device history: ${message}`),
+            new ClientError(
+              `Couldn't find device #${deviceId} to update device history location for`,
+            ),
           );
         }
       }
@@ -166,23 +186,77 @@ const uploadEvent = async (
   const tenMinutesFromNow = new Date(
     new Date().setMinutes(new Date().getMinutes() + 10),
   );
-  const eventList = request.body.dateTimes
-    .map((dateTime: IsoFormattedDateString) => ({
+
+  const sortedTimes: Date[] = request.body.dateTimes
+    .map((dateTime: IsoFormattedDateString) => new Date(dateTime))
+    .sort((a: Date, b: Date) => a.getTime() - b.getTime());
+  // Check that the device was the same for earliest and latest times, otherwise need to binary
+  // search to attribute events correctly.
+  const earliest = sortedTimes[0];
+  const latest = sortedTimes[sortedTimes.length - 1];
+  const earliestActualDevice = await DeviceHistory.getDeviceFromUuidAtTime(
+    device.uuid,
+    earliest,
+  );
+  let latestActualDevice = earliestActualDevice;
+  if (earliest !== latest) {
+    // Check both ends
+    latestActualDevice = await DeviceHistory.getDeviceFromUuidAtTime(
+      device.uuid,
+      latest,
+    );
+  }
+  let eventList: {
+    DeviceId: DeviceId;
+    EventDetailId: number;
+    dateTime: Date;
+    env: EventEnv;
+  }[];
+  if (
+    earliestActualDevice &&
+    latestActualDevice &&
+    earliestActualDevice.DeviceId !== latestActualDevice.DeviceId
+  ) {
+    // We need to bisect, but this is rare, so just map every event to the deviceId.
+    const actualDevices: DeviceHistory[] = await Promise.all(
+      sortedTimes.map((dateTime) =>
+        DeviceHistory.getDeviceFromUuidAtTime(device.uuid, dateTime),
+      ),
+    );
+    eventList = sortedTimes.map((dateTime, index) => ({
+      DeviceId: actualDevices[index].DeviceId,
+      EventDetailId: detailsId,
+      dateTime,
+      env,
+    }));
+  } else if (
+    earliestActualDevice &&
+    device.id !== earliestActualDevice.DeviceId
+  ) {
+    eventList = sortedTimes.map((dateTime) => ({
+      DeviceId: earliestActualDevice.DeviceId,
+      EventDetailId: detailsId,
+      dateTime,
+      env,
+    }));
+  } else {
+    eventList = sortedTimes.map((dateTime) => ({
       DeviceId: device.id,
       EventDetailId: detailsId,
-      dateTime: new Date(dateTime),
+      dateTime,
       env,
-    }))
-    .filter((event: { dateTime: Date }) => {
-      if (event.dateTime > tenMinutesFromNow) {
-        logger.warning(
-          "Discarding event with invalid future dateTime %s.",
-          JSON.stringify(event),
-        );
-        return false;
-      }
-      return true;
-    });
+    }));
+  }
+  eventList = eventList.filter((event: { dateTime: Date }) => {
+    if (event.dateTime > tenMinutesFromNow) {
+      logger.warning(
+        "Discarding event with invalid future dateTime %s.",
+        JSON.stringify(event),
+      );
+      return false;
+    }
+    return true;
+  });
   const count = eventList.length;
   try {
     // Batch inserting events to max 100 events at a time, to spare DB memory usage.
@@ -235,6 +309,9 @@ const commonEventFields = [
     .withMessage(`Got empty array`)
     .bail()
     .custom(jsonSchemaOf(EventDatesSchema)),
+
+  // NOTE: Primarily used in testing, allows us to backdate the lastConnectionTime of an uploading device
+  query("atTime").default(new Date().toISOString()).isISO8601().toDate(),
 ];
 
 export default function (app: Application, baseUrl: string) {

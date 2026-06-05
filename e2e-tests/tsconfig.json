@@ -7,8 +7,8 @@
     "skipLibCheck": true,
     "types": ["node", "@playwright/test"],
     "paths": {
-      "@typedefs/*":  ["../types/*"],
-      "@shared/*":  ["../types/*"],
+      "@typedefs/*": ["../types/*"],
+      "@shared/*": ["../types/*"],
       "@/*": ["./*"]
     }
   }

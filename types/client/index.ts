@@ -84,11 +84,13 @@ const credentialsResolvers = {
     }
     return false;
   },
-  forgetCredentials: (authKey: TestHandle) => {
-    if (authKey.startsWith("cy_user-")) {
-      userCredentials.delete(authKey);
-    } else if (authKey.startsWith("cy_device-")) {
-      deviceCredentials.delete(authKey);
+  forgetCredentials: (authKey?: TestHandle | null) => {
+    if (authKey) {
+      if (authKey.startsWith("cy_user-")) {
+        userCredentials.delete(authKey);
+      } else if (authKey.startsWith("cy_device-")) {
+        deviceCredentials.delete(authKey);
+      }
     }
   },
   registerCredentials: (
@@ -179,6 +181,6 @@ export const TestApiImpl = {
     authKey: TestHandle,
     creds: LoggedInDeviceCredentials | LoggedInUserAuth,
   ) => api.registerCredentials(authKey, creds),
-  //getCredentials: (authKey: TestHandle) => api.getCredentials(authKey),
+  getCredentials: (authKey: TestHandle) => api.getCredentials(authKey),
   withAuth: (authKey: TestHandle) => withAuth(authKey),
 };

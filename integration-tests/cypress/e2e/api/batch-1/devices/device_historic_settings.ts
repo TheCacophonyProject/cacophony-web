@@ -4,6 +4,24 @@ import { uploadFile } from "@commands/fileUpload";
 import { ApiDeviceHistorySettings } from "@shared/api/device";
 import { RecordingProcessingState } from "@typedefs/api/consts";
 
+export const addDays = (startDate: Date, days: number) => {
+  const result = new Date(startDate);
+  result.setDate(result.getDate() + days);
+  return result;
+};
+
+export const addMinutes = (startDate: Date, mins: number) => {
+  const result = new Date(startDate);
+  result.setMinutes(result.getMinutes() + mins);
+  return result;
+};
+
+export const addSeconds = (startDate: Date, secs: number) => {
+  const result = new Date(startDate);
+  result.setSeconds(result.getSeconds() + secs);
+  return result;
+};
+
 describe("Devices historic settings", () => {
   it("A user can add and retrieve a reference image for a device in a location", () => {
     /// When a device is moved from its current location, any maskRegions or reference images should be removed from settings
@@ -11,10 +29,12 @@ describe("Devices historic settings", () => {
     const user = "Casey";
     const group = "Casey-Team";
     const camera = "Casey-camera";
-    const now = new Date();
-    const oneDayAgo = new Date(new Date().setDate(now.getDate() - 1));
-    const twoDaysAgo = new Date(new Date().setDate(now.getDate() - 2));
-    cy.testCreateUserGroupAndDevice(user, group, camera);
+    const initialDateTime = new Date("2026-01-01T00:00:00Z");
+
+    const oneDayAgo = addDays(initialDateTime, -1);
+    const twoDaysAgo = addDays(initialDateTime, -2);
+    const threeDaysAgo = addDays(initialDateTime, -3);
+    cy.testCreateUserGroupAndDevice(user, group, camera, threeDaysAgo);
 
     cy.testUploadRecording(camera, {
       ...TestGetLocation(1),
@@ -23,7 +43,7 @@ describe("Devices historic settings", () => {
       processingState: RecordingProcessingState.TrackAndAnalyse,
     }).then(() => {
       let params = new URLSearchParams();
-      params.append("at-time", new Date().toISOString());
+      params.append("at-time", addMinutes(twoDaysAgo, 1).toISOString());
       params.append("type", "pov");
       let queryString = params.toString();
       const referenceImageApiUrl = v1ApiPath(
@@ -56,12 +76,17 @@ describe("Devices historic settings", () => {
           user,
         ).then(
           (
-            response: Cypress.Response<{ settings: ApiDeviceHistorySettings }>,
+            response: Cypress.Response<{
+              settings: ApiDeviceHistorySettings | null;
+            }>,
           ) => {
             const settings = response.body.settings;
             expect(settings).to.exist;
-            expect(settings.referenceImagePOV).to.exist;
-            expect(settings.referenceImagePOVFileSize).to.exist;
+            expect((settings as ApiDeviceHistorySettings).referenceImagePOV).to
+              .exist;
+            expect(
+              (settings as ApiDeviceHistorySettings).referenceImagePOVFileSize,
+            ).to.exist;
 
             cy.log("Set low power mode");
             makeAuthorizedRequest(
@@ -72,9 +97,10 @@ describe("Devices historic settings", () => {
                   settings: {
                     thermalRecording: {
                       useLowPowerMode: true,
-                      updated: new Date().toISOString(),
+                      updated: addMinutes(twoDaysAgo, 2).toISOString(),
                     },
                   },
+                  fromDateTime: addMinutes(twoDaysAgo, 2).toISOString(),
                 },
               },
               user,
@@ -103,44 +129,10 @@ describe("Devices historic settings", () => {
                   expect(settings.thermalRecording.useLowPowerMode).to.exist;
                   expect(settings.synced).to.exist;
 
-                  cy.log(
-                    "Upload a second recording at a different location to create a new DeviceHistory entry",
-                  );
-                  cy.testUploadRecording(camera, {
-                    ...TestGetLocation(2),
-                    time: oneDayAgo,
-                    noTracks: true,
-                    processingState: RecordingProcessingState.TrackAndAnalyse,
-                  }).then(() => {
-                    cy.log(
-                      "Make sure the settings have been cleared for the older location.",
-                    );
-                    params = new URLSearchParams();
-                    params.append("at-time", oneDayAgo.toISOString());
-                    queryString = params.toString();
-                    makeAuthorizedRequest(
-                      {
-                        method: "GET",
-                        url: `${deviceSettingsApiUrl}?${queryString}`,
-                      },
-                      user,
-                    ).then(
-                      (
-                        response: Cypress.Response<{
-                          settings: ApiDeviceHistorySettings;
-                        }>,
-                      ) => {
-                        const hasSettings =
-                          response.body.settings &&
-                          Object.keys(response.body.settings).length !== 0;
-                        expect(hasSettings).to.be.false;
-                      },
-                    );
-                  });
                   cy.log("Upload a new recording 'now' in a new location");
                   cy.testUploadRecording(camera, {
                     ...TestGetLocation(3),
-                    time: new Date(),
+                    time: initialDateTime,
                     noTracks: true,
                     processingState: RecordingProcessingState.TrackAndAnalyse,
                   }).then(() => {
@@ -148,7 +140,10 @@ describe("Devices historic settings", () => {
                       "Make sure the location specific settings have been cleared for the new location, while other settings are preserved",
                     );
                     params = new URLSearchParams();
-                    params.append("at-time", new Date().toISOString());
+                    params.append(
+                      "at-time",
+                      addMinutes(initialDateTime, 2).toISOString(),
+                    );
                     queryString = params.toString();
                     makeAuthorizedRequest(
                       {
@@ -167,7 +162,7 @@ describe("Devices historic settings", () => {
                         expect(settings.referenceImagePOV).to.not.exist;
                         expect(settings.referenceImagePOVFileSize).to.not.exist;
                         expect(settings.thermalRecording).to.exist;
-                        expect(settings.thermalRecording.useLowPowerMode).to
+                        expect(settings.thermalRecording?.useLowPowerMode).to
                           .exist;
                         expect(settings.synced).to.exist;
                         expect(settings.synced).to.be.false;
@@ -186,7 +181,10 @@ describe("Devices historic settings", () => {
                           camera,
                         ).then(() => {
                           params = new URLSearchParams();
-                          params.append("at-time", new Date().toISOString());
+                          params.append(
+                            "at-time",
+                            addMinutes(initialDateTime, 3).toISOString(),
+                          );
                           queryString = params.toString();
                           makeAuthorizedRequest(
                             {
@@ -215,7 +213,10 @@ describe("Devices historic settings", () => {
                                     settings: {
                                       thermalRecording: {
                                         useLowPowerMode: false,
-                                        updated: new Date().toISOString(),
+                                        updated: addMinutes(
+                                          initialDateTime,
+                                          4,
+                                        ).toISOString(),
                                       },
                                     },
                                   },

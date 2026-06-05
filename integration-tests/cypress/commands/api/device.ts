@@ -13,7 +13,7 @@ import {
 import { logTestDescription, prettyLog } from "../descriptions";
 import { TestNameAndId } from "../types";
 import { NOT_NULL, NOT_NULL_STRING } from "../constants";
-import { DeviceId, LatLng } from "@typedefs/api/common";
+import { DeviceId, IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
 import {
   ApiDeviceHistory,
@@ -34,6 +34,7 @@ declare global {
       apiDeviceAdd(
         deviceName: string,
         groupName: string,
+        atTime?: Date,
         saltId?: number,
         password?: string,
         generateUniqueName?: boolean,
@@ -247,6 +248,7 @@ Cypress.Commands.add(
   (
     deviceName: string,
     groupName: string,
+    atTime?: Date,
     saltId: number | null = null,
     password: string | null = null,
     generateUniqueName = true,
@@ -269,6 +271,7 @@ Cypress.Commands.add(
       password,
       saltId,
       generateUniqueName,
+      atTime,
     );
     if (statusCode == 200) {
       cy.request(request).then((response) => {
@@ -412,7 +415,7 @@ Cypress.Commands.add(
             checkTreeStructuresAreEqualExcept(
               sortExpectedHistory[devCount],
               sortHistory[devCount],
-              [],
+              [".id"],
             );
           }
         }
@@ -524,6 +527,7 @@ function createDevice(
   password: string,
   saltId: number,
   makeCameraNameTestName = true,
+  atTime?: Date,
 ) {
   const fullName = makeCameraNameTestName
     ? getTestName(deviceName)
@@ -538,6 +542,7 @@ function createDevice(
     password: string;
     group: string;
     saltId?: number;
+    fromDateTime?: IsoFormattedDateString;
   }
 
   const data: DataType = {
@@ -548,6 +553,9 @@ function createDevice(
 
   if (saltId !== null) {
     data.saltId = saltId;
+  }
+  if (atTime) {
+    data.fromDateTime = atTime.toISOString();
   }
 
   return {

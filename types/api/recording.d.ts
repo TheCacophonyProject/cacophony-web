@@ -125,7 +125,7 @@ export type ApiGenericRecordingResponse = ApiThermalRecordingResponse &
   ApiAudioRecordingResponse;
 
 export interface ApiRecordingUploadData {
-  fileHash?: string;
+  fileHash?: string | null;
   status?: "test" | "startup" | "shutdown";
   location?: LatLng;
   type?: RecordingType;

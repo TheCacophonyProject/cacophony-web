@@ -36,7 +36,7 @@ import config from "@config";
 import type { LatLng } from "@typedefs/api/common.js";
 import { DataTypes, Model } from "sequelize";
 import { canonicalLatLng } from "@models/util/locationUtils.js";
-import { isLatLon } from "@models/util/validation.js";
+import { isLatLng } from "@models/util/validation.js";
 import { NodeHttpHandler } from "@aws-sdk/node-http-handler";
 import * as https from "node:https";
 
@@ -255,7 +255,7 @@ export function locationField(fieldName = "location") {
       return null;
     },
     validate: {
-      isLatLon,
+      isLatLon: isLatLng,
     },
   };
 }

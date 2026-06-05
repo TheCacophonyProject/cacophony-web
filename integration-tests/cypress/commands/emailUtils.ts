@@ -41,7 +41,7 @@ export const waitForEmailPromise = (toUser: string, type = "") => {
 export const startMailServerStub = () => {
   cy.log("Attempting to start mail server stub");
   return cy.exec(
-    `cd ../api && docker exec cacophony-web bash -lic "node ./api/scripts/concurrent-mailserver-stub.js > /dev/null &"`,
+    `cd ../api && docker exec cacophony-web bash -lic "node ./api/scripts/test-scripts/concurrent-mailserver-stub.js > /dev/null &"`,
     { log: false, failOnNonZeroExit: false },
   );
 };
@@ -50,7 +50,7 @@ export const startMailServerStubPromise = async () => {
   return new Promise((resolve, _reject) => {
     cy.log("Attempting to start mail server stub");
     cy.exec(
-      `cd ../api && docker exec cacophony-web bash -lic "node ./api/scripts/concurrent-mailserver-stub.js > /dev/null &"`,
+      `cd ../api && docker exec cacophony-web bash -lic "node ./api/scripts/test-scripts/concurrent-mailserver-stub.js > /dev/null &"`,
       { log: false, failOnNonZeroExit: false },
     ).then(resolve);
   });

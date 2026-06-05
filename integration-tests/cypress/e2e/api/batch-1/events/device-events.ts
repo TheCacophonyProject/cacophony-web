@@ -9,7 +9,7 @@ describe("Event upload from device", () => {
       dateTimes: ["2026-03-02T18:30:29.937331459Z"],
       description: { details: null, type: "throttle" },
     };
-    const response = await Device.Devices.submitEvents(payload);
+    const response = await Device.Devices.submitEventsFromDevice(payload);
     expect(response.success).to.be.true;
   });
 });

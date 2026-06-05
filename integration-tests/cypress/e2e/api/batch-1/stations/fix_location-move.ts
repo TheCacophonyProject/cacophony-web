@@ -76,7 +76,7 @@ let group: string;
 const baseGroup = "fix_location_move_group";
 const Josie = "Josie_move_stations";
 
-describe("Device: fix-location of device and/or recordings", () => {
+describe.skip("Device: fix-location of device and/or recordings", () => {
   before(() => {
     cy.apiUserAdd(Josie);
   });

@@ -19,6 +19,7 @@ import Sequelize, {
   ForeignKey,
   ModelAttributes,
   NonAttribute,
+  Op,
 } from "sequelize";
 import { ModelStaticCommon } from "./index.js";
 import type {
@@ -35,11 +36,12 @@ import type {
   DeviceHistorySetBy,
 } from "@typedefs/api/device.js";
 import { Station } from "@models/Station.js";
-import { Op } from "sequelize";
 import { Device } from "@models/Device.js";
 import { Group } from "@models/Group.js";
+import { postgresLocationExactlyMatches } from "@api/V1/deviceHistoryUpdates.js";
 
 export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
+  declare id: CreationOptional<number>;
   declare location: CreationOptional<LatLng>;
   declare saltId: SaltId;
   declare uuid: number;
@@ -67,15 +69,16 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
     groupId: GroupId,
     newSettings: ApiDeviceHistorySettings,
     setBy: DeviceHistorySetBy,
+    fromDateTime: Date,
   ): Promise<ApiDeviceHistorySettings> {
-    const currentSettingsEntry: DeviceHistory = await this.latest(
-      deviceId,
-      groupId,
-    );
-    if (!currentSettingsEntry) {
-      throw Error(
-        `Device may not be registered or setup in group ${groupId}/with location`,
+    const currentSettingsEntry: DeviceHistory =
+      await this.latestWithOrWithoutLocationAtTime(
+        deviceId,
+        groupId,
+        fromDateTime,
       );
+    if (!currentSettingsEntry) {
+      throw Error(`Device may not be registered or setup in group ${groupId}`);
     }
     const currentSettings: ApiDeviceHistorySettings =
       currentSettingsEntry?.settings || ({} as ApiDeviceHistorySettings);
@@ -92,9 +95,13 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
       changed &&
       (!("synced" in currentSettings) || currentSettings.synced || synced)
     ) {
+      const currentEntry = structuredClone(
+        currentSettingsEntry.get({ plain: true }),
+      );
+      delete currentEntry.id;
       await this.create({
-        ...currentSettingsEntry.get({ plain: true }),
-        fromDateTime: new Date(),
+        ...currentEntry,
+        fromDateTime,
         setBy,
         settings,
       });
@@ -115,14 +122,14 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
     return settings;
   }
 
-  static async latest(
+  static async latestWithAnyLocationAtTime(
     deviceId: DeviceId,
     groupId: GroupId,
     atTime: Date = new Date(),
     where: Sequelize.WhereOptions = {},
   ): Promise<DeviceHistory | null> {
-    // Find the closest entry before (or at) atTime
-    const before = await this.findOne({
+    // Find the latest entry before (or at) atTime
+    return await this.findOne({
       where: {
         DeviceId: deviceId,
         GroupId: groupId,
@@ -132,29 +139,58 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
       },
       order: [["fromDateTime", "DESC"]],
     });
+  }
 
-    // Find the closest entry after (or at) atTime
-    const after = await this.findOne({
+  static async latestWithOrWithoutLocationAtTime(
+    deviceId: DeviceId,
+    groupId: GroupId,
+    atTime: Date,
+    where: Sequelize.WhereOptions = {},
+  ): Promise<DeviceHistory | null> {
+    // Find the latest entry before (or at) atTime
+    return await this.findOne({
       where: {
         DeviceId: deviceId,
         GroupId: groupId,
-        fromDateTime: { [Op.gte]: atTime },
-        location: { [Op.ne]: null },
+        fromDateTime: { [Op.lte]: atTime },
         ...where,
       },
-      order: [["fromDateTime", "ASC"]],
+      order: [["fromDateTime", "DESC"]],
     });
+  }
 
-    // If both exist, choose the one with the smallest difference to atTime.
-    if (before && after) {
-      const diffBefore = atTime.getTime() - before.fromDateTime.getTime();
-      const diffAfter = after.fromDateTime.getTime() - atTime.getTime();
+  static async latestWithExactLocationAtTime(
+    deviceId: DeviceId,
+    groupId: GroupId,
+    location: LatLng,
+    atTime: Date,
+    where: Sequelize.WhereOptions = {},
+  ): Promise<DeviceHistory | null> {
+    // Find the latest entry before (or at) atTime at a given location
+    return await this.findOne({
+      where: {
+        DeviceId: deviceId,
+        GroupId: groupId,
+        fromDateTime: { [Op.lte]: atTime },
+        location: { [Op.ne]: null },
+        [Op.and]: postgresLocationExactlyMatches(location),
+        ...where,
+      },
+      order: [["fromDateTime", "DESC"]],
+    });
+  }
 
-      return diffBefore <= diffAfter ? before : after;
-    }
-
-    // If only one exists, return that one.
-    return before || after;
+  static async getDeviceFromUuidAtTime(
+    uuid: number,
+    atTime: Date,
+  ): Promise<DeviceHistory | null> {
+    return await this.findOne({
+      where: {
+        uuid,
+        fromDateTime: { [Op.lte]: atTime },
+      },
+      order: [["fromDateTime", "DESC"]],
+    });
   }
 
   static async getEarliestFromDateTimeForDeviceAtCurrentLocation(
@@ -162,11 +198,8 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
     groupId: GroupId,
     atTime: Date = new Date(),
   ): Promise<Date | null> {
-    const currentSettingsEntry: DeviceHistory = await this.latest(
-      deviceId,
-      groupId,
-      atTime,
-    );
+    const currentSettingsEntry: DeviceHistory =
+      await this.latestWithAnyLocationAtTime(deviceId, groupId, atTime);
     if (currentSettingsEntry) {
       const earliestEntry = await this.findOne({
         where: [
@@ -215,6 +248,11 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
 }
 export const init = (sequelizeInstance: Sequelize.Sequelize) => {
   const attributes: ModelAttributes = {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
     location: locationField(),
     fromDateTime: {
       type: DataTypes.DATE,
@@ -258,8 +296,6 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
     createdAt: false,
     updatedAt: false,
   });
-  // We don't have a primary key.
-  DeviceHistory.removeAttribute("id");
 
   return DeviceHistory;
 };

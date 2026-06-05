@@ -38,7 +38,10 @@ import type {
   ScheduleId,
 } from "@typedefs/api/common.js";
 import { Station, TimeInterval } from "@models/Station.js";
-import { tryToMatchLocationToStationInGroup } from "@models/util/locationUtils.js";
+import {
+  removeLocationSpecificSettings,
+  tryToMatchLocationToStationInGroup,
+} from "@models/util/locationUtils.js";
 import { locationField } from "@models/util/util.js";
 import { ClientError, CustomError } from "@api/customErrors.js";
 import { Recording } from "@models/Recording.js";
@@ -46,7 +49,10 @@ import { DeviceHistory } from "@models/DeviceHistory.js";
 import { Event } from "@models/Event.js";
 import { Schedule } from "@models/Schedule.js";
 import { Alert } from "@models/Alert.js";
-import { DeviceHistorySetBy } from "@typedefs/api/device.js";
+import {
+  ApiDeviceHistorySettings,
+  DeviceHistorySetBy,
+} from "@typedefs/api/device.js";
 const Op = Sequelize.Op;
 
 const maxDate = (a?: Date, b?: Date): Date | undefined => {
@@ -434,16 +440,25 @@ where
     newGroup: Group,
     newPassword: string,
     reassign = false,
+    fromDateTime?: Date,
   ): Promise<Device | false> {
     let newDevice: Device;
-    const now = new Date();
+    const now = fromDateTime || new Date();
     let stationToAssign: Station;
     // NOTE: As far as we're aware this API is only called directly
     //  from the device, and assumes the device is connected, so we will set the
     //  lastConnectionTime on the device we create/update.
-
     const deviceIsMovingBetweenGroups = newGroup.id !== this.GroupId;
-    let shouldDeleteExistingDevice = false;
+
+    const latestHistory = await DeviceHistory.latestWithAnyLocationAtTime(
+      this.id,
+      this.GroupId,
+    );
+    let originalSettings: ApiDeviceHistorySettings | null = null;
+    if (latestHistory && latestHistory.settings) {
+      originalSettings = latestHistory.settings;
+    }
+
     if (this.location) {
       // NOTE: This needs to happen outside the transaction to succeed.
       stationToAssign = await tryToMatchLocationToStationInGroup(
@@ -459,14 +474,6 @@ where
             Sequelize.Transaction.ISOLATION_LEVELS.REPEATABLE_READ,
         },
         async (transaction: Transaction) => {
-          const deviceHasRecordingsInCurrentGroup = !!(await Recording.findOne({
-            where: {
-              DeviceId: this.id,
-              GroupId: this.GroupId,
-              deletedAt: null,
-            },
-            transaction,
-          }));
           const conflictingDevice = await Device.findOne({
             where: {
               deviceName: newName,
@@ -500,13 +507,7 @@ where
               }
             }
             if (deviceIsMovingBetweenGroups) {
-              // If the device in the old group has recordings, set it inactive, otherwise it's safe to delete it from
-              // the group that we're moving it from.
-              if (deviceHasRecordingsInCurrentGroup) {
-                await this.update({ active: false }, { transaction });
-              } else {
-                shouldDeleteExistingDevice = true;
-              }
+              await this.update({ active: false }, { transaction });
               if (
                 conflictingDevice !== null &&
                 conflictingDevice.id !== this.id &&
@@ -565,7 +566,6 @@ where
                   },
                   { transaction },
                 );
-                shouldDeleteExistingDevice = false;
                 newDevice = conflictingDevice;
               } else {
                 newDevice = await Device.create(
@@ -593,12 +593,7 @@ where
                 `A device with the name '${newName}' already exists in '${newGroup.groupName}'`,
               );
             }
-            if (deviceHasRecordingsInCurrentGroup) {
-              await this.update({ active: false }, { transaction });
-            } else {
-              // We can safely delete the existing device.
-              shouldDeleteExistingDevice = true;
-            }
+            await this.update({ active: false }, { transaction });
             // We need to either find an existing station for this DeviceHistory entry, or create a new one:
             // NOTE: When a device is re-registered it keeps the last known location.
             newDevice = await Device.create(
@@ -620,6 +615,14 @@ where
             );
           }
 
+          let settings: ApiDeviceHistorySettings | null = null;
+          if (!conflictingDevice) {
+            if (deviceIsMovingBetweenGroups) {
+              settings = removeLocationSpecificSettings(originalSettings);
+            } else {
+              settings = originalSettings;
+            }
+          }
           const newDeviceHistoryEntry: Partial<Attributes<DeviceHistory>> = {
             GroupId: newGroup.id,
             DeviceId: newDevice.id,
@@ -630,6 +633,7 @@ where
             uuid: newDevice.uuid,
             saltId: newDevice.saltId,
             stationId: null,
+            settings,
           };
 
           if (this.location && !stationToAssign) {
@@ -653,9 +657,6 @@ where
           await DeviceHistory.create(newDeviceHistoryEntry, {
             transaction,
           });
-          if (shouldDeleteExistingDevice) {
-            await this.destroy({ transaction });
-          }
         },
       );
     } catch (e: unknown) {
@@ -675,7 +676,7 @@ where
 export const init = (sequelizeInstance: Sequelize.Sequelize) => {
   const attributes = {
     id: {
-      type: DataTypes.INTEGER.UNSIGNED,
+      type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },

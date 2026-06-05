@@ -60,10 +60,21 @@ const createNewLocationForProject =
 
 const changeLocationName =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (newName: string, locationId: LocationId) => {
+  (locationId: LocationId, newName: string) => {
     return api.patch(authKey, `/api/v1/stations/${locationId}`, {
       "station-updates": {
         name: newName,
+      },
+    }) as Promise<FetchResult<unknown>>;
+  };
+
+const changeLocationNameAndFromDateTime =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (locationId: LocationId, newName: string, fromDateTime: Date) => {
+    return api.patch(authKey, `/api/v1/stations/${locationId}`, {
+      "station-updates": {
+        name: newName,
+        "from-date": fromDateTime.toISOString(),
       },
     }) as Promise<FetchResult<unknown>>;
   };
@@ -84,10 +95,15 @@ export default (api: CacophonyApiClient) => {
   return {
     createNewLocationForProject: createNewLocationForProject(api),
     changeLocationName: changeLocationName(api),
+    changeLocationNameAndFromDateTime: changeLocationNameAndFromDateTime(api),
     getLocationById: getLocationById(api),
     withAuth: (authKey: TestHandle) => ({
       createNewLocationForProject: createNewLocationForProject(api, authKey),
       changeLocationName: changeLocationName(api, authKey),
+      changeLocationNameAndFromDateTime: changeLocationNameAndFromDateTime(
+        api,
+        authKey,
+      ),
       getLocationById: getLocationById(api, authKey),
     }),
   };

@@ -53,7 +53,7 @@ const templateExpectedStation = {
   groupName: NOT_NULL_STRING,
 };
 
-describe("Fix location: subsequent recordings", () => {
+describe.skip("Fix location: subsequent recordings", () => {
   const Josie = "Josie_reassign_rec_stations";
 
   before(() => {

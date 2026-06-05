@@ -24,7 +24,7 @@ describe("Device register", () => {
   });
 
   it("Adding device created valid deviceHistory entry", () => {
-    cy.apiDeviceAdd("aNewDevice", camsGroup, 1234567).then(() => {
+    cy.apiDeviceAdd("aNewDevice", camsGroup, undefined, 1234567).then(() => {
       const expectedHistory: ApiDeviceHistory = TestCreateExpectedHistoryEntry(
         "aNewDevice",
         camsGroup,
@@ -51,6 +51,7 @@ describe("Device register", () => {
     cy.apiDeviceAdd(
       "GotYa",
       camsGroup,
+      undefined,
       KEEP_SALT_ID,
       GENERATE_PASSWORD,
       GENERATE_UNIQUE_NAME,
@@ -60,6 +61,7 @@ describe("Device register", () => {
     cy.apiDeviceAdd(
       "gotya",
       otherCams,
+      undefined,
       KEEP_SALT_ID,
       GENERATE_PASSWORD,
       GENERATE_UNIQUE_NAME,
@@ -72,6 +74,7 @@ describe("Device register", () => {
     cy.apiDeviceAdd(
       "12345",
       camsGroup,
+      undefined,
       KEEP_SALT_ID,
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
@@ -81,6 +84,7 @@ describe("Device register", () => {
     cy.apiDeviceAdd(
       "123-34",
       camsGroup,
+      undefined,
       KEEP_SALT_ID,
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
@@ -99,6 +103,7 @@ describe("Device register", () => {
     cy.apiDeviceAdd(
       " device1",
       camsGroup,
+      undefined,
       KEEP_SALT_ID,
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
@@ -108,6 +113,7 @@ describe("Device register", () => {
     cy.apiDeviceAdd(
       "-device2",
       camsGroup,
+      undefined,
       KEEP_SALT_ID,
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
@@ -117,6 +123,7 @@ describe("Device register", () => {
     cy.apiDeviceAdd(
       "_device3",
       camsGroup,
+      undefined,
       KEEP_SALT_ID,
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,
@@ -155,6 +162,7 @@ describe("Device register", () => {
     cy.apiDeviceAdd(
       "device4",
       camsGroup,
+      undefined,
       KEEP_SALT_ID,
       "",
       KEEP_DEVICE_NAME,
@@ -165,6 +173,7 @@ describe("Device register", () => {
     cy.apiDeviceAdd(
       "device5",
       camsGroup,
+      undefined,
       KEEP_SALT_ID,
       " ",
       KEEP_DEVICE_NAME,
@@ -175,6 +184,7 @@ describe("Device register", () => {
     cy.apiDeviceAdd(
       "device6",
       camsGroup,
+      undefined,
       KEEP_SALT_ID,
       "1234567",
       KEEP_DEVICE_NAME,
@@ -187,6 +197,7 @@ describe("Device register", () => {
     cy.apiDeviceAdd(
       "device4",
       "nonexistent group",
+      undefined,
       KEEP_SALT_ID,
       GENERATE_PASSWORD,
       KEEP_DEVICE_NAME,

@@ -1,8 +1,9 @@
 import { test, expect } from "@playwright/test";
 import {
-  clearMailServerLog, openResetPasswordRequestEmail, openSignupConfirmationEmail,
-  receiveAndIgnoreConfirmationEmail
-} from "../helpers/email-utils";
+  clearMailServerLog,
+  openResetPasswordRequestEmail,
+  receiveAndIgnoreConfirmationEmail,
+} from "@/helpers/email-utils";
 import {
   confirmNewUserEmailAddressWhileLoggedIn,
   createProjectFromInitialSetup,
@@ -16,7 +17,7 @@ import {
   confirmExistingUserNewEmailAddress,
   signOutFromSetup,
   confirmNewUserEmailAddressWhileLoggedOut,
-} from "../helpers/browse-helpers";
+} from "@/helpers/browse-helpers";
 
 test("New user signup works, and email confirmation works while user is logged in", async ({
   page,
@@ -33,7 +34,7 @@ test("Resend confirmation email button works correctly, shows support address af
   const user = uniqueName("Bob");
   const password = uniqueName("pass");
   await registerNewUser(page, user, password);
-  await receiveAndIgnoreConfirmationEmail(page, user);
+  await receiveAndIgnoreConfirmationEmail(user);
   await page.getByTestId("resend confirmation email").click();
   await expect(page.getByTestId("email send failure fallback")).toBeVisible();
 });
