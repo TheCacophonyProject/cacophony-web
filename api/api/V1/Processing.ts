@@ -192,11 +192,14 @@ export default function (app: Application, baseUrl: string) {
           if (newProcessedFileKey) {
             recording.fileKey = newProcessedFileKey;
           }
+          log.warning(`Prev state ${recording.processingState}`);
           const nextJob = recording.getNextState();
-          const complete = nextJob === Recording.finishedState();
+          const complete = nextJob === RecordingProcessingState.Finished;
           recording.processingState = nextJob;
           recording.processingEndTime = new Date().toISOString();
           recording.processingFailedCount = 0;
+
+          log.warning(`NEXT STATE ${nextJob}`);
 
           // Process extra data from file processing
           if (result && result.fieldUpdates) {

@@ -676,9 +676,6 @@ export class Recording extends ModelStaticCommon<Recording> {
       return RecordingProcessingState.TrackAndAnalyse;
     }
   }
-  static finishedState() {
-    return RecordingProcessingState.Finished;
-  }
   static processingAttributes = [
     "id",
     "type",
@@ -915,21 +912,20 @@ export class Recording extends ModelStaticCommon<Recording> {
   }
 
   static nextState(
-    type: RecordingType,
     processingState: RecordingProcessingState,
   ): RecordingProcessingState {
-    const jobs = Recording.processingStates[type];
-    let nextState: RecordingProcessingState;
     if (processingState == RecordingProcessingState.Reprocess) {
-      nextState = Recording.finishedState();
+      return RecordingProcessingState.Finished;
     } else if (processingState == RecordingProcessingState.ReTrack) {
-      nextState = RecordingProcessingState.Analyse;
+      return RecordingProcessingState.Analyse;
     } else if (processingState == RecordingProcessingState.TrackAndAnalyse) {
-      nextState = RecordingProcessingState.Finished;
-    } else {
-      nextState = processingState;
+      return RecordingProcessingState.Finished;
+    } else if (processingState == RecordingProcessingState.Analyse) {
+      return RecordingProcessingState.Finished;
+    } else if (processingState == RecordingProcessingState.Tracking) {
+      return RecordingProcessingState.Analyse;
     }
-    return nextState;
+    return processingState;
   }
 
   //------------------
@@ -960,7 +956,7 @@ export class Recording extends ModelStaticCommon<Recording> {
   }
 
   getNextState(): RecordingProcessingState {
-    return Recording.nextState(this.type, this.unfailedState());
+    return Recording.nextState(this.unfailedState());
   }
 
   getFileBaseName(): string {

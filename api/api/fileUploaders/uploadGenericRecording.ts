@@ -864,7 +864,7 @@ export const uploadGenericRecording =
     }
 
     const recordingHasFinishedProcessing =
-      recording.processingState === Recording.finishedState();
+      recording.processingState === RecordingProcessingState.Finished;
     if (recordingHasFinishedProcessing) {
       // NOTE: Should only occur during testing.
       const twentyFourHoursMs = 24 * 60 * 60 * 1000;
