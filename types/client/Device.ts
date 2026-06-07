@@ -626,10 +626,9 @@ const getSettingsForDevice =
     if (lastSynced) {
       params.append("latest-synced", true.toString());
     }
-    const queryString = params.toString();
     return api.get(
       authKey,
-      `/api/v1/devices/${deviceId}/settings?${queryString}`,
+      `/api/v1/devices/${deviceId}/settings${optionalQueryString(params)}`,
     ) as Promise<
       FetchResult<{
         settings: ApiDeviceHistorySettings | null;

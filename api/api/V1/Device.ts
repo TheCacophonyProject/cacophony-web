@@ -1658,8 +1658,11 @@ export default function (app: Application, baseUrl: string) {
       try {
         const atTime = request.query["at-time"] as unknown as Date;
         const device = response.locals.device as Device;
+        const latestSynced =
+          request.query["latest-synced"] === "true" ||
+          (request.query["latest-synced"] as unknown as boolean) === true;
         let deviceSettings: DeviceHistory | null;
-        if (request.query["latest-synced"]) {
+        if (latestSynced) {
           deviceSettings =
             await DeviceHistory.latestWithOrWithoutLocationAtTime(
               device.id,
