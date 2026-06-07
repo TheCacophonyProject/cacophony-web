@@ -475,18 +475,37 @@ const parseDateTimeFromFilename = (
   filePath: string,
   device: Device,
 ): IsoFormattedDateString | null => {
-  // Reference: "/var/spool/cptv/failed-uploads/2026-01-21--06-12-45.cptv"
-  const filename = filePath.split("/").pop().split(".").shift();
-  const parts = filename.split("--");
-  if (parts.length === 2 && device.location) {
-    const deviceTimezone = tzLookup(device.location.lat, device.location.lng);
-    const offset = getTimezoneOffset(deviceTimezone);
-    const dateParts = parts[0];
-    const timeParts = parts[1].split("-");
-    const hour = timeParts[0];
-    const mins = timeParts[1];
-    const secs = timeParts[2];
-    return `${dateParts}T${hour}:${mins}:${secs}${offset}`;
+  if (filePath.endsWith(".aac") && filePath.includes("-")) {
+    // Try to parse recordingDateTime from old audio filename:
+    // Reference: 20250204-114145.aac
+    const parts = filePath.replace(".aac", "").split("-");
+    if (parts.length === 2 && device.location) {
+      const deviceTimezone = tzLookup(device.location.lat, device.location.lng);
+      const offset = getTimezoneOffset(deviceTimezone);
+      const dateParts = parts[0];
+      const timeParts = parts[1];
+      const hour = timeParts.slice(0, 2);
+      const mins = timeParts.slice(2, 4);
+      const secs = timeParts.slice(4, 6);
+      const year = dateParts.slice(0, 4);
+      const month = dateParts.slice(4, 6);
+      const day = dateParts.slice(6, 8);
+      return `${year}-${month}-${day}T${hour}:${mins}:${secs}${offset}`;
+    }
+  } else {
+    // Reference: "/var/spool/cptv/failed-uploads/2026-01-21--06-12-45.cptv"
+    const filename = filePath.split("/").pop().split(".").shift();
+    const parts = filename.split("--");
+    if (parts.length === 2 && device.location) {
+      const deviceTimezone = tzLookup(device.location.lat, device.location.lng);
+      const offset = getTimezoneOffset(deviceTimezone);
+      const dateParts = parts[0];
+      const timeParts = parts[1].split("-");
+      const hour = timeParts[0];
+      const mins = timeParts[1];
+      const secs = timeParts[2];
+      return `${dateParts}T${hour}:${mins}:${secs}${offset}`;
+    }
   }
   return null;
 };
