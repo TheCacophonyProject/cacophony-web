@@ -243,7 +243,10 @@ export const maybeUpdateDeviceHistoryLocation = async (
         fromDateTime: { [Op.gt]: fromDateTime },
         [Op.and]: postgresLocationExactlyMatches(location),
       },
-      order: [["fromDateTime", "ASC"]], // Get the earliest one that's later than `fromDateTime`
+      order: [
+        ["fromDateTime", "ASC"],
+        ["id", "ASC"],
+      ], // Get the earliest one that's later than `fromDateTime`
     });
     if (laterHistoryEntry) {
       // Back-date the later history entry to this fromDateTime
@@ -257,15 +260,81 @@ export const maybeUpdateDeviceHistoryLocation = async (
     }
   }
   if (deviceHistoryEntry) {
+    let stationToAssign;
     if (!deviceHistoryEntry.stationId) {
-      throw new Error(
-        `DeviceHistory entry should have station for device #${deviceHistoryEntry.DeviceId}`,
+      stationToAssign = await tryToMatchLocationToStationInGroup(
+        location,
+        actualDevice.GroupId,
+        fromDateTime,
       );
+      if (stationToAssign && stationToAssign.activeAt > fromDateTime) {
+        // We matched a future station in this location, so it's likely this is an older recording coming in out
+        // of order.  We want to back-date the existing station to this time.
+        await Station.update(
+          {
+            activeAt: fromDateTime,
+          },
+          {
+            where: {
+              id: stationToAssign.id,
+              activeAt: {
+                [Op.gt]: fromDateTime,
+              },
+            },
+          },
+        );
+      }
+      if (!stationToAssign) {
+        // Create a new automatic station.  With concurrent recording uploads from the same device/location,
+        // we're in danger of creating duplicate stations, so we take a lock on the group/lat/lng to
+        // prevent duplicate inserts.
+        const sequelize = await initSequelize();
+        await sequelize.transaction(async (transaction) => {
+          // lock on a derived key from group + location to prevent duplicate inserts
+          await sequelize.query(
+            `SELECT pg_advisory_xact_lock(hashtext(:key))`,
+            {
+              transaction,
+              replacements: {
+                key: `${actualDevice.GroupId}:${location.lat},${location.lng}`,
+              },
+            },
+          );
+          [stationToAssign] = await Station.findOrCreate({
+            where: {
+              GroupId: actualDevice.GroupId,
+              retiredAt: { [Op.eq]: null },
+              [Op.and]: postgresLocationExactlyMatches(location),
+            },
+            defaults: {
+              name: `New location for ${
+                actualDevice.deviceName
+              }_${fromDateTime.toISOString()}`,
+              location,
+              activeAt: fromDateTime,
+              automatic: true,
+              needsRename: true,
+              retiredAt: null,
+              GroupId: actualDevice.GroupId,
+            },
+            transaction,
+          });
+          if (stationToAssign.activeAt > fromDateTime) {
+            // Backdate the station active time to this recording time.
+            await stationToAssign.update(
+              { activeAt: fromDateTime },
+              { transaction },
+            );
+          }
+        });
+      }
+
+      deviceHistoryEntry.stationId = stationToAssign.id;
+      await deviceHistoryEntry.save();
+    } else {
+      // Make sure the station activeAt time is back-dated to the fromDateTime of the existing history entry.
+      stationToAssign = await Station.findByPk(deviceHistoryEntry.stationId);
     }
-    // Make sure the station activeAt time is back-dated to the fromDateTime of the existing history entry.
-    const stationToAssign = await Station.findByPk(
-      deviceHistoryEntry.stationId,
-    );
     if (deviceHistoryEntry.fromDateTime < stationToAssign.activeAt) {
       // Now, if the device history table has updated, that can mean that the activeAt date of an automatically
       // created station may need to move back too.

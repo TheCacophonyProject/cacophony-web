@@ -770,7 +770,10 @@ export default function (app: Application, baseUrl: string) {
             ],
           },
         ],
-        order: [["fromDateTime", "DESC"]],
+        order: [
+          ["fromDateTime", "DESC"],
+          ["id", "DESC"],
+        ],
       });
       if (deviceHistoryEntry && deviceHistoryEntry.Station) {
         return successResponse(response, "Got location for device at time", {
@@ -1021,7 +1024,10 @@ export default function (app: Application, baseUrl: string) {
             required: true,
           },
         ],
-        order: [["fromDateTime", "DESC"]],
+        order: [
+          ["fromDateTime", "DESC"],
+          ["id", "DESC"],
+        ],
       });
 
       const locations = Object.values(
@@ -1142,7 +1148,10 @@ export default function (app: Application, baseUrl: string) {
               GroupId: device.GroupId,
               fromDateTime: { [Op.gt]: fromTime },
             },
-            order: [["fromDateTime", "ASC"]],
+            order: [
+              ["fromDateTime", "ASC"],
+              ["id", "ASC"],
+            ],
           });
           const payload: { fromDateTime: Date; untilDateTime?: Date } = {
             fromDateTime: fromTime,
@@ -1247,15 +1256,12 @@ export default function (app: Application, baseUrl: string) {
       const atTime =
         (request.query["at-time"] as unknown as Date) ?? new Date();
       const device = response.locals.device as Device;
-      const previousDeviceHistoryEntry = await DeviceHistory.findOne({
-        where: {
-          DeviceId: device.id,
-          GroupId: device.GroupId,
-          location: { [Op.ne]: null },
-          fromDateTime: { [Op.lte]: atTime },
-        },
-        order: [["fromDateTime", "DESC"]],
-      });
+      const previousDeviceHistoryEntry =
+        await DeviceHistory.latestWithAnyLocationAtTime(
+          device.id,
+          device.GroupId,
+          atTime,
+        );
       if (!previousDeviceHistoryEntry) {
         // We can't add an image, because we don't have a device location.
         return next(
@@ -1315,7 +1321,10 @@ export default function (app: Application, baseUrl: string) {
               previousDeviceHistoryEntry.location,
             ),
           },
-          order: [["fromDateTime", "DESC"]],
+          order: [
+            ["fromDateTime", "DESC"],
+            ["id", "DESC"],
+          ],
         });
         const allEntriesAtLocation = [
           previousDeviceHistoryEntry,
@@ -1416,7 +1425,10 @@ export default function (app: Application, baseUrl: string) {
             GroupId: device.GroupId,
             fromDateTime: { [Op.lte]: atTime },
           },
-          order: [["fromDateTime", "DESC"]],
+          order: [
+            ["fromDateTime", "DESC"],
+            ["id", "DESC"],
+          ],
         });
 
         if (!deviceHistoryEntries) {
@@ -1504,14 +1516,11 @@ export default function (app: Application, baseUrl: string) {
       const maskRegions: Record<string, MaskRegion> = request.body.maskRegions;
       const device = response.locals.device as Device;
       try {
-        const deviceHistoryEntry: DeviceHistory = await DeviceHistory.findOne({
-          where: {
-            DeviceId: device.id,
-            GroupId: device.GroupId,
-            location: { [Op.ne]: null },
-          },
-          order: [["fromDateTime", "DESC"]],
-        });
+        const deviceHistoryEntry: DeviceHistory =
+          await DeviceHistory.latestWithAnyLocationAtTime(
+            device.id,
+            device.GroupId,
+          );
 
         if (!deviceHistoryEntry) {
           return next(
@@ -1657,12 +1666,13 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       try {
         const atTime = request.query["at-time"] as unknown as Date;
+        // Always ask for one second from now, as sometimes during testing we get a later timestamp in the DB for the
+        // entry that's *just* been inserted.
+        atTime.setSeconds(atTime.getSeconds() + 1);
+        atTime.setMilliseconds(0);
         const device = response.locals.device as Device;
-        const latestSynced =
-          request.query["latest-synced"] === "true" ||
-          (request.query["latest-synced"] as unknown as boolean) === true;
         let deviceSettings: DeviceHistory | null;
-        if (latestSynced) {
+        if (request.query["latest-synced"]) {
           deviceSettings =
             await DeviceHistory.latestWithOrWithoutLocationAtTime(
               device.id,
@@ -2343,7 +2353,10 @@ export default function (app: Application, baseUrl: string) {
           where: {
             DeviceId: response.locals.device.id,
           },
-          order: [["fromDateTime", "ASC"]],
+          order: [
+            ["fromDateTime", "ASC"],
+            ["id", "ASC"],
+          ],
         });
         return successResponse(response, "Got device history", { history });
       },

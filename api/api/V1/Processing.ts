@@ -1034,7 +1034,10 @@ export default function (app: Application, baseUrl: string) {
           GroupId: device.GroupId,
           fromDateTime: { [Op.lte]: atTime },
         },
-        order: [["fromDateTime", "DESC"]],
+        order: [
+          ["fromDateTime", "DESC"],
+          ["id", "DESC"],
+        ],
         attributes: [
           "DeviceId",
           "fromDateTime",

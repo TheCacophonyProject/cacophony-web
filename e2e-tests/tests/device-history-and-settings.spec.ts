@@ -1465,7 +1465,8 @@ test("Synchronisation of user settings to the device, and device set settings to
   };
 
   await test.step("Add user settings and then confirm they were added", async () => {
-    await AdminUser.Devices.updateDeviceSettings(deviceHandle.id, userSuppliedSettings);
+    const addedSettings = await AdminUser.Devices.updateDeviceSettings(deviceHandle.id, userSuppliedSettings);
+    console.log(addedSettings);
     const settings = await AdminUser.Devices.getSettingsForDevice(deviceHandle.id);
     expect(settings, "settings exist").toBeTruthy();
     expect(
@@ -1712,4 +1713,43 @@ test("Uploading a recording via sidekick when the device hasn't connected in ove
       "no last connection time, device is now treated as 'offline'",
     ).toBeUndefined();
   });
+});
+
+test("Getting latest unsynced and latest synced settings for a device works", async () => {
+  const initialDateTime = new Date("2026-01-01T00:00:00Z");
+  const project = await createProjectWithUserAndDevice({initialDateTime});
+  const AdminUser = project.api();
+  const deviceHandle = project.getDevice();
+
+  const userSuppliedSettings:ApiDeviceHistorySettings = {
+    audioRecording: {
+      audioMode: AudioRecordingMode.Disabled,
+      updated: addMinutes(initialDateTime, 1).toISOString(),
+    },
+  };
+
+  const deviceSuppliedSettings: ApiDeviceHistorySettings = {
+    thermalRecording: {
+      useLowPowerMode: true,
+      updated: addMinutes(initialDateTime, 2).toISOString(),
+    },
+  };
+
+  await AdminUser.Devices.updateDeviceSettings(deviceHandle.id, userSuppliedSettings, addMinutes(initialDateTime, 1));
+
+  await TestApiImpl.Devices.withAuth(deviceHandle.testId).updateDeviceSettings(deviceHandle.id, deviceSuppliedSettings, addMinutes(initialDateTime, 2));
+
+  await AdminUser.Devices.updateDeviceSettings(deviceHandle.id, {
+    battery: {
+      updated: addMinutes(initialDateTime, 3).toISOString(),
+      chemistry: "Foo"
+    }
+  }, addMinutes(initialDateTime, 3));
+
+  const settings = await AdminUser.Devices.getSettingsForDevice(deviceHandle.id);
+  console.log(JSON.stringify(settings, null, 2));
+
+  const allSettings = await AdminUser.Devices.getDeviceHistoryInTest(deviceHandle.id);
+  console.log(JSON.stringify(allSettings, null, 2));
+  // TODO: And maybe also debounce settings saving?  Take a lock on the settings table when saving
 });

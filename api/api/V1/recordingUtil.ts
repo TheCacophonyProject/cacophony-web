@@ -628,7 +628,10 @@ export const getDeviceIdAndGroupIdAndPossibleStationIdAtRecordingTime = async (
       fromDateTime: { [Op.lte]: atTime },
       location: { [Op.ne]: null },
     },
-    order: [["fromDateTime", "DESC"]],
+    order: [
+      ["fromDateTime", "DESC"],
+      ["id", "DESC"],
+    ],
   })) as DeviceHistory;
   if (deviceHistory) {
     return {

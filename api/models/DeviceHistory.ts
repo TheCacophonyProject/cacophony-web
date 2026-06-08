@@ -137,7 +137,10 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
         location: { [Op.ne]: null },
         ...where,
       },
-      order: [["fromDateTime", "DESC"]],
+      order: [
+        ["fromDateTime", "DESC"],
+        ["id", "DESC"],
+      ],
     });
   }
 
@@ -155,7 +158,10 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
         fromDateTime: { [Op.lte]: atTime },
         ...where,
       },
-      order: [["fromDateTime", "DESC"]],
+      order: [
+        ["fromDateTime", "DESC"],
+        ["id", "DESC"],
+      ],
     });
   }
 
@@ -176,7 +182,10 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
         [Op.and]: postgresLocationExactlyMatches(location),
         ...where,
       },
-      order: [["fromDateTime", "DESC"]],
+      order: [
+        ["fromDateTime", "DESC"],
+        ["id", "DESC"],
+      ],
     });
   }
 
@@ -189,7 +198,10 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
         uuid,
         fromDateTime: { [Op.lte]: atTime },
       },
-      order: [["fromDateTime", "DESC"]],
+      order: [
+        ["fromDateTime", "DESC"],
+        ["id", "DESC"],
+      ],
     });
   }
 
@@ -221,7 +233,10 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
             },
           ),
         ] as Sequelize.WhereOptions,
-        order: [["fromDateTime", "ASC"]],
+        order: [
+          ["fromDateTime", "ASC"],
+          ["id", "ASC"],
+        ],
       });
       if (earliestEntry) {
         return earliestEntry.fromDateTime;
@@ -241,7 +256,10 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
         fromDateTime: { [Op.lte]: atTime },
         location: { [Op.ne]: null },
       },
-      order: [["fromDateTime", "DESC"]],
+      order: [
+        ["fromDateTime", "DESC"],
+        ["id", "DESC"],
+      ],
     });
     return before ? before.location : null;
   }
