@@ -603,6 +603,22 @@ const getReferenceImageForDeviceAtCurrentLocation =
     ) as Promise<FetchResult<Blob>>;
   };
 
+const deleteAllReferenceImagesForDeviceAtTime =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (deviceId: DeviceId, beforeDateTime?: Date, type?: "pov" | "in-situ") => {
+    const params = new URLSearchParams();
+    if (beforeDateTime) {
+      params.append("at-time", beforeDateTime.toISOString());
+    }
+    if (type) {
+      params.append("type", type);
+    }
+    return api.delete(
+      authKey,
+      `/api/v1/devices/${deviceId}/reference-image${optionalQueryString(params)}`,
+    ) as Promise<FetchResult<unknown>>;
+  };
+
 const getMaskRegionsForDevice =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (deviceId: DeviceId, activeAndInactive = true, atTime?: Date) => {
@@ -894,6 +910,8 @@ export default (api: CacophonyApiClient) => {
     addReferenceImageForDeviceAtTime: addReferenceImageForDeviceAtTime(api),
     getReferenceImageForDeviceAtCurrentLocation:
       getReferenceImageForDeviceAtCurrentLocation(api),
+    deleteAllReferenceImagesForDeviceAtTime:
+      deleteAllReferenceImagesForDeviceAtTime(api),
     getMaskRegionsForDevice: getMaskRegionsForDevice(api),
     getSettingsForDevice: getSettingsForDevice(api),
     updateDeviceSettings: updateDeviceSettings(api),
@@ -950,6 +968,8 @@ export default (api: CacophonyApiClient) => {
       ),
       getReferenceImageForDeviceAtCurrentLocation:
         getReferenceImageForDeviceAtCurrentLocation(api, authKey),
+      deleteAllReferenceImagesForDeviceAtTime:
+        deleteAllReferenceImagesForDeviceAtTime(api, authKey),
       getMaskRegionsForDevice: getMaskRegionsForDevice(api, authKey),
       getSettingsForDevice: getSettingsForDevice(api, authKey),
       updateDeviceSettings: updateDeviceSettings(api, authKey),

@@ -233,9 +233,7 @@ const validateDataPart = async (
       })) as Recording;
     if (existingRecordingWithHashForDevice !== null) {
       log.warning(
-        "Recording with hash %s for device %s already exists, discarding duplicate",
-        dataObj.fileHash,
-        uploadingDeviceId,
+        `Recording with hash ${dataObj.fileHash} for device #${uploadingDeviceId} already exists, discarding duplicate`,
       );
       for await (const { stream } of files) {
         await stream.resume();
@@ -606,11 +604,11 @@ export const uploadGenericRecording =
         );
         if (recordingData.duplicate) {
           log.warning(
-            `| Duplicate recording found for device: ${recordingData.duplicate.DeviceId} (#${recordingData.duplicate.id})`,
+            `Duplicate recording found for device: ${recordingData.duplicate.DeviceId} (#${recordingData.duplicate.id})`,
           );
           return successResponse(
             response,
-            `| Duplicate recording found for device: ${recordingData.duplicate.DeviceId}`,
+            `Duplicate recording found for device: ${recordingData.duplicate.DeviceId}`,
             {
               recordingId: recordingData.duplicate.id,
             },

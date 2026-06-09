@@ -50,7 +50,12 @@ function errorHandler(
     ).split("-")[0];
   }
   if (err instanceof CustomError) {
-    log.warning(err.toString());
+    const errString = err.toString();
+    if (
+      !errString.includes("No reference image available for device at time")
+    ) {
+      log.warning(err.toString());
+    }
     const error = err.toJson();
     if (!request.headers["user-agent"].includes("okhttp")) {
       // FIXME - leave this in for sidekick etc, since currently it expects a 'message' error response.

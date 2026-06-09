@@ -98,26 +98,18 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
       const currentEntry = structuredClone(
         currentSettingsEntry.get({ plain: true }),
       );
+      // FIXME: We're totally getting here way too often.
       delete currentEntry.id;
-      await this.create({
+      await DeviceHistory.create({
         ...currentEntry,
         fromDateTime,
         setBy,
         settings,
       });
-    } else {
+    } else if (changed) {
       // in place only if the device already had the settings so no change,
       // or if the previous settings were not yet applied.
-      await this.update(
-        { settings },
-        {
-          where: {
-            fromDateTime: { [Op.eq]: currentSettingsEntry.fromDateTime },
-            DeviceId: deviceId,
-            GroupId: groupId,
-          },
-        },
-      );
+      await currentSettingsEntry.update({ settings });
     }
     return settings;
   }

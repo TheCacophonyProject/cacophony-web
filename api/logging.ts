@@ -54,11 +54,31 @@ export const consoleTransport = new winston.transports.Console({
           const requestIdStub = `${getContrastingBackgroundAnsi(hash8(stub))}${stub}\x1b[0m`;
           const lines = `${info.message}`.split("\n");
           const allLines = [];
-          for (const line of lines) {
-            const splitLines = line.match(/.{1,80}(\s|$)/g);
+          const isFinalRequestMessage = lines.some((line) =>
+            line.includes("UA:"),
+          );
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            let splitLines;
+            if (i === 0 && isFinalRequestMessage) {
+              // First line is `${method} ${url}`, so break it appropriately if over 80 chars
+              splitLines = [];
+              const parts = line.split(" ");
+              const methodStub = parts[0];
+              const firstLineEnd = 80 - (methodStub.length + 1);
+              const rest = parts.slice(1).join(" ");
+              const restBroken = rest.substring(0, firstLineEnd);
+              const remainder = rest.substring(firstLineEnd);
+              const chunks = remainder.match(/.{1,80}/g) || [];
+              splitLines.push(parts[0] + " " + restBroken);
+              if (chunks.length) {
+                splitLines.push(...chunks);
+              }
+            } else {
+              splitLines = line.match(/.{1,80}(\s|$)/g);
+            }
             allLines.push(...splitLines);
           }
-
           const padding = ``.padStart(7 - info.level.length, " ");
           const paddedMessage = [];
           paddedMessage.push(`${padding}${requestIdStub}: ${allLines[0]}`);

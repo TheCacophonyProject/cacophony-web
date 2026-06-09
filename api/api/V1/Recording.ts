@@ -2350,7 +2350,6 @@ export default (app: Application, baseUrl: string) => {
    * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a
    * regular user
    * @apiQuery {Boolean} [debug] Output SQL debug information as an HTML response.
-   * @apiQuery {Boolean} [debug] Output SQL debug information as an HTML response.
    *
    * @apiQuery {Number} [max-results] Max number of records to be returned.
    * @apiQuery {Number} [page-num] Zero-based page number. Use '0' to get the first page.  Each page has 'max-results' number of records.
@@ -2679,7 +2678,7 @@ export default (app: Application, baseUrl: string) => {
           ) {
             // If we already have some results, prefer returning a limited list rather than make the user wait even longer
             // for us to reach our number of max requested recordings (limit)
-            console.warn(
+            log.warning(
               "Aborting with some results to hit responsiveness deadline",
             );
             break;

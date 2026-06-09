@@ -327,6 +327,8 @@ const grafanaLabelRestart = async () => {
             }
           } else if (safeUserAgent.startsWith("python")) {
             userAgentString = "Cacophony processing / python";
+          } else {
+            userAgentString = safeUserAgent;
           }
         }
 

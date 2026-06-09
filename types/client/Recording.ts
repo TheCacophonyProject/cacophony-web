@@ -329,7 +329,9 @@ const getAllRecordingsForProjectBetweenTimes =
   async (
     projectId: ProjectId,
     query: QueryRecordingsOptions,
-    progressUpdater: () => void,
+    progressUpdater: () => void = () => {
+      /* empty */
+    },
   ): Promise<ApiRecordingResponse[]> => {
     query.limit = 1000;
     const recordings = [];

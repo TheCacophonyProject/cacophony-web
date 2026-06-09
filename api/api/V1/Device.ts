@@ -1365,6 +1365,9 @@ export default function (app: Application, baseUrl: string) {
       } else {
         // Create a new entry at `at-time` for the new reference image, leaving the old
         // reference image intact in the previous device history entry.
+
+        // FIXME: Might be getting to this branch when we shouldn't?
+
         const prevHistoryEntry = structuredClone(
           previousDeviceHistoryEntry.get({ plain: true }),
         );
@@ -1424,6 +1427,8 @@ export default function (app: Application, baseUrl: string) {
             DeviceId: device.id,
             GroupId: device.GroupId,
             fromDateTime: { [Op.lte]: atTime },
+            location: { [Op.ne]: null },
+            settings: { [Op.ne]: null },
           },
           order: [
             ["fromDateTime", "DESC"],
@@ -1444,7 +1449,8 @@ export default function (app: Application, baseUrl: string) {
           }
         });
 
-        const settings = deviceHistoryEntry.settings || {};
+        const settings =
+          (deviceHistoryEntry && deviceHistoryEntry.settings) || {};
         const imageKey =
           referenceType === "pov"
             ? settings.referenceImagePOV
@@ -1456,35 +1462,45 @@ export default function (app: Application, baseUrl: string) {
 
         // Delete from S3
         await deleteFile(imageKey);
-
-        // Update device history entry
-        const updatedSettings = { ...settings };
-        if (referenceType === "pov") {
-          delete updatedSettings.referenceImagePOV;
-          delete updatedSettings.referenceImagePOVFileSize;
-          delete updatedSettings.referenceImagePOVMimeType;
-        } else {
-          delete updatedSettings.referenceImageInSitu;
-          delete updatedSettings.referenceImageInSituFileSize;
-          delete updatedSettings.referenceImageInSituMimeType;
+        let someChanged = false;
+        for (const entry of deviceHistoryEntries) {
+          // Delete from all entries that contain a reference to this reference image.
+          let updatedSettings = { ...(entry.settings || {}) };
+          let changed = false;
+          if (referenceType === "pov") {
+            if (updatedSettings.referenceImagePOV === imageKey) {
+              delete updatedSettings.referenceImagePOV;
+              delete updatedSettings.referenceImagePOVFileSize;
+              delete updatedSettings.referenceImagePOVMimeType;
+              changed = true;
+            }
+          } else {
+            if (updatedSettings.referenceImageInSitu === imageKey) {
+              delete updatedSettings.referenceImageInSitu;
+              delete updatedSettings.referenceImageInSituFileSize;
+              delete updatedSettings.referenceImageInSituMimeType;
+              changed = true;
+            }
+          }
+          if (Object.keys(updatedSettings).length === 0) {
+            updatedSettings = null;
+          }
+          if (changed) {
+            await entry.update({ settings: updatedSettings });
+            someChanged = true;
+          }
         }
-
-        const prevEntry = structuredClone(
-          deviceHistoryEntry.get({ plain: true }),
-        );
-        delete prevEntry.id;
-        await DeviceHistory.create({
-          ...prevEntry,
-          settings: updatedSettings,
-          fromDateTime: new Date(),
-        });
+        if (someChanged) {
+          // If we removed a reference image, we want to see if there was a *previous* reference image that should
+          // be applied forwards to all entries at the exact same location.  Maybe?
+        }
 
         return successResponse(
           response,
           "Reference image deleted successfully",
         );
       } catch (_e) {
-        next(new FatalError("Failed to delete reference image"));
+        next(new FatalError(`Failed to delete reference image`));
       }
     },
   );
