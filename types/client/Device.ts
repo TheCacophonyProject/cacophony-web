@@ -674,13 +674,14 @@ const updateDeviceLocation =
 
 const updateDeviceSettings =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId, settings: ApiDeviceHistorySettings, atTime?: Date) => {
+  (deviceId: DeviceId, settings?: ApiDeviceHistorySettings, atTime?: Date) => {
     const payload: {
       settings?: ApiDeviceHistorySettings;
       fromDateTime?: IsoFormattedDateString;
-    } = {
-      settings,
-    };
+    } = {};
+    if (settings) {
+      payload.settings = settings;
+    }
     if (atTime) {
       payload.fromDateTime = atTime.toISOString();
     }
@@ -689,7 +690,10 @@ const updateDeviceSettings =
       `/api/v1/devices/${deviceId}/settings`,
       payload,
     ) as Promise<
-      FetchResult<{ settings: ApiDeviceHistorySettings; location?: LatLng }>
+      FetchResult<{
+        settings: ApiDeviceHistorySettings | null;
+        location?: LatLng;
+      }>
     >;
   };
 

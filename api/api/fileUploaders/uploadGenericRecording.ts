@@ -1002,7 +1002,10 @@ interface UpdateDevicePayload {
   active?: boolean;
 }
 
-const greaterDate = (date: Date | IsoFormattedDateString, column: string) => {
+export const greaterDate = (
+  date: Date | IsoFormattedDateString,
+  column: string,
+) => {
   return Sequelize.fn("GREATEST", Sequelize.col(column), date);
 };
 const mapRecordingTypeToDeviceKind = (

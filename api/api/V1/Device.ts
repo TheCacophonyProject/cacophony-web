@@ -97,7 +97,10 @@ import { deleteFile } from "@/models/util/util.js";
 import { TrackTag } from "@models/TrackTag.js";
 import { User } from "@models/User.js";
 import { DeviceId, LocationId, SaltId } from "@typedefs/api/common.js";
-import { deleteUpload } from "@api/fileUploaders/uploadGenericRecording.js";
+import {
+  deleteUpload,
+  greaterDate,
+} from "@api/fileUploaders/uploadGenericRecording.js";
 import { postgresLocationExactlyMatches } from "@api/V1/deviceHistoryUpdates.js";
 
 export const mapDeviceResponse = (
@@ -1774,12 +1777,18 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       try {
         const device = response.locals.device as Device;
-        const fromDateTime = request.body.fromDateTime as Date;
+        const fromDateTime = (request.body.fromDateTime as Date) || new Date();
         const newSettings: ApiDeviceHistorySettings | undefined =
           request.body.settings;
         const newLocation = request.body.location;
         const newKind = request.body.type;
         const setBy = response.locals.requestUser?.id ? "user" : "automatic";
+        if (response.locals.requestDevice) {
+          // The device is connecting directly, so update the last connected time.
+          await device.update({
+            lastConnectionTime: greaterDate(fromDateTime, "lastConnectionTime"),
+          });
+        }
         const latestDeviceHistoryEntry =
           await DeviceHistory.latestWithOrWithoutLocationAtTime(
             device.id,

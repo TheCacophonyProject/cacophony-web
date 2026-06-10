@@ -52,6 +52,7 @@ import { Event } from "@models/Event.js";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
 import { maybeUpdateDeviceHistoryLocation } from "@api/V1/deviceHistoryUpdates.js";
 import { DeviceHistory } from "@/models/DeviceHistory.js";
+import { greaterDate } from "@api/fileUploaders/uploadGenericRecording.js";
 
 const sequelize = await initSequelize();
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
@@ -62,14 +63,16 @@ const uploadEvent = async (
   next: NextFunction,
 ) => {
   let device = response.locals.device || response.locals.requestDevice;
-  const now = request.query.atTime as unknown as Date;
+  const now = (request.query.atTime as unknown as Date) || new Date();
   if (!device.deviceName) {
     // If we just have a device JWT id, get the actual device at this point.
     device = await Device.findByPk(device.id);
   }
   if (response.locals.requestDevice) {
     // The device is connecting directly, so update the last connected time.
-    await device.update({ lastConnectionTime: now });
+    await device.update({
+      lastConnectionTime: greaterDate(now, "lastConnectionTime"),
+    });
   }
 
   let detailsId = response.locals.detailsnapshot?.id;
