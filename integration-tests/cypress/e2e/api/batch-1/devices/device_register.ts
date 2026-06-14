@@ -139,7 +139,7 @@ describe("Device register", () => {
       saltId: getCreds("defaultcam").id,
       id: getCreds("defaultcam").id,
       groupId: getCreds(camsGroup).id,
-      type: DeviceType.Unknown,
+      type: DeviceType.Thermal,
       active: true,
       admin: true,
       isHealthy: false,

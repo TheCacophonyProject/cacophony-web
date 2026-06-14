@@ -24,7 +24,7 @@ export const CurrentViewAbortController = {
 
 // TODO - Handle getting all the revision information like the current version of browse does.
 
-type HttpMethod = "POST" | "PATCH" | "DELETE" | "GET";
+type HttpMethod = "POST" | "PATCH" | "DELETE" | "GET" | "PUT";
 
 interface NetworkConnectionErrorHandler {
   retry: (
@@ -347,6 +347,12 @@ export interface CacophonyApiClient {
     body?: object,
     abortable?: boolean,
   ) => Promise<FetchResult<unknown>>;
+  put: (
+    authKey: TestHandle | null,
+    endpoint: string,
+    body?: object,
+    abortable?: boolean,
+  ) => Promise<FetchResult<unknown>>;
   patch: (
     authKey: TestHandle | null,
     endpoint: string,
@@ -410,6 +416,31 @@ class CacophonyApi {
       authKey,
       this.url(endpoint),
       "POST",
+      this.credentialsResolver,
+      body,
+      abortable,
+    );
+  }
+
+  async put(
+    authKey: TestHandle | null,
+    endpoint: string,
+    body?: object,
+    abortable = false,
+  ) {
+    if (body && !isPlainObject(body)) {
+      return cacophonyFetchWrapper(
+        authKey,
+        this.url(endpoint),
+        { method: "PUT", body } as { method: string; body: BodyInit },
+        abortable,
+        this.credentialsResolver,
+      );
+    }
+    return fetchCacophonyJsonWithMethod(
+      authKey,
+      this.url(endpoint),
+      "PUT",
       this.credentialsResolver,
       body,
       abortable,

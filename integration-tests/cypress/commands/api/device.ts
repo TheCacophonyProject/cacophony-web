@@ -1053,7 +1053,7 @@ export function TestCreateExpectedDevice(
   deviceName: string,
   groupName: string,
   hasDeviceConnected = false,
-  type: DeviceType = DeviceType.Unknown,
+  type: DeviceType = DeviceType.Thermal,
   admin = true,
   active = true,
   isHealthy = true,

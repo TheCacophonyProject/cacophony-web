@@ -44,31 +44,44 @@ const totalRegisteredCamerasForWeekEnding = (
   now: Date,
   nWeeksAgo: number,
 ): string => {
-  return `select count(*) from (select distinct on (uuid) "DeviceHistory"."fromDateTime", "DeviceHistory".uuid from "DeviceHistory" inner join "Devices" on "Devices".uuid = "DeviceHistory".uuid where "Devices".kind = 'thermal'  and "DeviceHistory"."GroupId" not in (${CACOPHONY_GROUPS.join(
-    ", ",
-  )}) and "fromDateTime" < timestamp '${now.toISOString()}' - interval '${nWeeksAgo} week' order by uuid, "fromDateTime" desc) as a;`;
+  return `select count(*) from (
+    select distinct on (uuid) "DeviceHistory"."fromDateTime", "DeviceHistory".uuid
+      from "DeviceHistory" 
+      inner join "Devices" on "Devices".uuid = "DeviceHistory".uuid 
+      where 
+        "Devices"."lastThermalRecordingTime" is not null
+        and "DeviceHistory"."GroupId" not in (${CACOPHONY_GROUPS.join(", ")}) 
+        and "fromDateTime" < timestamp '${now.toISOString()}' - interval '${nWeeksAgo} week' 
+      order by uuid, "fromDateTime" desc
+    ) as a;`;
 };
 
 const birdMonitorsActiveForWeekEnding = (
   now: Date,
   nWeeksAgo: number,
 ): string => {
-  return `select count(distinct uuid) from "Devices" inner join "Recordings" on "Recordings"."DeviceId" = "Devices".id where "Recordings"."GroupId" not in (${CACOPHONY_GROUPS.join(
-    ", ",
-  )}) and "Recordings"."type" = 'audio' ${weeksAgo(
-    nWeeksAgo,
-    "recordingDateTime",
-    now,
-  )};`;
+  return `select count(distinct uuid) 
+    from "Devices" inner join "Recordings" 
+      on "Recordings"."DeviceId" = "Devices".id 
+    where "Recordings"."GroupId" not in (${CACOPHONY_GROUPS.join(", ")}) 
+      and "Recordings"."type" = 'audio' ${weeksAgo(nWeeksAgo, "recordingDateTime", now)};`;
 };
 
 const totalRegisteredBirdMonitorsForWeekEnding = (
   now: Date,
   nWeeksAgo: number,
 ): string => {
-  return `select count(*) from (select distinct on (uuid) "DeviceHistory"."fromDateTime", "DeviceHistory".uuid from "DeviceHistory" inner join "Devices" on "Devices".uuid = "DeviceHistory".uuid where "Devices".kind = 'audio'  and "DeviceHistory"."GroupId" not in (${CACOPHONY_GROUPS.join(
-    ", ",
-  )}) and "fromDateTime" < timestamp '${now.toISOString()}' - interval '${nWeeksAgo} week' order by uuid, "fromDateTime" desc) as a;`;
+  return `select count(*) from (
+    select distinct on (uuid) "DeviceHistory"."fromDateTime", "DeviceHistory".uuid 
+      from "DeviceHistory" 
+      inner join "Devices" on "Devices".uuid = "DeviceHistory".uuid 
+      where
+        "Devices"."lastAudioRecordingTime" is not null
+        and "Devices"."lastThermalRecordingTime" is null
+        and "DeviceHistory"."GroupId" not in (${CACOPHONY_GROUPS.join(", ")}) 
+        and "fromDateTime" < timestamp '${now.toISOString()}' - interval '${nWeeksAgo} week' 
+      order by uuid, "fromDateTime" desc
+  ) as a;`;
 };
 
 const activeUserSessions = (now: Date, nWeeksAgo: number): string => {

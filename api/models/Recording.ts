@@ -747,6 +747,7 @@ export class Recording extends ModelStaticCommon<Recording> {
   static async getOneForProcessing(
     type: RecordingType,
     states: RecordingProcessingState[],
+    suppliedRecordingIdInTest?: RecordingId,
   ) {
     let where: WhereOptions<Recording> = {
       type: type,
@@ -834,13 +835,14 @@ export class Recording extends ModelStaticCommon<Recording> {
           });
         }
         if (
+          !suppliedRecordingIdInTest &&
           !recording &&
           (!states.includes(RecordingProcessingState.Finished) ||
             states.length > 1)
         ) {
           if (type == RecordingType.Audio) {
             states = states.filter(
-              (state) => state != RecordingProcessingState.Finished,
+              (state) => state !== RecordingProcessingState.Finished,
             );
             where = {
               ...where,
@@ -859,10 +861,11 @@ export class Recording extends ModelStaticCommon<Recording> {
           });
         }
         if (recording === null) {
-          return recording;
+          return null;
         }
+        const id = suppliedRecordingIdInTest || recording.id;
         const actualRecording = await this.findOne({
-          where: { id: recording.id },
+          where: { id },
           attributes: [
             "id",
             "type",

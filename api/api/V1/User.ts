@@ -269,8 +269,6 @@ export default function (app: Application, baseUrl: string) {
         }
       }
       if (addedToGroups.length && token.email === user.email) {
-        // FIXME: How do we see this email?
-
         // NOTE: We can now confirm the users' email address, since they signed up via an email invite.
         await user.update({ emailConfirmed: true });
         sendEmailSuccess = await sendWelcomeEmailWithGroupsAdded(

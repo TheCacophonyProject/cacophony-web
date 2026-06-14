@@ -63,7 +63,7 @@ const uploadEvent = async (
   next: NextFunction,
 ) => {
   let device = response.locals.device || response.locals.requestDevice;
-  const now = (request.query.atTime as unknown as Date) || new Date();
+  const now = (request.query["at-time"] as unknown as Date) || new Date();
   if (!device.deviceName) {
     // If we just have a device JWT id, get the actual device at this point.
     device = await Device.findByPk(device.id);
@@ -142,37 +142,35 @@ const uploadEvent = async (
           const lng = configEventDetails.location.longitude;
           // Pre-validate to avoid server-side crashes on invalid inputs
           if (!isLatLng({ lat, lng }, false)) {
-            return next(
-              new UnprocessableError(
-                `Invalid location '{"lat":${lat},"lng":${lng}}'`,
-              ),
-            );
-          }
-          try {
-            await maybeUpdateDeviceHistoryLocation(
-              configDevice,
-              { lat, lng },
-              new Date(configEventDetails.location.updated),
-              "config",
-            );
-          } catch (e: unknown) {
-            let message = "unknown error";
-            if (e instanceof Error) {
-              message = e.message;
-            }
-            if (
-              (e && (e as Error).name === "SequelizeValidationError") ||
-              message.includes("Invalid location")
-            ) {
+            // Allow logging the event still to get it off the device, just don't update the device location.
+            logger.warning(`Invalid location '{"lat":${lat},"lng":${lng}}'`);
+          } else {
+            try {
+              await maybeUpdateDeviceHistoryLocation(
+                configDevice,
+                { lat, lng },
+                new Date(configEventDetails.location.updated),
+                "config",
+              );
+            } catch (e: unknown) {
+              let message = "unknown error";
+              if (e instanceof Error) {
+                message = e.message;
+              }
+              if (
+                (e && (e as Error).name === "SequelizeValidationError") ||
+                message.includes("Invalid location")
+              ) {
+                return next(
+                  new UnprocessableError(
+                    `Invalid location '{"lat":${lat},"lng":${lng}}'`,
+                  ),
+                );
+              }
               return next(
-                new UnprocessableError(
-                  `Invalid location '{"lat":${lat},"lng":${lng}}'`,
-                ),
+                new ClientError(`Failed to update device history: ${message}`),
               );
             }
-            return next(
-              new ClientError(`Failed to update device history: ${message}`),
-            );
           }
         } else {
           return next(
@@ -313,7 +311,7 @@ const commonEventFields = [
     .custom(jsonSchemaOf(EventDatesSchema)),
 
   // NOTE: Primarily used in testing, allows us to backdate the lastConnectionTime of an uploading device
-  query("atTime").default(new Date().toISOString()).isISO8601().toDate(),
+  query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
 ];
 
 export default function (app: Application, baseUrl: string) {

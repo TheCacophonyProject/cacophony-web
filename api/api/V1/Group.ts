@@ -375,7 +375,6 @@ export default function (app: Application, baseUrl: string) {
           }
         }
       }
-      // FIXME - handle deprecated field.
       return successResponse(response, { groups });
     },
   );

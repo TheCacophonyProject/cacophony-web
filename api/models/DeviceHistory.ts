@@ -25,7 +25,6 @@ import { ModelStaticCommon } from "./index.js";
 import type {
   DeviceId,
   GroupId,
-  IsoFormattedDateString,
   LatLng,
   SaltId,
   StationId,
@@ -39,6 +38,8 @@ import { Station } from "@models/Station.js";
 import { Device } from "@models/Device.js";
 import { Group } from "@models/Group.js";
 import { postgresLocationExactlyMatches } from "@api/V1/deviceHistoryUpdates.js";
+import logging from "@log";
+import { mergeSettings } from "@typedefs/client/utils.js";
 
 export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
   declare id: CreationOptional<number>;
@@ -82,23 +83,27 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
     }
     const currentSettings: ApiDeviceHistorySettings =
       currentSettingsEntry?.settings || ({} as ApiDeviceHistorySettings);
+    const prevSetBy = currentSettingsEntry.setBy;
+    // TODO: Here, we still want to know if the device *took* new settings from API.
+    //  Even when the API settings were unchanged, because the device settings were older.
+    const {
+      settings,
+      changed,
+      syncChanged,
+      shouldUpdateExistingDeviceHistoryEntry,
+      shouldCreateNewDeviceHistoryEntry,
+    } = mergeSettings(currentSettings, newSettings, setBy, prevSetBy);
 
-    const { settings, changed } = mergeSettings(
-      currentSettings,
-      newSettings,
-      setBy,
+    const setByDevice = setBy === "automatic";
+    // add to device history ledger.
+    logging.warning(
+      `Set by device? ${setByDevice}, changed ${changed}, ${currentSettings.synced}`,
     );
 
-    const synced = setBy === "automatic";
-    // add to device history ledger
-    if (
-      changed &&
-      (!("synced" in currentSettings) || currentSettings.synced || synced)
-    ) {
+    if (shouldCreateNewDeviceHistoryEntry) {
       const currentEntry = structuredClone(
         currentSettingsEntry.get({ plain: true }),
       );
-      // FIXME: We're totally getting here way too often.
       delete currentEntry.id;
       await DeviceHistory.create({
         ...currentEntry,
@@ -106,10 +111,14 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
         setBy,
         settings,
       });
-    } else if (changed) {
+    } else if (shouldUpdateExistingDeviceHistoryEntry) {
       // in place only if the device already had the settings so no change,
       // or if the previous settings were not yet applied.
-      await currentSettingsEntry.update({ settings });
+      if (!syncChanged && setBy === "user") {
+        await currentSettingsEntry.update({ settings, fromDateTime });
+      } else {
+        await currentSettingsEntry.update({ settings });
+      }
     }
     return settings;
   }
@@ -309,64 +318,3 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
 
   return DeviceHistory;
 };
-
-// Function to merge settings using "Last Write Wins"
-function mergeSettings(
-  currentSettings: ApiDeviceHistorySettings,
-  incomingSettings: ApiDeviceHistorySettings,
-  setBy: DeviceHistorySetBy,
-): { settings: ApiDeviceHistorySettings; changed: boolean } {
-  // FIXME: This function is currently untested and very likely broken.
-  const mergedSettings: ApiDeviceHistorySettings = {
-    ...currentSettings,
-  };
-
-  let changed = false;
-  for (const [key, value] of Object.entries(incomingSettings)) {
-    const incomingValue = value;
-
-    // If the current settings do not have this key, add it
-    if (!(key in currentSettings)) {
-      mergedSettings[key] = incomingValue;
-      changed = true;
-      continue;
-    }
-
-    const currentSetting = currentSettings[key];
-
-    if (
-      currentSetting !== null &&
-      incomingValue !== null &&
-      typeof currentSetting === "object" &&
-      typeof incomingValue === "object" &&
-      "updated" in incomingValue &&
-      "updated" in currentSetting &&
-      incomingValue.updated &&
-      currentSetting.updated
-    ) {
-      const currentUpdated = new Date(
-        currentSetting.updated as IsoFormattedDateString,
-      );
-      const incomingUpdated = new Date(
-        incomingValue.updated as IsoFormattedDateString,
-      );
-
-      if (incomingUpdated > currentUpdated) {
-        mergedSettings[key] = incomingValue;
-        if (incomingValue !== currentSetting) {
-          changed = true;
-        }
-      }
-    } else {
-      mergedSettings[key] = incomingValue;
-      if (incomingValue !== currentSetting) {
-        changed = true;
-      }
-    }
-  }
-
-  // Set synced based on setBy
-  mergedSettings.synced = setBy === "automatic";
-
-  return { settings: mergedSettings, changed };
-}

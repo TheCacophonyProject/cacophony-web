@@ -67,7 +67,7 @@ export class DeviceSim {
       // Upload the recording immediately if online
       await this.uploadRecordings(addSeconds(recordingDateTime, 15));
       // Because we're starting the modem, opportunistically upload events
-      await this.uploadEvents();
+      await this.uploadEvents(addSeconds(recordingDateTime, 16));
     }
   }
   public async makeAudioRecording(file: ArrayBuffer, recordingDateTime: Date): Promise<void> {
@@ -82,9 +82,9 @@ export class DeviceSim {
     });
     if (!this.isOffline) {
       // Upload the recording immediately if online
-      await this.uploadRecordings();
+      await this.uploadRecordings(addSeconds(recordingDateTime, 15));
       // Because we're starting the modem, opportunistically upload events
-      await this.uploadEvents();
+      await this.uploadEvents(addSeconds(recordingDateTime, 16));
     }
   }
 
@@ -150,7 +150,7 @@ export class DeviceSim {
     return [];
   }
 
-  public async uploadEvents() {
+  public async uploadEvents(atTime?: Date) {
     if (this.events.length !== 0) {
       await test.step("Upload events from device", async () => {
         const eventsByPayload = new Map<string, EventStoredOnDevice[]>();
@@ -174,7 +174,7 @@ export class DeviceSim {
               dateTimes: dateTimes,
               description: events[0].event,
             },
-            addSeconds(new Date(dateTimes[dateTimes.length - 1]), 30),
+            atTime,
           );
           expect(response.success).toBe(true);
         }
@@ -217,15 +217,15 @@ export class DeviceSim {
     this.isOffline = !this.hasModem;
   }
 
-  public async syncWithApi() {
+  public async syncWithApi(atTime?: Date) {
     if (this.isOffline) {
       throw new Error("No internet connection available, can't sync with API");
     }
 
     // Uploading recordings is likely to happen first
-    await this.uploadRecordings();
+    await this.uploadRecordings(atTime);
     // Event uploads happen opportunistically when there is a modem connection, or every 30 mins?
-    await this.uploadEvents();
+    await this.uploadEvents(atTime);
   }
 
   public getId(): DeviceId {

@@ -172,7 +172,7 @@ export class SidekickSim {
             );
             expect(locationResponse, "location created").toBeTruthy();
           }
-
+          console.log(`Update device location at ${locationUpdate.atTime}`);
           const result = await TestApiImpl.Devices.withAuth(
             this.userHandle.testId,
           ).updateDeviceLocation(

@@ -78,6 +78,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       oneOf([
         [
+          idOf(query("id")).optional(),
           query("type").equals(RecordingType.Audio),
           query("state")
             .toArray()
@@ -88,6 +89,7 @@ export default function (app: Application, baseUrl: string) {
             ]),
         ],
         [
+          idOf(query("id")).optional(),
           query("type").isIn([
             RecordingType.InfraredVideo,
             RecordingType.ThermalRaw,
@@ -107,7 +109,15 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response) => {
       const type = request.query.type as RecordingType;
       const states = request.query.state as RecordingProcessingState[];
-      const recording = await Recording.getOneForProcessing(type, states);
+      let suppliedRecordingIdInTest;
+      if (request.query.id) {
+        suppliedRecordingIdInTest = Number(request.query.id) as RecordingId;
+      }
+      const recording = await Recording.getOneForProcessing(
+        type,
+        states,
+        suppliedRecordingIdInTest,
+      );
       if (recording === null) {
         log.debug(
           "No file to be processed for '%s' in state(s) '%s'.",
@@ -312,7 +322,7 @@ export default function (app: Application, baseUrl: string) {
           ) {
             // FIXME: Maybe since we *just* created thumbnails, we don't need to pull them out again to send the alert
             //  we can just use what we already have in scope.
-            await sendAlerts(recording.id);
+            await sendAlerts(recording);
           }
         } catch (e) {
           log.error("Failed to save recording: %s", e);
@@ -564,12 +574,16 @@ export default function (app: Application, baseUrl: string) {
       endSeconds: trackData.end_s,
       minFreqHz: null,
       maxFreqHz: null,
+      thumbnailScore: null,
       RecordingId: recording.id,
       filtered: trackIsFiltered,
     };
     if (recording.type === RecordingType.Audio) {
       newTrack.minFreqHz = trackData.minFreq || 0;
       newTrack.maxFreqHz = trackData.maxFreq || 0;
+    }
+    if (trackData.thumbnail?.score) {
+      newTrack.thumbnailScore = trackData.thumbnail.score;
     }
     delete trackData.start_s;
     delete trackData.end_s;

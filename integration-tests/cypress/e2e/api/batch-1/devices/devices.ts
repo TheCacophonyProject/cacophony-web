@@ -38,7 +38,7 @@ describe("Devices list", () => {
         groupId: getCreds(group).id,
         active: true,
         admin: true,
-        type: DeviceType.Unknown,
+        type: DeviceType.Thermal,
       };
       expectedDeviceMemberView = {
         id: getCreds(camera).id,
@@ -48,7 +48,7 @@ describe("Devices list", () => {
         groupId: getCreds(group).id,
         admin: false,
         saltId: getCreds(camera).id,
-        type: DeviceType.Unknown,
+        type: DeviceType.Thermal,
       };
     });
     cy.apiGroupUserAdd(groupAdmin, groupMember, group, NOT_ADMIN);
@@ -63,7 +63,7 @@ describe("Devices list", () => {
         groupName: getTestName(group2),
         active: true,
         admin: true,
-        type: DeviceType.Unknown,
+        type: DeviceType.Thermal,
       };
     });
 
@@ -84,7 +84,7 @@ describe("Devices list", () => {
         groupId: getCreds(group3).id,
         active: false,
         admin: true,
-        type: DeviceType.Unknown,
+        type: DeviceType.Thermal,
       };
       expectedDevice4AdminView = {
         id: getCreds(camera4).id,
@@ -94,7 +94,7 @@ describe("Devices list", () => {
         admin: true,
         groupName: getTestName(group3),
         groupId: getCreds(group3).id,
-        type: DeviceType.Unknown,
+        type: DeviceType.Thermal,
       };
     });
   });
@@ -112,7 +112,7 @@ describe("Devices list", () => {
         admin: true,
         groupName: getTestName(group2),
         groupId: getCreds(group2).id,
-        type: DeviceType.Unknown,
+        type: DeviceType.Thermal,
       };
 
       cy.apiDevicesCheckContains(superuser, [

@@ -98,9 +98,6 @@ export class Device extends ModelStaticCommon<Device> {
   declare active: CreationOptional<boolean>; // Default true
   declare public: CreationOptional<boolean>; // Default false
 
-  // FIXME: We could just say we always know the device type for new devices,
-  // since we now only have one device type?
-  declare kind: CreationOptional<DeviceType>; // Default DeviceType.Unknown
   declare lastConnectionTime: CreationOptional<Date>;
   declare lastThermalRecordingTime: CreationOptional<Date>;
   declare lastAudioRecordingTime: CreationOptional<Date>;
@@ -108,8 +105,6 @@ export class Device extends ModelStaticCommon<Device> {
   declare earliestAudioRecordingTime: CreationOptional<Date>;
   declare password: CreationOptional<string>;
   declare location: CreationOptional<LatLng>;
-  declare heartbeat: CreationOptional<Date>;
-  declare nextHeartbeat: CreationOptional<Date>;
 
   declare GroupId: ForeignKey<GroupId>;
   declare ScheduleId: ForeignKey<ScheduleId>;
@@ -404,36 +399,6 @@ where
     });
   }
 
-  async updateHeartbeat(nextHeartbeat: Date) {
-    const now = new Date();
-    if (this.location && this.kind !== DeviceType.Unknown) {
-      // Find the station the device was in, update its lastActiveTime.
-      const station = await tryToMatchLocationToStationInGroup(
-        this.location,
-        this.GroupId,
-        now,
-      );
-      if (station) {
-        if (this.kind === DeviceType.Thermal) {
-          await station.update({ lastActiveThermalTime: now });
-        } else if (this.kind === DeviceType.Audio) {
-          await station.update({ lastActiveAudioTime: now });
-        } else if (this.kind == DeviceType.Hybrid) {
-          await station.update({
-            lastActiveThermalTime: now,
-            lastActiveAudioTime: now,
-          });
-        }
-      }
-    }
-
-    return this.update({
-      lastConnectionTime: now,
-      nextHeartbeat: nextHeartbeat,
-      heartbeat: now,
-    });
-  }
-
   // Will register as a new device
   async reRegister(
     newName: string,
@@ -484,28 +449,6 @@ where
           // NOTE: If we're moving a device back into the same group as a conflicting device,
           //  we really want to *become* that device, and inherit all its recording history.
           if (reassign) {
-            let newKind = this.kind;
-            if (conflictingDevice !== null) {
-              if (conflictingDevice.kind !== newKind) {
-                if (conflictingDevice.kind === DeviceType.Hybrid) {
-                  newKind = conflictingDevice.kind;
-                }
-                if (
-                  (conflictingDevice.kind === DeviceType.Audio &&
-                    newKind === DeviceType.Thermal) ||
-                  (conflictingDevice.kind === DeviceType.Thermal &&
-                    newKind === DeviceType.Audio)
-                ) {
-                  newKind = DeviceType.Hybrid;
-                }
-                if (
-                  newKind === DeviceType.Unknown &&
-                  conflictingDevice.kind !== DeviceType.Unknown
-                ) {
-                  newKind = conflictingDevice.kind;
-                }
-              }
-            }
             if (deviceIsMovingBetweenGroups) {
               await this.update({ active: false }, { transaction });
               if (
@@ -523,7 +466,6 @@ where
                     uuid: this.uuid,
                     lastConnectionTime: now,
                     location: this.location,
-                    kind: newKind,
                     active: true,
                   },
                   { transaction },
@@ -540,7 +482,6 @@ where
                     uuid: this.uuid,
                     lastConnectionTime: now,
                     location: this.location,
-                    kind: this.kind,
                   },
                   {
                     transaction,
@@ -561,7 +502,6 @@ where
                     //  from the device, and assumes the device is connected.
                     lastConnectionTime: now,
                     location: this.location,
-                    kind: newKind,
                     active: true,
                   },
                   { transaction },
@@ -579,7 +519,6 @@ where
                     //  from the device, and assumes the device is connected.
                     lastConnectionTime: now,
                     location: this.location,
-                    kind: this.kind,
                   },
                   {
                     transaction,
@@ -607,7 +546,6 @@ where
                 //  from the device, and assumes the device is connected.
                 lastConnectionTime: now,
                 location: this.location,
-                kind: this.kind,
               },
               {
                 transaction,
@@ -725,17 +663,6 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
       allowNull: false,
-    },
-    kind: {
-      type: DataTypes.ENUM,
-      values: Object.values(DeviceType),
-      defaultValue: DeviceType.Unknown,
-    },
-    heartbeat: {
-      type: DataTypes.DATE,
-    },
-    nextHeartbeat: {
-      type: DataTypes.DATE,
     },
   };
 

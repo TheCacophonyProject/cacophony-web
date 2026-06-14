@@ -1145,14 +1145,43 @@ export async function updateMetadata(
   recording.additionalMetadata = metadata;
   await recording.save();
 }
-export async function sendAlerts(recId: RecordingId, debug = false) {
+export async function sendAlerts(
+  recOrRecId: Recording | RecordingId,
+  debug = false,
+) {
+  let recId: RecordingId;
+  if (typeof recOrRecId !== "number") {
+    // Check for alerts on this recording.
+    const hasAnyAlerts = await Alert.findOne({
+      attributes: ["id"],
+      where: {
+        [Op.or]: [
+          {
+            StationId: (recOrRecId as Recording).StationId,
+          },
+          {
+            GroupId: (recOrRecId as Recording).GroupId,
+          },
+          {
+            DeviceId: (recOrRecId as Recording).DeviceId,
+          },
+        ],
+      },
+    });
+    if (!hasAnyAlerts) {
+      return;
+    }
+    recId = (recOrRecId as Recording).id;
+  } else {
+    recId = recOrRecId as RecordingId;
+  }
   // Get the most common non-false-positive tag for this recording, then get the track with that tag
   // that has the best thumbnail.
-  const recording: Recording = await Recording.findByPk(recId, {
+  const recording = await Recording.findByPk(recId, {
     include: [
       {
         model: Track,
-        attributes: ["id"],
+        attributes: ["id", "thumbnailScore"],
         required: true,
         include: [
           {
@@ -1216,7 +1245,6 @@ export async function sendAlerts(recId: RecordingId, debug = false) {
   }
 
   // FIXME: Logic for getting best thumbnail for a recording duplicated with thumbnail endpoint
-  //  Also, we're not loading track metadata to make the decision.
   const tagCounts: Record<
     string,
     { count: number; tracks: { track: Track; trackTag: TrackTag }[] }
@@ -1228,7 +1256,6 @@ export async function sendAlerts(recId: RecordingId, debug = false) {
     for (const trackTag of track.TrackTags.filter(
       (tag) => !excludedTags.includes(tag.what),
     )) {
-      // Tie-breaking on mass, length of track.
       tagCounts[trackTag.what] = tagCounts[trackTag.what] || {
         count: 0,
         tracks: [],
@@ -1277,8 +1304,6 @@ export async function sendAlerts(recId: RecordingId, debug = false) {
     log.error("Path missing for matched tag %s", matchedTag.what);
   }
   // Find the hierarchy for the matchedTag
-
-  // FIXME: Don't calculate best track thumbnail etc if there are no possible alerts for recording?
   const alerts: Alert[] = await Alert.getActiveAlerts(
     matchedTag.path,
     recording.DeviceId,
@@ -1291,13 +1316,14 @@ export async function sendAlerts(recId: RecordingId, debug = false) {
     if (thumbnail === null) {
       log.warning(
         "Alerting without thumbnail for %d and track %d",
-        recId,
+        recOrRecId,
         matchedTrack.id,
       );
     }
     for (const alert of alerts) {
       if (alert.User) {
         if (!alert.User.emailConfirmed) {
+          // FIXME: Remove this?
           // Send old alert email
           await alert.sendAlert(
             recording,
@@ -1351,7 +1377,7 @@ export async function sendAlerts(recId: RecordingId, debug = false) {
             alertTime,
             alertClassification,
             matchedClassification,
-            recId,
+            recording.id,
             matchedTrack.id,
             alert.User.email,
             deviceTimezone,

@@ -112,8 +112,17 @@ export interface ApiRecordingProcessingJob {
   id: RecordingId;
   type: RecordingType;
   updatedAt: IsoFormattedDateString;
+  recordingDateTime: IsoFormattedDateString;
+  processingState: RecordingProcessingState;
   processingStartTime?: IsoFormattedDateString;
   processingEndTime?: IsoFormattedDateString;
+  currentStateStartTime?: IsoFormattedDateString;
+  processingFailedCount: number;
+  GroupId: GroupId;
+  DeviceId: DeviceId;
+  StationId: StationId;
+  processing: boolean;
+  // ... Other fields we don't care about right now
 }
 
 export interface ApiRecordingUpdateRequest {

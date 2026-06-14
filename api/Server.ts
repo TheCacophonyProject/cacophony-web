@@ -382,7 +382,6 @@ const grafanaLabelRestart = async () => {
         if (safeUrl.startsWith(signedUrlStart)) {
           safeUrl = `${signedUrlStart}<omitted>`;
         }
-        // FIXME: SafeUrl is being incorrectly parsed/truncated for bulk-recording queries
         return `${request.method}(${colourForStatusCode(response.statusCode)}) ${safeUrl}\nUA: ${userAgentString}\n${requesterInfo}${
           dbQueryCount
             ? `\x1b[2;37m${dbQueryCount} DB queries taking ${dbQueryTime}ms, \x1b[0m`

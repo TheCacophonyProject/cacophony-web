@@ -14,7 +14,7 @@ export interface ProjectBundle {
   getAdminUser: () => TestUserHandle;
   getOwner: () => TestUserHandle;
   getDevice: () => TestDeviceHandle;
-  getTestSuperUser: () => TestUserHandle;
+  getTestSuperUser: () => Promise<TestUserHandle>;
   getNonAdmin: () => TestUserHandle | null;
   api: (userOrDevice?: TestUserHandle | TestDeviceHandle) => TestApi;
 }
@@ -47,11 +47,11 @@ export const getProjectTestName = (str: string) => getTestName(`cy_project-${str
 //     return loadedFixtures;
 // };
 
-export const createSuperAdminUser = async (
+export const loginSuperAdminUser = async (
   userName: string,
   email: string,
   password: string,
-): Promise<TestUserHandle | null> => {
+): Promise<TestUserHandle> => {
   const userHandle = getUserTestName(userName);
   const userResponse = await TestApiImpl.Users.login(email, password);
   expect(userResponse.success, "login super admin user").toBe(true);
@@ -69,7 +69,7 @@ export const createSuperAdminUser = async (
       type: "user",
     };
   }
-  return null;
+  throw new Error("Failed to create super user");
 };
 
 export const createUser = async (userName: string): Promise<TestUserHandle> => {
@@ -160,17 +160,7 @@ export const createProjectWithUserAndDevice = async (options?: {
 }): Promise<ProjectBundle> => {
   const nameBase = (options && options.nameBase) || "Test";
   const locationBase = (options && options.locationBase) || testLocation(-42.0, 172.0, 5.0);
-  // const superUserLoginCredentials: {
-  //     name: string;
-  //     password: string;
-  //     email: string;
-  // } = Cypress.env("testCreds")["superuser"]; // FIXME: This should be a test fixture?
   const userHandle = await createUser(nameBase);
-  // const testSuperAdminHandle = await createSuperAdminUser(
-  //     superUserLoginCredentials.name,
-  //     superUserLoginCredentials.email,
-  //     superUserLoginCredentials.password,
-  // );
   const projectHandle = await createProject(nameBase, userHandle);
   const deviceHandle = await addDeviceToProject(
     nameBase,
@@ -196,13 +186,8 @@ export const createProjectWithUserAndDevice = async (options?: {
       }
       return deviceHandles[0];
     },
-    getTestSuperUser: (): TestUserHandle => {
-      return {
-        testId: "foo",
-        type: "user",
-        id: 123,
-      };
-      //return testSuperAdminHandle;
+    getTestSuperUser: async (): Promise<TestUserHandle> => {
+      return await loginSuperAdminUser("admin_test", "admin@email.com", "admin_test");
     },
     getNonAdmin: (): TestUserHandle | null => {
       // There may not be non-admin users.

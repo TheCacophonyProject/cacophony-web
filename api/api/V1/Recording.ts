@@ -465,7 +465,7 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorisedDevice,
     validateFields([
       // NOTE: Primarily used in testing, allows us to backdate the last connection time of an uploading device
-      query("atTime").default(new Date().toISOString()).isISO8601().toDate(),
+      query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
     ]),
     uploadGenericRecordingFromDevice(),
   );
@@ -2350,10 +2350,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a
    * regular user
    * @apiQuery {Boolean} [debug] Output SQL debug information as an HTML response.
-   *
    * @apiQuery {Number} [max-results] Max number of records to be returned.
-   * @apiQuery {Number} [page-num] Zero-based page number. Use '0' to get the first page.  Each page has 'max-results' number of records.
-   *
    * @apiQuery {String} [tag-mode] Only return recordings with specific types of tags. Valid values:
    * <ul>
    * <li>any: match recordings with any (or no) tag

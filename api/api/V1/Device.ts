@@ -87,7 +87,6 @@ import type { ApiStationResponse } from "@typedefs/api/station.js";
 import { mapStation } from "@api/V1/Station.js";
 import { mapTrack } from "@api/V1/Recording.js";
 import { createEntityJWT } from "@api/auth.js";
-import logger from "@log";
 import {
   locationsAreEqual,
   removeLocationSpecificSettings,
@@ -103,6 +102,17 @@ import {
 } from "@api/fileUploaders/uploadGenericRecording.js";
 import { postgresLocationExactlyMatches } from "@api/V1/deviceHistoryUpdates.js";
 
+const mapDeviceKind = (device: Device): DeviceType => {
+  if (device.lastThermalRecordingTime && device.lastAudioRecordingTime) {
+    return DeviceType.Hybrid;
+  } else if (device.lastThermalRecordingTime) {
+    return DeviceType.Thermal;
+  } else if (device.lastAudioRecordingTime) {
+    return DeviceType.Audio;
+  }
+  return DeviceType.Thermal;
+};
+
 export const mapDeviceResponse = (
   device: Device,
   viewAsSuperUser: boolean,
@@ -111,7 +121,7 @@ export const mapDeviceResponse = (
     const mapped: ApiDeviceResponse = {
       deviceName: device.deviceName,
       id: device.id,
-      type: device.kind,
+      type: mapDeviceKind(device),
       groupName: device.Group?.groupName,
       groupId: device.GroupId,
       active: device.active,
@@ -181,7 +191,6 @@ export interface ApiRegisterDeviceRequestBody {
   deviceName: string; // Unique (within group) device name.
   password: string; // password Password for the device.
   saltId?: number; // Salt ID of device. Will be set as device id if not given.
-  deviceType?: DeviceType; // Hint about the kind of hardware we're registering.
 }
 
 export interface ApiCreateProxyDeviceRequestBody {
@@ -260,7 +269,6 @@ export default function (app: Application, baseUrl: string) {
       ),
       validPasswordOf(body("password")),
       idOf(body("saltId")).optional(),
-      body("deviceType").optional().isIn(Object.values(DeviceType)),
 
       // NOTE: Primarily used in testing, allows us to backdate the creation of a device
       body("fromDateTime")
@@ -280,7 +288,6 @@ export default function (app: Application, baseUrl: string) {
         deviceName: request.body.deviceName,
         password: request.body.password,
         GroupId: response.locals.group.id,
-        kind: request.body.deviceType,
       });
       let saltId: SaltId;
       if (request.body.saltId) {
@@ -488,6 +495,9 @@ export default function (app: Application, baseUrl: string) {
         throw new Error("Device doesn't belong to supplied group");
       }
 
+      // FIXME: There could still be recordings sitting on a device un-uploaded,
+      //  so deleting a device is problematic.  Maybe we should only allow setting it inactive?
+
       // Get the recording count for the device.
       const deviceId = response.locals.device.id;
       const hasRecording = await Recording.findOne({
@@ -497,7 +507,7 @@ export default function (app: Application, baseUrl: string) {
         },
       });
       if (hasRecording) {
-        logger.info("Setting device %s with recordings inactive", deviceId);
+        logging.info("Setting device %s with recordings inactive", deviceId);
         await response.locals.device.update({
           active: false,
         });
@@ -505,7 +515,7 @@ export default function (app: Application, baseUrl: string) {
           id: deviceId,
         });
       } else {
-        logger.info("Deleting device %s with no recordings", deviceId);
+        logging.info("Deleting device %s with no recordings", deviceId);
         await DeviceHistory.destroy({
           where: {
             uuid: response.locals.device.uuid,
@@ -585,8 +595,6 @@ export default function (app: Application, baseUrl: string) {
         deprecatedField(query("onlyActive").optional().isBoolean().toBoolean()),
         query("only-active").optional().isBoolean().toBoolean(),
       ),
-      // FIXME: Why is this field here?
-      query("stationId").optional().isInt().toInt(),
     ]),
     fetchAuthorizedRequiredDevices,
     async (request: Request, response: Response) => {
@@ -1763,7 +1771,7 @@ export default function (app: Application, baseUrl: string) {
         .optional()
         .isFloat({ min: -180, max: 180 })
         .withMessage("Longitude must be a valid number"),
-      body("type")
+      body("type") // TODO: Remove this when sidekick no longer calls this
         .optional()
         .isIn(Object.values(DeviceType))
         .withMessage("Invalid device type"),
@@ -1781,7 +1789,6 @@ export default function (app: Application, baseUrl: string) {
         const newSettings: ApiDeviceHistorySettings | undefined =
           request.body.settings;
         const newLocation = request.body.location;
-        const newKind = request.body.type;
         const setBy = response.locals.requestUser?.id ? "user" : "automatic";
         if (response.locals.requestDevice) {
           // The device is connecting directly, so update the last connected time.
@@ -1841,12 +1848,6 @@ export default function (app: Application, baseUrl: string) {
           }
         }
 
-        // Update device type (kind) if provided
-        if (newKind && device.kind !== newKind) {
-          device.kind = newKind;
-          await device.save();
-        }
-
         // Update device settings if provided
         let updatedEntry: ApiDeviceHistorySettings;
         if (newSettings) {
@@ -1871,7 +1872,6 @@ export default function (app: Application, baseUrl: string) {
         return successResponse(response, "Device updated successfully", {
           settings: updatedEntry,
           ...(newLocation && { location: newLocation }),
-          ...(newKind && { kind: newKind }),
         });
       } catch (e: unknown) {
         return next(
@@ -1908,7 +1908,7 @@ export default function (app: Application, baseUrl: string) {
         }
 
         // Add logic to detect device type from device properties
-        const detectedType = device.kind;
+        const detectedType = mapDeviceKind(device);
 
         return successResponse(response, "Device type retrieved", {
           type: detectedType,
@@ -2344,10 +2344,11 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorisedDevice,
     validateFields([body("nextHeartbeat").isISO8601().toDate()]),
     async function (request: Request, response: Response) {
-      const requestDevice = (await Device.findByPk(
-        response.locals.requestDevice.id,
-      )) as Device;
-      await requestDevice.updateHeartbeat(request.body.nextHeartbeat);
+      // NOTE: Disable heartbeats
+      // const requestDevice = (await Device.findByPk(
+      //   response.locals.requestDevice.id,
+      // )) as Device;
+      // await requestDevice.updateHeartbeat(request.body.nextHeartbeat);
       return successResponse(response, "Heartbeat updated.");
     },
   );

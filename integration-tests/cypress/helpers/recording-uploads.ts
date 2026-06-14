@@ -60,7 +60,7 @@ export const uploadRecording = async (
     type: RecordingType;
     recordingDateTime: Date;
   },
-): Promise<RecordingId | null> => {
+): Promise<RecordingId> => {
   expect(["user", "device"], "uploader must be device or user").to.include(
     uploaderHandle.type,
   );
@@ -116,14 +116,10 @@ export const uploadRecording = async (
       uploaderHandle.testId,
     ).uploadRecordingOnBehalfOfDevice(deviceId, data, rawFile, rawFileName);
   }
-  const response = await upload;
+  const response = await upload!;
   expect(response.success, "uploaded recording").to.be.true;
-  if (response.success) {
-    return response.result.recordingId;
-  } else {
-    console.error("Failed to upload recording", response);
-  }
-  return null;
+  return (response.result as { recordingId: RecordingId })
+    .recordingId as RecordingId;
 };
 
 export const uploadRecordingFromDeviceForProject = async (options: {
@@ -135,7 +131,7 @@ export const uploadRecordingFromDeviceForProject = async (options: {
   metadata?: RecordingDataSuppliedMetadata;
   type: RecordingType;
   recordingDateTime: Date;
-}): Promise<RecordingId | null> => {
+}): Promise<RecordingId> => {
   // Use the first device in the project bundle, or the specified device.
   const deviceToUploadFrom: TestDeviceHandle =
     options.deviceHandle || options.project.deviceHandles[0];
@@ -151,7 +147,7 @@ export const uploadRecordingOnBehalfOfDeviceForProject = async (options: {
   metadata?: RecordingDataSuppliedMetadata;
   type: RecordingType;
   recordingDateTime: Date;
-}): Promise<RecordingId | null> => {
+}): Promise<RecordingId> => {
   // Use the first user in the project bundle, or the specified user.
   const userToUploadAs: TestUserHandle =
     options.userHandle || options.project.userHandles[0];

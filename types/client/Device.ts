@@ -852,7 +852,7 @@ const submitEventsFromDevice =
   (eventsPayload: ApiSubmitEventsRequestBody, atTime?: Date) => {
     const params = new URLSearchParams();
     if (atTime) {
-      params.append("atTime", atTime.toISOString());
+      params.append("at-time", atTime.toISOString());
     }
     return api.post(
       authKey,

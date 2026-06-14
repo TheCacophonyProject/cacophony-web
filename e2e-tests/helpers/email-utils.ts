@@ -1,6 +1,3 @@
-import * as util from "node:util";
-import * as child_process from "node:child_process";
-const exec = util.promisify(child_process.exec);
 import { expect, Page, test } from "@playwright/test";
 import { getEmail } from "./browse-helpers";
 import { dockerExecNodeTestScript } from "@/helpers/docker-exec";

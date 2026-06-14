@@ -463,7 +463,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/resend-email-confirmation-request`,
     extractJwtAuthorizedUser,
     async (request: Request, response: Response, next: NextFunction) => {
-      const browseNextLaunchDate = new Date(); // FIXME Fix this to a specific date once browse-next goes live.
+      const browseNextLaunchDate = new Date("2026-02-01");
       const user = await User.findByPk(response.locals.requestUser.id);
       if (user.email && !user.emailConfirmed) {
         const emailConfirmationToken = getEmailConfirmationToken(

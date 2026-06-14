@@ -61,7 +61,6 @@ describe("Activity bookkeeping", () => {
       const startDate = new Date("2026-01-10T20:07:06.292Z");
       const dates = spreadDays(startDate, 3);
       const recordingUploads = [];
-      const requestTime = new Date();
       for (const date of dates) {
         recordingUploads.push(
           uploadThermalRecordingFromDeviceForProject({
@@ -81,6 +80,7 @@ describe("Activity bookkeeping", () => {
         uploadedRecording.recordingDateTime,
         "recording date is latest",
       ).to.be.equal(dates[dates.length - 1].toISOString());
+      const requestTime = new Date();
       await checkActivity(project, requestTime, "device", uploadedRecording);
 
       const uploadedRecordings = await Promise.all(
@@ -232,7 +232,6 @@ describe("Activity bookkeeping", () => {
       const startDate = new Date("2026-01-10T20:07:06.292Z");
       const dates = spreadDays(startDate, 3);
       const locations = spreadLocations({ lat: -42.0, lng: 172 }, 3);
-      const requestTime = new Date();
       const recordingUploads = arrayZip(dates, locations).map(
         ({ left: date, right: location }) => {
           return uploadThermalRecordingFromDeviceForProject({
@@ -250,6 +249,7 @@ describe("Activity bookkeeping", () => {
         uploadedRecordings.map((recording) => recording.location),
         "uploaded recording locations are correct",
       ).to.deep.equal(locations);
+      const requestTime = new Date();
       const [_project, device, location] = await checkActivity(
         project,
         requestTime,
@@ -391,7 +391,7 @@ describe("Activity bookkeeping", () => {
           (await Promise.all([
             AdminUser.Projects.getProjectById(project.projectHandle.id),
             AdminUser.Devices.getDeviceById(project.deviceHandles[0].id),
-            AdminUser.Locations.getLocationById(lastUploaded.stationId),
+            AdminUser.Locations.getLocationById(lastUploaded.stationId!),
           ])) as [ApiProjectResponse, ApiDeviceResponse, ApiLocationResponse];
 
         const expectedLast = dates[2].toISOString();
@@ -424,7 +424,7 @@ describe("Activity bookkeeping", () => {
           (await Promise.all([
             AdminUser.Projects.getProjectById(project.projectHandle.id),
             AdminUser.Devices.getDeviceById(project.deviceHandles[0].id),
-            AdminUser.Locations.getLocationById(lastUploaded.stationId),
+            AdminUser.Locations.getLocationById(lastUploaded.stationId!),
           ])) as [ApiProjectResponse, ApiDeviceResponse, ApiLocationResponse];
 
         const expectedLast = dates[4].toISOString();

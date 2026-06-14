@@ -52,7 +52,8 @@ function errorHandler(
   if (err instanceof CustomError) {
     const errString = err.toString();
     if (
-      !errString.includes("No reference image available for device at time")
+      !errString.includes("No reference image available for device at time") &&
+      !errString.includes("No device mask-regions found")
     ) {
       log.warning(err.toString());
     }

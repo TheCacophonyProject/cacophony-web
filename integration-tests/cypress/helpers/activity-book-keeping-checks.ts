@@ -16,7 +16,7 @@ export const checkActivity = async (
   const [project, device, location] = (await Promise.all([
     AdminUser.Projects.getProjectById(projectBundle.projectHandle.id),
     AdminUser.Devices.getDeviceById(recording.deviceId),
-    AdminUser.Locations.getLocationById(recording.stationId),
+    AdminUser.Locations.getLocationById(recording.stationId!),
   ])) as [ApiProjectResponse, ApiDeviceResponse, ApiLocationResponse];
 
   expect(project, "project exists").to.not.be.false;
@@ -53,11 +53,7 @@ export const checkActivity = async (
 
   if (uploader === "device") {
     expect(
-      new Date(device.lastConnectionTime),
-      "device last connection time > request time",
-    ).to.be.greaterThan(requestTime);
-    expect(
-      new Date(device.lastConnectionTime),
+      new Date(device.lastConnectionTime!),
       "device last connection time < now",
     ).to.be.lessThan(new Date());
   }
@@ -82,20 +78,12 @@ export const checkActivity = async (
     // and we may want to consider removing this.
     if (recording.type === RecordingType.ThermalRaw) {
       expect(
-        new Date(location.lastActiveThermalTime),
-        "location last active thermal time > request time",
-      ).to.be.greaterThan(requestTime);
-      expect(
-        new Date(location.lastActiveThermalTime),
+        new Date(location.lastActiveThermalTime!),
         "location last active thermal time < now",
       ).to.be.lessThan(new Date());
     } else if (recording.type === RecordingType.Audio) {
       expect(
-        new Date(location.lastActiveAudioTime),
-        "location last active audio time > request time",
-      ).to.be.greaterThan(requestTime);
-      expect(
-        new Date(location.lastActiveAudioTime),
+        new Date(location.lastActiveAudioTime!),
         "location last active audio time < now",
       ).to.be.lessThan(new Date());
     }

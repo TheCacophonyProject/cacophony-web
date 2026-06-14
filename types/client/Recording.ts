@@ -7,7 +7,10 @@ import type {
   TrackId,
   TrackTagId,
 } from "../api/common.js";
-import type { ApiRecordingResponse } from "../api/recording.js";
+import {
+  ApiRecordingProcessingJob,
+  ApiRecordingResponse,
+} from "../api/recording.js";
 import type { ApiTrackTagRequest } from "../api/trackTag.js";
 import {
   RecordingProcessingState,
@@ -28,6 +31,9 @@ import { CacophonyApiClient, optionalQueryString } from "./api.js";
 import { unwrapLoadedResource } from "./api.js";
 import type { ApiRecordingUploadData } from "../api/recording.js";
 import type { NonEmptyArray } from "./utils.js";
+import { type } from "node:os";
+import { MinimalTracksRequestData } from "@typedefs/api/fileProcessing.js";
+import { JsonDocument } from "@typedefs/api/event.js";
 
 export interface QueryRecordingsOptions {
   devices?: DeviceId[];
@@ -475,7 +481,7 @@ const uploadRecordingFromDevice =
     );
     const params = new URLSearchParams();
     if (uploadTime) {
-      params.append("atTime", uploadTime.toISOString());
+      params.append("at-time", uploadTime.toISOString());
     }
     return api.post(
       authKey,
@@ -525,17 +531,72 @@ const getOneRecordingForProcessing =
   (
     type: RecordingType,
     withStates: NonEmptyArray<RecordingProcessingState>,
+    id?: RecordingId,
   ) => {
     const params = new URLSearchParams();
     params.append("type", type);
     for (const state of withStates) {
       params.append("state", state);
     }
+    if (id) {
+      params.append("id", id.toString());
+    }
     return api.get(authKey, `/api/v1/processing/?${params}`, false) as Promise<
       FetchResult<{
-        recording: ApiRecordingResponse;
+        recording: ApiRecordingProcessingJob;
         rawJWT: JwtToken<RecordingId>;
       }>
+    >;
+  };
+
+const submitProcessingTracksAndTags =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    recordingId: RecordingId,
+    tracksAndTags: MinimalTracksRequestData,
+    algorithmId: number,
+  ) => {
+    return api.post(
+      authKey,
+      `/api/v1/processing/${recordingId}/tracks-and-tags`,
+      {
+        data: tracksAndTags,
+        algorithmId,
+      },
+    ) as Promise<FetchResult<unknown>>;
+  };
+
+const finishProcessingJob =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    recordingId: RecordingId,
+    jobKey: string,
+    success: boolean,
+    complete: boolean,
+    fileHash?: string,
+    result?: JsonDocument,
+  ) => {
+    const payload: {
+      id: RecordingId;
+      jobKey: string;
+      success: boolean;
+      complete: boolean;
+      fileHash?: string;
+      result?: JsonDocument;
+    } = {
+      id: recordingId,
+      jobKey,
+      success,
+      complete,
+    };
+    if (fileHash) {
+      payload.fileHash = fileHash;
+    }
+    if (result) {
+      payload.result = result;
+    }
+    return api.put(authKey, `/api/v1/processing`, payload) as Promise<
+      FetchResult<unknown>
     >;
   };
 
@@ -578,6 +639,8 @@ export default (api: CacophonyApiClient) => {
     updateResizedTrack: updateResizedTrack(api),
     getThumbnail: getThumbnail(api),
     getOneRecordingForProcessing: getOneRecordingForProcessing(api),
+    submitProcessingTracksAndTags: submitProcessingTracksAndTags(api),
+    finishProcessingJob: finishProcessingJob(api),
     withAuth: (authKey: TestHandle) => ({
       getRecordingById: getRecordingById(api, authKey),
       getRecordingWithSignedUrl: getRecordingWithSignedUrl(api, authKey),
@@ -615,6 +678,11 @@ export default (api: CacophonyApiClient) => {
       getRawRecording: getRawRecording(api, authKey),
       updateResizedTrack: updateResizedTrack(api, authKey),
       getOneRecordingForProcessing: getOneRecordingForProcessing(api, authKey),
+      submitProcessingTracksAndTags: submitProcessingTracksAndTags(
+        api,
+        authKey,
+      ),
+      finishProcessingJob: finishProcessingJob(api, authKey),
     }),
   };
 };

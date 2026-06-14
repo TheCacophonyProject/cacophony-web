@@ -13,10 +13,10 @@ import { ApiDeviceHistory, ApiDeviceHistorySettings, ApiDeviceResponse } from "@
 import { IsoFormattedDateString, LatLng, LocationId, UserId } from "@shared/api/common";
 import { uploadRecording, uploadThermalRecordingFromDevice } from "@/helpers/recording-uploads";
 import { ApiStationResponse as ApiLocationResponse } from "@shared/api/station";
-import { ApiRecordingResponse } from "@shared/api/recording";
+import { ApiRecordingProcessingJob, ApiRecordingResponse } from "@shared/api/recording";
 import { TestApiImpl } from "@shared/client";
 import { DeviceEvent } from "@shared/api/event";
-import { AudioRecordingMode, RecordingType } from "@shared/api/consts";
+import { AudioRecordingMode, RecordingProcessingState, RecordingType } from "@shared/api/consts";
 import { JwtToken } from "@typedefs/client/types";
 
 test(`When setting up a new device (without modem) and setting a new location via sidekick - with internet connectivity - device location and history location should be immediately updated via sidekick.`, async () => {
@@ -1293,8 +1293,59 @@ test("Older device config events that come in after some newer settings changes 
   });
 });
 
-test("'Rat threshold' script running doesn't disrupt device settings", async () => {
-  // TODO:
+test("'Rat threshold' script running doesn't disrupt device settings", async ({ smallCptv }) => {
+  const initialDateTime = new Date("2026-05-01T10:00:00Z");
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const deviceHandle = project.getDevice();
+  const superUserHandle = await project.getTestSuperUser();
+  const AdminUser = project.api();
+  const SuperUser = project.api(superUserHandle);
+  const timeA = addMinutes(initialDateTime, 1);
+  await AdminUser.Devices.updateDeviceSettings(
+    deviceHandle.id,
+    {
+      audioRecording: {
+        updated: timeA.toISOString(),
+        audioMode: AudioRecordingMode.AudioOrThermal,
+      },
+    },
+    timeA,
+  );
+
+  const recordingId = await uploadThermalRecordingFromDevice({
+    file: smallCptv,
+    location: project.locationBase,
+    deviceHandle,
+    recordingDateTime: addMinutes(initialDateTime, 3),
+  });
+  const processingJobResponse = await SuperUser.Recordings.getOneRecordingForProcessing(
+    RecordingType.ThermalRaw,
+    [RecordingProcessingState.TrackAndAnalyse],
+      recordingId
+  );
+  expect(processingJobResponse, "got processing job").toBeTruthy();
+  const processingJob = (processingJobResponse.result as { recording: ApiRecordingProcessingJob })
+    .recording;
+  expect(processingJob.id, "got correct recording").toEqual(recordingId);
+  const trackAndTagResponse = await SuperUser.Recordings.submitProcessingTracksAndTags(
+    processingJob.id,
+    [
+      {
+        start_s: 0,
+        end_s: 10,
+        predictions: [{ confidence: 0.9, confident: true, tag: "rodent" }],
+      },
+    ],
+    10,
+  );
+  console.log(trackAndTagResponse);
+  const finishedResponse = await SuperUser.Recordings.finishProcessingJob(
+    processingJob.id,
+    processingJob.jobKey,
+    true,
+    true,
+  );
+  console.log(finishedResponse);
   // Add some recordings with tracks, add rat and mouse tags.
   // Make sure ratthresh script adds some data to settings.
 });
@@ -1465,7 +1516,10 @@ test("Synchronisation of user settings to the device, and device set settings to
   };
 
   await test.step("Add user settings and then confirm they were added", async () => {
-    const addedSettings = await AdminUser.Devices.updateDeviceSettings(deviceHandle.id, userSuppliedSettings);
+    const addedSettings = await AdminUser.Devices.updateDeviceSettings(
+      deviceHandle.id,
+      userSuppliedSettings,
+    );
     console.log(addedSettings);
     const settings = await AdminUser.Devices.getSettingsForDevice(deviceHandle.id);
     expect(settings, "settings exist").toBeTruthy();
@@ -1683,7 +1737,7 @@ test("Uploading a recording via sidekick when the device hasn't connected in ove
   await test.step("Make an initial thermal recording and connect the device to wifi to upload it directly", async () => {
     await device.makeThermalRecording(new ArrayBuffer(100), addMinutes(initialDateTime, 3));
     device.connectToWifi();
-    await device.syncWithApi();
+    await device.syncWithApi(addMinutes(initialDateTime, 4));
     device.disconnectFromWifi();
   });
 
@@ -1717,11 +1771,11 @@ test("Uploading a recording via sidekick when the device hasn't connected in ove
 
 test("Getting latest unsynced and latest synced settings for a device works", async () => {
   const initialDateTime = new Date("2026-01-01T00:00:00Z");
-  const project = await createProjectWithUserAndDevice({initialDateTime});
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
   const AdminUser = project.api();
   const deviceHandle = project.getDevice();
 
-  const userSuppliedSettings:ApiDeviceHistorySettings = {
+  const userSuppliedSettings: ApiDeviceHistorySettings = {
     audioRecording: {
       audioMode: AudioRecordingMode.Disabled,
       updated: addMinutes(initialDateTime, 1).toISOString(),
@@ -1735,21 +1789,267 @@ test("Getting latest unsynced and latest synced settings for a device works", as
     },
   };
 
-  await AdminUser.Devices.updateDeviceSettings(deviceHandle.id, userSuppliedSettings, addMinutes(initialDateTime, 1));
+  await AdminUser.Devices.updateDeviceSettings(
+    deviceHandle.id,
+    userSuppliedSettings,
+    addMinutes(initialDateTime, 1),
+  );
 
-  await TestApiImpl.Devices.withAuth(deviceHandle.testId).updateDeviceSettings(deviceHandle.id, deviceSuppliedSettings, addMinutes(initialDateTime, 2));
+  await TestApiImpl.Devices.withAuth(deviceHandle.testId).updateDeviceSettings(
+    deviceHandle.id,
+    deviceSuppliedSettings,
+    addMinutes(initialDateTime, 2),
+  );
 
-  await AdminUser.Devices.updateDeviceSettings(deviceHandle.id, {
-    battery: {
-      updated: addMinutes(initialDateTime, 3).toISOString(),
-      chemistry: "Foo"
-    }
-  }, addMinutes(initialDateTime, 3));
+  await AdminUser.Devices.updateDeviceSettings(
+    deviceHandle.id,
+    {
+      battery: {
+        updated: addMinutes(initialDateTime, 3).toISOString(),
+        chemistry: "Foo",
+      },
+    },
+    addMinutes(initialDateTime, 3),
+  );
 
   const settings = await AdminUser.Devices.getSettingsForDevice(deviceHandle.id);
   console.log(JSON.stringify(settings, null, 2));
 
   const allSettings = await AdminUser.Devices.getDeviceHistoryInTest(deviceHandle.id);
   console.log(JSON.stringify(allSettings, null, 2));
-  // TODO: And maybe also debounce settings saving?  Take a lock on the settings table when saving
+  // TODO
+});
+
+test("Test deleting reference images, apparently you can actually do that, maybe from Sidekick?", async ({
+  deviceReferenceImage,
+}) => {
+  const initialDateTime = new Date("2026-01-01T00:00:00Z");
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const AdminUser = project.api();
+  const deviceHandle = project.getDevice();
+  await AdminUser.Devices.updateDeviceLocation(
+    deviceHandle.id,
+    project.locationBase,
+    addMinutes(initialDateTime, 1),
+  );
+  await AdminUser.Devices.addReferenceImageForDeviceAtTime(
+    deviceHandle.id,
+    deviceReferenceImage,
+    addMinutes(initialDateTime, 3),
+  );
+  const response = await AdminUser.Devices.deleteAllReferenceImagesForDeviceAtTime(deviceHandle.id);
+  expect(response.success, "delete succeeded").toBe(true);
+  expect(response.result, "image was deleted").toMatchObject({
+    messages: ["Reference image deleted successfully"],
+  });
+
+  const deviceSettings = await AdminUser.Devices.getSettingsForDevice(deviceHandle.id);
+  const deviceHistory = await AdminUser.Devices.getDeviceHistoryInTest(deviceHandle.id);
+  // TODO: Flesh out assertions
+  const referenceImageResponse = await AdminUser.Devices.getReferenceImageForDeviceAtTime(
+    deviceHandle.id,
+    addMinutes(initialDateTime, 4),
+  );
+  expect(referenceImageResponse.success, "can't get deleted reference image").toBe(false);
+});
+
+test("Settings merge/sync rules: device has older settings that get changed from browse", async () => {
+  const initialDateTime = new Date("2026-01-01T00:00:00Z");
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const deviceHandle = project.getDevice();
+  const AdminUser = project.api();
+
+  await AdminUser.Devices.updateDeviceSettings(
+    deviceHandle.id,
+    {
+      thermalRecording: {
+        useLowPowerMode: true,
+        updated: addMinutes(initialDateTime, 2).toISOString(),
+      },
+    },
+    addMinutes(initialDateTime, 2),
+  );
+
+  // The device has some older initial settings
+  await TestApiImpl.Devices.withAuth(deviceHandle.testId).updateDeviceSettings(
+    deviceHandle.id,
+    {
+      thermalRecording: {
+        useLowPowerMode: false,
+        updated: addMinutes(initialDateTime, 1).toISOString(),
+      },
+    },
+    addMinutes(initialDateTime, 4),
+  );
+
+  const deviceHistory = (await AdminUser.Devices.getDeviceHistoryInTest(
+    deviceHandle.id,
+  )) as ApiDeviceHistory[];
+  expect(deviceHistory, "got history").toBeTruthy();
+  expect(deviceHistory.length, "got correct number of entries in history").toEqual(2);
+  expect(deviceHistory.map((item) => item.settings)).toStrictEqual([
+    null,
+    {
+      synced: true,
+      thermalRecording: { updated: "2026-01-01T00:02:00.000Z", useLowPowerMode: true },
+    },
+  ]);
+});
+
+test("Settings merge/sync rules: device has older same settings as unsynced from browse", async () => {
+  const initialDateTime = new Date("2026-01-01T00:00:00Z");
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const deviceHandle = project.getDevice();
+  const AdminUser = project.api();
+
+  await AdminUser.Devices.updateDeviceSettings(
+    deviceHandle.id,
+    {
+      thermalRecording: {
+        useLowPowerMode: true,
+        updated: addMinutes(initialDateTime, 2).toISOString(),
+      },
+    },
+    addMinutes(initialDateTime, 2),
+  );
+
+  // The device has some older initial settings
+  await TestApiImpl.Devices.withAuth(deviceHandle.testId).updateDeviceSettings(
+    deviceHandle.id,
+    {
+      thermalRecording: {
+        useLowPowerMode: true,
+        updated: addMinutes(initialDateTime, 1).toISOString(),
+      },
+    },
+    addMinutes(initialDateTime, 4),
+  );
+
+  // Because the device had the same settings as the API, and the only thing that changed was the sync state,
+  // we can update the sync state in place in the DeviceHistory entry.
+  const deviceHistory = (await AdminUser.Devices.getDeviceHistoryInTest(
+    deviceHandle.id,
+  )) as ApiDeviceHistory[];
+  expect(deviceHistory, "got history").toBeTruthy();
+  console.log(deviceHistory);
+  expect(deviceHistory.length, "got correct number of entries in history").toEqual(2);
+  expect(deviceHistory.map((item) => item.settings)).toStrictEqual([
+    null,
+    {
+      synced: true,
+      thermalRecording: { updated: "2026-01-01T00:02:00.000Z", useLowPowerMode: true },
+    },
+  ]);
+});
+
+test("Settings merge/sync rules: user sets multiple unsynced settings in a row", async () => {
+  const initialDateTime = new Date("2026-01-01T00:00:00Z");
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const deviceHandle = project.getDevice();
+  const AdminUser = project.api();
+
+  await AdminUser.Devices.updateDeviceSettings(
+    deviceHandle.id,
+    {
+      thermalRecording: {
+        useLowPowerMode: true,
+        updated: addMinutes(initialDateTime, 2).toISOString(),
+      },
+    },
+    addMinutes(initialDateTime, 2),
+  );
+
+  await AdminUser.Devices.updateDeviceSettings(
+    deviceHandle.id,
+    {
+      thermalRecording: {
+        useLowPowerMode: false,
+        updated: addMinutes(initialDateTime, 3).toISOString(),
+      },
+    },
+    addMinutes(initialDateTime, 3),
+  );
+
+  await AdminUser.Devices.updateDeviceSettings(
+    deviceHandle.id,
+    {
+      thermalRecording: {
+        useLowPowerMode: true,
+        updated: addMinutes(initialDateTime, 4).toISOString(),
+      },
+    },
+    addMinutes(initialDateTime, 4),
+  );
+
+  // Multiple unsynced updates result in the last one being used.
+  const deviceHistory = (await AdminUser.Devices.getDeviceHistoryInTest(
+    deviceHandle.id,
+  )) as ApiDeviceHistory[];
+  expect(deviceHistory, "got history").toBeTruthy();
+  expect(deviceHistory.length, "got correct number of entries in history").toEqual(2);
+  // Should only retain the last `fromDateTime`
+  expect(deviceHistory[1].fromDateTime).toEqual(addMinutes(initialDateTime, 4).toISOString());
+  console.log(deviceHistory);
+  expect(deviceHistory.map((item) => item.settings)).toStrictEqual([
+    null,
+    {
+      synced: false,
+      thermalRecording: { updated: "2026-01-01T00:04:00.000Z", useLowPowerMode: true },
+    },
+  ]);
+});
+
+test("Settings merge/sync rules: device sync shouldn't care about mask regions and reference images", async () => {
+  // TODO
+});
+
+test("Adding a reference image on top of already synced settings should not change sync status", async () => {
+  const initialDateTime = new Date("2026-01-01T00:00:00Z");
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const deviceHandle = project.getDevice();
+  const AdminUser = project.api();
+
+  await AdminUser.Devices.updateDeviceSettings(
+    deviceHandle.id,
+    {
+      thermalRecording: {
+        useLowPowerMode: true,
+        updated: addMinutes(initialDateTime, 2).toISOString(),
+      },
+    },
+    addMinutes(initialDateTime, 2),
+  );
+
+  {
+    const settings = await AdminUser.Devices.getSettingsForDevice(deviceHandle.id);
+    expect(settings, "got settings").toBeTruthy();
+    expect((settings.result as { settings: ApiDeviceHistorySettings }).settings.synced).toBe(false);
+  }
+
+  // Device calls update to sync?
+  await TestApiImpl.Devices.withAuth(deviceHandle.testId).updateDeviceSettings(
+    deviceHandle.id,
+    {},
+    addMinutes(initialDateTime, 4),
+  );
+
+  {
+    const settings = await AdminUser.Devices.getSettingsForDevice(deviceHandle.id);
+    expect(settings, "got settings").toBeTruthy();
+    expect((settings.result as { settings: ApiDeviceHistorySettings }).settings.synced).toBe(true);
+  }
+
+  await AdminUser.Devices.updateDeviceSettings(
+    deviceHandle.id,
+    {
+      referenceImagePOV: "foo",
+    },
+    addMinutes(initialDateTime, 5),
+  );
+
+  {
+    const settings = await AdminUser.Devices.getSettingsForDevice(deviceHandle.id);
+    expect(settings, "got settings").toBeTruthy();
+    expect((settings.result as { settings: ApiDeviceHistorySettings }).settings.synced).toBe(true);
+  }
 });

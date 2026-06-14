@@ -86,6 +86,7 @@ export interface MinimalTrack {
   maxFreqHz?: number;
   RecordingId: number;
   filtered?: boolean;
+  thumbnailScore?: number;
 }
 
 export type MinimalTracksRequestData = MinimalTrackRequestData[];

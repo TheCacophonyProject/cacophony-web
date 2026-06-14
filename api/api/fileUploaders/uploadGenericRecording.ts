@@ -54,6 +54,8 @@ import { ByteLengthTruncateStream } from "pechkin/dist/ByteLengthTruncateStream.
 import tzLookup from "tz-lookup-oss";
 import { asyncLocalStorage } from "@/Globals.js";
 import { maybeUpdateDeviceHistoryLocation } from "@api/V1/deviceHistoryUpdates.js";
+import logging from "@log";
+import logger from "@log";
 
 interface RecordingUploadSuppliedData {
   type: RecordingType;
@@ -539,7 +541,7 @@ export const uploadGenericRecording =
     // If it was the actual device uploading the recording, not a user
     // on the devices' behalf, set the lastConnectionTime for the device.
     const uploader = fromDevice ? "device" : "user";
-    const atTime = (request.params.atTime as unknown as Date) || new Date();
+    const atTime = (request.query["at-time"] as unknown as Date) || new Date();
     // NOTE: Get the real device - do we always have this here, or just the device.id?
     let uploadingUser: User;
     const recordingDeviceId: DeviceId =
@@ -891,7 +893,7 @@ export const uploadGenericRecording =
         // Alerts should only be sent for uploading devices.
         // FIXME: Alerts should really be added to a queue table, and processed out of band, rather than
         //  blocking the upload request.
-        await sendAlerts(recording.id);
+        await sendAlerts(recording);
       }
     }
     if (!response.headersSent) {
@@ -996,7 +998,6 @@ const assignGroupAndStationToRecording = async (
 };
 
 interface UpdateDevicePayload {
-  kind?: DeviceType;
   location?: LatLng;
   lastConnectionTime?: Fn;
   active?: boolean;
@@ -1008,26 +1009,7 @@ export const greaterDate = (
 ) => {
   return Sequelize.fn("GREATEST", Sequelize.col(column), date);
 };
-const mapRecordingTypeToDeviceKind = (
-  recordingType: RecordingType,
-  existingType: DeviceType,
-): DeviceType => {
-  switch (recordingType) {
-    case RecordingType.Audio: {
-      if (existingType === DeviceType.Thermal) {
-        return DeviceType.Hybrid;
-      }
-      return DeviceType.Audio;
-    }
-    case RecordingType.ThermalRaw:
-    default: {
-      if (existingType === DeviceType.Audio) {
-        return DeviceType.Hybrid;
-      }
-      return DeviceType.Thermal;
-    }
-  }
-};
+
 const maybeUpdateDeviceMetadata = async (
   recording: Recording,
   uploadingDevice: Device,
@@ -1078,14 +1060,6 @@ const maybeUpdateDeviceMetadata = async (
             then ST_GeomFromGeoJSON('{"type":"Point", "coordinates":[${recording.location.lng}, ${recording.location.lat}]}')
           else "location"
         end
-      `),
-      kind: Sequelize.literal(`
-        case "kind"
-          when '${DeviceType.Unknown}' then '${mapRecordingTypeToDeviceKind(recording.type, DeviceType.Unknown)}'
-          when '${DeviceType.Thermal}' then '${mapRecordingTypeToDeviceKind(recording.type, DeviceType.Thermal)}'
-          when '${DeviceType.Audio}' then '${mapRecordingTypeToDeviceKind(recording.type, DeviceType.Audio)}'
-          else "kind"
-        end  
       `),
     },
     {

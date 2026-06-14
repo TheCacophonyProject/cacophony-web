@@ -26,7 +26,7 @@ describe("Groups - get devices for group", () => {
           groupId: getCreds("gdGroup").id,
           active: true,
           admin: true,
-          type: DeviceType.Unknown,
+          type: DeviceType.Thermal,
           isHealthy: false,
         };
       },
@@ -47,7 +47,7 @@ describe("Groups - get devices for group", () => {
         groupId: getCreds("gdGroup").id,
         active: true,
         admin: true,
-        type: DeviceType.Unknown,
+        type: DeviceType.Thermal,
         isHealthy: false,
       };
     });
@@ -126,7 +126,7 @@ describe("Groups - get devices for group", () => {
         groupId: getCreds("gdGroup4").id,
         active: false,
         admin: true,
-        type: DeviceType.Unknown,
+        type: DeviceType.Thermal,
         isHealthy: true,
       };
     });

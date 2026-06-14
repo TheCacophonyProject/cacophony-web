@@ -68,7 +68,7 @@ export class Track extends ModelStaticCommon<Track> {
   declare maxFreqHz: CreationOptional<number>;
 
   declare data: NonAttribute<MinimalTrackRequestData>;
-  declare thumbnailScore: NonAttribute<number>;
+  declare thumbnailScore: CreationOptional<number>;
 
   declare getTrackTags: HasManyGetAssociationsMixin<TrackTag>;
 
@@ -404,6 +404,11 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
     updatedAt: DataTypes.DATE,
 
     archivedAt: DataTypes.DATE,
+    thumbnailScore: {
+      type: Sequelize.FLOAT,
+      allowNull: true,
+      defaultValue: null as number | null,
+    },
     startSeconds: {
       type: Sequelize.FLOAT,
       allowNull: false,

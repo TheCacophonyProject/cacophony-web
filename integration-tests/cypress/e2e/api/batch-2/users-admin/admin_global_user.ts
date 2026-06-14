@@ -25,7 +25,7 @@ describe("User: manage global access permissions", () => {
           deviceName: getTestName("gapCamera2"),
           groupName: getTestName("gapGroup2"),
           groupId: getCreds("gapGroup2").id,
-          type: DeviceType.Unknown,
+          type: DeviceType.Thermal,
           admin: true,
           active: true,
           isHealthy: false,
