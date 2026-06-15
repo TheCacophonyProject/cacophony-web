@@ -2364,6 +2364,8 @@ export default (app: Application, baseUrl: string) => {
    * </ul>
    * @apiQuery {String[]} [tagged-with] Animal track-tags you want to match on
    * @apiQuery {String[]} [labelled-with] Recording labels you want to filter on, e.g 'cool'
+   * @apiQuery {String} [from] Iso formatted date string for earliest recordingDateTime to query
+   * @apiQuery {String} [until] Iso formatted date string for latest recordingDateTime to query
    * @apiQuery {Number} [duration] Filter out recordings that are less than `duration`
    * @apiQuery {Boolean} [include-false-positives] Recordings consisting of only false-positives are filtered out by default; set this value to `true` to include them
    * @apiQuery {Boolean} [time-sensitive] We'd rather get back some results in a reasonable time, than get all the results we asked for.

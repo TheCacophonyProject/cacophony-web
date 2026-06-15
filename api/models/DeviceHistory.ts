@@ -38,7 +38,6 @@ import { Station } from "@models/Station.js";
 import { Device } from "@models/Device.js";
 import { Group } from "@models/Group.js";
 import { postgresLocationExactlyMatches } from "@api/V1/deviceHistoryUpdates.js";
-import logging from "@log";
 import { mergeSettings } from "@typedefs/client/utils.js";
 
 export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
@@ -84,23 +83,13 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
     const currentSettings: ApiDeviceHistorySettings =
       currentSettingsEntry?.settings || ({} as ApiDeviceHistorySettings);
     const prevSetBy = currentSettingsEntry.setBy;
-    // TODO: Here, we still want to know if the device *took* new settings from API.
-    //  Even when the API settings were unchanged, because the device settings were older.
     const {
       settings,
-      changed,
       syncChanged,
       shouldUpdateExistingDeviceHistoryEntry,
       shouldCreateNewDeviceHistoryEntry,
     } = mergeSettings(currentSettings, newSettings, setBy, prevSetBy);
-
-    const setByDevice = setBy === "automatic";
     // add to device history ledger.
-    logging.warning(
-      `Set by device? ${setByDevice}, changed ${changed}, ${currentSettings.synced}, should create new entry? ${shouldCreateNewDeviceHistoryEntry}, should update existing entry? ${shouldUpdateExistingDeviceHistoryEntry}`,
-    );
-    logging.warning(`New settings ${JSON.stringify(settings, null, 2)}`);
-
     if (shouldCreateNewDeviceHistoryEntry) {
       const currentEntry = structuredClone(
         currentSettingsEntry.get({ plain: true }),

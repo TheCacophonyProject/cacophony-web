@@ -5,8 +5,8 @@ module.exports = {
     async up(queryInterface, Sequelize) {
         for (const table of ["Recordings", "DeviceHistory", "Devices", "Stations"]) {
             await queryInterface.sequelize.query(`
-                ALTER TABLE "${table}" 
-                ALTER COLUMN location TYPE geometry(Geometry, 4326) 
+                ALTER TABLE "${table}"
+                ALTER COLUMN location TYPE geometry(Geometry, 4326)
                 USING ST_SetSRID(location, 4326);
             `);
         }
@@ -20,7 +20,7 @@ module.exports = {
         });
     },
 
-    async down(queryInterface, Sequelize) {
+    async down(queryInterface20260609   , Sequelize) {
         await queryInterface.addColumn("Devices", "heartbeat", Sequelize.DATE);
         await queryInterface.addColumn("Devices", "nextHeartbeat", Sequelize.DATE);
         await queryInterface.addColumn("Devices", "kind", {
