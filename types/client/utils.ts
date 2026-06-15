@@ -96,22 +96,23 @@ export const mergeSettings = (
       typeof incomingValue === "object" &&
       "updated" in incomingValue &&
       "updated" in currentSetting &&
-      incomingValue.updated &&
-      currentSetting.updated
+      (incomingValue as { updated?: unknown }).updated &&
+      (currentSetting as { updated?: unknown }).updated
     ) {
       const currentUpdated = new Date(
-        currentSetting.updated as IsoFormattedDateString,
+        (currentSetting as { updated: IsoFormattedDateString })
+          .updated as IsoFormattedDateString,
       );
       const incomingUpdated = new Date(
-        incomingValue.updated as IsoFormattedDateString,
+        (incomingValue as { updated: IsoFormattedDateString }).updated,
       );
 
       if (incomingUpdated > currentUpdated) {
         mergedSettings[key] = incomingValue;
         // Need to check equality without the updated keys.
-        const a = { ...incomingValue };
+        const a: { updated?: unknown } = { ...incomingValue };
         delete a.updated;
-        const b = { ...currentSetting };
+        const b: { updated?: unknown } = { ...currentSetting };
         delete b.updated;
 
         if (!shallowEqual(a, b)) {
@@ -147,11 +148,11 @@ export const mergeSettings = (
   mergedSettings.synced = setByDevice || !changed;
 
   const syncChanged = initiallySynced !== mergedSettings.synced;
-  console.log("device settings changed", changed);
-  console.log("non device settings changed", nonDeviceSettingsChanged);
-  console.log("changed", changed || nonDeviceSettingsChanged);
-  console.log("initially synced", initiallySynced);
-  console.log("sync changed", syncChanged);
+  // console.log("device settings changed", changed);
+  // console.log("non device settings changed", nonDeviceSettingsChanged);
+  // console.log("changed", changed || nonDeviceSettingsChanged);
+  // console.log("initially synced", initiallySynced);
+  // console.log("sync changed", syncChanged);
   const shouldCreateNewDeviceHistoryEntry =
     (changed && initiallySynced && !setByDevice) ||
     (changed && setByDevice && !initiallySynced) ||

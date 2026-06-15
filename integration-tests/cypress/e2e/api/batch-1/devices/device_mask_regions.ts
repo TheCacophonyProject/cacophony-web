@@ -276,60 +276,60 @@ describe("Device mask regions", () => {
     const user = "Caitlin";
     const group = "Caitlin-Team";
     const camera = "Caitlin-camera";
-    cy.testCreateUserGroupAndDevice(user, group, camera);
+    cy.testCreateUserGroupAndDevice(user, group, camera).then(() => {
+      const location = TestGetLocation(1);
+      cy.testUploadRecording(camera, {
+        ...location,
+        time: new Date(),
+        noTracks: true,
+      }).then(() => {
+        let params = new URLSearchParams();
+        params.append("at-time", new Date().toISOString());
+        params.append("type", "pov");
+        let queryString = params.toString();
 
-    const location = TestGetLocation(1);
-    cy.testUploadRecording(camera, {
-      ...location,
-      time: new Date(),
-      noTracks: true,
-    }).then(() => {
-      let params = new URLSearchParams();
-      params.append("at-time", new Date().toISOString());
-      params.append("type", "pov");
-      let queryString = params.toString();
+        const apiUrl = v1ApiPath(
+          `devices/${getCreds(camera).id}/reference-image`,
+        );
 
-      const apiUrl = v1ApiPath(
-        `devices/${getCreds(camera).id}/reference-image`,
-      );
+        // Add a reference image.
+        uploadFile(
+          `${apiUrl}?${queryString}`,
+          user,
+          "trailcam-image.jpeg",
+          "image/jpeg",
+          {},
+          "",
+          200,
+        );
 
-      // Add a reference image.
-      uploadFile(
-        `${apiUrl}?${queryString}`,
-        user,
-        "trailcam-image.jpeg",
-        "image/jpeg",
-        {},
-        "",
-        200,
-      );
+        cy.apiDeviceAddMaskRegions(user, camera, testRegions1);
+        const deviceSettingsApiUrl = v1ApiPath(
+          `devices/${getCreds(camera).id}/settings`,
+        );
 
-      cy.apiDeviceAddMaskRegions(user, camera, testRegions1);
-      const deviceSettingsApiUrl = v1ApiPath(
-        `devices/${getCreds(camera).id}/settings`,
-      );
+        params = new URLSearchParams();
+        params.append("at-time", new Date().toISOString());
+        queryString = params.toString();
 
-      params = new URLSearchParams();
-      params.append("at-time", new Date().toISOString());
-      queryString = params.toString();
-
-      makeAuthorizedRequest(
-        {
-          method: "GET",
-          url: `${deviceSettingsApiUrl}?${queryString}`,
-        },
-        user,
-      ).then(
-        (
-          response: Cypress.Response<{ settings: ApiDeviceHistorySettings }>,
-        ) => {
-          const settings = response.body.settings;
-          expect(settings).to.exist;
-          expect(settings.maskRegions).to.exist;
-          expect(settings.referenceImagePOV).to.exist;
-          expect(settings.referenceImagePOVFileSize).to.exist;
-        },
-      );
+        makeAuthorizedRequest(
+          {
+            method: "GET",
+            url: `${deviceSettingsApiUrl}?${queryString}`,
+          },
+          user,
+        ).then(
+          (
+            response: Cypress.Response<{ settings: ApiDeviceHistorySettings }>,
+          ) => {
+            const settings = response.body.settings;
+            expect(settings).to.exist;
+            expect(settings.maskRegions).to.exist;
+            expect(settings.referenceImagePOV).to.exist;
+            expect(settings.referenceImagePOVFileSize).to.exist;
+          },
+        );
+      });
     });
   });
 

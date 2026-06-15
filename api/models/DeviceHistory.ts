@@ -97,8 +97,9 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
     const setByDevice = setBy === "automatic";
     // add to device history ledger.
     logging.warning(
-      `Set by device? ${setByDevice}, changed ${changed}, ${currentSettings.synced}`,
+      `Set by device? ${setByDevice}, changed ${changed}, ${currentSettings.synced}, should create new entry? ${shouldCreateNewDeviceHistoryEntry}, should update existing entry? ${shouldUpdateExistingDeviceHistoryEntry}`,
     );
+    logging.warning(`New settings ${JSON.stringify(settings, null, 2)}`);
 
     if (shouldCreateNewDeviceHistoryEntry) {
       const currentEntry = structuredClone(

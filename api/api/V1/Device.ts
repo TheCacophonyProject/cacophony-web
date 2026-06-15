@@ -52,6 +52,7 @@ import {
   integerOfWithDefault,
   nameOf,
   nameOrIdOf,
+  optionalDateOf,
   stringOf,
   validNameOf,
   validPasswordOf,
@@ -271,10 +272,7 @@ export default function (app: Application, baseUrl: string) {
       idOf(body("saltId")).optional(),
 
       // NOTE: Primarily used in testing, allows us to backdate the creation of a device
-      body("fromDateTime")
-        .default(new Date().toISOString())
-        .isISO8601()
-        .toDate(),
+      optionalDateOf(body("fromDateTime")),
     ]),
     fetchUnauthorizedRequiredGroupByNameOrId(body("group")),
     checkDeviceNameIsUniqueInGroup(body(["devicename", "deviceName"])),
@@ -361,10 +359,7 @@ export default function (app: Application, baseUrl: string) {
       body("authorizedToken").exists(),
 
       // NOTE: Primarily used in testing, allows us to backdate the creation of a device
-      body("fromDateTime")
-        .default(new Date().toISOString())
-        .isISO8601()
-        .toDate(),
+      optionalDateOf(body("fromDateTime")),
     ]),
     fetchAuthorizedRequiredGroupByNameOrId(body("newGroup")),
     async (request: Request, response: Response, next: NextFunction) => {
@@ -1635,7 +1630,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUserOrDevice,
     validateFields([
       idOf(param("id")),
-      query("at-time").isISO8601().toDate().default(new Date()).optional(),
+      optionalDateOf(query("at-time")),
       booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
@@ -1685,7 +1680,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUserOrDevice,
     validateFields([
       idOf(param("id")),
-      query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
+      optionalDateOf(query("at-time")),
       booleanOf(query("only-active"), false),
       booleanOf(query("latest-synced"), false),
     ]),
@@ -1693,10 +1688,14 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       try {
         const atTime = request.query["at-time"] as unknown as Date;
-        // Always ask for one second from now, as sometimes during testing we get a later timestamp in the DB for the
-        // entry that's *just* been inserted.
-        atTime.setSeconds(atTime.getSeconds() + 1);
-        atTime.setMilliseconds(0);
+
+        logging.warning(
+          `get settings from ${new Date().toISOString()}, ${atTime.toISOString()}`,
+        );
+        // // Always ask for one second from now, as sometimes during testing we get a later timestamp in the DB for the
+        // // entry that's *just* been inserted.
+        // atTime.setSeconds(atTime.getSeconds() + 1);
+        // atTime.setMilliseconds(0);
         const device = response.locals.device as Device;
         let deviceSettings: DeviceHistory | null;
         if (request.query["latest-synced"]) {
@@ -1775,10 +1774,7 @@ export default function (app: Application, baseUrl: string) {
         .optional()
         .isIn(Object.values(DeviceType))
         .withMessage("Invalid device type"),
-      body("fromDateTime")
-        .default(new Date().toISOString())
-        .isISO8601()
-        .toDate(),
+      optionalDateOf(body("fromDateTime")),
       booleanOf(query("only-active"), false),
     ]),
     fetchAuthorizedRequiredDeviceById(param("id")),
@@ -2188,7 +2184,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("deviceId")),
-      query("from").isISO8601().toDate().default(new Date()),
+      optionalDateOf(query("from")),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
       booleanOf(query("only-active"), false),
     ]),
@@ -2226,7 +2222,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("deviceId")),
-      query("from").isISO8601().toDate().default(new Date()),
+      optionalDateOf(query("from")),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
       stringOf(query("type"))
         .isIn(Object.values(RecordingType))
@@ -2269,7 +2265,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("deviceId")),
-      query("from").isISO8601().toDate().default(new Date()),
+      optionalDateOf(query("from")),
       integerOfWithDefault(query("steps"), 7), // Default to 7 day window
       stringOf(query("interval"))
         .isIn(Object.values(TimeInterval))
@@ -2312,7 +2308,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("deviceId")),
-      query("from").isISO8601().toDate().default(new Date()),
+      optionalDateOf(query("from")),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
       booleanOf(query("only-active"), false),
     ]),

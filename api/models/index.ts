@@ -45,10 +45,12 @@ export class ModelStaticCommon<
 }
 let sequelize: Sequelize.Sequelize;
 let sequelizeInited = false;
-export const initSequelize = async () => {
+export const initSequelize = async (withoutLogging?: boolean) => {
   if (!sequelizeInited) {
     sequelizeInited = true;
     const Op = Sequelize.Op;
+    const enableLogging =
+      !IS_CI_ENV && (IS_DEBUG || true) && withoutLogging !== true;
 
     // If we're running in debug mode, we want to be able to see requestIds with every
     // logged DB call, so that we can match up all the logs for a single request.
@@ -117,29 +119,27 @@ export const initSequelize = async () => {
         ...poolOptions,
         // NOTE: Currently outputting slow queries and timings on production.
         // Send logs via winston
-        logging:
-          !IS_CI_ENV && (IS_DEBUG || true)
-            ? async (msg: string, timeMs: number) => {
-                // Sequelize seems to happen in its own async context?
-                const store = asyncLocalStorage.getStore();
-                let requestQueryCount =
-                  (store?.get("queryCount") as number) || 0;
-                requestQueryCount++;
-                store?.set("queryCount", requestQueryCount);
-                let requestQueryTime = (store?.get("queryTime") as number) || 0;
-                requestQueryTime += timeMs;
-                store?.set("queryTime", requestQueryTime);
-                if (timeMs > (config.database.slowQueryLogThresholdMs || 200)) {
-                  log.warning("Slow query: %s [%d]ms", msg, timeMs);
-                } else if (IS_DEBUG) {
-                  log.info(
-                    "QUERY %dms\n %s",
-                    timeMs,
-                    msg.replace("Executed (default): ", ""),
-                  );
-                }
+        logging: enableLogging
+          ? async (msg: string, timeMs: number) => {
+              // Sequelize seems to happen in its own async context?
+              const store = asyncLocalStorage.getStore();
+              let requestQueryCount = (store?.get("queryCount") as number) || 0;
+              requestQueryCount++;
+              store?.set("queryCount", requestQueryCount);
+              let requestQueryTime = (store?.get("queryTime") as number) || 0;
+              requestQueryTime += timeMs;
+              store?.set("queryTime", requestQueryTime);
+              if (timeMs > (config.database.slowQueryLogThresholdMs || 200)) {
+                log.warning("Slow query: %s [%d]ms", msg, timeMs);
+              } else if (IS_DEBUG) {
+                log.info(
+                  "QUERY %dms\n %s",
+                  timeMs,
+                  msg.replace("Executed (default): ", ""),
+                );
               }
-            : false,
+            }
+          : false,
       },
     );
     const models: Record<string, ModelStaticCommon<never>> = {};

@@ -62,7 +62,6 @@ export const loginSuperAdminUser = async (
       apiToken: userResponse.result.token,
     });
     const userId = userResponse.result.userData.id;
-    console.log(`Logged in test super admin user ${userHandle} with id ${userId}`);
     return {
       testId: userHandle,
       id: userId,

@@ -123,6 +123,19 @@ export const integerOf = (
 export const idOf = (field: ValidationChain): ValidationChain =>
   integerOf(field);
 
+export const optionalDateOf = (field: ValidationChain): ValidationChain =>
+  field
+    .default(new Date(0).toISOString())
+    .isISO8601()
+    .customSanitizer((value) => {
+      const date = new Date(value);
+      if (date.getFullYear() < 2010) {
+        // This was left as optional
+        return new Date();
+      }
+      return date;
+    });
+
 export const emailOf = (field: ValidationChain): ValidationChain =>
   field.isEmail().withMessage((val, meta) => {
     return `${meta.location}.${meta.path}: Expected email address, got '${val}'`;

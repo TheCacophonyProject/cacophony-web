@@ -17,7 +17,7 @@ import {
   MinimalTrackRequestData,
   TrackFramePosition,
 } from "@typedefs/api/fileProcessing.js";
-const sequelize = await initSequelize();
+const sequelize = await initSequelize(true);
 const HEIGHT = 120;
 const WIDTH = 160;
 const BOX_DIM = 10;
@@ -26,7 +26,9 @@ const NUM_ROWS = Math.ceil(HEIGHT / BOX_DIM);
 const NUM_COLUMNS = Math.ceil(WIDTH / BOX_DIM);
 
 async function main() {
-  if (config.cronScriptProcessingHostname !== os.hostname()) {
+  const args = process.argv.slice(2); // Remove the first two default paths
+  const forceRun = args.length !== 0 && args[0] === "--force";
+  if (config.cronScriptProcessingHostname !== os.hostname() && !forceRun) {
     return;
   }
   const devices = await getDeviceLocation();
@@ -49,10 +51,10 @@ async function main() {
       }
       let latestHumanTaggedRodentDateTime = 0;
       for (const rodentTaggedRecording of rodentQ) {
-        const tagTime = new Date(rodentTaggedRecording.updatedAt).getTime();
-        if (tagTime > latestHumanTaggedRodentDateTime) {
-          latestHumanTaggedRodentDateTime = tagTime;
-        }
+        latestHumanTaggedRodentDateTime = Math.max(
+          latestHumanTaggedRodentDateTime,
+          new Date(rodentTaggedRecording.updatedAt).getTime(),
+        );
       }
       // An assumption is made that the latest entry is still in the same location as the `earliestDateTimeAtLocation`
       const latestDeviceHistoryEntry =
@@ -97,26 +99,37 @@ async function main() {
             }
           }
         }
-
-        // TODO: Test syncing/merging
-        const thresholds = getThresholds(currentDeviceTrackData);
-        let setBy: DeviceHistorySetBy = "user";
-        if (latestDeviceHistoryEntry.settings?.synced) {
-          setBy = "automatic";
+        if (currentDeviceTrackData) {
+          const thresholds = getThresholds(currentDeviceTrackData);
+          let allNull = true;
+          outer: for (const threshold of thresholds) {
+            for (const item of threshold) {
+              if (item !== null) {
+                allNull = false;
+                break outer;
+              }
+            }
+          }
+          if (!allNull || forceRun) {
+            let setBy: DeviceHistorySetBy = "user";
+            if (latestDeviceHistoryEntry.settings?.synced) {
+              setBy = "automatic";
+            }
+            await DeviceHistory.updateDeviceSettings(
+              deviceId,
+              groupId,
+              {
+                ratThresh: {
+                  gridSize: BOX_DIM,
+                  version: latestHumanTaggedRodentDateTime, // This should be the date of the latest rodent data.
+                  thresholds,
+                },
+              },
+              setBy,
+              new Date(),
+            );
+          }
         }
-        await DeviceHistory.updateDeviceSettings(
-          deviceId,
-          groupId,
-          {
-            ratThresh: {
-              gridSize: BOX_DIM,
-              version: latestHumanTaggedRodentDateTime, // This should be the date of the latest rodent data.
-              thresholds,
-            },
-          },
-          setBy,
-          new Date(),
-        );
       }
     }
   }
@@ -131,7 +144,7 @@ function getThresholds(gridData: GridDataCell[][][]) {
   for (let y = 0; y < NUM_ROWS; y++) {
     for (let x = 0; x < NUM_COLUMNS; x++) {
       thresholds[y][x] = null;
-      const sorted = gridData[y][x].sort(function (a, b) {
+      const sorted = [...gridData[y][x]].sort(function (a, b) {
         return a.threshold - b.threshold;
       });
       let ratStart = null;
@@ -255,8 +268,9 @@ async function getDeviceLocation(): Promise<DeviceHistoryItem[]> {
       "DeviceHistory" dh
     where dh."location" is not null
     order by
-      dh."uuid" ,
-      dh."fromDateTime" desc
+      dh."uuid",
+      dh."fromDateTime" desc,
+      dh."id" desc
   `,
     { type: QueryTypes.SELECT },
   ) as Promise<DeviceHistoryItem[]>;
@@ -291,7 +305,7 @@ async function getRodentData(
     where
       r."DeviceId" = '${deviceId}'
       and ${locQuery}
-      and r."recordingDateTime" > '${fromDateTime.toISOString()}'
+      and r."recordingDateTime" >= '${fromDateTime.toISOString()}'
       and tt.automatic = false
       and tt.path <@'all.mammal.rodent'
     order by

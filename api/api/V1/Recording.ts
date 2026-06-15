@@ -89,6 +89,7 @@ import {
   booleanOf,
   idOf,
   integerOf,
+  optionalDateOf,
   stringOf,
   validNameOf,
 } from "../validation-middleware.js";
@@ -465,7 +466,7 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorisedDevice,
     validateFields([
       // NOTE: Primarily used in testing, allows us to backdate the last connection time of an uploading device
-      query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
+      optionalDateOf(query("at-time")),
     ]),
     uploadGenericRecordingFromDevice(),
   );

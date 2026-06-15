@@ -566,6 +566,14 @@ const submitProcessingTracksAndTags =
     ) as Promise<FetchResult<unknown>>;
   };
 
+const getAlgorithmId =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (algorithmJson: JsonDocument) => {
+    return api.post(authKey, `/api/v1/processing/algorithm`, {
+      algorithm: JSON.stringify(algorithmJson),
+    }) as Promise<FetchResult<{ algorithmId: number }>>;
+  };
+
 const finishProcessingJob =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (
@@ -641,6 +649,7 @@ export default (api: CacophonyApiClient) => {
     getOneRecordingForProcessing: getOneRecordingForProcessing(api),
     submitProcessingTracksAndTags: submitProcessingTracksAndTags(api),
     finishProcessingJob: finishProcessingJob(api),
+    getAlgorithmId: getAlgorithmId(api),
     withAuth: (authKey: TestHandle) => ({
       getRecordingById: getRecordingById(api, authKey),
       getRecordingWithSignedUrl: getRecordingWithSignedUrl(api, authKey),
@@ -682,6 +691,7 @@ export default (api: CacophonyApiClient) => {
         api,
         authKey,
       ),
+      getAlgorithmId: getAlgorithmId(api, authKey),
       finishProcessingJob: finishProcessingJob(api, authKey),
     }),
   };

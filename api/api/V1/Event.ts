@@ -40,6 +40,7 @@ import {
   exactlyOneOf,
   idOf,
   integerOf,
+  optionalDateOf,
 } from "../validation-middleware.js";
 import { ClientError, UnprocessableError } from "@api/customErrors.js";
 import type { DeviceId, IsoFormattedDateString } from "@typedefs/api/common.js";
@@ -311,7 +312,7 @@ const commonEventFields = [
     .custom(jsonSchemaOf(EventDatesSchema)),
 
   // NOTE: Primarily used in testing, allows us to backdate the lastConnectionTime of an uploading device
-  query("at-time").default(new Date().toISOString()).isISO8601().toDate(),
+  optionalDateOf(query("at-time")),
 ];
 
 export default function (app: Application, baseUrl: string) {

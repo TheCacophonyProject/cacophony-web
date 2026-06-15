@@ -18,6 +18,7 @@ import { TestApiImpl } from "@shared/client";
 import { DeviceEvent } from "@shared/api/event";
 import { AudioRecordingMode, RecordingProcessingState, RecordingType } from "@shared/api/consts";
 import { JwtToken } from "@typedefs/client/types";
+import { dockerExecNodeScript } from "@/helpers/docker-exec";
 
 test(`When setting up a new device (without modem) and setting a new location via sidekick - with internet connectivity - device location and history location should be immediately updated via sidekick.`, async () => {
   const initialDateTime = new Date("2026-05-01T10:00:00Z");
@@ -732,12 +733,14 @@ test("Devices moved to a different project should have new recordings attributed
   const newDeviceHandle = await test.step("Move the device to another project", async () => {
     sidekick.hostHotspot();
     sidekick.connectToDevice(device);
-    const adminUserCreds = (await TestApiImpl.getCredentials(project.getAdminUser().testId)) as JwtToken<UserId>;
+    const adminUserCreds = (await TestApiImpl.getCredentials(
+      project.getAdminUser().testId,
+    )) as JwtToken<UserId>;
     const newDeviceHandle = await sidekick.changeDeviceProject(
-        adminUserCreds,
-        secondProject.id,
-        addMinutes(initialDateTime, 5),
-        getDeviceTestName("moved device"),
+      adminUserCreds,
+      secondProject.id,
+      addMinutes(initialDateTime, 5),
+      getDeviceTestName("moved device"),
     );
     sidekick.disconnectFromDevice();
     sidekick.disconnectHotspot();
@@ -745,11 +748,21 @@ test("Devices moved to a different project should have new recordings attributed
   });
 
   await test.step("Check that moved device lastConnectionTime and last/earliest thermalRecordingTime are cleared", async () => {
-    const deviceResponse = await AdminUser.Devices.getDeviceById(newDeviceHandle.id) as ApiDeviceResponse;
+    const deviceResponse = (await AdminUser.Devices.getDeviceById(
+      newDeviceHandle.id,
+    )) as ApiDeviceResponse;
     expect(deviceResponse, "got device response").toBeTruthy();
-    expect(deviceResponse.lastConnectionTime, "Last connection time is the move time").toEqual(addMinutes(initialDateTime, 5).toISOString());
-    expect(deviceResponse.earliestThermalRecordingTime, "Earliest thermal recording time cleared").toBeUndefined();
-    expect(deviceResponse.lastThermalRecordingTime, "Last thermal recording time cleared").toBeUndefined();
+    expect(deviceResponse.lastConnectionTime, "Last connection time is the move time").toEqual(
+      addMinutes(initialDateTime, 5).toISOString(),
+    );
+    expect(
+      deviceResponse.earliestThermalRecordingTime,
+      "Earliest thermal recording time cleared",
+    ).toBeUndefined();
+    expect(
+      deviceResponse.lastThermalRecordingTime,
+      "Last thermal recording time cleared",
+    ).toBeUndefined();
   });
 
   await test.step("Create a recording for the moved device", async () => {
@@ -758,12 +771,14 @@ test("Devices moved to a different project should have new recordings attributed
 
   await test.step("Check that the recording device id is correct", async () => {
     const projectBRecordings =
-        (await AdminUser.Recordings.getRecordingsForLocationsAndDevicesInProject(
-            secondProject.id,
-        )) as ApiRecordingResponse[];
+      (await AdminUser.Recordings.getRecordingsForLocationsAndDevicesInProject(
+        secondProject.id,
+      )) as ApiRecordingResponse[];
     expect(projectBRecordings, "second project recordings exist").toBeTruthy();
     expect(projectBRecordings.length, "second project has one recording").toEqual(1);
-    expect(projectBRecordings[0].deviceId, "recording device id is correct").toEqual(newDeviceHandle.id);
+    expect(projectBRecordings[0].deviceId, "recording device id is correct").toEqual(
+      newDeviceHandle.id,
+    );
   });
 });
 
@@ -1374,12 +1389,17 @@ test("'Rat threshold' script running doesn't disrupt device settings", async ({ 
   const processingJobResponse = await SuperUser.Recordings.getOneRecordingForProcessing(
     RecordingType.ThermalRaw,
     [RecordingProcessingState.TrackAndAnalyse],
-      recordingId
+    recordingId,
   );
   expect(processingJobResponse, "got processing job").toBeTruthy();
   const processingJob = (processingJobResponse.result as { recording: ApiRecordingProcessingJob })
     .recording;
   expect(processingJob.id, "got correct recording").toEqual(recordingId);
+
+  const getAlgorithm = await SuperUser.Recordings.getAlgorithmId({ name: "Master" });
+  expect(getAlgorithm.success, "got algorithm").toBeTruthy();
+  const algorithmId = (getAlgorithm.result as { algorithmId: number }).algorithmId;
+
   const trackAndTagResponse = await SuperUser.Recordings.submitProcessingTracksAndTags(
     processingJob.id,
     [
@@ -1387,20 +1407,56 @@ test("'Rat threshold' script running doesn't disrupt device settings", async ({ 
         start_s: 0,
         end_s: 10,
         predictions: [{ confidence: 0.9, confident: true, tag: "rodent" }],
+        positions: [
+          {
+            x: 20,
+            y: 20,
+            width: 10,
+            height: 10,
+            blank: false,
+            mass: 30,
+          },
+        ],
       },
     ],
-    10,
+    algorithmId,
   );
-  console.log(trackAndTagResponse);
+  expect(trackAndTagResponse.success, "adding tracks and tags succeeded").toEqual(true);
   const finishedResponse = await SuperUser.Recordings.finishProcessingJob(
     processingJob.id,
     processingJob.jobKey,
     true,
     true,
   );
-  console.log(finishedResponse);
-  // Add some recordings with tracks, add rat and mouse tags.
-  // Make sure ratthresh script adds some data to settings.
+  expect(finishedResponse.success, "moved recording to finished processing state").toEqual(true);
+
+  const recording = (await AdminUser.Recordings.getRecordingById(
+    recordingId,
+  )) as ApiRecordingResponse;
+  expect(recording, "got recording").toBeTruthy();
+  expect(recording.tracks.length, "recording has one track").toEqual(1);
+  expect(recording.tracks[0].tags.length, "track has one trackTag").toEqual(1);
+  expect(recording.tracks[0].tags[0].what, "tagged with rodent").toEqual("rodent");
+
+  // Add human tag of rodent so that this can actually get picked up by the script.
+  const addHumanTrackTagResponse = await AdminUser.Recordings.replaceTrackTag(
+    { what: "rodent", confidence: 0.9 },
+    recordingId,
+    recording.tracks[0].id,
+  );
+  expect(addHumanTrackTagResponse.success, "added trackTag").toBeTruthy();
+
+  const _scriptResult = await dockerExecNodeScript("ratthreshold.js", ["--force"]);
+  const settings = await AdminUser.Devices.getSettingsForDevice(deviceHandle.id);
+  expect(settings, "got settings").toBeTruthy();
+  expect(
+    (settings.result as { settings: ApiDeviceHistorySettings }).settings.ratThresh,
+    "has rat threshold",
+  ).toBeDefined();
+});
+
+test("When there are settings on device but no settings in API, device sync should transfer the settings from device to api", async () => {
+  // TODO
 });
 
 test("Backdating a new reference image to apply to earlier recordings in that location", async () => {

@@ -17,6 +17,7 @@ import {
   booleanOf,
   idOf,
   integerOfWithDefault,
+  optionalDateOf,
 } from "../validation-middleware.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
 import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json" with { type: "json" };
@@ -571,7 +572,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("stationId")),
-      query("from").isISO8601().toDate().default(new Date()),
+      optionalDateOf(query("from")),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
       query("only-active").optional().isBoolean().toBoolean(),
     ]),
