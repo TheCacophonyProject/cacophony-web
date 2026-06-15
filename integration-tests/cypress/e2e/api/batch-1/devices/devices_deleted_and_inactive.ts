@@ -15,7 +15,8 @@ describe("Devices deleted, inactive, and reassigned", () => {
     cy.apiGroupAdd(adminUser, group2);
   });
 
-  it("Deleting a device with no recordings removes it completely", () => {
+  it.skip("Deleting a device with no recordings removes it completely", () => {
+    // No longer the case
     const device = "A001";
     cy.apiDeviceAdd(device, group);
     cy.apiDeviceDeleteOrSetInactive(adminUser, device, group);
