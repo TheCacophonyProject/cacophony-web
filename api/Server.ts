@@ -314,7 +314,10 @@ const grafanaLabelRestart = async () => {
 
           if (safeUserAgent.startsWith("Go-http-client")) {
             userAgentString = "Thermal camera";
-          } else if (safeUserAgent.startsWith("Ktor")) {
+          } else if (
+            safeUserAgent.startsWith("Ktor") ||
+            safeUserAgent.startsWith("Dalvik")
+          ) {
             userAgentString = "Sidekick";
           } else if (safeUserAgent.startsWith("Mozilla")) {
             // Check for mobile browser or web browser

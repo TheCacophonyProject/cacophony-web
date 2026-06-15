@@ -2162,3 +2162,42 @@ test("Adding a reference image on top of already synced settings should not chan
     expect((settings.result as { settings: ApiDeviceHistorySettings }).settings.synced).toBe(true);
   }
 });
+
+test("Should be able to submit events for inactive devices via the /api/v1/events/device/3747 endpoint", async () => {
+  // FIXME: !!! This doesn't seem to be working correctly, despite a default "only-active" = false param.
+  const initialDateTime = new Date("2026-01-01T00:00:00Z");
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const deviceHandle = project.getDevice();
+  const userHandle = project.getAdminUser();
+  const AdminUser = project.api();
+  const eventAddedResponse = await AdminUser.Devices.submitEventsOnBehalfOfDevice(deviceHandle.id, {
+    description: {
+      type: "foo",
+      details: {bar: true}
+    },
+    dateTimes: [addMinutes(initialDateTime, 2).toISOString(),]
+  });
+  expect(eventAddedResponse, "added event").toBeTruthy();
+  const recordingId = await uploadRecording(userHandle, {
+    recordingDateTime: addMinutes(initialDateTime, 3),
+    location: { ...project.locationBase },
+    file: new ArrayBuffer(400),
+    deviceId: deviceHandle.id,
+    type: RecordingType.ThermalRaw,
+  });
+  await AdminUser.Devices.deleteDevice(project.projectHandle.id, deviceHandle.id);
+
+  const device = await AdminUser.Devices.getDeviceById(deviceHandle.id) as ApiDeviceResponse;
+  expect(device.active, "device is inactive").toBe(false);
+
+  const eventAddedResponse2 = await AdminUser.Devices.submitEventsOnBehalfOfDevice(deviceHandle.id, {
+    description: {
+      type: "foo",
+      details: {bar: true}
+    },
+    dateTimes: [addMinutes(initialDateTime, 4).toISOString(),]
+  });
+  console.log(eventAddedResponse2);
+
+
+});

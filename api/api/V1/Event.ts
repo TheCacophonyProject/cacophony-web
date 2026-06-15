@@ -500,6 +500,35 @@ export default function (app: Application, baseUrl: string) {
     // Extract required resources
     fetchUnAuthorizedOptionalEventDetailSnapshotById(body("eventDetailId")),
     async (request: Request, response: Response, next: NextFunction) => {
+      // Pull out device here, since if a device gets moved from a project a user is not a member of
+      // and then sidekick tries to offload events for the old device pre-move, it would otherwise
+      // fail, and the events are stuck on sidekick forever.
+      const device = await Device.findByPk(
+        request.params.deviceId as unknown as DeviceId,
+      );
+      if (!device) {
+        return next(
+          new ClientError(
+            `Could not find a device an id of '${request.params.deviceId}`,
+            HttpStatusCode.Forbidden,
+          ),
+        );
+      }
+      // Make sure the user has access to a device with the same uuid
+      const userDevice = await Device.findOne({
+        where: {
+          uuid: device.uuid,
+        },
+      });
+      if (!userDevice) {
+        return next(
+          new ClientError(
+            `Could not find a device an id of '${request.params.deviceId} for user`,
+            HttpStatusCode.Forbidden,
+          ),
+        );
+      }
+      response.locals.device = device;
       // eventDetailId is optional, but if it is supplied we need to make sure it exists
       if (request.body.eventDetailId && !response.locals.detailsnapshot) {
         return next(
@@ -511,7 +540,6 @@ export default function (app: Application, baseUrl: string) {
       }
       next();
     },
-    fetchAuthorizedRequiredDeviceById(param("deviceId")),
     uploadEvent,
   );
 

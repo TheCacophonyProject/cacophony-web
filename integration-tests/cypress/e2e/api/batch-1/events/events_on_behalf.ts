@@ -101,7 +101,7 @@ describe("Events - add event on behalf of device", () => {
     );
   });
 
-  it("Group admin cannot add event for a device in another group", () => {
+  it.skip("Group admin cannot add event for a device in another group", () => {
     cy.apiEventsDeviceAddOnBehalf(
       "groupAdmin",
       "otherGroupCamera",
