@@ -677,7 +677,7 @@ test(`Moving a device between projects`, async () => {
     expect(projectBRecordings.length, "second project has one recording").toEqual(1);
   });
 
-  await test.step(" Check that each event was attributed to the correct device", async () => {
+  await test.step("Check that each event was attributed to the correct device", async () => {
     const eventsAResponse = await AdminUser.Devices.getLatestEventsByDeviceId(deviceHandle.id);
     expect(eventsAResponse.success).toBe(true);
     const eventsA = (eventsAResponse.result as { rows: DeviceEvent[] }).rows;
@@ -711,6 +711,59 @@ test(`Moving a device between projects`, async () => {
     expect(deviceHistoryB[0].setBy, "earliest entry for moved device is 're-register'").toEqual(
       "re-register",
     );
+  });
+});
+
+test("Devices moved to a different project should have new recordings attributed correctly", async () => {
+  const initialDateTime = new Date("2026-05-01T10:00:00Z");
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const AdminUser = project.api();
+  const secondProject = await createProject("second project", project.getAdminUser());
+  const deviceHandle = project.getDevice();
+  const sidekick = new SidekickSim(project.getAdminUser());
+  const device = new DeviceSim(deviceHandle, true);
+  const location = { ...project.locationBase };
+  device.updateLocation(location, addMinutes(initialDateTime, 1));
+
+  await test.step("Create a recording for the device", async () => {
+    await device.makeThermalRecording(new ArrayBuffer(100), addMinutes(initialDateTime, 2));
+  });
+
+  const newDeviceHandle = await test.step("Move the device to another project", async () => {
+    sidekick.hostHotspot();
+    sidekick.connectToDevice(device);
+    const adminUserCreds = (await TestApiImpl.getCredentials(project.getAdminUser().testId)) as JwtToken<UserId>;
+    const newDeviceHandle = await sidekick.changeDeviceProject(
+        adminUserCreds,
+        secondProject.id,
+        addMinutes(initialDateTime, 5),
+        getDeviceTestName("moved device"),
+    );
+    sidekick.disconnectFromDevice();
+    sidekick.disconnectHotspot();
+    return newDeviceHandle;
+  });
+
+  await test.step("Check that moved device lastConnectionTime and last/earliest thermalRecordingTime are cleared", async () => {
+    const deviceResponse = await AdminUser.Devices.getDeviceById(newDeviceHandle.id) as ApiDeviceResponse;
+    expect(deviceResponse, "got device response").toBeTruthy();
+    expect(deviceResponse.lastConnectionTime, "Last connection time is the move time").toEqual(addMinutes(initialDateTime, 5).toISOString());
+    expect(deviceResponse.earliestThermalRecordingTime, "Earliest thermal recording time cleared").toBeUndefined();
+    expect(deviceResponse.lastThermalRecordingTime, "Last thermal recording time cleared").toBeUndefined();
+  });
+
+  await test.step("Create a recording for the moved device", async () => {
+    await device.makeThermalRecording(new ArrayBuffer(100), addMinutes(initialDateTime, 7));
+  });
+
+  await test.step("Check that the recording device id is correct", async () => {
+    const projectBRecordings =
+        (await AdminUser.Recordings.getRecordingsForLocationsAndDevicesInProject(
+            secondProject.id,
+        )) as ApiRecordingResponse[];
+    expect(projectBRecordings, "second project recordings exist").toBeTruthy();
+    expect(projectBRecordings.length, "second project has one recording").toEqual(1);
+    expect(projectBRecordings[0].deviceId, "recording device id is correct").toEqual(newDeviceHandle.id);
   });
 });
 
