@@ -429,13 +429,16 @@ export default function (app: Application, baseUrl: string) {
   app.post(
     `${apiUrl}/reregister`,
     extractJwtAuthorisedDevice,
+    // NOTE: Re-register only works on currently active devices
     validateFields([
-      nameOf(body("newGroup")),
+      nameOrIdOf(body("newGroup")),
       validNameOf(body("newName")),
       validPasswordOf(body("newPassword")),
-      // NOTE: Re-register only works on currently active devices
+      // NOTE: Primarily used in testing, allows us to backdate the creation of a device
+      optionalDateOf(body("fromDateTime")),
     ]),
     // FIXME: Should you really be allowed to move a device into a group you aren't an admin of?
+    //  At least you need physical access to the device to do this.
     fetchUnauthorizedRequiredGroupByNameOrId(body("newGroup")),
     async function (request: Request, response: Response, next: NextFunction) {
       const requestDevice: Device = await Device.findByPk(
@@ -485,42 +488,22 @@ export default function (app: Application, baseUrl: string) {
     fetchAdminAuthorizedRequiredGroupByNameOrId(body("group")),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (_request: Request, response: Response, _next: NextFunction) => {
+      // NOTE: We don't actually delete the device - doing that proved problematic,
+      // since there can still be un-uploaded recordings and events for the device
+      // on a re-registered device that is the same underlying hardware unit.
+
       // Sanity check that device belongs to supplied project.
       if (response.locals.device.GroupId !== response.locals.group.id) {
         throw new Error("Device doesn't belong to supplied group");
       }
-
-      // FIXME: There could still be recordings sitting on a device un-uploaded,
-      //  so deleting a device is problematic.  Maybe we should only allow setting it inactive?
-
-      // Get the recording count for the device.
       const deviceId = response.locals.device.id;
-      const hasRecording = await Recording.findOne({
-        where: {
-          DeviceId: deviceId,
-          GroupId: response.locals.group.id,
-        },
+      logging.info("Setting device %s with recordings inactive", deviceId);
+      await response.locals.device.update({
+        active: false,
       });
-      if (hasRecording) {
-        logging.info("Setting device %s with recordings inactive", deviceId);
-        await response.locals.device.update({
-          active: false,
-        });
-        return successResponse(response, "Set device inactive", {
-          id: deviceId,
-        });
-      } else {
-        logging.info("Deleting device %s with no recordings", deviceId);
-        await DeviceHistory.destroy({
-          where: {
-            uuid: response.locals.device.uuid,
-          },
-        });
-        await response.locals.device.destroy();
-        return successResponse(response, "Removed device", {
-          id: deviceId,
-        });
-      }
+      return successResponse(response, "Set device inactive", {
+        id: deviceId,
+      });
     },
   );
 

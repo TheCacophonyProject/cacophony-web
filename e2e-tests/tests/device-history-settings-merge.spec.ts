@@ -420,7 +420,7 @@ test("Adding ratthresh to already synced settings should leave synced", async ()
 });
 
 test("Changing ratthresh should be detected?", async () => {
-  // TODO
+  // TODO, detect deep object changes in mergeSettings
 });
 
 test("Changing mask-regions on synced should set unsynced", async () => {

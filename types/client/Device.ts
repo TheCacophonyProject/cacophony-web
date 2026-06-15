@@ -803,7 +803,7 @@ const registerDevice =
     >;
   };
 
-const reRegisterDevice =
+const reRegisterDeviceWithAdminAuthorization =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (
     adminUserAuthJWT: JwtToken<UserId>,
@@ -845,6 +845,34 @@ const reRegisterDevice =
       "/api/v1/devices/reregister-authorized",
       payload,
     ) as Promise<FetchResult<LoggedInDeviceCredentials>>;
+  };
+
+const reRegisterDeviceWithoutAuthorization =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    projectNameOrId: string | ProjectId,
+    newDeviceName: string,
+    newDevicePassword: string,
+    initialDateTime?: Date,
+  ) => {
+    const payload: {
+      newName?: string;
+      newGroup?: string | ProjectId;
+      newPassword?: string;
+      fromDateTime?: IsoFormattedDateString;
+    } = {
+      newGroup: projectNameOrId,
+      newName: newDeviceName,
+      newPassword: newDevicePassword,
+    };
+
+    if (initialDateTime) {
+      payload.fromDateTime = initialDateTime.toISOString();
+    }
+
+    return api.post(authKey, "/api/v1/devices/reregister", payload) as Promise<
+      FetchResult<LoggedInDeviceCredentials>
+    >;
   };
 
 const submitEventsFromDevice =
@@ -926,7 +954,10 @@ export default (api: CacophonyApiClient) => {
     getLastKnownDeviceBatteryLevel: getLastKnownDeviceBatteryLevel(api),
     getDeviceModel: getDeviceModel(api),
     registerDevice: registerDevice(api),
-    reRegisterDevice: reRegisterDevice(api),
+    reRegisterDeviceWithAdminAuthorization:
+      reRegisterDeviceWithAdminAuthorization(api),
+    reRegisterDeviceWithoutAuthorization:
+      reRegisterDeviceWithoutAuthorization(api),
     getDeviceHistoryInTest: getDeviceHistoryInTest(api),
     submitEventsFromDevice: submitEventsFromDevice(api),
     submitEventsOnBehalfOfDevice: submitEventsOnBehalfOfDevice(api),
@@ -993,7 +1024,10 @@ export default (api: CacophonyApiClient) => {
       ),
       getDeviceModel: getDeviceModel(api, authKey),
       registerDevice: registerDevice(api, authKey),
-      reRegisterDevice: reRegisterDevice(api, authKey),
+      reRegisterDeviceWithAdminAuthorization:
+        reRegisterDeviceWithAdminAuthorization(api, authKey),
+      reRegisterDeviceWithoutAuthorization:
+        reRegisterDeviceWithoutAuthorization(api, authKey),
       getDeviceHistoryInTest: getDeviceHistoryInTest(api, authKey),
       submitEventsFromDevice: submitEventsFromDevice(api, authKey),
       submitEventsOnBehalfOfDevice: submitEventsOnBehalfOfDevice(api, authKey),

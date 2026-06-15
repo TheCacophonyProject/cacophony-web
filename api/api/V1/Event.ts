@@ -47,13 +47,14 @@ import type { DeviceId, IsoFormattedDateString } from "@typedefs/api/common.js";
 import { EventEnv, HttpStatusCode } from "@typedefs/api/consts.js";
 import { isLatLng } from "@models/util/validation.js";
 import { streamS3Object } from "@api/V1/signedUrl.js";
-import { QueryTypes } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 import { Device } from "@models/Device.js";
 import { Event } from "@models/Event.js";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
 import { maybeUpdateDeviceHistoryLocation } from "@api/V1/deviceHistoryUpdates.js";
 import { DeviceHistory } from "@/models/DeviceHistory.js";
 import { greaterDate } from "@api/fileUploaders/uploadGenericRecording.js";
+import { GroupUsers } from "@models/GroupUsers.js";
 
 const sequelize = await initSequelize();
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
@@ -515,19 +516,30 @@ export default function (app: Application, baseUrl: string) {
         );
       }
       // Make sure the user has access to a device with the same uuid
+      const user = response.locals.requestUser;
+      const userGroups = (
+        await GroupUsers.findAll({
+          where: {
+            UserId: user.id,
+            removedAt: null,
+          },
+        })
+      ).map((g) => g.GroupId);
       const userDevice = await Device.findOne({
         where: {
           uuid: device.uuid,
+          GroupId: { [Op.in]: userGroups },
         },
       });
       if (!userDevice) {
         return next(
           new ClientError(
-            `Could not find a device an id of '${request.params.deviceId} for user`,
+            `Could not find a device an id of ${request.params.deviceId} for user`,
             HttpStatusCode.Forbidden,
           ),
         );
       }
+
       response.locals.device = device;
       // eventDetailId is optional, but if it is supplied we need to make sure it exists
       if (request.body.eventDetailId && !response.locals.detailsnapshot) {

@@ -253,7 +253,7 @@ export class DeviceSim {
     return await test.step(`Re-register device ${newDeviceName} into project ${projectNameOrId}`, async () => {
       const deviceCredsResponse = await TestApiImpl.Devices.withAuth(
         this.deviceHandle.testId,
-      ).reRegisterDevice(
+      ).reRegisterDeviceWithAdminAuthorization(
         userAuthToken,
         projectNameOrId,
         fromDateTime,

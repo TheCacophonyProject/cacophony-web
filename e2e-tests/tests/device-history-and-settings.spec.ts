@@ -17,7 +17,7 @@ import { ApiRecordingProcessingJob, ApiRecordingResponse } from "@shared/api/rec
 import { TestApiImpl } from "@shared/client";
 import { DeviceEvent } from "@shared/api/event";
 import { AudioRecordingMode, RecordingProcessingState, RecordingType } from "@shared/api/consts";
-import { JwtToken } from "@typedefs/client/types";
+import { JwtToken, LoggedInDeviceCredentials } from "@typedefs/client/types";
 import { dockerExecNodeScript } from "@/helpers/docker-exec";
 
 test(`When setting up a new device (without modem) and setting a new location via sidekick - with internet connectivity - device location and history location should be immediately updated via sidekick.`, async () => {
@@ -2163,41 +2163,59 @@ test("Adding a reference image on top of already synced settings should not chan
   }
 });
 
-test("Should be able to submit events for inactive devices via the /api/v1/events/device/3747 endpoint", async () => {
-  // FIXME: !!! This doesn't seem to be working correctly, despite a default "only-active" = false param.
+test("Should be able to submit events on behalf of inactive devices, so long as the user has access to the same device via device uuid", async () => {
   const initialDateTime = new Date("2026-01-01T00:00:00Z");
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   const deviceHandle = project.getDevice();
-  const userHandle = project.getAdminUser();
   const AdminUser = project.api();
-  const eventAddedResponse = await AdminUser.Devices.submitEventsOnBehalfOfDevice(deviceHandle.id, {
-    description: {
-      type: "foo",
-      details: {bar: true}
-    },
-    dateTimes: [addMinutes(initialDateTime, 2).toISOString(),]
-  });
-  expect(eventAddedResponse, "added event").toBeTruthy();
-  const recordingId = await uploadRecording(userHandle, {
-    recordingDateTime: addMinutes(initialDateTime, 3),
-    location: { ...project.locationBase },
-    file: new ArrayBuffer(400),
-    deviceId: deviceHandle.id,
-    type: RecordingType.ThermalRaw,
-  });
-  await AdminUser.Devices.deleteDevice(project.projectHandle.id, deviceHandle.id);
+  {
+    const eventAddedResponse = await AdminUser.Devices.submitEventsOnBehalfOfDevice(deviceHandle.id, {
+      description: {
+        type: "foo",
+        details: {bar: true},
+      },
+      dateTimes: [addMinutes(initialDateTime, 2).toISOString()],
+    });
+    expect(eventAddedResponse, "added event").toBeTruthy();
+  }
 
-  const device = await AdminUser.Devices.getDeviceById(deviceHandle.id) as ApiDeviceResponse;
-  expect(device.active, "device is inactive").toBe(false);
+  const newDeviceName = getDeviceTestName("moved-device");
+  const project2 = await createProjectWithUserAndDevice({ initialDateTime });
+  const AdminUser2 = project2.api();
+  const movedResponse = (await TestApiImpl.Devices.withAuth(
+    deviceHandle.testId,
+  ).reRegisterDeviceWithoutAuthorization(project2.projectHandle.id, newDeviceName, "password", addMinutes(initialDateTime, 5))) as {
+    result: LoggedInDeviceCredentials;
+    success: boolean;
+  };
+  expect(movedResponse.success, "moved device").toBe(true);
+  TestApiImpl.registerCredentials(newDeviceName, movedResponse.result);
+  const deviceId = movedResponse.result.id;
+  const movedDeviceHandle = {
+    id: deviceId,
+    testId: newDeviceName,
+    type: "device",
+  };
 
-  const eventAddedResponse2 = await AdminUser.Devices.submitEventsOnBehalfOfDevice(deviceHandle.id, {
-    description: {
-      type: "foo",
-      details: {bar: true}
-    },
-    dateTimes: [addMinutes(initialDateTime, 4).toISOString(),]
-  });
-  console.log(eventAddedResponse2);
+  const device = (await AdminUser.Devices.getDeviceById(deviceHandle.id)) as ApiDeviceResponse;
+  expect(device.active, "moved device is inactive").toBe(false);
 
+  const movedDevice = await TestApiImpl.Devices.withAuth(project2.getAdminUser().testId).getDeviceById(movedDeviceHandle.id) as ApiDeviceResponse;
+  expect(movedDevice.active, "re-registered device is active").toBe(true);
 
+  {
+    // Use the endpoint containing the moved device id to submit on behalf of moved device by admin user from
+    // project where the device was re-registered
+    const eventAddedResponse = await AdminUser2.Devices.submitEventsOnBehalfOfDevice(
+        deviceHandle.id,
+        {
+          description: {
+            type: "foo",
+            details: {bar: true},
+          },
+          dateTimes: [addMinutes(initialDateTime, 4).toISOString()],
+        },
+    );
+    expect(eventAddedResponse, "added event").toBeTruthy();
+  }
 });
