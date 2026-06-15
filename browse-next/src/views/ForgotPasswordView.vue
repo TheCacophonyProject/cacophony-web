@@ -75,7 +75,7 @@ const resetPassword = async () => {
             </p>
             <p class="mb-0">
               Check your spam folder if you don't receive an email within 5
-              minutes.
+              minutes. Check the email address you entered for any typos.
             </p>
           </div>
         </div>
