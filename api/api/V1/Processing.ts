@@ -318,6 +318,7 @@ export default function (app: Application, baseUrl: string) {
             complete &&
             prevState !== RecordingProcessingState.Reprocess &&
             recording.uploader === "device" &&
+            recording.type === RecordingType.ThermalRaw &&
             recordingAgeMs < twentyFourHoursMs
           ) {
             // FIXME: Maybe since we *just* created thumbnails, we don't need to pull them out again to send the alert

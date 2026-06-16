@@ -176,5 +176,9 @@ export const locationsAreExactlyEqual = (
   lngA = `${lngAPieces[0]}.${lngAPieces[1].padEnd(6, "0").slice(0, 6)}`;
   const lngBPieces = lngB.split(".");
   lngB = `${lngBPieces[0]}.${lngBPieces[1].padEnd(6, "0").slice(0, 6)}`;
-  return latA === latB && lngA === lngB;
+  const tenCm = 0.000001;
+  return (
+    Math.abs(Number(latA) - Number(latB)) < tenCm &&
+    Math.abs(Number(lngA) - Number(lngB)) < tenCm
+  );
 };

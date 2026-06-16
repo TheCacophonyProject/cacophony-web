@@ -1,7 +1,6 @@
 import log from "@log";
 import { BadRequestError, UnprocessableError } from "@api/customErrors.js";
 import {
-  DeviceType,
   RecordingProcessingState,
   RecordingType,
 } from "@typedefs/api/consts.js";
@@ -54,8 +53,6 @@ import { ByteLengthTruncateStream } from "pechkin/dist/ByteLengthTruncateStream.
 import tzLookup from "tz-lookup-oss";
 import { asyncLocalStorage } from "@/Globals.js";
 import { maybeUpdateDeviceHistoryLocation } from "@api/V1/deviceHistoryUpdates.js";
-import logging from "@log";
-import logger from "@log";
 
 interface RecordingUploadSuppliedData {
   type: RecordingType;
@@ -885,11 +882,16 @@ export const uploadGenericRecording =
     const recordingHasFinishedProcessing =
       recording.processingState === RecordingProcessingState.Finished;
     if (recordingHasFinishedProcessing) {
-      // NOTE: Should only occur during testing.
+      // NOTE: Should only occur during testing?  Do devices with AI on board submit tracks with tags
+      // and set the finished state?
       const twentyFourHoursMs = 24 * 60 * 60 * 1000;
       const recordingAgeMs =
         new Date().getTime() - recording.recordingDateTime.getTime();
-      if (uploader === "device" && recordingAgeMs < twentyFourHoursMs) {
+      if (
+        uploader === "device" &&
+        recording.type === RecordingType.ThermalRaw &&
+        recordingAgeMs < twentyFourHoursMs
+      ) {
         // Alerts should only be sent for uploading devices.
         // FIXME: Alerts should really be added to a queue table, and processed out of band, rather than
         //  blocking the upload request.

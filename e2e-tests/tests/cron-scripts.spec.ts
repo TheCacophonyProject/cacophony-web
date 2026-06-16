@@ -114,3 +114,7 @@ test("'Rat threshold' script runs and doesn't disrupt device settings", async ({
     "has rat threshold",
   ).toBeDefined();
 });
+
+test("Make sure subsequent versions of ratThresh update the existing one in settings", async () => {
+  // TODO
+});

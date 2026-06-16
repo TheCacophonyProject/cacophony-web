@@ -199,6 +199,98 @@ test("Two recordings with different precisions of lat/lng location should resolv
   });
 });
 
+test("Two recordings with different *rounded* precisions of lat/lng location should resolve to the same DeviceHistory entry", async ({
+  smallCptv,
+}) => {
+  const initialDateTime = new Date("2026-05-01T10:00:00Z");
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const deviceHandle = project.getDevice();
+  const AdminUser = project.api();
+  const locationA = { lat: -36.360367, lng: 174.81726 };
+  const locationB = { lat: -36.36036682128906, lng: 174.8172607421875 };
+  const recordingDateTimeA = addMinutes(initialDateTime, 2);
+  const recordingDateTimeB = addMinutes(initialDateTime, 1);
+
+  await test.step("Add recording with high precision lat/lng location", async () => {
+    await uploadThermalRecordingFromDevice({
+      recordingDateTime: recordingDateTimeA,
+      location: locationA,
+      file: smallCptv,
+      deviceHandle,
+    });
+  });
+
+  await test.step("Check that device has location assigned, device activity bookkeeping is correct", async () => {
+    const device = await AdminUser.Devices.getDeviceById(deviceHandle.id);
+    expect(device, "device exists").toBeTruthy();
+    if (device) {
+      expect(device.location, "device location is correct").toStrictEqual(locationA);
+      expect(
+        device.lastThermalRecordingTime,
+        "device bookkeeping for `lastThermalRecordingTime` is correct",
+      ).toEqual(recordingDateTimeA.toISOString());
+      expect(
+        device.earliestThermalRecordingTime,
+        "device bookkeeping for `earliestThermalRecordingTime` is correct",
+      ).toEqual(recordingDateTimeA.toISOString());
+    }
+    const deviceHistory = await AdminUser.Devices.getDeviceHistoryInTest(deviceHandle.id);
+    expect(deviceHistory, "device history exists").toBeTruthy();
+    if (deviceHistory) {
+      expect(deviceHistory.length, "device history has entries").toBeGreaterThan(0);
+      const latestHistoryEntry = deviceHistory[deviceHistory.length - 1];
+      expect(
+        latestHistoryEntry.location,
+        "device history entry has correct location",
+      ).toStrictEqual(locationA);
+      expect(
+        latestHistoryEntry.fromDateTime,
+        "device history entry starts at correct time",
+      ).toEqual(recordingDateTimeA.toISOString());
+    }
+  });
+
+  await test.step("Add another recording from an *earlier* time, with truncated location precision", async () => {
+    await uploadThermalRecordingFromDevice({
+      recordingDateTime: recordingDateTimeB,
+      location: locationB,
+      file: smallCptv,
+      deviceHandle,
+    });
+  });
+
+  await test.step("Check device still has first location set", async () => {
+    const device = await AdminUser.Devices.getDeviceById(deviceHandle.id);
+    expect(device, "device exists").toBeTruthy();
+    if (device) {
+      expect(device.location, "device location is correct").toStrictEqual(locationA);
+      expect(
+        device.lastThermalRecordingTime,
+        "device bookkeeping for `lastThermalRecordingTime` is correct",
+      ).toEqual(recordingDateTimeA.toISOString());
+      expect(
+        device.earliestThermalRecordingTime,
+        "device bookkeeping for `earliestThermalRecordingTime` is correct",
+      ).toEqual(recordingDateTimeB.toISOString());
+    }
+    const deviceHistory = await AdminUser.Devices.getDeviceHistoryInTest(deviceHandle.id);
+    expect(deviceHistory, "device history exists").toBeTruthy();
+    if (deviceHistory) {
+      expect(deviceHistory.length, "device history has entries").toBeGreaterThan(0);
+      expect(deviceHistory.length, "device history has correct number of entries").toEqual(2);
+      const latestHistoryEntry = deviceHistory[deviceHistory.length - 1];
+      expect(
+        latestHistoryEntry.location,
+        "device history entry has correct location",
+      ).toStrictEqual(locationA);
+      expect(
+        latestHistoryEntry.fromDateTime,
+        "device history entry starts at correct time",
+      ).toEqual(recordingDateTimeB.toISOString());
+    }
+  });
+});
+
 test("When deleting the last recording from a location/station the location should be preserved, but shouldn't show up when asking for locations with recordings", async () => {
   const initialDateTime = new Date("2026-05-01T10:00:00Z");
   const recordingTime = addMinutes(initialDateTime, 1);

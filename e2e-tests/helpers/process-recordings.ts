@@ -9,7 +9,7 @@ const createTracksWithTags = (trackTags: string[]) => {
   return trackTags.map((trackTag) => ({
     start_s: 0,
     end_s: 10,
-    predictions: [{ confidence: 0.9, confident: true, tag: trackTag }],
+    predictions: [{ confidence: 0.9, confident: true, tag: trackTag, name: "Master" }],
     positions: [
       {
         x: 20,

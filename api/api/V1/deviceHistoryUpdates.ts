@@ -82,7 +82,7 @@ const maybeUpdateDeviceLocationAtTime = async (
 export const postgresLocationExactlyMatches = (
   locationToCompare: LatLng,
   locationColumn = "location",
-  precision: "1km" | "100m" | "10m" | "1m" | "10cm" = "10cm",
+  precision: "1km" | "100m" | "10m" | "1m" | "10cm" = "1m",
 ) => {
   // NOTE: Using ST_SnapToGrid to basically truncate extra floating point precision we don't want to compare.
   // We still want to make sure the locations are essentially the same point in space, just processed differently.
@@ -248,6 +248,9 @@ export const maybeUpdateDeviceHistoryLocation = async (
         ["id", "ASC"],
       ], // Get the earliest one that's later than `fromDateTime`
     });
+    logging.warning(
+      `Looking for later entry > ${fromDateTime.toISOString()} at location ${location.lat}, ${location.lng}`,
+    );
     if (laterHistoryEntry) {
       // Back-date the later history entry to this fromDateTime
       deviceHistoryEntry = await laterHistoryEntry.update(
@@ -296,7 +299,7 @@ export const maybeUpdateDeviceHistoryLocation = async (
             {
               transaction,
               replacements: {
-                key: `${actualDevice.GroupId}:${location.lat},${location.lng}`,
+                key: `${actualDevice.GroupId}:${location.lat.toFixed(6)},${location.lng.toFixed(6)}`,
               },
             },
           );
@@ -453,14 +456,16 @@ export const maybeUpdateDeviceHistoryLocation = async (
 
     newDeviceHistoryEntry.stationId = stationToAssign.id;
     // Insert this location.
-    // FIXME: Make sure newDeviceHistory entry includes a station to assign!
+    logging.warning(
+      `Inserting new DeviceHistory location at ${location.lat},${location.lng}`,
+    );
     return await Station.sequelize.transaction(async (transaction) => {
       // lock on a derived key from group + deviceId + saltId + uuid + location to prevent duplicate inserts
       const sequelize = await initSequelize();
       await sequelize.query(`SELECT pg_advisory_xact_lock(hashtext(:key))`, {
         transaction,
         replacements: {
-          key: `${actualDevice.GroupId}:${actualDevice.id}:${actualDevice.saltId}:${actualDevice.uuid}:${location.lat},${location.lng}`,
+          key: `${actualDevice.GroupId}:${actualDevice.id}:${actualDevice.saltId}:${actualDevice.uuid}:${location.lat.toFixed(6)},${location.lng.toFixed(6)}`,
         },
       });
       const [newDeviceHistory] = await DeviceHistory.findOrCreate({
