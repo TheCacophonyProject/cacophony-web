@@ -20,7 +20,7 @@ module.exports = {
         });
     },
 
-    async down(queryInterface20260609   , Sequelize) {
+    async down(queryInterface   , Sequelize) {
         await queryInterface.addColumn("Devices", "heartbeat", Sequelize.DATE);
         await queryInterface.addColumn("Devices", "nextHeartbeat", Sequelize.DATE);
         await queryInterface.addColumn("Devices", "kind", {
