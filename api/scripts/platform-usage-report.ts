@@ -11,6 +11,14 @@ import os from "os";
 
 const CACOPHONY_GROUPS = config.cacophonyGroupIds || [];
 const CACOPHONY_USERS = config.cacophonyUserIds || [];
+if (CACOPHONY_GROUPS.length === 0) {
+  // Put a dummy id in so queries don't break
+  CACOPHONY_GROUPS.push(99999999);
+}
+if (CACOPHONY_USERS.length === 0) {
+  // Put a dummy id in so queries don't break
+  CACOPHONY_USERS.push(99999999);
+}
 
 const weeksAgo = (
   numWeeksAgo: number,
@@ -522,7 +530,9 @@ const stackedGraph = (
   ];
 };
 async function main() {
-  if (config.cronScriptProcessingHostname !== os.hostname()) {
+  const args = process.argv.slice(2); // Remove the first two default paths
+  const forceRun = args.length !== 0 && args[0] === "--force";
+  if (config.cronScriptProcessingHostname !== os.hostname() && !forceRun) {
     return;
   }
   if (!config.smtpDetails) {

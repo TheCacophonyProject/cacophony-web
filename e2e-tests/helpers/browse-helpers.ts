@@ -7,9 +7,6 @@ export const uniqueName = (str: string): string => {
   return `${str}-${btoa(crypto.randomUUID().substring(0, 8)).replace(/=/g, "")}`;
 };
 
-//export const apiRoot = `${Cypress.env("cacophony-api-server")}/api/v1`;
-//export const dataEl = (str: string) => `[data-cy='${str}']`;
-
 //export const getEmailConfirmationToken = `${apiRoot}/users/get-email-confirmation-token`;
 export const getEmail = (userName: string) =>
   `${userName.replace(/ /g, "-")}@api-test.cacophony.org.nz`.toLowerCase();

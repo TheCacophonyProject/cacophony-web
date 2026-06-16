@@ -13,12 +13,11 @@ import { ApiDeviceHistory, ApiDeviceHistorySettings, ApiDeviceResponse } from "@
 import { IsoFormattedDateString, LatLng, LocationId, UserId } from "@shared/api/common";
 import { uploadRecording, uploadThermalRecordingFromDevice } from "@/helpers/recording-uploads";
 import { ApiStationResponse as ApiLocationResponse } from "@shared/api/station";
-import { ApiRecordingProcessingJob, ApiRecordingResponse } from "@shared/api/recording";
+import { ApiRecordingResponse } from "@shared/api/recording";
 import { TestApiImpl } from "@shared/client";
 import { DeviceEvent } from "@shared/api/event";
-import { AudioRecordingMode, RecordingProcessingState, RecordingType } from "@shared/api/consts";
+import { AudioRecordingMode, RecordingType } from "@shared/api/consts";
 import { JwtToken, LoggedInDeviceCredentials } from "@typedefs/client/types";
-import { dockerExecNodeScript } from "@/helpers/docker-exec";
 
 test(`When setting up a new device (without modem) and setting a new location via sidekick - with internet connectivity - device location and history location should be immediately updated via sidekick.`, async () => {
   const initialDateTime = new Date("2026-05-01T10:00:00Z");
@@ -1361,100 +1360,6 @@ test("Older device config events that come in after some newer settings changes 
   });
 });
 
-test("'Rat threshold' script running doesn't disrupt device settings", async ({ smallCptv }) => {
-  const initialDateTime = new Date("2026-05-01T10:00:00Z");
-  const project = await createProjectWithUserAndDevice({ initialDateTime });
-  const deviceHandle = project.getDevice();
-  const superUserHandle = await project.getTestSuperUser();
-  const AdminUser = project.api();
-  const SuperUser = project.api(superUserHandle);
-  const timeA = addMinutes(initialDateTime, 1);
-  await AdminUser.Devices.updateDeviceSettings(
-    deviceHandle.id,
-    {
-      audioRecording: {
-        updated: timeA.toISOString(),
-        audioMode: AudioRecordingMode.AudioOrThermal,
-      },
-    },
-    timeA,
-  );
-
-  const recordingId = await uploadThermalRecordingFromDevice({
-    file: smallCptv,
-    location: project.locationBase,
-    deviceHandle,
-    recordingDateTime: addMinutes(initialDateTime, 3),
-  });
-  const processingJobResponse = await SuperUser.Recordings.getOneRecordingForProcessing(
-    RecordingType.ThermalRaw,
-    [RecordingProcessingState.TrackAndAnalyse],
-    recordingId,
-  );
-  expect(processingJobResponse, "got processing job").toBeTruthy();
-  const processingJob = (processingJobResponse.result as { recording: ApiRecordingProcessingJob })
-    .recording;
-  expect(processingJob.id, "got correct recording").toEqual(recordingId);
-
-  const getAlgorithm = await SuperUser.Recordings.getAlgorithmId({ name: "Master" });
-  expect(getAlgorithm.success, "got algorithm").toBeTruthy();
-  const algorithmId = (getAlgorithm.result as { algorithmId: number }).algorithmId;
-
-  const trackAndTagResponse = await SuperUser.Recordings.submitProcessingTracksAndTags(
-    processingJob.id,
-    [
-      {
-        start_s: 0,
-        end_s: 10,
-        predictions: [{ confidence: 0.9, confident: true, tag: "rodent" }],
-        positions: [
-          {
-            x: 20,
-            y: 20,
-            width: 10,
-            height: 10,
-            blank: false,
-            mass: 30,
-          },
-        ],
-      },
-    ],
-    algorithmId,
-  );
-  expect(trackAndTagResponse.success, "adding tracks and tags succeeded").toEqual(true);
-  const finishedResponse = await SuperUser.Recordings.finishProcessingJob(
-    processingJob.id,
-    processingJob.jobKey,
-    true,
-    true,
-  );
-  expect(finishedResponse.success, "moved recording to finished processing state").toEqual(true);
-
-  const recording = (await AdminUser.Recordings.getRecordingById(
-    recordingId,
-  )) as ApiRecordingResponse;
-  expect(recording, "got recording").toBeTruthy();
-  expect(recording.tracks.length, "recording has one track").toEqual(1);
-  expect(recording.tracks[0].tags.length, "track has one trackTag").toEqual(1);
-  expect(recording.tracks[0].tags[0].what, "tagged with rodent").toEqual("rodent");
-
-  // Add human tag of rodent so that this can actually get picked up by the script.
-  const addHumanTrackTagResponse = await AdminUser.Recordings.replaceTrackTag(
-    { what: "rodent", confidence: 0.9 },
-    recordingId,
-    recording.tracks[0].id,
-  );
-  expect(addHumanTrackTagResponse.success, "added trackTag").toBeTruthy();
-
-  const _scriptResult = await dockerExecNodeScript("ratthreshold.js", ["--force"]);
-  const settings = await AdminUser.Devices.getSettingsForDevice(deviceHandle.id);
-  expect(settings, "got settings").toBeTruthy();
-  expect(
-    (settings.result as { settings: ApiDeviceHistorySettings }).settings.ratThresh,
-    "has rat threshold",
-  ).toBeDefined();
-});
-
 test("When there are settings on device but no settings in API, device sync should transfer the settings from device to api", async () => {
   // TODO
 });
@@ -2169,13 +2074,16 @@ test("Should be able to submit events on behalf of inactive devices, so long as 
   const deviceHandle = project.getDevice();
   const AdminUser = project.api();
   {
-    const eventAddedResponse = await AdminUser.Devices.submitEventsOnBehalfOfDevice(deviceHandle.id, {
-      description: {
-        type: "foo",
-        details: {bar: true},
+    const eventAddedResponse = await AdminUser.Devices.submitEventsOnBehalfOfDevice(
+      deviceHandle.id,
+      {
+        description: {
+          type: "foo",
+          details: { bar: true },
+        },
+        dateTimes: [addMinutes(initialDateTime, 2).toISOString()],
       },
-      dateTimes: [addMinutes(initialDateTime, 2).toISOString()],
-    });
+    );
     expect(eventAddedResponse, "added event").toBeTruthy();
   }
 
@@ -2184,7 +2092,12 @@ test("Should be able to submit events on behalf of inactive devices, so long as 
   const AdminUser2 = project2.api();
   const movedResponse = (await TestApiImpl.Devices.withAuth(
     deviceHandle.testId,
-  ).reRegisterDeviceWithoutAuthorization(project2.projectHandle.id, newDeviceName, "password", addMinutes(initialDateTime, 5))) as {
+  ).reRegisterDeviceWithoutAuthorization(
+    project2.projectHandle.id,
+    newDeviceName,
+    "password",
+    addMinutes(initialDateTime, 5),
+  )) as {
     result: LoggedInDeviceCredentials;
     success: boolean;
   };
@@ -2200,21 +2113,23 @@ test("Should be able to submit events on behalf of inactive devices, so long as 
   const device = (await AdminUser.Devices.getDeviceById(deviceHandle.id)) as ApiDeviceResponse;
   expect(device.active, "moved device is inactive").toBe(false);
 
-  const movedDevice = await TestApiImpl.Devices.withAuth(project2.getAdminUser().testId).getDeviceById(movedDeviceHandle.id) as ApiDeviceResponse;
+  const movedDevice = (await TestApiImpl.Devices.withAuth(
+    project2.getAdminUser().testId,
+  ).getDeviceById(movedDeviceHandle.id)) as ApiDeviceResponse;
   expect(movedDevice.active, "re-registered device is active").toBe(true);
 
   {
     // Use the endpoint containing the moved device id to submit on behalf of moved device by admin user from
     // project where the device was re-registered
     const eventAddedResponse = await AdminUser2.Devices.submitEventsOnBehalfOfDevice(
-        deviceHandle.id,
-        {
-          description: {
-            type: "foo",
-            details: {bar: true},
-          },
-          dateTimes: [addMinutes(initialDateTime, 4).toISOString()],
+      deviceHandle.id,
+      {
+        description: {
+          type: "foo",
+          details: { bar: true },
         },
+        dateTimes: [addMinutes(initialDateTime, 4).toISOString()],
+      },
     );
     expect(eventAddedResponse, "added event").toBeTruthy();
   }

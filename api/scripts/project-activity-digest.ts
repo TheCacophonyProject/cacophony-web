@@ -16,8 +16,7 @@ import config from "@config";
 import { Op } from "sequelize";
 import { Recording } from "@models/Recording.js";
 import tzLookup from "tz-lookup-oss";
-
-await initSequelize();
+import process from "process";
 
 const allVisitsForProjectInTimespan = async (
   projectId: GroupId,
@@ -75,8 +74,7 @@ const allVisitsForProjectInTimespan = async (
   return visits;
 };
 
-const currentHourInTimezone = (timeZone: string): number => {
-  const now = new Date();
+const currentHourInTimezone = (timeZone: string, now: Date): number => {
   const formatter = new Intl.DateTimeFormat("en-NZ", {
     hour: "numeric",
     hour12: false,
@@ -89,20 +87,39 @@ const currentHourInTimezone = (timeZone: string): number => {
 };
 
 (async () => {
-  if (config.cronScriptProcessingHostname !== os.hostname()) {
+  const args = process.argv.slice(2); // Remove the first two default paths
+  const forceRun = args.includes("--force");
+  if (config.cronScriptProcessingHostname !== os.hostname() && !forceRun) {
     return;
   }
+  await initSequelize(!forceRun);
   // Default to daily, but can pass "weekly" on the command line for weekly behaviour.
-  const timespan = process.argv[2] || "daily";
+  let daily = args.includes("daily");
+  const weekly = args.includes("weekly");
+  const suppliedNow = args.find((item) => item.includes("--at-time="));
   let numDays = 1;
-  if (timespan === "weekly") {
+  if (weekly) {
+    console.log("weekly", weekly);
     numDays = 7;
+  } else {
+    daily = true;
   }
-  const now = new Date();
+  let now;
+  let suppliedNowDate = new Date();
+  if (suppliedNow) {
+    // In testing, we can supply a current time.
+    now = new Date(suppliedNow.replace("--at-time=", ""));
+    suppliedNowDate = new Date(now);
+    console.log(`Set time to ${now.toISOString()}`);
+  } else {
+    now = new Date();
+  }
   // We send the email at 9.10am, but let's make it so it's only up to 9am.
   now.setHours(9, 0, 0, 0);
+  console.log(`Script run at ${now.toISOString()}`);
   const startOfPeriod = new Date(now);
   startOfPeriod.setHours(startOfPeriod.getHours() - 24 * numDays);
+  console.log(`Start of period ${startOfPeriod.toISOString()}`);
   const digestGroups = await Group.findAll({
     attributes: ["groupName", "id"],
     include: [
@@ -110,7 +127,7 @@ const currentHourInTimezone = (timeZone: string): number => {
         model: User,
         through: {
           where: {
-            ...(timespan === "daily"
+            ...(daily
               ? { "settings.notificationPreferences.dailyDigest": true }
               : { "settings.notificationPreferences.weeklyDigest": true }),
             removedAt: { [Op.eq]: null },
@@ -135,7 +152,7 @@ const currentHourInTimezone = (timeZone: string): number => {
       );
       // NOTE: We ignore the possibility of a project having devices in multiple timezones,
       // or that the timezone of the project may not reflect the timezone of the recipient.
-      if (currentHourInTimezone(timeZone) !== 9) {
+      if (currentHourInTimezone(timeZone, suppliedNowDate) !== 9) {
         // It's not time for this projects' email
         continue;
       }
@@ -206,7 +223,7 @@ const currentHourInTimezone = (timeZone: string): number => {
       // New controversial or flagged for review tags.
       // New cool tags?
       await sendProjectActivityDigestEmail(
-        timespan === "weekly" ? "Weekly" : "Daily",
+        weekly ? "Weekly" : "Daily",
         group.groupName,
         recipients,
         speciesList,

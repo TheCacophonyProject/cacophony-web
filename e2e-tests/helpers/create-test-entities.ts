@@ -52,18 +52,19 @@ export const loginSuperAdminUser = async (
   email: string,
   password: string,
 ): Promise<TestUserHandle> => {
-  const userHandle = getUserTestName(userName);
+  // TODO: Don't require login each time for superuser?
+  const testId = `cy_user-${userName}`;
   const userResponse = await TestApiImpl.Users.login(email, password);
   expect(userResponse.success, "login super admin user").toBe(true);
   if (userResponse.success) {
-    TestApiImpl.registerCredentials(userHandle, {
+    TestApiImpl.registerCredentials(testId, {
       userData: userResponse.result.userData,
       refreshToken: userResponse.result.refreshToken,
       apiToken: userResponse.result.token,
     });
     const userId = userResponse.result.userData.id;
     return {
-      testId: userHandle,
+      testId: testId,
       id: userId,
       type: "user",
     };

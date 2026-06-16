@@ -2,25 +2,15 @@ import { expect, test } from "@/helpers/upload-tests";
 import { createProjectWithUserAndDevice } from "@/helpers/create-test-entities";
 import { dockerExecNodeScript, dockerExecNodeTestScript } from "@/helpers/docker-exec";
 import {
-  CONFIRM_EMAIL_PREFIX,
-  extractTokenStartingWith,
+  confirmEmailAddressViaApi,
   receiveAndIgnoreConfirmationEmail,
   waitForEmail,
 } from "@/helpers/email-utils";
 
 test("Stopped devices report script executes without errors, sends email if your email is confirmed", async () => {
   const project = await createProjectWithUserAndDevice();
-  const AdminUser = project.api();
   const device = project.getDevice();
-
-  // Receive account confirmation email.
-  const accountConfirmationEmail = await waitForEmail(project.getAdminUser().testId);
-  const { token } = await extractTokenStartingWith(accountConfirmationEmail, CONFIRM_EMAIL_PREFIX);
-  const confirmEmailResponse = await AdminUser.Users.validateEmailConfirmationToken(
-    token.replaceAll(":", "."),
-  );
-  expect(confirmEmailResponse.success, "confirming email succeeded").toBe(true);
-
+  await confirmEmailAddressViaApi(project.getAdminUser());
   await dockerExecNodeTestScript("test-stopped-devices.js", ["--deviceId", device.id.toString()]);
   await dockerExecNodeScript("report-stopped-devices.js", ["--force"]);
   const email = await waitForEmail(project.getAdminUser().testId, "stopped devices report");
@@ -45,14 +35,7 @@ test("Stopped devices report script executes without errors, admin who opts out 
   const project = await createProjectWithUserAndDevice();
   const AdminUser = project.api();
   const device = project.getDevice();
-
-  // Receive account confirmation email.
-  const accountConfirmationEmail = await waitForEmail(project.getAdminUser().testId);
-  const { token } = await extractTokenStartingWith(accountConfirmationEmail, CONFIRM_EMAIL_PREFIX);
-  const confirmEmailResponse = await AdminUser.Users.validateEmailConfirmationToken(
-    token.replaceAll(":", "."),
-  );
-  expect(confirmEmailResponse.success, "confirming email succeeded").toBe(true);
+  await confirmEmailAddressViaApi(project.getAdminUser());
 
   const projectSettingsUpdateResponse = await AdminUser.Projects.saveProjectUserSettings(
     project.projectHandle.id,

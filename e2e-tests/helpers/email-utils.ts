@@ -1,6 +1,8 @@
 import { expect, Page, test } from "@playwright/test";
 import { getEmail } from "./browse-helpers";
 import { dockerExecNodeTestScript } from "@/helpers/docker-exec";
+import { TestUserHandle } from "@shared/client/types";
+import { TestApiImpl } from "@shared/client";
 
 export const ACCEPT_INVITE_PREFIX = "/accept-invite/";
 export const CONFIRM_EMAIL_PREFIX = "/confirm-account-email/";
@@ -35,8 +37,9 @@ export const waitForEmail = async (
   toUser: string,
   type = "",
   timeout?: number,
+  verbatimEmailAddress: boolean = false,
 ): Promise<TestEmail> => {
-  const to = getEmail(toUser);
+  const to = verbatimEmailAddress ? toUser : getEmail(toUser);
   return await test.step(`Wait for${type.length ? ` '${type}' ` : " "}email to ${to}`, async () => {
     const params = new URLSearchParams();
     params.append("address", to);
@@ -130,5 +133,20 @@ export const extractTokenStartingWith = async (
       payload = JSON.parse(atob(token.split(".")[1]));
     }
     return { token, payload };
+  });
+};
+
+export const confirmEmailAddressViaApi = async (user: TestUserHandle) => {
+  return await test.step(`confirming email address ${getEmail(user.testId)}`, async () => {
+    // Receive account confirmation email.
+    const accountConfirmationEmail = await waitForEmail(user.testId);
+    const { token } = await extractTokenStartingWith(
+      accountConfirmationEmail,
+      CONFIRM_EMAIL_PREFIX,
+    );
+    const confirmEmailResponse = await TestApiImpl.Users.withAuth(
+      user.testId,
+    ).validateEmailConfirmationToken(token.replaceAll(":", "."));
+    expect(confirmEmailResponse.success, "confirming email succeeded").toBe(true);
   });
 };
