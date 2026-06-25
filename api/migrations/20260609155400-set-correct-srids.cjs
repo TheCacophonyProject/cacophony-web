@@ -14,7 +14,7 @@ module.exports = {
         await queryInterface.removeColumn("Devices", "heartbeat");
         await queryInterface.removeColumn("Devices", "nextHeartbeat");
         await queryInterface.addColumn("Tracks", "thumbnailScore", {
-            type: Sequelize.FLOAT,
+            type: Sequelize.INTEGER,
             allowNull: true,
             defaultValue: null,
         });

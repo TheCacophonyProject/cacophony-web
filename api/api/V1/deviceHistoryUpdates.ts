@@ -248,9 +248,6 @@ export const maybeUpdateDeviceHistoryLocation = async (
         ["id", "ASC"],
       ], // Get the earliest one that's later than `fromDateTime`
     });
-    logging.warning(
-      `Looking for later entry > ${fromDateTime.toISOString()} at location ${location.lat}, ${location.lng}`,
-    );
     if (laterHistoryEntry) {
       // Back-date the later history entry to this fromDateTime
       deviceHistoryEntry = await laterHistoryEntry.update(
@@ -422,7 +419,7 @@ export const maybeUpdateDeviceHistoryLocation = async (
         await sequelize.query(`SELECT pg_advisory_xact_lock(hashtext(:key))`, {
           transaction,
           replacements: {
-            key: `${actualDevice.GroupId}:${location.lat},${location.lng}`,
+            key: `${actualDevice.GroupId}:${location.lat.toFixed(6)},${location.lng.toFixed(6)}`,
           },
         });
         [stationToAssign] = await Station.findOrCreate({
@@ -456,9 +453,6 @@ export const maybeUpdateDeviceHistoryLocation = async (
 
     newDeviceHistoryEntry.stationId = stationToAssign.id;
     // Insert this location.
-    logging.warning(
-      `Inserting new DeviceHistory location at ${location.lat},${location.lng}`,
-    );
     return await Station.sequelize.transaction(async (transaction) => {
       // lock on a derived key from group + deviceId + saltId + uuid + location to prevent duplicate inserts
       const sequelize = await initSequelize();
@@ -480,7 +474,7 @@ export const maybeUpdateDeviceHistoryLocation = async (
         transaction,
       });
       if (!newDeviceHistory.stationId) {
-        throw new Error("Should have station");
+        await newDeviceHistory.update({ stationId: stationToAssign.id });
       }
       return newDeviceHistory;
     });

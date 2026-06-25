@@ -856,7 +856,7 @@ export const uploadGenericRecording =
         transaction,
       );
       await updateRecordingTimeBookkeeping(recording, fromDevice, transaction);
-      await Visit.rebuildForRecording(recording, transaction);
+      //await Visit.rebuildForRecording(recording, transaction);
     });
 
     // If there was a clip thumbnail, save it

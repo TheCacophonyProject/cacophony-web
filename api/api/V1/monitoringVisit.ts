@@ -16,6 +16,7 @@ import { Station } from "@models/Station.js";
 import { TrackTag } from "@models/TrackTag.js";
 import { Track } from "@models/Track.js";
 import { MinimalTrackRequestData } from "@typedefs/api/fileProcessing.js";
+import logging from "@log";
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;
@@ -94,6 +95,11 @@ export class Visit {
     const allVisitTracks = this.getAllTracks();
     this.tracks = allVisitTracks.length;
     const bestHumanTags = getBestGuessOverall(allVisitTracks, HUMAN_ONLY);
+    if (false) {
+      logging.warning(
+        `Best human tags, ${JSON.stringify(bestHumanTags, null, 2)}`,
+      );
+    }
     if (bestHumanTags.length > 0) {
       if (bestHumanTags.length === 1) {
         const classification = bestHumanTags[0];
@@ -129,9 +135,11 @@ export class Visit {
     } else {
       const bestAiTags = getBestGuessOverall(allVisitTracks, AI_ONLY);
       if (bestAiTags.length > 1) {
+        logging.warning("Tie-break classic visits on track mass");
         // Tie-break based on the average mass of the track in question.
         let bestMass = -1;
         let bestTag: string;
+        // FIXME: Rewrite this in terms of thumbnailScore
         for (const [tag, tracks] of bestAiTags) {
           for (const track of tracks) {
             const data = (await Track.getTrackData(

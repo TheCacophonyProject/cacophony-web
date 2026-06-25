@@ -44,6 +44,7 @@ import { Recording } from "@models/Recording.js";
 import { Device } from "@models/Device.js";
 import { Alert } from "@models/Alert.js";
 import { GroupInvites } from "@models/GroupInvites.js";
+import logging from "@log";
 
 export const stationLocationHasChanged = (
   oldStation: Station,
@@ -179,7 +180,6 @@ export class Group extends ModelStaticCommon<Group> {
       };
     }
     if (groupUser === null) {
-      // FIXME: This may be broken now?
       await group.addUser(userToAdd, { through: { admin, owner, pending } });
     }
     return {

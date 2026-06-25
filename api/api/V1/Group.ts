@@ -106,6 +106,7 @@ import { GroupInvites } from "@models/GroupInvites.js";
 import { GroupUsers } from "@models/GroupUsers.js";
 import { User } from "@models/User.js";
 import { Station } from "@models/Station.js";
+import logging from "@log";
 const mapGroup = (
   group: Group,
   viewAsSuperAdmin: boolean,
@@ -1377,6 +1378,7 @@ export default function (app: Application, baseUrl: string) {
             new UnprocessableError("User is already a member of group"),
           );
         }
+        logging.warning(`HERE, invite ${existingGroupUser}`);
         if (
           existingGroupUser === null ||
           (existingGroupUser && existingGroupUser.pending !== null)

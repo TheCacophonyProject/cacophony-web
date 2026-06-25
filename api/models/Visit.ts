@@ -20,12 +20,19 @@ import Sequelize, {
   CreationOptional,
   DataTypes,
   ForeignKey,
+  HasOne,
   NonAttribute,
   Op,
   Transaction,
 } from "sequelize";
 import { ModelStaticCommon } from "@models/index.js";
-import type { GroupId, RecordingId, StationId } from "@typedefs/api/common.js";
+import type {
+  GroupId,
+  RecordingId,
+  StationId,
+  TrackId,
+  TrackTagId,
+} from "@typedefs/api/common.js";
 import { Station } from "@models/Station.js";
 import { Group } from "@models/Group.js";
 import { Recording } from "@models/Recording.js";
@@ -33,36 +40,27 @@ import { RecordingType } from "@typedefs/api/consts.js";
 import { TrackTag } from "@models/TrackTag.js";
 import { Track } from "@models/Track.js";
 import { DeletedRecording } from "@api/V1/recordingUtil.js";
+import logging from "@log";
+import {
+  computeVisits,
+  RawVisitRow,
+  VisitClassification,
+  VisitRow,
+} from "@typedefs/client/tempComputeVisists.js";
 
 export type VisitId = number;
 
-export interface VisitClassification {
-  path: string;
-  source: "ai" | "human" | "none";
-  //counts: Record<string, number>;
-}
-
-interface VisitRow {
-  StationId: StationId;
-  GroupId: GroupId;
-  startTime: Date;
-  endTime: Date;
-  recordingIds: RecordingId[];
-  classification: VisitClassification | null;
-}
-
 const VISIT_GAP_SECONDS = 10 * 60; // rolling window length / max gap allowed between recordings
 export const VISITS_ADVISORY_LOCK_KEY = 924_001; // arbitrary constant to namespace station locks
-export const VISITS_ADVISORY_LOCK_KEY_2 = 924_002; // arbitrary constant to namespace station locks
 
 const NEGATIVE_TAGS = new Set([
-  "part",
-  "poor tracking",
-  "unidentified",
-  "unknown",
-  "false-positive",
-  "noise",
-  "none",
+  "all.other.part",
+  "all.other.poor_tracking",
+  "all.other.unidentified",
+  "all.other.falsepositive",
+  "all.other.noise",
+  "all.other.static",
+  "all.other.rain",
 ]);
 
 export class Visit extends ModelStaticCommon<Visit> {
@@ -71,11 +69,12 @@ export class Visit extends ModelStaticCommon<Visit> {
   declare startTime: Date;
   declare endTime: Date;
 
-  declare classification: CreationOptional<VisitClassification | null>;
-
-  // These column names intentionally match the migration ("stationId", "projectId")
   declare StationId: ForeignKey<StationId>;
   declare GroupId: ForeignKey<GroupId>;
+  declare aiClassificationRecordingId: ForeignKey<RecordingId | null>;
+  declare aiClassificationTrackTagId: ForeignKey<TrackTagId | null>;
+  declare humanClassificationRecordingId: ForeignKey<RecordingId | null>;
+  declare humanClassificationTrackTagId: ForeignKey<TrackTagId | null>;
 
   declare recordingIds: CreationOptional<RecordingId[]>;
 
@@ -84,10 +83,20 @@ export class Visit extends ModelStaticCommon<Visit> {
 
   declare Station?: NonAttribute<Station>;
   declare Group?: NonAttribute<Group>;
+  declare AiRecording?: NonAttribute<Recording>;
+  declare AiTrackTag?: NonAttribute<TrackTag>;
+  declare HumanRecording?: NonAttribute<Recording>;
+  declare HumanTrackTag?: NonAttribute<TrackTag>;
+  declare aiClassification: NonAttribute<string | null>;
+  declare humanClassification: NonAttribute<string | null>;
 
   declare static associations: {
     Station: BelongsTo<Station>;
     Group: BelongsTo<Group>;
+    AiRecording: HasOne<Recording>;
+    AiTrackTag: HasOne<TrackTag>;
+    HumanRecording: HasOne<Recording>;
+    HumanTrackTag: HasOne<TrackTag>;
   };
 
   static addAssociations() {
@@ -99,19 +108,33 @@ export class Visit extends ModelStaticCommon<Visit> {
       foreignKey: "GroupId",
       as: "Group",
     });
+    this.belongsTo(Recording, {
+      foreignKey: "aiClassificationRecordingId",
+      as: "AiRecording",
+    });
+    this.belongsTo(TrackTag, {
+      foreignKey: "aiClassificationTrackTagId",
+      as: "AiTrackTag",
+    });
+    this.belongsTo(Recording, {
+      foreignKey: "humanClassificationRecordingId",
+      as: "HumanRecording",
+    });
+    this.belongsTo(TrackTag, {
+      foreignKey: "humanClassificationTrackTagId",
+      as: "HumanTrackTag",
+    });
   }
 
-  static createVisitsInSpan() {
-    // Back fill?
-    return;
-  }
   /**
    * Called when a TrackTag is added and could change visit classification (and/or splitting logic).
    * Rebuilds a window around the parent recording time.
    */
-  static async insertTrackTag(trackTag: TrackTag): Promise<void> {
+  static async insertTrackTag(trackTag: TrackTag): Promise<Visit[]> {
     const recording = await this.getRecordingForTrackTag(trackTag);
-    if (!recording) return;
+    if (!recording) {
+      return [];
+    }
     await this.rebuildForRecording(recording);
   }
 
@@ -119,10 +142,12 @@ export class Visit extends ModelStaticCommon<Visit> {
    * Called when a TrackTag is removed/archived and could change visit classification (and/or splitting logic).
    * Rebuilds a window around the parent recording time.
    */
-  static async removeTrackTag(trackTag: TrackTag): Promise<void> {
+  static async removeTrackTag(trackTag: TrackTag): Promise<Visit[]> {
     const recording = await this.getRecordingForTrackTag(trackTag);
-    if (!recording) return;
-    await this.rebuildForRecording(recording);
+    if (!recording) {
+      return [];
+    }
+    return await this.rebuildForRecording(recording);
   }
 
   // -----------------------
@@ -132,8 +157,7 @@ export class Visit extends ModelStaticCommon<Visit> {
   static async rebuildForRecording(
     recording: Recording | DeletedRecording,
     transaction?: Transaction,
-  ): Promise<void> {
-    return;
+  ): Promise<Visit[]> {
     if (recording.type !== RecordingType.ThermalRaw) {
       return;
     }
@@ -143,6 +167,7 @@ export class Visit extends ModelStaticCommon<Visit> {
     // - concurrent rebuilds for the same station can interleave without locking
 
     const stationId = recording.StationId as StationId;
+    const groupId = recording.GroupId as GroupId;
     if (!stationId) {
       return;
     }
@@ -172,12 +197,12 @@ export class Visit extends ModelStaticCommon<Visit> {
         where: {
           StationId: stationId,
           type: RecordingType.ThermalRaw,
-          // FIXME: Test with GroupId constraint also
+          GroupId: recording.GroupId,
           recordingDateTime: {
             [Op.and]: [
               {
                 [Op.gte]: rebuildFrom,
-                [Op.lte]: rebuildUntil,
+                [Op.lte]: rebuildUntil, // FIXME: Is this correct, or do we want one end open?
               },
             ],
           },
@@ -210,8 +235,9 @@ export class Visit extends ModelStaticCommon<Visit> {
         break;
       }
     }
-    await this.rebuildStationWindow(
+    return await this.rebuildStationWindow(
       stationId,
+      groupId,
       rebuildFrom,
       rebuildUntil,
       transaction,
@@ -229,8 +255,9 @@ export class Visit extends ModelStaticCommon<Visit> {
   private static async getRecordingForTrackTag(
     trackTag: TrackTag,
   ): Promise<Recording | null> {
-    if (!trackTag?.TrackId) return null;
-
+    if (!trackTag?.TrackId) {
+      return null;
+    }
     const track = await Track.findByPk(trackTag.TrackId, {
       attributes: ["id", "RecordingId"],
       include: [
@@ -251,17 +278,24 @@ export class Visit extends ModelStaticCommon<Visit> {
     const rec =
       (track && (track as unknown as { Recording?: Recording }).Recording) ||
       null;
-    if (!rec) return null;
-    if (rec.deletedAt) return null;
-    if (!rec.StationId) return null;
+    if (!rec) {
+      return null;
+    }
+    if (rec.deletedAt) {
+      return null;
+    }
+    if (!rec.StationId) {
+      return null;
+    }
     return rec;
   }
 
   private static rebuildStationWindowInternal(
-    stationId: number,
+    stationId: StationId,
+    groupId: GroupId,
     from: Date,
     until: Date,
-  ): (transaction: Transaction) => Promise<void> {
+  ): (transaction: Transaction) => Promise<Visit[]> {
     return async (transaction: Transaction) => {
       // Serialize rebuilds per station to avoid interleaving delete/insert windows.
       await this.sequelize.query(
@@ -273,6 +307,7 @@ export class Visit extends ModelStaticCommon<Visit> {
       );
       // TODO: Ideally we don't delete, if one exists then we extend?
       // 1) Delete any existing visits that overlap the rebuild window.
+      // FIXME: Make range only be open on one side
       await this.destroy({
         where: {
           StationId: stationId,
@@ -284,14 +319,13 @@ export class Visit extends ModelStaticCommon<Visit> {
         transaction,
       });
 
+      // FIXME: Make range only be open on one side
       // FIXME: We're expanding the range again?!
       // 2) Pull recordings in a slightly wider range so that visit boundaries are correct
       // near the edge of [from, until].
       const queryFrom = new Date(from.getTime() - VISIT_GAP_SECONDS * 1000);
       const queryUntil = new Date(until.getTime() + VISIT_GAP_SECONDS * 1000);
       // Gaps & islands: derive visit_group, then aggregate each group into visit bounds + membership.
-
-      // FIXME: Also add GroupId in where clause
       const [islands] = (await this.sequelize.query(
         `
 WITH ordered AS (
@@ -306,6 +340,7 @@ WITH ordered AS (
     WHERE r."deletedAt" IS NULL
       AND r.type = '${RecordingType.ThermalRaw}'
       AND r."StationId" = :stationId
+      AND r."GroupId" = :groupId
       AND r."duration" >= 3      
       AND r."recordingDateTime" is not null
       AND r."recordingDateTime" >= :queryFrom
@@ -345,6 +380,7 @@ ORDER BY MIN(start_time) ASC;
           transaction,
           replacements: {
             stationId,
+            groupId,
             queryFrom,
             queryUntil,
             from,
@@ -381,21 +417,38 @@ ORDER BY MIN(start_time) ASC;
 
         // TODO: What is the current behaviour with path hierarchies for visits?
         //  We need to replicate that.
-        const classification = await this.computeVisitClassification(
+        const classifications = await this.computeVisitClassifications(
           recordingIds,
           transaction,
         );
 
-        rowsToInsert.push({
-          StationId: island.stationId as StationId,
-          GroupId: island.groupId as GroupId,
-          startTime: new Date(island.startTime),
-          endTime: new Date(island.endTime),
-          recordingIds,
-          classification,
-        });
+        // We still want to be able to cluster recordings that have no tags ai or human.
+        if (classifications.length > 0) {
+          for (const classification of classifications) {
+            rowsToInsert.push({
+              ...classification,
+              StationId: island.stationId as StationId,
+              GroupId: island.groupId as GroupId,
+              startTime: new Date(classification.startTime),
+              endTime: new Date(classification.endTime),
+              recordingIds: classification.recordingIds,
+            });
+          }
+        } else {
+          rowsToInsert.push({
+            StationId: island.stationId as StationId,
+            GroupId: island.groupId as GroupId,
+            startTime: island.startTime,
+            endTime: island.endTime,
+            recordingIds,
+            aiClassificationTrackTagId: null,
+            aiClassificationRecordingId: null,
+            humanClassificationTrackTagId: null,
+            humanClassificationRecordingId: null,
+          });
+        }
       }
-      await this.bulkCreate(rowsToInsert as unknown as Visit[], {
+      return await this.bulkCreate(rowsToInsert as unknown as Visit[], {
         transaction,
       });
     };
@@ -403,10 +456,11 @@ ORDER BY MIN(start_time) ASC;
 
   private static async rebuildStationWindow(
     stationId: StationId,
+    groupId: GroupId,
     from: Date,
     until: Date,
     transaction?: Transaction,
-  ): Promise<void> {
+  ): Promise<Visit[]> {
     if (from >= until) {
       return;
     }
@@ -421,17 +475,19 @@ ORDER BY MIN(start_time) ASC;
     // TODO: What's the cheapest way to backfill the visits table initially?
 
     if (transaction) {
-      await this.rebuildStationWindowInternal(
+      return await this.rebuildStationWindowInternal(
         stationId,
+        groupId,
         from,
         until,
       )(transaction);
     } else {
-      await this.sequelize.transaction(async (transaction) => {
+      return await this.sequelize.transaction(async (transaction) => {
         // FIXME: Might need to plumb this lock right up to all callers of this, and have it as a
         //  higher level transaction.
-        await this.rebuildStationWindowInternal(
+        return await this.rebuildStationWindowInternal(
           stationId,
+          groupId,
           from,
           until,
         )(transaction);
@@ -439,93 +495,46 @@ ORDER BY MIN(start_time) ASC;
     }
   }
 
-  private static async computeVisitClassification(
+  private static async computeVisitClassifications(
     recordingIds: RecordingId[],
     transaction: Transaction,
-  ): Promise<VisitClassification> {
-    return {
-      path: "none",
-      source: "none",
-      //counts: {},
-    };
-
+  ): Promise<VisitClassification[]> {
     // Aggregate tag counts across the visit.
     // We join TrackTags -> Track -> Recording, filtering on visit recordings.
     // NOTE: TrackTag schema includes archivedAt; exclude archived tags.
+    const excludedPaths = `'${Array.from(NEGATIVE_TAGS.values()).join("','")}'`;
     const [rows] = (await this.sequelize.query(
       `
       SELECT
-        tt."what" AS what,
-        tt."automatic" AS automatic,
-        COUNT(*)::int AS count
+        tt."path" AS path,
+        tt."automatic" AS "aiTagged",
+        tt."id" as "trackTagId",
+        tt."confidence" as "confidence",
+        t."thumbnailScore" as score,
+        t."startSeconds" as "startSeconds",
+        t."endSeconds" as "endSeconds",
+        t."id" as "trackId",
+        t."RecordingId" as "recordingId",
+        r."recordingDateTime" as "recordingStart",
+        (r."recordingDateTime" + (r."duration" || ' seconds')::interval) as "recordingEnd"
       FROM "TrackTags" tt
       JOIN "Tracks" t ON t."id" = tt."TrackId"
+      JOIN "Recordings" r on t."RecordingId" = r."id"  
       WHERE
         tt."archivedAt" IS NULL
         AND tt.used
+        -- Is this line worthwhile?
+        AND tt.path not in (${excludedPaths})
         AND t."archivedAt" IS NULL
-        AND t."RecordingId" IN (:recordingIds)
-      GROUP BY tt."what", tt."automatic"
-      ORDER BY COUNT(*) DESC;
+        AND t."RecordingId" IN (:recordingIds);
       `,
       {
         transaction,
         replacements: { recordingIds },
       },
-    )) as unknown as [
-      { what: string; automatic: boolean; count: number }[],
-      unknown,
-    ];
-
-    if (!rows || rows.length === 0) {
-      return {
-        path: "none",
-        source: "none",
-        //counts: {},
-      };
-    }
-
-    const human = rows
-      .filter(
-        (r) => r.automatic === false && r.what && !NEGATIVE_TAGS.has(r.what),
-      )
-      .sort((a, b) => b.count - a.count);
-    const ai = rows
-      .filter(
-        (r) => r.automatic === true && r.what && !NEGATIVE_TAGS.has(r.what),
-      )
-      .sort((a, b) => b.count - a.count);
-
-    const bestHuman = human[0] || null;
-    const bestAi = ai[0] || null;
-
-    const counts: Record<string, { human: number; ai: number }> = {};
-    for (const r of rows) {
-      if (!r.what) continue;
-      if (!counts[r.what]) counts[r.what] = { human: 0, ai: 0 };
-      if (r.automatic) counts[r.what].ai += r.count;
-      else counts[r.what].human += r.count;
-    }
-
-    if (bestHuman) {
-      return {
-        path: bestHuman.what,
-        source: "human",
-        //counts,
-      };
-    }
-    if (bestAi) {
-      return {
-        path: bestAi.what,
-        source: "ai",
-        //counts,
-      };
-    }
-    return {
-      path: "none",
-      source: "none",
-      //counts,
-    };
+    )) as unknown as [RawVisitRow[], unknown];
+    logging.warning(`${JSON.stringify(rows, null, 2)}`);
+    return computeVisits(rows);
   }
 }
 
@@ -544,8 +553,20 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
       type: DataTypes.DATE,
       allowNull: false,
     },
-    classification: {
-      type: DataTypes.JSONB,
+    aiClassificationRecordingId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    aiClassificationTrackTagId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    humanClassificationRecordingId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    humanClassificationTrackTagId: {
+      type: DataTypes.INTEGER,
       allowNull: true,
     },
     StationId: {

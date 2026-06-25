@@ -4,8 +4,7 @@ import { confirmEmailAddressViaApi, waitForEmail } from "@/helpers/email-utils";
 import { expect } from "@playwright/test";
 import { createProjectWithUserAndDevice } from "@/helpers/create-test-entities";
 import { addDays, addMinutes } from "@/helpers/date-helpers";
-import { uploadThermalRecordingFromDevice } from "@/helpers/recording-uploads";
-import { processRecordingWithTracksAndTags } from "@/helpers/process-recordings";
+import { uploadRecordingsFromDeviceWithTimesAndDurations } from "@/helpers/recording-uploads";
 import { AudioRecordingMode } from "@shared/api/consts";
 import { ApiRecordingResponse } from "@shared/api/recording";
 import { ApiDeviceHistorySettings } from "@shared/api/device";
@@ -34,14 +33,18 @@ test("Project activity digest email sent successfully for weekly and daily diges
       weeklyDigest: true,
     },
   });
-
-  const recordingId = await uploadThermalRecordingFromDevice({
-    file: smallCptv,
-    location: project.locationBase,
+  await uploadRecordingsFromDeviceWithTimesAndDurations(
+    [
+      {
+        tracks: ["rodent"],
+        recordingDateTime: addMinutes(initialDateTime, 3),
+      },
+    ],
     deviceHandle,
-    recordingDateTime: addMinutes(initialDateTime, 3),
-  });
-  await processRecordingWithTracksAndTags(recordingId, ["rodent"]);
+    project.locationBase,
+    smallCptv,
+  );
+
   const scriptRunTime = addDays(initialDateTime, 2);
   scriptRunTime.setHours(9);
   {
@@ -81,14 +84,17 @@ test("'Rat threshold' script runs and doesn't disrupt device settings", async ({
     },
     timeA,
   );
-  const recordingId = await uploadThermalRecordingFromDevice({
-    file: smallCptv,
-    location: project.locationBase,
+  const [{ recordingId }] = await uploadRecordingsFromDeviceWithTimesAndDurations(
+    [
+      {
+        tracks: ["rodent"],
+        recordingDateTime: addMinutes(initialDateTime, 3),
+      },
+    ],
     deviceHandle,
-    recordingDateTime: addMinutes(initialDateTime, 3),
-  });
-
-  await processRecordingWithTracksAndTags(recordingId, ["rodent"]);
+    project.locationBase,
+    smallCptv,
+  );
 
   const recording = (await AdminUser.Recordings.getRecordingById(
     recordingId,
@@ -100,7 +106,7 @@ test("'Rat threshold' script runs and doesn't disrupt device settings", async ({
 
   // Add human tag of rodent so that this can actually get picked up by the script.
   const addHumanTrackTagResponse = await AdminUser.Recordings.replaceTrackTag(
-    { what: "rodent", confidence: 0.9 },
+    { what: "rodent" },
     recordingId,
     recording.tracks[0].id,
   );

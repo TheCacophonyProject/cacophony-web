@@ -1,32 +1,44 @@
-import { RecordingId } from "@shared/api/common";
+import { RecordingId, TrackId } from "@shared/api/common";
 import { expect, test } from "@/helpers/upload-tests";
 import { loginSuperAdminUser } from "@/helpers/create-test-entities";
 import { TestApiImpl } from "@typedefs/client";
 import { RecordingProcessingState, RecordingType } from "@shared/api/consts";
 import { ApiRecordingProcessingJob } from "@shared/api/recording";
 
-const createTracksWithTags = (trackTags: string[]) => {
-  return trackTags.map((trackTag) => ({
-    start_s: 0,
-    end_s: 10,
-    predictions: [{ confidence: 0.9, confident: true, tag: trackTag, name: "Master" }],
-    positions: [
-      {
-        x: 20,
-        y: 20,
-        width: 10,
-        height: 10,
-        blank: false,
-        mass: 30,
+const createTracksWithTags = (
+  trackTags: (string | { tag: string; weight: number })[],
+  overDurationSeconds: number,
+) => {
+  return trackTags.map((trackTag, i) => {
+    const tag = typeof trackTag === "string" ? trackTag : trackTag.tag;
+    const position = {
+      x: 20,
+      y: 20,
+      width: 10,
+      height: 10,
+      blank: false,
+      mass: typeof trackTag === "string" ? 0 : trackTag.weight,
+    };
+    return {
+      start_s: (overDurationSeconds / trackTags.length) * i,
+      end_s: Math.min((overDurationSeconds / trackTags.length) * i + 7, overDurationSeconds),
+      predictions: [{ confidence: 0.9, confident: true, tag, name: "Master" }],
+      positions: [position],
+      thumbnail: {
+        score: typeof trackTag === "string" ? 0 : trackTag.weight,
+        contours: 0,
+        region: position,
+        median_diff: 0,
       },
-    ],
-  }));
+    };
+  });
 };
 
 export const processRecordingWithTracksAndTags = async (
   recordingId: RecordingId,
-  trackTags: string[],
-) => {
+  trackTags: (string | { tag: string; weight: number })[],
+  overDurationSeconds: number,
+): Promise<TrackId[]> => {
   return await test.step(`Processing recording #${recordingId}`, async () => {
     const superUserHandle = await loginSuperAdminUser(
       "admin_test",
@@ -50,10 +62,10 @@ export const processRecordingWithTracksAndTags = async (
 
     const trackAndTagResponse = await SuperUser.Recordings.submitProcessingTracksAndTags(
       processingJob.id,
-      createTracksWithTags(trackTags),
+      createTracksWithTags(trackTags, overDurationSeconds),
       algorithmId,
     );
-    expect(trackAndTagResponse.success, "adding tracks and tags succeeded").toEqual(true);
+    expect(trackAndTagResponse, "adding tracks and tags succeeded").toBeTruthy();
     const finishedResponse = await SuperUser.Recordings.finishProcessingJob(
       processingJob.id,
       processingJob.jobKey,
@@ -61,5 +73,6 @@ export const processRecordingWithTracksAndTags = async (
       true,
     );
     expect(finishedResponse.success, "moved recording to finished processing state").toEqual(true);
+    return trackAndTagResponse as TrackId[];
   });
 };

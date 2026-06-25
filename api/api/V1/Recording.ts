@@ -1876,7 +1876,7 @@ export default (app: Application, baseUrl: string) => {
         const newTag = TrackTag.build({
           what: request.body.what,
           confidence: request.body.confidence,
-          automatic: request.body.automatic,
+          automatic: request.body.automatic, // FIXME: Should always be false when called by a user
           UserId: requestUser.id,
           TrackId: response.locals.track.id,
           path,
@@ -1887,6 +1887,10 @@ export default (app: Application, baseUrl: string) => {
           response.locals.data,
         );
         if (tag) {
+          // FIXME(static-visits): Can we make this a cheaper patch to the existing visit?
+          //  Just check if there's not already a user tag for this visit first, and if not, this becomes the
+          //  classification for this visit.
+          await Visit.rebuildForRecording(response.locals.recording);
           return successResponse(response, "Track tag added.", {
             trackTagId: tag.id,
           });
@@ -2048,6 +2052,7 @@ export default (app: Application, baseUrl: string) => {
           request.params.tagId,
           request.body.updates,
         );
+        await Visit.rebuildForRecording(response.locals.recording);
         return successResponse(response, "Tag has been updated.");
       } catch (_e) {
         return next(new FatalError("Server error replacing tag."));
@@ -2079,6 +2084,8 @@ export default (app: Application, baseUrl: string) => {
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     async (_request: Request, response: Response) => {
       await response.locals.track.unarchive();
+      // FIXME(static-visits): recalc
+      await Visit.rebuildForRecording(response.locals.recording);
       return successResponse(response, "Undeleted track.");
     },
   );
@@ -2192,6 +2199,8 @@ export default (app: Application, baseUrl: string) => {
         response.locals.data || "",
         response.locals.requestUser.id,
       );
+
+      // FIXME(static-visits): recalc
       return successResponse(response, "Track tag added.", {
         trackTagId: tag.id,
       });
@@ -2274,6 +2283,8 @@ export default (app: Application, baseUrl: string) => {
 
       await tag.destroy();
       await track.updateIsFiltered();
+      // FIXME(static-visits): recalc
+      await Visit.rebuildForRecording(response.locals.recording);
       return successResponse(response, "Track tag deleted.");
     },
   );

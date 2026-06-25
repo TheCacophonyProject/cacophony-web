@@ -4,6 +4,7 @@ import { TestApi, TestApiImpl } from "@shared/client";
 import { testLocation } from "@/helpers/location-helpers";
 import { expect, test } from "@playwright/test";
 import { FileFixtures } from "@/helpers/upload-tests";
+import { getEmail } from "@/helpers/browse-helpers";
 
 export interface ProjectBundle {
   userHandles: TestUserHandle[];
@@ -46,14 +47,13 @@ export const getProjectTestName = (str: string) => getTestName(`cy_project-${str
 //     }
 //     return loadedFixtures;
 // };
-
 export const loginSuperAdminUser = async (
   userName: string,
   email: string,
   password: string,
 ): Promise<TestUserHandle> => {
-  // TODO: Don't require login each time for superuser?
   const testId = `cy_user-${userName}`;
+
   const userResponse = await TestApiImpl.Users.login(email, password);
   expect(userResponse.success, "login super admin user").toBe(true);
   if (userResponse.success) {
@@ -64,7 +64,7 @@ export const loginSuperAdminUser = async (
     });
     const userId = userResponse.result.userData.id;
     return {
-      testId: testId,
+      testId,
       id: userId,
       type: "user",
     };
@@ -78,7 +78,7 @@ export const createUser = async (userName: string): Promise<TestUserHandle> => {
     const userResponse = await TestApiImpl.Users.register(
       userHandle,
       "password",
-      `${userHandle}@api-test.cacophony.org.nz`,
+      getEmail(userHandle),
       3,
     );
     expect(userResponse.success, "create user succeeded").toBe(true);
@@ -96,6 +96,23 @@ export const createUser = async (userName: string): Promise<TestUserHandle> => {
       };
     }
     throw new Error("Failed to create user");
+  });
+};
+
+export const addUserToProject = (
+  project: ProjectBundle,
+  user: TestUserHandle,
+  asAdmin: boolean = false,
+): Promise<void> => {
+  return test.step(`Add user ${user.testId} to project ${project.projectHandle.testId}`, async () => {
+    const inviteResponse = await TestApiImpl.Projects.withAuth(
+      project.getAdminUser().testId,
+    ).inviteSomeoneToProject(project.projectHandle.id, getEmail(user.testId), asAdmin);
+    expect(inviteResponse.success, "invite user succeeded").toBe(true);
+    const acceptInviteResponse = await TestApiImpl.Users.withAuth(
+      user.testId,
+    ).acceptProjectInvitation(project.projectHandle.id);
+    expect(acceptInviteResponse.success, "accept invite succeeded").toBe(true);
   });
 };
 

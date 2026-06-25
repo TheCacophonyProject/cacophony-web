@@ -1,11 +1,15 @@
-import { IsoFormattedDateString, RecordingId } from "@typedefs/api/common.js";
+import {
+  IsoFormattedDateString,
+  RecordingId,
+  TrackId,
+} from "@typedefs/api/common.js";
 
 export interface ApiStaticVisitResponse {
   recordingIds: RecordingId[];
   startTime: IsoFormattedDateString;
   endTime: IsoFormattedDateString;
-  classification: {
-    path: string;
-    source: "ai" | "human" | "none";
-  };
+  classificationRecordingId: RecordingId | null;
+  classificationTrackId: TrackId | null;
+  aiClassification: string | null;
+  humanClassification: string | null;
 }

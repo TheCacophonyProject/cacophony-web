@@ -94,12 +94,13 @@ const getThumbnail =
 const replaceTrackTag =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (
-    tag: ApiTrackTagRequest,
+    tag: Omit<ApiTrackTagRequest, "confidence">, // We specify a default for user tags
     recordingId: RecordingId,
     trackId: TrackId,
     automatic = false,
   ) => {
     const body: ApiTrackTagRequest = {
+      confidence: !automatic ? 0.9 : 0,
       ...tag,
       automatic,
     };
@@ -556,14 +557,13 @@ const submitProcessingTracksAndTags =
     tracksAndTags: MinimalTracksRequestData,
     algorithmId: number,
   ) => {
-    return api.post(
-      authKey,
-      `/api/v1/processing/${recordingId}/tracks-and-tags`,
-      {
+    return unwrapLoadedResource(
+      api.post(authKey, `/api/v1/processing/${recordingId}/tracks-and-tags`, {
         data: tracksAndTags,
         algorithmId,
-      },
-    ) as Promise<FetchResult<unknown>>;
+      }) as Promise<FetchResult<{ trackIds: TrackId[] }>>,
+      "trackIds",
+    ) as Promise<LoadedResource<TrackId[]>>;
   };
 
 const getAlgorithmId =

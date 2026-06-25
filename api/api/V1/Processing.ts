@@ -962,9 +962,12 @@ export default function (app: Application, baseUrl: string) {
     parseJSONField(body("data")),
     async (_request: Request, response) => {
       // make a copy of the original track
-      let d;
-      const { data, filtered, AlgorithmId } = response.locals.track;
-      const oldData = await Track.getTrackData(response.locals.track.id);
+      let d: MinimalTrackRequestData;
+      const { data, filtered, AlgorithmId, thumbnailScore } = response.locals
+        .track as Track;
+      const oldData = (await Track.getTrackData(
+        response.locals.track.id,
+      )) as MinimalTrackRequestData;
       if (Object.keys(oldData).length === 0) {
         d = data;
       } else {
@@ -978,6 +981,7 @@ export default function (app: Application, baseUrl: string) {
         endSeconds: number;
         minFreqHz: number | null;
         maxFreqHz: number | null;
+        thumbnailScore: number | null;
       } = {
         AlgorithmId,
         filtered,
@@ -986,12 +990,13 @@ export default function (app: Application, baseUrl: string) {
         minFreqHz: null,
         maxFreqHz: null,
         archivedAt: new Date(),
+        thumbnailScore,
       };
       if (response.locals.recording.type === RecordingType.Audio) {
         archivedDataCopy.minFreqHz = d.minFreq || 0;
         archivedDataCopy.maxFreqHz = d.maxFreq || 0;
       }
-      await response.locals.recording.addTrack(archivedDataCopy);
+      await (response.locals.recording as Recording).addTrack(archivedDataCopy);
       const newData = response.locals.data;
       const update: {
         startSeconds: number;

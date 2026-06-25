@@ -185,8 +185,8 @@ export class Track extends ModelStaticCommon<Track> {
     }
   }
 
-  //add or replace a tag, such that this track only has 1 animal tag by this user
-  //and no duplicate tags
+  // add or replace a tag, such that this track only has 1 animal tag by this user
+  // and no duplicate tags
   async replaceTag(
     tag: TrackTag,
     userData?: TrackTagData,
@@ -197,7 +197,7 @@ export class Track extends ModelStaticCommon<Track> {
         const trackTags = (await TrackTag.findAll({
           where: {
             UserId: tag.UserId,
-            automatic: tag.automatic,
+            automatic: tag.automatic, // FIXME: Obviously this should always be false
             TrackId: trackId,
           },
           transaction,
@@ -405,7 +405,7 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
 
     archivedAt: DataTypes.DATE,
     thumbnailScore: {
-      type: Sequelize.FLOAT,
+      type: Sequelize.INTEGER,
       allowNull: true,
       defaultValue: null as number | null,
     },

@@ -1,10 +1,15 @@
-import { DeviceId, LatLng, RecordingId } from "@shared/api/common";
+import { DeviceId, LatLng, RecordingId, TrackId } from "@shared/api/common";
 import { ApiRecordingResponse, ApiRecordingUploadData } from "@shared/api/recording";
 import { RecordingType } from "@shared/api/consts";
 import { TestDeviceHandle, TestEntityHandle, TestUserHandle } from "@shared/client/types";
 import { TestApiImpl } from "@shared/client";
 import { RecordingDataSuppliedMetadata } from "@shared/api/fileProcessing";
 import { expect, test } from "./upload-tests";
+import { addMinutes } from "@/helpers/date-helpers";
+import { processRecordingWithTracksAndTags } from "@/helpers/process-recordings";
+import { ProjectBundle } from "@/helpers/create-test-entities";
+import { ApiStaticVisitResponse } from "@shared/api/visit";
+import { BulkVisitsResponse } from "@shared/client/Monitoring";
 
 const extForUploadFileType = (type: RecordingType) => {
   switch (type) {
@@ -185,5 +190,76 @@ export const uploadAudioTestRecordingFromDevice = async (options: {
   return uploadRecordingFromDevice({
     ...options,
     type: RecordingType.Audio,
+  });
+};
+
+export interface VisitRecordingSpec {
+  durationSeconds?: number;
+  recordingDateTime: Date;
+  tracks: (string | { tag: string; weight: number })[]; // TODO: Does current visit logic care about track length, or just recording duration?
+}
+
+export const uploadRecordingsFromDeviceWithTimesAndDurations = async (
+  visitRecordingSpecs: VisitRecordingSpec[],
+  deviceHandle: TestDeviceHandle,
+  location: LatLng,
+  file: ArrayBuffer,
+): Promise<{ recordingId: RecordingId; tracks: TrackId[] }[]> => {
+  // Upload multiple recordings at offset times with different durations to help testing visit islands.
+  return test.step("Upload recordings and processing classifications", async () => {
+    return Promise.all(
+      visitRecordingSpecs.map((rec) => {
+        const uploadTime = new Date(rec.recordingDateTime);
+        const durationSeconds = rec.durationSeconds || 30;
+        uploadTime.setSeconds(uploadTime.getSeconds() + durationSeconds);
+        return new Promise<{ recordingId: RecordingId; tracks: TrackId[] }>((resolve, reject) => {
+          uploadThermalRecordingFromDevice({
+            file,
+            recordingDateTime: rec.recordingDateTime,
+            location,
+            deviceHandle,
+            uploadTime: addMinutes(uploadTime, 1),
+            duration: rec.durationSeconds, // >2 Needed so we aren't filtered out of visits
+          }).then((recordingId) => {
+            processRecordingWithTracksAndTags(recordingId, rec.tracks, durationSeconds).then(
+              (trackIds) => {
+                resolve({ recordingId: recordingId, tracks: trackIds });
+              },
+            );
+          });
+        });
+      }),
+    );
+  });
+};
+
+export const checkVisitClassification = async (project: ProjectBundle, from: Date, until: Date) => {
+  return await test.step("Check visit classification", async () => {
+    const adminUser = project.getAdminUser().testId;
+    const [runtimeVisits, staticVisits] = (await Promise.all([
+      TestApiImpl.Monitoring.withAuth(adminUser).getAllVisitsForProjectBetweenTimes(
+        project.projectHandle.id,
+        from,
+        until,
+      ),
+      TestApiImpl.Visits.withAuth(adminUser).forProject(project.projectHandle.id, from, until),
+    ])) as [BulkVisitsResponse, ApiStaticVisitResponse[]];
+    expect(runtimeVisits.visits.length, "runtime visit count agrees with static").toEqual(
+      staticVisits.length,
+    );
+    staticVisits.forEach((item, index) => {
+      const visitClassification = (item.humanClassification || item.aiClassification) as string;
+      expect(visitClassification, "static classification exists").not.toBeNull();
+      const runtimeVisit = runtimeVisits.visits[index];
+      expect(runtimeVisit.classification, "runtime visit agrees with static").toEqual(
+        visitClassification.split(".").pop(),
+      );
+      expect(runtimeVisit.classFromUserTag, "runtime tagger agrees with static").toEqual(
+        item.humanClassification !== null,
+      );
+    });
+    return staticVisits.map(
+      (item) => (item.humanClassification || item.aiClassification) as string,
+    );
   });
 };

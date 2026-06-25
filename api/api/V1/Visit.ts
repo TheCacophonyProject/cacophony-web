@@ -1,6 +1,6 @@
 import type { Application, NextFunction, Request, Response } from "express";
 import { param, query } from "express-validator";
-import { Op } from "sequelize";
+import Sequelize, { FindAttributeOptions, Op } from "sequelize";
 import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredFlatRecordingById,
@@ -11,6 +11,23 @@ import { validateFields } from "@api/middleware.js";
 import { idOf } from "@api/validation-middleware.js";
 import { successResponse } from "@api/V1/responseUtil.js";
 import { Visit } from "@models/Visit.js";
+import { TrackTag } from "@models/TrackTag.js";
+
+const visitAttributes: FindAttributeOptions = [
+  "startTime",
+  "endTime",
+  "recordingIds",
+  ["GroupId", "projectId"],
+  ["StationId", "locationId"],
+
+  [Sequelize.col("HumanTrackTag.path"), "humanClassification"],
+  "humanClassificationRecordingId",
+  [Sequelize.col("HumanTrackTag.TrackId"), "humanClassificationTrackId"],
+
+  [Sequelize.col("AiTrackTag.path"), "aiClassification"],
+  "aiClassificationRecordingId",
+  [Sequelize.col("AiTrackTag.TrackId"), "aiClassificationTrackId"],
+];
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/visits`;
@@ -39,10 +56,23 @@ export default function (app: Application, baseUrl: string) {
           StationId: stationId,
           [Op.and]: [
             { startTime: { [Op.lt]: until } },
-            { endTime: { [Op.gt]: from } },
+            { endTime: { [Op.gte]: from } },
           ],
         },
+        include: [
+          {
+            model: TrackTag,
+            attributes: [["path", "aiClassification"]],
+            as: "AiTrackTag",
+          },
+          {
+            model: TrackTag,
+            attributes: [["path", "humanClassification"]],
+            as: "HumanTrackTag",
+          },
+        ],
         order: [["startTime", "ASC"]],
+        attributes: visitAttributes,
       });
 
       return successResponse(response, "Completed query.", {
@@ -64,7 +94,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([idOf(param("recordingId"))]),
     fetchAuthorizedRequiredFlatRecordingById(param("recordingId")),
-    async (request: Request, response: Response, _next: NextFunction) => {
+    async (_request: Request, response: Response, _next: NextFunction) => {
       const recordingId = response.locals.recording.id;
 
       const visit = await Visit.findOne({
@@ -74,8 +104,21 @@ export default function (app: Application, baseUrl: string) {
             [Op.contains]: [recordingId],
           },
         },
+        include: [
+          {
+            model: TrackTag,
+            attributes: [["path", "aiClassification"]],
+            as: "AiTrackTag",
+          },
+          {
+            model: TrackTag,
+            attributes: [["path", "humanClassification"]],
+            as: "HumanTrackTag",
+          },
+        ],
         // TODO: Can a recording be part of multiple visits?  Existing logic suggests so.
         order: [["startTime", "DESC"]],
+        attributes: visitAttributes,
       });
       return successResponse(response, "Completed query.", {
         recordingId,
@@ -107,10 +150,23 @@ export default function (app: Application, baseUrl: string) {
           GroupId: projectId,
           [Op.and]: [
             { startTime: { [Op.lt]: until } },
-            { endTime: { [Op.gt]: from } },
+            { endTime: { [Op.gte]: from } },
           ],
         },
+        include: [
+          {
+            model: TrackTag,
+            attributes: [],
+            as: "AiTrackTag",
+          },
+          {
+            model: TrackTag,
+            attributes: [],
+            as: "HumanTrackTag",
+          },
+        ],
         order: [["startTime", "ASC"]],
+        attributes: visitAttributes,
       });
       return successResponse(response, "Completed query.", {
         visits,

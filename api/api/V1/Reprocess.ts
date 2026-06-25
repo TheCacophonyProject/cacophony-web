@@ -33,6 +33,7 @@ import { arrayOf, jsonSchemaOf } from "../schema-validation.js";
 import lodash from "lodash";
 import RecordingIdSchema from "@schemas/api/common/RecordingId.schema.json" with { type: "json" };
 import { HttpStatusCode } from "@typedefs/api/consts.js";
+import { Visit } from "@models/Visit.js";
 
 const { uniq: dedupe } = lodash;
 export default (app: Application, baseUrl: string) => {
@@ -95,6 +96,7 @@ export default (app: Application, baseUrl: string) => {
     fetchAuthorizedRequiredFlatRecordingById(param("id")),
     async (_request: Request, response: Response) => {
       await response.locals.recording.reprocess();
+      await Visit.rebuildForRecording(response.locals.recording);
       return successResponse(response, "Recording reprocessed");
     },
   );
@@ -140,6 +142,8 @@ export default (app: Application, baseUrl: string) => {
       }
       for (const recording of recordings) {
         await recording.reprocess();
+        // FIXME: This could be slow?
+        await Visit.rebuildForRecording(recording);
       }
       return successResponse(response, "Recordings scheduled for reprocessing");
     },

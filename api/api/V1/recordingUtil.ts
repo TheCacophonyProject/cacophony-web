@@ -261,7 +261,6 @@ export async function getThumbnail(
       }
 
       if (commonTag !== null && bestTracks.length !== 0) {
-        // FIXME: Store thumbnailScore in Track in the DB so we don't have to pull all this data out.
         if (!bestTracks.some((track) => !!track.thumbnailScore)) {
           for (const track of bestTracks) {
             track.data = (await Track.getTrackData(
