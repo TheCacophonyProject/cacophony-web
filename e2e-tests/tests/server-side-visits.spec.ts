@@ -14,7 +14,7 @@ import { expect } from "@playwright/test";
 import { ApiRecordingResponse } from "@shared/api/recording";
 import { ApiStaticVisitResponse } from "@shared/api/visit";
 import { TrackTagId } from "@shared/api/common";
-import { computeVisits, RawVisitRow } from "@typedefs/client/tempComputeVisists";
+import { computeVisits, makeRawVisitRows } from "@shared/client/tempComputeVisits";
 
 test("A single recording, single tag server-side visit is computed the same as client-side", async ({
   oneFrameCptv,
@@ -113,8 +113,6 @@ test("A single recording, with two conflicting animal tags chooses the best one"
   const initialDateTime = new Date("2026-05-01T10:00:00Z");
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
-  const projectHandle = project.projectHandle;
-  const User = project.api();
   await uploadRecordingsFromDeviceWithTimesAndDurations(
     [
       {
@@ -164,6 +162,39 @@ test("Multiple recordings with only AI classifications", async ({ oneFrameCptv }
     await checkVisitClassification(project, initialDateTime, now),
     "single visit is possum",
   ).toEqual(["all.mammal.possum"]);
+});
+
+test("Multiple recordings with only AI classifications, or no tracks", async ({ oneFrameCptv }) => {
+  const initialDateTime = new Date("2026-05-01T10:00:00Z");
+  const now = new Date();
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  // Add and tag a recording.
+  await uploadRecordingsFromDeviceWithTimesAndDurations(
+      [
+        {
+          recordingDateTime: addMinutes(initialDateTime, 1),
+          durationSeconds: 30,
+          tracks: ["unidentified", { tag: "hedgehog", weight: 10 }, "false-positive"],
+        },
+        {
+          recordingDateTime: addMinutes(initialDateTime, 2),
+          durationSeconds: 30,
+          tracks: ["possum", "unidentified"],
+        },
+        {
+          recordingDateTime: addMinutes(initialDateTime, 3),
+          durationSeconds: 30,
+          tracks: [],
+        },
+      ],
+      project.getDevice(),
+      project.locationBase,
+      oneFrameCptv,
+  );
+  expect(
+      await checkVisitClassification(project, initialDateTime, now),
+      "single visit is hedgehog",
+  ).toEqual(["all.mammal.hedgehog"]);
 });
 
 test("A single recording with a mixture of AI and human classifications", async ({
@@ -348,11 +379,11 @@ test("Multiple recordings with a mixture of AI and human classifications, multip
     ).toEqual(["all.mammal.cat"]);
   });
 
-  // NOTE: This should result in "split" visits, though I can't remember the splitting logic
+  // NOTE: This should result in "split" visits
   await test.step("Add a second user tag to the first track on the second recording", async () => {
     const trackTagId = await User.Recordings.replaceTrackTag(
       {
-        what: "hedgehog", // Huh, replacing track tag seems to be in place?
+        what: "hedgehog",
       },
       visitB.recordingId,
       visitB.tracks[0],
@@ -361,8 +392,8 @@ test("Multiple recordings with a mixture of AI and human classifications, multip
     expect(trackTagId).not.toEqual(visitB.tracks[0]);
     expect(
       await checkVisitClassification(project, initialDateTime, now),
-      "single visit is cat",
-    ).toEqual(["all.mammal.cat"]);
+      "visit split into two visits, one for each recording",
+    ).toEqual(["all.mammal.hedgehog", "all.mammal.cat"]);
   });
 });
 
@@ -386,7 +417,7 @@ test("Multiple recordings with a mixture of AI and human classifications, confli
       {
         recordingDateTime: addMinutes(initialDateTime, 3),
         durationSeconds: 10,
-        tracks: ["possum", "cat"],
+        tracks: ["possum", {tag: "cat", weight: 15}],
       },
     ],
     project.getDevice(),
@@ -412,20 +443,22 @@ test("Multiple recordings with a mixture of AI and human classifications, confli
     ).toEqual(["all.mammal.cat"]);
   });
 
-  // NOTE: This should result in "split" visits, though I can't remember the splitting logic
+  // NOTE: This should result in "split" visits
   await test.step("Add a second user tag to the first track on the first recording, by a different user", async () => {
     const trackTagId = await UserB.Recordings.replaceTrackTag(
       {
         what: "hedgehog",
       },
-      visitB.recordingId,
-      visitB.tracks[0],
+      visitA.recordingId,
+      visitA.tracks[0],
     );
     expect(trackTagId, "added user trackTag").toBeTruthy();
+    // TODO: This could diverge from the usual implementation, and class the visit as "mammal", and give a conflict tag?
+    //  Or, we could resolve that at runtime in browse, which seems maybe saner?
     expect(
       await checkVisitClassification(project, initialDateTime, now),
-      "single visit is cat",
-    ).toEqual(["all.mammal.cat"]);
+      "multiple visits, marked with conflict?",
+    ).toEqual(["all.mammal.cat", "all.mammal.hedgehog"]);
   });
 });
 
@@ -447,168 +480,117 @@ test("Newly uploaded recordings are not included in visits until they are proces
   // TODO
 });
 
+test("Visits include recordings in the island with no tracks", async () => {
+  const classifications = computeVisits(makeRawVisitRows([[[["possum", "ai"]]], [], []]));
+  expect(classifications.length, "there is one visit").toBe(1);
+  expect(classifications, "the visit contains all recordings, including empties").toMatchObject([
+    {
+      humanClassification: null,
+      aiClassification: "possum",
+      recordingIds: [1, 2, 3],
+    },
+  ]);
+});
+
+test("Visit splitting, each recording with a distinct human tag overriding the AI tag", async () => {
+  const classifications = computeVisits(
+    makeRawVisitRows([
+      [
+        [
+          ["possum", "ai"],
+          ["cat", "human"],
+        ],
+      ],
+      [
+        [
+          ["possum", "ai", 10],
+          ["cat", "ai"],
+          ["hedgehog", "human"],
+        ],
+      ],
+    ]),
+  );
+
+  expect(classifications.length, "there are two visits").toBe(2);
+  expect(classifications, "each visit contains one human tagged recording").toMatchObject([
+    {
+      humanClassification: "cat",
+      aiClassification: "possum",
+      recordingIds: [1],
+    },
+    {
+      humanClassification: "hedgehog",
+      aiClassification: "possum",
+      recordingIds: [2],
+    },
+  ]);
+});
+
 test("Visit splitting, multiple human visits", async () => {
-  const rows = [
-    {
-      "path": "all.mammal.possum",
-      "aiTagged": true,
-      "trackTagId": 149,
-      "confidence": 0.9,
-      "score": null,
-      "startSeconds": 0,
-      "endSeconds": 7,
-      "trackId": 112,
-      "recordingId": 68,
-      "recordingStart": "2026-05-01T10:02:00.000Z",
-      "recordingEnd": "2026-05-01T10:02:40.000Z"
-    },
-    {
-      "path": "all.mammal.possum",
-      "aiTagged": true,
-      "trackTagId": 150,
-      "confidence": 0.9,
-      "score": 10,
-      "startSeconds": 0,
-      "endSeconds": 7,
-      "trackId": 113,
-      "recordingId": 69,
-      "recordingStart": "2026-05-01T10:03:00.000Z",
-      "recordingEnd": "2026-05-01T10:03:10.000Z"
-    },
-    {
-      "path": "all.mammal.cat",
-      "aiTagged": true,
-      "trackTagId": 151,
-      "confidence": 0.9,
-      "score": null,
-      "startSeconds": 5,
-      "endSeconds": 10,
-      "trackId": 114,
-      "recordingId": 69,
-      "recordingStart": "2026-05-01T10:03:00.000Z",
-      "recordingEnd": "2026-05-01T10:03:10.000Z"
-    },
+  const classifications = computeVisits(
+    makeRawVisitRows([
+      [
+        [
+          ["possum", "ai"],
+          ["cat", "human"],
+        ],
+      ],
+      [
+        [
+          ["possum", "ai", 10],
+          ["cat", "human"],
+        ],
+        [
+          ["cat", "ai"],
+          ["hedgehog", "human"],
+          ["possum", "ai"],
+        ],
+      ],
+    ]),
+  );
 
-    // Human classifications
+  expect(classifications.length, "there are two visits").toBe(2);
+  expect(classifications, "each visit contains the same recordings").toMatchObject([
     {
-      "path": "all.mammal.cat",
-      "aiTagged": false,
-      "trackTagId": 152,
-      "confidence": 0.9,
-      "score": null,
-      "startSeconds": 0,
-      "endSeconds": 7,
-      "trackId": 112,
-      "recordingId": 68,
-      "recordingStart": "2026-05-01T10:02:00.000Z",
-      "recordingEnd": "2026-05-01T10:02:40.000Z"
+      humanClassification: "cat",
+      aiClassification: "possum",
+      recordingIds: [1, 2],
     },
     {
-      "path": "all.mammal.hedgehog",
-      "aiTagged": false,
-      "trackTagId": 153,
-      "confidence": 0.9,
-      "score": 10,
-      "startSeconds": 0,
-      "endSeconds": 7,
-      "trackId": 113,
-      "recordingId": 69,
-      "recordingStart": "2026-05-01T10:03:00.000Z",
-      "recordingEnd": "2026-05-01T10:03:10.000Z"
+      humanClassification: "hedgehog",
+      aiClassification: "possum",
+      recordingIds: [1, 2],
     },
-  ] as RawVisitRow[];
-  const classifications = computeVisits(rows);
-
-  expect(classifications.length).toBe(2);
-  expect(classifications[0]).toMatchObject({
-    humanClassification: "all.mammal.cat",
-    aiClassification: "all.mammal.possum",
-  });
-  expect(classifications[1]).toMatchObject({
-    humanClassification: "all.mammal.hedgehog",
-    aiClassification: "all.mammal.possum",
-  });
+  ]);
 });
 
 test("Multiple human tags on different tracks of the same recording", async () => {
-  const rows = [
+  const classifications = computeVisits(
+    makeRawVisitRows([
+      [[["possum", "ai"]]],
+      [
+        [
+          ["possum", "ai"],
+          ["cat", "human"],
+        ],
+        [
+          ["cat", "ai"],
+          ["hedgehog", "human"],
+        ],
+      ],
+    ]),
+  );
+  expect(classifications.length, "there are two visits").toBe(2);
+  expect(classifications).toMatchObject([
     {
-      "path": "all.mammal.possum",
-      "aiTagged": true,
-      "trackTagId": 149,
-      "confidence": 0.9,
-      "score": null,
-      "startSeconds": 0,
-      "endSeconds": 7,
-      "trackId": 112,
-      "recordingId": 68,
-      "recordingStart": "2026-05-01T10:02:00.000Z",
-      "recordingEnd": "2026-05-01T10:02:40.000Z"
+      humanClassification: "cat",
+      aiClassification: "possum",
+      recordingIds: [1, 2],
     },
     {
-      "path": "all.mammal.possum",
-      "aiTagged": true,
-      "trackTagId": 150,
-      "confidence": 0.9,
-      "score": 10,
-      "startSeconds": 0,
-      "endSeconds": 7,
-      "trackId": 113,
-      "recordingId": 69,
-      "recordingStart": "2026-05-01T10:03:00.000Z",
-      "recordingEnd": "2026-05-01T10:03:10.000Z"
+      humanClassification: "hedgehog",
+      aiClassification: "possum",
+      recordingIds: [1, 2],
     },
-    {
-      "path": "all.mammal.cat",
-      "aiTagged": true,
-      "trackTagId": 151,
-      "confidence": 0.9,
-      "score": null,
-      "startSeconds": 5,
-      "endSeconds": 10,
-      "trackId": 114,
-      "recordingId": 69,
-      "recordingStart": "2026-05-01T10:03:00.000Z",
-      "recordingEnd": "2026-05-01T10:03:10.000Z"
-    },
-
-    // Human classifications
-    {
-      "path": "all.mammal.cat",
-      "aiTagged": false,
-      "trackTagId": 153,
-      "confidence": 0.9,
-      "score": 10,
-      "startSeconds": 0,
-      "endSeconds": 7,
-      "trackId": 113,
-      "recordingId": 69,
-      "recordingStart": "2026-05-01T10:03:00.000Z",
-      "recordingEnd": "2026-05-01T10:03:10.000Z"
-    },
-    {
-      "path": "all.mammal.hedgehog",
-      "aiTagged": false,
-      "trackTagId": 153,
-      "confidence": 0.9,
-      "score": null,
-      "startSeconds": 5,
-      "endSeconds": 10,
-      "trackId": 114,
-      "recordingId": 69,
-      "recordingStart": "2026-05-01T10:03:00.000Z",
-      "recordingEnd": "2026-05-01T10:03:10.000Z"
-    },
-  ] as RawVisitRow[];
-  const classifications = computeVisits(rows);
-
-  expect(classifications.length).toBe(2);
-  expect(classifications[0]).toMatchObject({
-    humanClassification: "all.mammal.cat",
-    aiClassification: "all.mammal.possum",
-  });
-  expect(classifications[1]).toMatchObject({
-    humanClassification: "all.mammal.hedgehog",
-    aiClassification: "all.mammal.possum",
-  });
+  ]);
 });

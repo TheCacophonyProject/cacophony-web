@@ -12,6 +12,7 @@ import { idOf } from "@api/validation-middleware.js";
 import { successResponse } from "@api/V1/responseUtil.js";
 import { Visit } from "@models/Visit.js";
 import { TrackTag } from "@models/TrackTag.js";
+import visits from "@typedefs/client/Visits.js";
 
 const visitAttributes: FindAttributeOptions = [
   "startTime",
@@ -71,7 +72,11 @@ export default function (app: Application, baseUrl: string) {
             as: "HumanTrackTag",
           },
         ],
-        order: [["startTime", "ASC"]],
+        order: [
+          ["startTime", "DESC"],
+          ["humanClassification", "asc"],
+          ["aiClassification", "asc"],
+        ],
         attributes: visitAttributes,
       });
 
@@ -79,15 +84,15 @@ export default function (app: Application, baseUrl: string) {
         stationId,
         from: from.toISOString(),
         until: until.toISOString(),
-        visits,
+        visits: Visit.mergeConflictingHumanVisits(visits),
       });
     },
   );
 
   /**
-   * Retrieve the visit that a single recording is part of.
+   * Retrieve the visit(s) that a single recording is part of.
    *
-   * Finds a visit where recordingIds JSONB array contains recordingId.
+   * Finds all visits where recordingIds JSONB array contains recordingId.
    */
   app.get(
     `${apiUrl}/for-recording/:recordingId`,
@@ -96,8 +101,7 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredFlatRecordingById(param("recordingId")),
     async (_request: Request, response: Response, _next: NextFunction) => {
       const recordingId = response.locals.recording.id;
-
-      const visit = await Visit.findOne({
+      const visits = await Visit.findAll({
         where: {
           StationId: response.locals.recording.StationId,
           recordingIds: {
@@ -116,21 +120,22 @@ export default function (app: Application, baseUrl: string) {
             as: "HumanTrackTag",
           },
         ],
-        // TODO: Can a recording be part of multiple visits?  Existing logic suggests so.
-        order: [["startTime", "DESC"]],
+        order: [
+          ["startTime", "DESC"],
+          ["humanClassification", "asc"],
+          ["aiClassification", "asc"],
+        ],
         attributes: visitAttributes,
       });
       return successResponse(response, "Completed query.", {
         recordingId,
-        visit,
+        visits: Visit.mergeConflictingHumanVisits(visits),
       });
     },
   );
 
   /**
-   * Retrieve the visit that a single recording is part of.
-   *
-   * Finds a visit where recordingIds JSONB array contains recordingId.
+   * Retrieve the visits for a project between `from` and `until`.
    */
   app.get(
     `${apiUrl}/for-project/:projectId`,
@@ -165,11 +170,15 @@ export default function (app: Application, baseUrl: string) {
             as: "HumanTrackTag",
           },
         ],
-        order: [["startTime", "ASC"]],
+        order: [
+          ["startTime", "DESC"],
+          ["humanClassification", "asc"],
+          ["aiClassification", "asc"],
+        ],
         attributes: visitAttributes,
       });
       return successResponse(response, "Completed query.", {
-        visits,
+        visits: Visit.mergeConflictingHumanVisits(visits),
       });
     },
   );

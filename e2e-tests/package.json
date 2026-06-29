@@ -8,7 +8,7 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "ui-tests": "playwright test --ui",
+    "ui-tests": "playwright test --ui --debug",
     "lint:fix": "oxlint --fix --fix-suggestions . && oxfmt ."
   },
   "devDependencies": {

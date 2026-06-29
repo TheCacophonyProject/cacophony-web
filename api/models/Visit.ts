@@ -23,14 +23,15 @@ import Sequelize, {
   HasOne,
   NonAttribute,
   Op,
+  QueryTypes,
   Transaction,
 } from "sequelize";
 import { ModelStaticCommon } from "@models/index.js";
 import type {
   GroupId,
+  IsoFormattedDateString,
   RecordingId,
   StationId,
-  TrackId,
   TrackTagId,
 } from "@typedefs/api/common.js";
 import { Station } from "@models/Station.js";
@@ -46,7 +47,8 @@ import {
   RawVisitRow,
   VisitClassification,
   VisitRow,
-} from "@typedefs/client/tempComputeVisists.js";
+} from "@typedefs/client/tempComputeVisits.js";
+import visit from "@api/V1/Visit.js";
 
 export type VisitId = number;
 
@@ -290,6 +292,15 @@ export class Visit extends ModelStaticCommon<Visit> {
     return rec;
   }
 
+  static mergeConflictingHumanVisits(visits: Visit[]) {
+    // Check if there are any visits that multiple different human track tags on the same trackId
+
+    for (const visit of visits) {
+      // TODO
+    }
+    return visits;
+  }
+
   private static rebuildStationWindowInternal(
     stationId: StationId,
     groupId: GroupId,
@@ -411,27 +422,27 @@ ORDER BY MIN(start_time) ASC;
       const rowsToInsert: VisitRow[] = [];
       for (const island of islands) {
         const recordingIds = island.recordingIds as RecordingId[];
-
-        // TODO: In the event that we have more than one human classification for the window,
-        //  we want to split the visit appropriately.
-
-        // TODO: What is the current behaviour with path hierarchies for visits?
-        //  We need to replicate that.
         const classifications = await this.computeVisitClassifications(
           recordingIds,
           transaction,
         );
-
         // We still want to be able to cluster recordings that have no tags ai or human.
         if (classifications.length > 0) {
           for (const classification of classifications) {
             rowsToInsert.push({
-              ...classification,
               StationId: island.stationId as StationId,
               GroupId: island.groupId as GroupId,
               startTime: new Date(classification.startTime),
               endTime: new Date(classification.endTime),
               recordingIds: classification.recordingIds,
+              aiClassificationTrackTagId:
+                classification.aiClassificationTrackTagId,
+              aiClassificationRecordingId:
+                classification.aiClassificationRecordingId,
+              humanClassificationTrackTagId:
+                classification.humanClassificationTrackTagId,
+              humanClassificationRecordingId:
+                classification.humanClassificationRecordingId,
             });
           }
         } else {
@@ -503,14 +514,14 @@ ORDER BY MIN(start_time) ASC;
     // We join TrackTags -> Track -> Recording, filtering on visit recordings.
     // NOTE: TrackTag schema includes archivedAt; exclude archived tags.
     const excludedPaths = `'${Array.from(NEGATIVE_TAGS.values()).join("','")}'`;
-    const [rows] = (await this.sequelize.query(
+    const rows = (await this.sequelize.query(
       `
       SELECT
         tt."path" AS path,
         tt."automatic" AS "aiTagged",
         tt."id" as "trackTagId",
         tt."confidence" as "confidence",
-        t."thumbnailScore" as score,
+        greatest(-1000, t."thumbnailScore") as score,
         t."startSeconds" as "startSeconds",
         t."endSeconds" as "endSeconds",
         t."id" as "trackId",
@@ -531,10 +542,62 @@ ORDER BY MIN(start_time) ASC;
       {
         transaction,
         replacements: { recordingIds },
+        type: QueryTypes.SELECT,
       },
-    )) as unknown as [RawVisitRow[], unknown];
-    logging.warning(`${JSON.stringify(rows, null, 2)}`);
-    return computeVisits(rows);
+    )) as unknown as RawVisitRow[];
+    //logging.warning(`${JSON.stringify(rows, null, 2)}`);
+    const visits = computeVisits(rows);
+    {
+      // Handle recordings without tracks.
+      const allVisitRecordingIds = new Set(
+        visits.flatMap((v) => v.recordingIds),
+      );
+      const recordingIdsWithoutTracks = [];
+      // Add any recordingIds that didn't come back from the query (these were recordings with no tracks).
+      // We also want to adjust the start/end time of each visit accordingly.
+      for (const recordingId of recordingIds) {
+        if (!allVisitRecordingIds.has(recordingId)) {
+          recordingIdsWithoutTracks.push(recordingId);
+        }
+      }
+      if (recordingIdsWithoutTracks.length > 0) {
+        // We need to get the start and end times of these recordings.
+        const result = (await this.sequelize.query(
+          `
+              select min("recordingDateTime") as "startTime",
+                     max("recordingDateTime") as "endTime"
+              from "Recordings"
+              where id in (:recordingIds);
+            `,
+          {
+            transaction,
+            replacements: { recordingIds },
+            type: QueryTypes.SELECT,
+          },
+        )) as unknown as [
+          {
+            startTime: IsoFormattedDateString;
+            endTime: IsoFormattedDateString;
+          },
+        ];
+        if (result.length > 0) {
+          // Add these recordings to all visits,
+          // adjust the start and end times.
+          const startTime = new Date(result[0].startTime);
+          const endTime = new Date(result[0].endTime);
+          for (const visit of visits) {
+            visit.recordingIds.push(...recordingIdsWithoutTracks);
+            if (startTime < visit.startTime) {
+              visit.startTime = startTime;
+            }
+            if (endTime > visit.endTime) {
+              visit.endTime = endTime;
+            }
+          }
+        }
+      }
+    }
+    return visits;
   }
 }
 
