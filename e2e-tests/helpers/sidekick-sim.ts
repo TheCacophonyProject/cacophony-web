@@ -32,7 +32,7 @@ interface QueuedReferenceImageUpdate {
 
 // NOTE: For the purposes of testing, this Sidekick 'simulation' only ever connects to a single device.
 export class SidekickSim {
-  private userHandle: TestUserHandle;
+  private readonly userHandle: TestUserHandle;
   private isOffline: boolean = false;
   private isHostingHotspot: boolean = false;
   private connectedDeviceSim: DeviceSim | null = null;

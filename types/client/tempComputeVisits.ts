@@ -290,7 +290,7 @@ Another requirement: recordingIds for each visit should be sorted by startTime, 
   }
 
   const results: VisitClassification[] = [];
-  const uniqueHumanTags = new Set();
+  const uniqueHumanTags = new Set<string>();
   const humanRows: RawVisitRow[] = [];
   const aiRows: RawVisitRow[] = [];
   const blankRows: RawVisitRow[] = [];
@@ -340,48 +340,27 @@ Another requirement: recordingIds for each visit should be sorted by startTime, 
       aiRowsByRecording.set(row.recordingId, items);
     }
     const uniqueHuman = Array.from(uniqueHumanTags);
-    const humanRecordingIds = humanRows.map((entry) => entry.recordingId);
     for (const [path, entries] of humanRowsByPath.entries()) {
-      const pathIds = entries.map((entry) => entry.recordingId);
+      const trackIds = entries.map((entry) => entry.trackId);
+      const otherHumanTags = uniqueHuman.filter((t) => t !== path);
+      const trackIdsForOtherHumanTags = otherHumanTags.flatMap((t) => {
+        return (humanRowsByPath.get(t) || []).map((entry) => entry.trackId);
+      });
+      // For each recording that isn't tagged with `path`, if it's not also
+      // tagged with some other human path, we can add its AI row to this visit.
 
-      // For each recording that isn't tagged with `path`, if it's not also tagged with some other path, we can add it's AI row to this visit.
-      const nonPathAiRows = aiRows.filter(
-        (row) => !uniqueHumanTags.has(row.path),
-      );
+      // We want to gather all recordings that aren't already in the set of recordings for `path`,
+      // so long as they don't have an ai tag that matches one of the other uniqueHumanTags that isn't path.
 
-      // //const otherAI = aiRows.filter(entry => entry.recordingId);
-      //
-      // const humanVisitAiRows: RawVisitRow[] = [];
-      // // For each recording in the set, if it's AI-only, decide if it belongs to this human visit
-      // for (const [recordingId, aiEntries] of aiRowsByRecording.entries()) {
-      //   // FIXME: Not explicitly part of a human visit via recordingId, *or* has an AI tag that exactly matches some other human visit.
-      //   const hasHumanTag = humanRows.some(
-      //     (r) => r.recordingId === recordingId,
-      //   );
-      //   if (!hasHumanTag) {
-      //     const bestAiForRec = getBestTrackRowForTag(
-      //       getMostFrequentTaggedRows(aiEntries),
-      //     );
-      //     const bestAiPath = bestAiForRec.path;
-      //
-      //     // If the best AI tag for this recording is not one of the other human tags,
-      //     // or if it IS this specific human tag, include it.
-      //     const isOtherHumanTag = Array.from(uniqueHumanTags).some(
-      //       (t) => t !== path && t === bestAiPath,
-      //     );
-      //
-      //     if (!isOtherHumanTag) {
-      //       humanVisitAiRows.push(...aiEntries);
-      //     }
-      //   } else {
-      //     // TODO
-      //   }
-      // }
-      // We want to do a second pass over all the recordings assigned to a human visit to see what the AI classification would have been.
-
+      const applicableAiRows = aiRows.filter((row) => {
+        if (trackIds.includes(row.trackId)) {
+          return false;
+        }
+        return !trackIdsForOtherHumanTags.includes(row.trackId);
+      });
       const { startTime, endTime, recordingIds } = getTimespanAndRecordings([
         ...entries,
-        ...nonPathAiRows,
+        ...applicableAiRows,
         ...blankRows,
       ]);
 
@@ -422,7 +401,7 @@ Another requirement: recordingIds for each visit should be sorted by startTime, 
   // the order visits are inserted in the DB.
   // Sort classifications by startTime
   results.sort((a, b) => {
-    const startTime = b.startTime.getTime() - a.startTime.getTime();
+    const startTime = a.startTime.getTime() - b.startTime.getTime();
     if (startTime === 0) {
       // Tie-break on classification.
       if (a.humanClassification && b.humanClassification) {
@@ -452,7 +431,7 @@ export const makeRawVisitRows = (
   items: [string, "human" | "ai", number?][][][],
 ): RawVisitRow[] => {
   const rows: RawVisitRow[] = [];
-  const initialStartTime = new Date();
+  const initialStartTime = new Date("2026-01-02T00:00:00.000Z");
   let recId = 1;
   let trackId = 1;
   let trackTagId = 1;

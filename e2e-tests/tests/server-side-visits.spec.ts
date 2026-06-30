@@ -505,7 +505,7 @@ test("Visit splitting, each recording with a distinct human tag overriding the A
         [
           ["possum", "ai", 10],
           ["cat", "ai"],
-          ["hedgehog", "human"],
+          ["hedgehog", "human"], // Should this assume all other tracks are also hedgehog?  Probably?
         ],
       ],
     ]),
@@ -526,15 +526,51 @@ test("Visit splitting, each recording with a distinct human tag overriding the A
   ]);
 });
 
-test("Visit splitting, multiple human visits", async () => {
+test("Visit splitting, multiple human visits 1", async () => {
   const classifications = computeVisits(
     makeRawVisitRows([
       [
         [
           ["possum", "ai"],
-          ["cat", "human"],
+          ["cat", "human"], // <-- First recording is excluded from the second visit, since only track has contradicting human tag.
         ],
       ],
+      [
+        [
+          ["possum", "ai", 10],
+          ["cat", "human"],
+        ],
+        [
+          ["cat", "ai"],
+          ["hedgehog", "human"],
+          ["possum", "ai"],
+        ],
+      ],
+    ]),
+  );
+
+  expect(classifications.length, "there are two visits").toBe(2);
+  expect(
+    classifications,
+    "each visit contains the same recordings",
+  ).toMatchObject([
+    {
+      humanClassification: "cat",
+      aiClassification: "possum",
+      recordingIds: [1, 2],
+    },
+    {
+      humanClassification: "hedgehog",
+      aiClassification: "possum",
+      recordingIds: [2],
+    },
+  ]);
+});
+
+test("Visit splitting, multiple human visits 2", async () => {
+  const classifications = computeVisits(
+    makeRawVisitRows([
+      [[["possum", "ai"]], [["cat", "human"]]],
       [
         [
           ["possum", "ai", 10],
