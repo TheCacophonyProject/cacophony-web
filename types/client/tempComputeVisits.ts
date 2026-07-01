@@ -21,24 +21,6 @@ export interface RawVisitRow {
   recordingId: RecordingId;
 }
 
-export interface VisitCandidate {
-  path: string;
-  count: number;
-  score: number;
-  recordingId: RecordingId;
-  trackTagId: TrackTagId;
-  trackId: TrackId;
-  duration: number;
-  startSeconds: number;
-  endSeconds: number;
-  recordingStart: Date;
-  confidence: number;
-
-  recordingIds: RecordingId[];
-  startTime: Date;
-  endTime: Date;
-}
-
 export interface VisitClassification {
   humanClassificationRecordingId: RecordingId | null; // Id of recording this visit got its best track from
   humanClassificationTrackTagId: TrackTagId | null; // Id of the track this visit got its best tag from
@@ -193,78 +175,6 @@ const getBestTrackRowForTag = (rows: RawVisitRow[]) => {
   return bestRow;
 };
 
-const getClassificationsForRecording = (recording: {
-  ai: RawVisitRow[];
-  human: RawVisitRow[];
-}): VisitClassification[] => {
-  if (recording.human.length === 0) {
-    return [bestAiClassification(recording.ai)];
-  }
-  // How many unique human classifications do we have?
-  const humanRowsByPath = new Map<string, RawVisitRow[]>();
-  for (const row of recording.human) {
-    const item = humanRowsByPath.get(row.path) || [];
-    item.push(row);
-    humanRowsByPath.set(row.path, item);
-    // Get human classifications by path:
-  }
-  const {
-    aiClassificationRecordingId,
-    aiClassification,
-    aiClassificationTrackTagId,
-    aiClassificationTrackId,
-  } = bestAiClassification(recording.ai);
-
-  //console.log(`Best AI: ${aiClassification}, ${JSON.stringify(recording.ai)}`);
-  // Split:
-  const visits: VisitClassification[] = [];
-  for (const entries of humanRowsByPath.values()) {
-    // The visit will include all rows that had the path, plus any unattributed.
-    // The ai classification is constant for this recording.
-    const { startTime, endTime, recordingIds } = getTimespanAndRecordings([
-      ...recording.ai,
-      ...entries,
-    ]);
-    // TODO: Handle human conflicts where multiple human tags have been added to
-    //  a single track
-    const bestRow = getBestTrackRowForTag(entries);
-    visits.push({
-      aiClassificationTrackTagId,
-      aiClassification,
-      aiClassificationRecordingId,
-      aiClassificationTrackId,
-      startTime,
-      endTime,
-      recordingIds,
-      humanClassification: bestRow.path,
-      humanClassificationRecordingId: bestRow.recordingId,
-      humanClassificationTrackTagId: bestRow.trackTagId,
-      humanClassificationTrackId: bestRow.trackId,
-    });
-  }
-  return visits;
-};
-
-const bestHuman = (
-  visitClassifications: VisitClassification[],
-  humanRawRows: RawVisitRow[],
-): VisitClassification => {
-  let bestClassification = visitClassifications[0];
-  const rowForClass = humanRawRows.find(
-    (row) => row.trackId === bestClassification.humanClassificationTrackId,
-  )!;
-  const bestScore = rowForClass.score;
-  for (const classification of visitClassifications.slice(1)) {
-    const rowForClass = humanRawRows.find(
-      (row) => row.trackId === classification.humanClassificationTrackId,
-    )!;
-    if (rowForClass.score > bestScore) {
-      bestClassification = classification;
-    }
-  }
-  return bestClassification;
-};
-
 export const computeVisits = (rows: RawVisitRow[]) => {
   /*
 Visit computation logic:
@@ -332,13 +242,6 @@ Another requirement: recordingIds for each visit should be sorted by startTime, 
       items.push(row);
       humanRowsByPath.set(row.path, items);
     }
-
-    const aiRowsByRecording = new Map<RecordingId, RawVisitRow[]>();
-    for (const row of aiRows) {
-      const items = aiRowsByRecording.get(row.recordingId) || [];
-      items.push(row);
-      aiRowsByRecording.set(row.recordingId, items);
-    }
     const uniqueHuman = Array.from(uniqueHumanTags);
     for (const [path, entries] of humanRowsByPath.entries()) {
       const trackIds = entries.map((entry) => entry.trackId);
@@ -348,9 +251,6 @@ Another requirement: recordingIds for each visit should be sorted by startTime, 
       });
       // For each recording that isn't tagged with `path`, if it's not also
       // tagged with some other human path, we can add its AI row to this visit.
-
-      // We want to gather all recordings that aren't already in the set of recordings for `path`,
-      // so long as they don't have an ai tag that matches one of the other uniqueHumanTags that isn't path.
 
       const applicableAiRows = aiRows.filter((row) => {
         if (trackIds.includes(row.trackId)) {
@@ -389,13 +289,6 @@ Another requirement: recordingIds for each visit should be sorted by startTime, 
       });
     }
   }
-
-  // Rows by recording?  For each recording, check if there's a human tag.
-  // If just one human tag, it goes in a set of tags.
-
-  // Step one: try and label each recording.
-  // If a recording has more than one human tag, stick it into two visits.
-  // At the end, we need to account for all recordings to one or more visits.
 
   // NOTE: This sorting can be removed in production, we don't care about
   // the order visits are inserted in the DB.

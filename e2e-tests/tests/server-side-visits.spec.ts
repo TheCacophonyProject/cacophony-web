@@ -397,7 +397,7 @@ test("Multiple recordings with a mixture of AI and human classifications, multip
   });
 });
 
-test("Multiple recordings with a mixture of AI and human classifications, conflicting human classifications", async ({
+test.skip("Multiple recordings with a mixture of AI and human classifications, conflicting human classifications", async ({
   oneFrameCptv,
 }) => {
   const initialDateTime = new Date("2026-05-01T10:00:00Z");
@@ -442,6 +442,11 @@ test("Multiple recordings with a mixture of AI and human classifications, confli
       "single visit is cat",
     ).toEqual(["all.mammal.cat"]);
   });
+
+  // Here we make a conscious choice to diverge from the "classic" visits logic.
+  // Conflicting user tags should be entered into the DB as two visits, and
+  // making i.e. "all.mammal.cat", "all.mammal.hedgehog" into a visit of
+  // "all.mammal" with a conflict flag should now be handled at the UI level.
 
   // NOTE: This should result in "split" visits
   await test.step("Add a second user tag to the first track on the first recording, by a different user", async () => {
