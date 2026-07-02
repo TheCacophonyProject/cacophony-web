@@ -593,7 +593,7 @@ export const uploadGenericRecording =
         maxFileCountPerField: Infinity,
         maxTotalFileCount: 1,
         maxFileByteLength: 200 * 1024 * 1024, // 200MB, largest we've seen to date is ~170MB
-        maxFieldValueByteLength: 1024 * 1024, // 1MB - why would anything be bigger?
+        maxFieldValueByteLength: 10 * 1024 * 1024, // 10MB - why would anything be bigger?
       });
       if ("data" in fields) {
         recordingData = await validateDataPart(
