@@ -204,6 +204,7 @@ export const uploadRecordingsFromDeviceWithTimesAndDurations = async (
   deviceHandle: TestDeviceHandle,
   location: LatLng,
   file: ArrayBuffer,
+  shouldProcess = true,
 ): Promise<{ recordingId: RecordingId; tracks: TrackId[] }[]> => {
   // Upload multiple recordings at offset times with different durations to help testing visit islands.
   return test.step("Upload recordings and processing classifications", async () => {
@@ -221,11 +222,15 @@ export const uploadRecordingsFromDeviceWithTimesAndDurations = async (
             uploadTime: addMinutes(uploadTime, 1),
             duration: rec.durationSeconds, // >2 Needed so we aren't filtered out of visits
           }).then((recordingId) => {
-            processRecordingWithTracksAndTags(recordingId, rec.tracks, durationSeconds).then(
-              (trackIds) => {
-                resolve({ recordingId: recordingId, tracks: trackIds });
-              },
-            );
+            if (shouldProcess) {
+              processRecordingWithTracksAndTags(recordingId, rec.tracks, durationSeconds).then(
+                (trackIds) => {
+                  resolve({ recordingId: recordingId, tracks: trackIds });
+                },
+              );
+            } else {
+              resolve({ recordingId: recordingId, tracks: [] });
+            }
           });
         });
       }),

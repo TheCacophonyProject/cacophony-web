@@ -11,11 +11,17 @@ import { RecordingType as ConcreteRecordingType } from "../api/consts.js";
 import type { CacophonyApiClient } from "./api.js";
 import type { FetchResult, TestHandle } from "./types.js";
 import { DEFAULT_AUTH_ID } from "./types.js";
+import type { ApiStaticVisitResponse } from "@typedefs/api/visit.js";
 
 export interface VisitsQueryResult {
   statusCode: number;
   visits: ApiVisitResponse[];
   params: MonitoringPageCriteria;
+}
+
+export interface VisitsStaticQueryResult {
+  statusCode: number;
+  visits: ApiStaticVisitResponse[];
 }
 
 export interface BulkVisitsResponse {

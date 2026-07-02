@@ -7,10 +7,6 @@ module.exports = {
             type: DataTypes.INTEGER,
             allowNull: true,
         });
-        // await queryInterface.addColumn("Visits", "aiClassificationTrackId",{
-        //     type: DataTypes.INTEGER,
-        //     allowNull: true,
-        // });
         await queryInterface.addColumn("Visits", "aiClassificationTrackTagId",{
             type: DataTypes.INTEGER,
             allowNull: true,
@@ -19,10 +15,6 @@ module.exports = {
             type: DataTypes.INTEGER,
             allowNull: true,
         });
-        // await queryInterface.addColumn("Visits", "humanClassificationTrackId",{
-        //     type: DataTypes.INTEGER,
-        //     allowNull: true,
-        // });
         await queryInterface.addColumn("Visits", "humanClassificationTrackTagId",{
             type: DataTypes.INTEGER,
             allowNull: true,

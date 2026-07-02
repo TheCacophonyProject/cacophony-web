@@ -170,30 +170,30 @@ test("Multiple recordings with only AI classifications, or no tracks", async ({ 
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   // Add and tag a recording.
   await uploadRecordingsFromDeviceWithTimesAndDurations(
-      [
-        {
-          recordingDateTime: addMinutes(initialDateTime, 1),
-          durationSeconds: 30,
-          tracks: ["unidentified", { tag: "hedgehog", weight: 10 }, "false-positive"],
-        },
-        {
-          recordingDateTime: addMinutes(initialDateTime, 2),
-          durationSeconds: 30,
-          tracks: ["possum", "unidentified"],
-        },
-        {
-          recordingDateTime: addMinutes(initialDateTime, 3),
-          durationSeconds: 30,
-          tracks: [],
-        },
-      ],
-      project.getDevice(),
-      project.locationBase,
-      oneFrameCptv,
+    [
+      {
+        recordingDateTime: addMinutes(initialDateTime, 1),
+        durationSeconds: 30,
+        tracks: ["unidentified", { tag: "hedgehog", weight: 10 }, "false-positive"],
+      },
+      {
+        recordingDateTime: addMinutes(initialDateTime, 2),
+        durationSeconds: 30,
+        tracks: ["possum", "unidentified"],
+      },
+      {
+        recordingDateTime: addMinutes(initialDateTime, 3),
+        durationSeconds: 30,
+        tracks: [],
+      },
+    ],
+    project.getDevice(),
+    project.locationBase,
+    oneFrameCptv,
   );
   expect(
-      await checkVisitClassification(project, initialDateTime, now),
-      "single visit is hedgehog",
+    await checkVisitClassification(project, initialDateTime, now),
+    "single visit is hedgehog",
   ).toEqual(["all.mammal.hedgehog"]);
 });
 
@@ -417,7 +417,7 @@ test.skip("Multiple recordings with a mixture of AI and human classifications, c
       {
         recordingDateTime: addMinutes(initialDateTime, 3),
         durationSeconds: 10,
-        tracks: ["possum", {tag: "cat", weight: 15}],
+        tracks: ["possum", { tag: "cat", weight: 15 }],
       },
     ],
     project.getDevice(),
@@ -467,22 +467,178 @@ test.skip("Multiple recordings with a mixture of AI and human classifications, c
   });
 });
 
-test("Visit computation only happens when all current pending recordings for project/location have been processed", async () => {});
+test("Visit computation only happens when all current pending recordings for project/location have been processed", async ({
+  oneFrameCptv,
+}) => {
+  const initialDateTime = new Date("2026-05-01T10:00:00Z");
+  const now = new Date();
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const AdminUser = project.api();
+  const _uploads = await uploadRecordingsFromDeviceWithTimesAndDurations(
+    [
+      {
+        recordingDateTime: addMinutes(initialDateTime, 2),
+        durationSeconds: 40,
+        tracks: ["possum"],
+      },
+    ],
+    project.getDevice(),
+    project.locationBase,
+    oneFrameCptv,
+    false,
+  );
 
-test("Calculating visit islands", async () => {
-  // TODO
+  const visits = (await AdminUser.Visits.forProject(
+    project.projectHandle.id,
+    initialDateTime,
+    now,
+  )) as ApiStaticVisitResponse[];
+
+  expect(visits.length, "no visits yet, processing still pending").toEqual(0);
 });
 
-test("Deleting a recording which would split a visit", async () => {
-  // TODO
+test("Calculating visit islands", async ({ oneFrameCptv }) => {
+  const initialDateTime = new Date("2026-05-01T10:00:00Z");
+  const now = new Date();
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const _uploads = await uploadRecordingsFromDeviceWithTimesAndDurations(
+    [
+      {
+        recordingDateTime: addMinutes(initialDateTime, 2),
+        durationSeconds: 40,
+        tracks: ["possum"],
+      },
+      {
+        recordingDateTime: addMinutes(initialDateTime, 3),
+        durationSeconds: 10,
+        tracks: ["possum", { tag: "cat", weight: 15 }],
+      },
+      {
+        recordingDateTime: addMinutes(initialDateTime, 15),
+        durationSeconds: 10,
+        tracks: ["possum", { tag: "cat", weight: 15 }],
+      },
+    ],
+    project.getDevice(),
+    project.locationBase,
+    oneFrameCptv,
+  );
+  // NOTE: Visits are returned reverse chronologically
+  expect(
+    await checkVisitClassification(project, initialDateTime, now),
+    "one possum visit, followed by a cat",
+  ).toEqual(["all.mammal.cat", "all.mammal.possum"]);
 });
 
-test("Deleting the classification recording at the end of a visit", async () => {
-  // TODO
+test("Deleting a recording which would split a visit", async ({ oneFrameCptv }) => {
+  const initialDateTime = new Date("2026-05-01T10:00:00Z");
+  const now = new Date();
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const AdminUser = project.api();
+  const uploads = await uploadRecordingsFromDeviceWithTimesAndDurations(
+    [
+      {
+        recordingDateTime: addMinutes(initialDateTime, 2),
+        durationSeconds: 40,
+        tracks: ["possum"],
+      },
+      {
+        recordingDateTime: addMinutes(initialDateTime, 3),
+        durationSeconds: 10,
+        tracks: ["possum", { tag: "cat", weight: 15 }],
+      },
+      {
+        recordingDateTime: addMinutes(initialDateTime, 5),
+        durationSeconds: 10,
+        tracks: ["possum", { tag: "cat", weight: 15 }],
+      },
+      {
+        recordingDateTime: addMinutes(initialDateTime, 14),
+        durationSeconds: 10,
+        tracks: ["possum", { tag: "cat", weight: 15 }],
+      },
+    ],
+    project.getDevice(),
+    project.locationBase,
+    oneFrameCptv,
+  );
+  expect(await checkVisitClassification(project, initialDateTime, now), "one possum visit").toEqual(
+    ["all.mammal.possum"],
+  );
+  await AdminUser.Recordings.deleteRecording(uploads[2].recordingId);
+
+  expect(await checkVisitClassification(project, initialDateTime, now), "one possum visit").toEqual(
+    ["all.mammal.cat", "all.mammal.possum"],
+  );
 });
 
-test("Newly uploaded recordings are not included in visits until they are processed", async () => {
-  // TODO
+test("Deleting the classification recording at the end of a visit", async ({ oneFrameCptv }) => {
+  const initialDateTime = new Date("2026-05-01T10:00:00Z");
+  const now = new Date();
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const AdminUser = project.api();
+  const uploads = await uploadRecordingsFromDeviceWithTimesAndDurations(
+    [
+      {
+        recordingDateTime: addMinutes(initialDateTime, 2),
+        durationSeconds: 40,
+        tracks: ["possum", { tag: "cat", weight: 15 }],
+      },
+      {
+        recordingDateTime: addMinutes(initialDateTime, 3),
+        durationSeconds: 10,
+        tracks: ["possum", { tag: "cat", weight: 15 }],
+      },
+      {
+        recordingDateTime: addMinutes(initialDateTime, 5),
+        durationSeconds: 10,
+        tracks: ["possum", { tag: "cat", weight: 15 }],
+      },
+      {
+        recordingDateTime: addMinutes(initialDateTime, 14),
+        durationSeconds: 10,
+        tracks: ["possum"],
+      },
+    ],
+    project.getDevice(),
+    project.locationBase,
+    oneFrameCptv,
+  );
+  console.log(JSON.stringify(uploads, null, 2));
+  expect(await checkVisitClassification(project, initialDateTime, now), "one possum visit").toEqual(
+    ["all.mammal.possum"],
+  );
+  await AdminUser.Recordings.deleteRecording(uploads[3].recordingId);
+
+  expect(await checkVisitClassification(project, initialDateTime, now), "one cat visit").toEqual([
+    "all.mammal.cat",
+  ]);
+});
+
+test("AI tags in the discarded/filtered list make 'none/null' visits", async ({ oneFrameCptv }) => {
+  const initialDateTime = new Date("2026-05-01T10:00:00Z");
+  const now = new Date();
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const AdminUser = project.api();
+  const uploads = await uploadRecordingsFromDeviceWithTimesAndDurations(
+    [
+      {
+        recordingDateTime: addMinutes(initialDateTime, 2),
+        durationSeconds: 40,
+        tracks: ["unidentified"],
+      },
+    ],
+    project.getDevice(),
+    project.locationBase,
+    oneFrameCptv,
+  );
+  const visits = (await AdminUser.Visits.forProject(
+    project.projectHandle.id,
+    initialDateTime,
+    now,
+  )) as ApiStaticVisitResponse[];
+  expect(visits.length, "Has empty 'null' visit").toEqual(1);
+  expect(visits[0].aiClassification, "ai classification is null").toBeNull();
 });
 
 test("Visits include recordings in the island with no tracks", async () => {
@@ -555,10 +711,7 @@ test("Visit splitting, multiple human visits 1", async () => {
   );
 
   expect(classifications.length, "there are two visits").toBe(2);
-  expect(
-    classifications,
-    "each visit contains the same recordings",
-  ).toMatchObject([
+  expect(classifications, "each visit contains the same recordings").toMatchObject([
     {
       humanClassification: "cat",
       aiClassification: "possum",
@@ -632,6 +785,46 @@ test("Multiple human tags on different tracks of the same recording", async () =
       humanClassification: "hedgehog",
       aiClassification: "possum",
       recordingIds: [1, 2],
+    },
+  ]);
+});
+
+test("Longer AI visit tallies", async () => {
+  const classifications = computeVisits(
+    makeRawVisitRows([
+      [[["possum", "ai"]], [["cat", "ai"]]],
+      [[["possum", "ai"]], [["cat", "ai"]]],
+      [[["possum", "ai"]], [["cat", "ai"]]],
+      [[["possum", "ai"]]],
+    ]),
+  );
+  expect(classifications.length, "there is one visit").toBe(1);
+  expect(classifications).toMatchObject([
+    {
+      humanClassification: null,
+      aiClassification: "possum",
+      recordingIds: [1, 2, 3, 4],
+    },
+  ]);
+});
+
+test("Filtered out AI tags", async () => {
+  const classifications = computeVisits(
+    makeRawVisitRows([
+      [
+        [
+          ["possum", "human"],
+          ["unidentified", "ai"],
+        ],
+      ],
+    ]),
+  );
+  expect(classifications.length, "there is one visit").toBe(1);
+  expect(classifications).toMatchObject([
+    {
+      humanClassification: "possum",
+      aiClassification: "none",
+      recordingIds: [1],
     },
   ]);
 });

@@ -1,18 +1,19 @@
 import type { Application, NextFunction, Request, Response } from "express";
 import { param, query } from "express-validator";
-import Sequelize, { FindAttributeOptions, Op } from "sequelize";
+import Sequelize, { FindAttributeOptions, Op, WhereOptions } from "sequelize";
 import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredFlatRecordingById,
   fetchAuthorizedRequiredGroupById,
   fetchAuthorizedRequiredStationById,
 } from "@api/extract-middleware.js";
-import { validateFields } from "@api/middleware.js";
-import { idOf } from "@api/validation-middleware.js";
+import { isIntArray, validateFields } from "@api/middleware.js";
+import { idOf, integerOf } from "@api/validation-middleware.js";
 import { successResponse } from "@api/V1/responseUtil.js";
 import { Visit } from "@models/Visit.js";
 import { TrackTag } from "@models/TrackTag.js";
-import visits from "@typedefs/client/Visits.js";
+import { Station } from "@models/Station.js";
+import { LocationId } from "@typedefs/api/common.js";
 
 const visitAttributes: FindAttributeOptions = [
   "startTime",
@@ -28,26 +29,28 @@ const visitAttributes: FindAttributeOptions = [
   [Sequelize.col("AiTrackTag.path"), "aiClassification"],
   "aiClassificationRecordingId",
   [Sequelize.col("AiTrackTag.TrackId"), "aiClassificationTrackId"],
+
+  [Sequelize.col("Station.name"), "locationName"],
 ];
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/visits`;
 
   /**
-   * Retrieve all visits for a given station within a time window.
+   * Retrieve all visits for a given location within a time window.
    *
    * Returns visits that overlap the requested [from, until] window:
    *   startTime < until AND endTime > from
    */
   app.get(
-    `${apiUrl}/for-station/:stationId`,
+    `${apiUrl}/for-location/:locationId`,
     extractJwtAuthorizedUser,
     validateFields([
-      idOf(param("stationId")),
+      idOf(param("locationId")),
       query("from").exists().isISO8601().toDate(),
       query("until").exists().isISO8601().toDate(),
     ]),
-    fetchAuthorizedRequiredStationById(param("stationId")),
+    fetchAuthorizedRequiredStationById(param("locationId")),
     async (request: Request, response: Response, _next: NextFunction) => {
       const stationId = response.locals.station.id;
       const from = request.query.from as unknown as Date;
@@ -70,6 +73,11 @@ export default function (app: Application, baseUrl: string) {
             model: TrackTag,
             attributes: [["path", "humanClassification"]],
             as: "HumanTrackTag",
+          },
+          {
+            model: Station,
+            attributes: ["name"],
+            as: "Station",
           },
         ],
         order: [
@@ -119,6 +127,11 @@ export default function (app: Application, baseUrl: string) {
             attributes: [["path", "humanClassification"]],
             as: "HumanTrackTag",
           },
+          {
+            model: Station,
+            attributes: ["name"],
+            as: "Station",
+          },
         ],
         order: [
           ["startTime", "DESC"],
@@ -144,20 +157,37 @@ export default function (app: Application, baseUrl: string) {
       idOf(param("projectId")),
       query("from").exists().isISO8601().toDate(),
       query("until").exists().isISO8601().toDate(),
+      integerOf(query("max-results"), 1000),
+      query("locations")
+        .optional()
+        .toArray()
+        .isArray({ min: 1 })
+        .custom(isIntArray)
+        .withMessage(
+          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'",
+        ),
     ]),
     fetchAuthorizedRequiredGroupById(param("projectId")),
     async (request: Request, response: Response, _next: NextFunction) => {
       const projectId = response.locals.group.id;
       const from = request.query.from as unknown as Date;
       const until = request.query.until as unknown as Date;
+      const maxResults = request.query["max-results"] as unknown as number;
+      const locations: LocationId[] = (
+        (request.query["locations"] || []) as string[]
+      ).map((locationId) => Number(locationId));
+      const whereClause: WhereOptions = {
+        GroupId: projectId,
+        [Op.and]: [
+          { startTime: { [Op.lt]: until } },
+          { endTime: { [Op.gte]: from } },
+        ],
+      };
+      if (locations.length) {
+        whereClause.StationId = { [Op.in]: locations };
+      }
       const visits = await Visit.findAll({
-        where: {
-          GroupId: projectId,
-          [Op.and]: [
-            { startTime: { [Op.lt]: until } },
-            { endTime: { [Op.gte]: from } },
-          ],
-        },
+        where: whereClause,
         include: [
           {
             model: TrackTag,
@@ -169,7 +199,13 @@ export default function (app: Application, baseUrl: string) {
             attributes: [],
             as: "HumanTrackTag",
           },
+          {
+            model: Station,
+            attributes: ["name"],
+            as: "Station",
+          },
         ],
+        limit: maxResults,
         order: [
           ["startTime", "DESC"],
           ["humanClassification", "asc"],

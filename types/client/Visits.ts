@@ -15,6 +15,7 @@ const getVisitsForProject =
     fromDate: Date,
     untilDate: Date,
     locations?: LocationId[],
+    progressUpdater?: (progress: number) => void,
   ) => {
     const params = new URLSearchParams();
     params.append("from", fromDate.toISOString());
@@ -24,6 +25,9 @@ const getVisitsForProject =
         params.append("locations", location.toString());
       }
     }
+    // FIXME: Get *all* visits in the range, updating the progress updater until we're done.
+    // Probably make it into its own helper function I guess
+    const visits = [];
     return unwrapLoadedResource(
       api.get(
         authKey,

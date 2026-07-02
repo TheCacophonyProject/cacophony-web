@@ -53,6 +53,7 @@ import { Visit } from "@models/Visit.js";
 import LabelPaths from "@/classifications/label_paths.json" with { type: "json" };
 import { RecordingId, type TrackId } from "@typedefs/api/common.js";
 import { ApiThermalRecordingMetadataResponse } from "@typedefs/api/recording.js";
+import logging from "@log";
 
 const NULL_TRACK_ID = 1;
 
@@ -325,6 +326,54 @@ export default function (app: Application, baseUrl: string) {
             //  we can just use what we already have in scope.
             await sendAlerts(recording);
           }
+
+          if (complete && recording.type === RecordingType.ThermalRaw) {
+            if (!recording.StationId) {
+              logging.warning(
+                `Can't find location id for recording ${recording.id}, weird`,
+              );
+            } else {
+              const addSeconds = (startDate: Date, secs: number) => {
+                const result = new Date(startDate);
+                result.setSeconds(result.getSeconds() + secs);
+                return result;
+              };
+              // Check that this is the *last* of the thermal recordings to be processed for this location, for
+              // the visit window
+              const otherRecordingsQueued = await Recording.findOne({
+                where: {
+                  id: { [Op.ne]: recording.id },
+                  StationId: recording.StationId,
+                  processingState: {
+                    [Op.ne]: RecordingProcessingState.Finished,
+                  },
+                  deletedAt: null,
+                  recordingDateTime: {
+                    [Op.and]: [
+                      {
+                        [Op.lt]: addSeconds(
+                          recording.recordingDateTime,
+                          recording.duration + 600,
+                        ),
+                      },
+                      {
+                        [Op.gte]: addSeconds(
+                          recording.recordingDateTime,
+                          -1200,
+                        ),
+                      },
+                    ],
+                  },
+                  type: RecordingType.ThermalRaw,
+                },
+                attributes: ["id"],
+              });
+              if (!otherRecordingsQueued) {
+                logging.warning(`Rebuild for recording ${recording.id}`);
+                await Visit.rebuildForRecording(recording);
+              }
+            }
+          }
         } catch (e) {
           log.error("Failed to save recording: %s", e);
         }
@@ -337,7 +386,11 @@ export default function (app: Application, baseUrl: string) {
         recording.processingFailedCount += 1;
         await recording.save();
 
-        // FIXME, should this be an error response?
+        // TODO: Occasionally look at all the recordings that have been finished in the last x minutes,
+        //  and check to see if any of them don't have a corresponding visit.  If there are some, rebuild those visits.
+        //  This could initially be a cron-job, and if it finds any then we have a logic issue with our
+        //  "only process visits once all pending processing recordings are done" logic.
+
         return successResponse(response, "Processing failed.");
       }
     },
@@ -517,8 +570,6 @@ export default function (app: Application, baseUrl: string) {
         }
       }
       await Promise.all(trackDataPromises);
-      await Visit.rebuildForRecording(recording);
-
       // TODO: Also send alerts, since we have the thumbnails?
       return successResponse(response, "Tracks added.", { trackIds });
     },

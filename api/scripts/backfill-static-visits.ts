@@ -3,43 +3,53 @@ import log from "@log";
 import { Group } from "@models/Group.js";
 import { Recording } from "@models/Recording.js";
 import { Op } from "sequelize";
-import { RecordingType } from "@typedefs/api/consts.js";
+import {
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts.js";
 import { Station } from "@models/Station.js";
 import { Visit } from "@models/Visit.js";
 
 const updateLocation = async (location: Station) => {
-  const oldestRecordingInLocation = await Recording.findOne({
-    where: {
-      StationId: location.id,
-      type: RecordingType.ThermalRaw,
-    },
-    order: [["recordingDateTime", "ASC"]],
-  });
-  if (oldestRecordingInLocation) {
-    let hasRecordings = true;
-    let visits = await Visit.rebuildForRecording(oldestRecordingInLocation);
-    // Now get the next recording after the visit end time, and calculate visits on that?
-    // How best to get concurrency out of this?  Over locations?  Over
-    while (hasRecordings) {
-      const nextRecording = await Recording.findOne({
-        where: {
-          StationId: location.id,
-          type: RecordingType.ThermalRaw,
-          recordingDateTime: { [Op.gt]: visits[visits.length - 1].endTime },
-        },
-        order: [["recordingDateTime", "ASC"]],
-      });
-      if (!nextRecording) {
-        hasRecordings = false;
-        break;
+  let earliestTime = new Date("2010-01-01T00:00:00.000Z");
+  while (true) {
+    const recording = await Recording.findOne({
+      where: {
+        StationId: location.id,
+        type: RecordingType.ThermalRaw,
+        deletedAt: null,
+        duration: { [Op.gte]: 3 },
+        processingState: RecordingProcessingState.Finished,
+        recordingDateTime: { [Op.gt]: earliestTime },
+      },
+      order: [["recordingDateTime", "ASC"]],
+    });
+    if (!recording) {
+      break;
+    }
+    const visits = await Visit.rebuildForRecording(recording);
+    visits.sort((a, b) => b.endTime.getTime() - a.endTime.getTime());
+    if (visits.length > 0) {
+      if (
+        Math.abs(visits[0].endTime.getTime() - earliestTime.getTime()) >
+        1000 * 60 * 60 * 24
+      ) {
+        log.info(
+          `#${recording.id}(${recording.GroupId}/${recording.StationId}): ${recording.recordingDateTime.toISOString()}`,
+        );
       }
-      visits = await Visit.rebuildForRecording(nextRecording);
+      earliestTime = visits[0].endTime;
+    } else {
+      throw new Error(`No visits calculated for recording ${recording.id}`);
     }
   }
 };
 
-const updateAll = async (): Promise<void> => {
-  const groups = await Group.findAll();
+const updateAll = async (groups: Group[] = []): Promise<void> => {
+  const startTime = Date.now();
+  if (groups.length === 0) {
+    groups = await Group.findAll({ order: [["id", "asc"]], where: {} });
+  }
   for (const group of groups) {
     const locations = await Station.findAll({
       where: {
@@ -50,7 +60,7 @@ const updateAll = async (): Promise<void> => {
     const CONCURRENCY_LIMIT = 10;
     const pool = new Set<Promise<void>>();
     for (const location of locations) {
-      console.log(
+      log.info(
         `updating visit data at location ${location.id} (${location.name}) in ${group.groupName}`,
       );
       const promise = updateLocation(location).then(() => {
@@ -65,36 +75,23 @@ const updateAll = async (): Promise<void> => {
     }
     await Promise.all(pool);
   }
+  const endTime = Date.now();
+  log.info(
+    `Backfill took ${((endTime - startTime) / 1000 / 60).toFixed(2)}mins`,
+  );
 };
 
 (async () => {
-  await initSequelize();
+  await initSequelize(true);
 
-  // For each group in the system, iterate over each device.
-  // For each device, get thermal recordings from earliest to latest in batches of 100 recordings.
-  // For each recording, get all tracks
-  // For each track, fetch the track data from the s3 storage ( Track.getTrackData(trackId) )
-  // If the track data has `thumbnail.score` update the `thumbnailScore` column in the `Tracks` table for that track
-  // with the score.
-  //await updateAll();
+  // const group = await Group.findOne({
+  //   where: {
+  //     groupName: "orton bradley park",
+  //   },
+  // });
+  //await updateAll([group]);
 
-  const group = await Group.findOne({
-    where: {
-      groupName: "orton bradley park",
-    },
-  });
-  const locations = await Station.findAll({
-    where: {
-      GroupId: group.id,
-      earliestThermalRecordingTime: { [Op.ne]: null },
-    },
-  });
-  for (const location of locations) {
-    console.log(
-      `updating visit data at location ${location.id} (${location.name}) in ${group.groupName}`,
-    );
-    await updateLocation(location);
-  }
+  await updateAll();
 })()
   .catch((e) => {
     console.trace(e);

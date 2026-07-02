@@ -31,26 +31,33 @@ import {
   GroupId,
   IsoFormattedDateString,
   RecordingId,
-  StationId, TrackId,
-  TrackTagId
+  StationId,
+  TrackId,
+  TrackTagId,
 } from "@typedefs/api/common.js";
 import { Station } from "@models/Station.js";
 import { Group } from "@models/Group.js";
 import { Recording } from "@models/Recording.js";
-import { RecordingType } from "@typedefs/api/consts.js";
+import {
+  RecordingProcessingState,
+  RecordingType,
+} from "@typedefs/api/consts.js";
 import { TrackTag } from "@models/TrackTag.js";
 import { Track } from "@models/Track.js";
 import { DeletedRecording } from "@api/V1/recordingUtil.js";
+import log from "@log";
 
 export type VisitId = number;
 
 const VISIT_GAP_SECONDS = 10 * 60; // rolling window length / max gap allowed between recordings
 export const VISITS_ADVISORY_LOCK_KEY = 924_001; // arbitrary constant to namespace station locks
 
+const UNIDENTIFIED = "all.other.unidentified";
+
 const NEGATIVE_TAGS = new Set([
   "all.other.part",
   "all.other.poor_tracking",
-  "all.other.unidentified",
+  //"all.other.unidentified",
   "all.other.falsepositive",
   "all.other.noise",
   "all.other.static",
@@ -153,6 +160,9 @@ const bestHumanClassification = (recording: {
 };
 
 const getMostFrequentTaggedRows = (rows: RawVisitRow[]) => {
+  if (rows.length === 0) {
+    return rows;
+  }
   const tags = new Map<string, RawVisitRow[]>();
   let mostFrequent = 0;
   for (const row of rows) {
@@ -162,7 +172,8 @@ const getMostFrequentTaggedRows = (rows: RawVisitRow[]) => {
   }
   let bestRows = [] as RawVisitRow[];
   let bestRow;
-  for (const rows of tags.values()) {
+  // NOTE: If we have 3 unidentified tracks and one possum, we should choose the possum.
+  for (const [path, rows] of tags.entries()) {
     if (bestRow && mostFrequent === rows.length) {
       const newBestRow = getBestTrackRowForTag([
         getBestTrackRowForTag(rows),
@@ -173,27 +184,59 @@ const getMostFrequentTaggedRows = (rows: RawVisitRow[]) => {
         bestRows = rows;
       }
     }
-    if (rows.length > mostFrequent) {
-      mostFrequent = rows.length;
-      bestRows = rows;
-      bestRow = getBestTrackRowForTag(rows);
+    if (rows.length > mostFrequent || bestRow.path === UNIDENTIFIED) {
+      if (
+        (mostFrequent === 0 && path === UNIDENTIFIED) ||
+        path !== UNIDENTIFIED
+      ) {
+        mostFrequent = rows.length;
+        bestRows = rows;
+        bestRow = getBestTrackRowForTag(rows);
+      }
     }
   }
   return bestRows;
 };
 
 const getBestTrackRowForTag = (rows: RawVisitRow[]) => {
-  // NOTE: All the rows passed in here have the same tag.
   // Pick the row with the highest score,
+  if (rows.length === 0) {
+    return undefined;
+  }
+  const duration = (r: RawVisitRow) => r.endSeconds - r.startSeconds;
+  const maxDuration = Math.max(...rows.map((r) => duration(r)));
+  const confidence = (c: number) => {
+    if (c > 1) {
+      return c;
+    }
+    return c / 100;
+  };
+  const score = (r: RawVisitRow) => {
+    // This formulation seems to work well for tie-breaking.
+    return r.score * confidence(r.confidence) * (duration(r) / maxDuration);
+  };
   let bestRow = rows[0];
+  let bestScore = score(bestRow);
   for (const row of rows.slice(1)) {
-    if (row.score > bestRow.score) {
+    const candidateScore = score(row);
+    if (bestRow.path === UNIDENTIFIED && row.path !== UNIDENTIFIED) {
       bestRow = row;
-    } else if (row.score === bestRow.score) {
+      bestScore = candidateScore;
+    } else if (
+      (candidateScore > bestScore &&
+        row.path !== UNIDENTIFIED &&
+        bestRow.path !== UNIDENTIFIED) ||
+      (bestRow.path === UNIDENTIFIED && row.path !== UNIDENTIFIED) ||
+      (bestRow.path === UNIDENTIFIED && candidateScore > bestScore)
+    ) {
+      bestRow = row;
+      bestScore = candidateScore;
+    } else if (candidateScore === bestScore) {
       const rowA = row.endSeconds - row.startSeconds;
       const rowB = bestRow.endSeconds - row.startSeconds;
       if (rowA > rowB) {
         bestRow = row;
+        bestScore = candidateScore;
       }
     }
   }
@@ -208,6 +251,7 @@ const bestAiClassification = (
     ...ai,
     ...blankRows,
   ]);
+
   // best AI is most frequent tag in `ai`, followed by score and duration.
   const bestAiRow = getBestTrackRowForTag(getMostFrequentTaggedRows(ai));
   return {
@@ -218,10 +262,10 @@ const bestAiClassification = (
     startTime,
     endTime,
     recordingIds,
-    aiClassificationRecordingId: bestAiRow.recordingId,
-    aiClassification: bestAiRow.path,
-    aiClassificationTrackTagId: bestAiRow.trackTagId,
-    aiClassificationTrackId: bestAiRow.trackId,
+    aiClassificationRecordingId: bestAiRow ? bestAiRow.recordingId : null,
+    aiClassification: bestAiRow ? bestAiRow.path : null,
+    aiClassificationTrackTagId: bestAiRow ? bestAiRow.trackTagId : null,
+    aiClassificationTrackId: bestAiRow ? bestAiRow.trackId : null,
   };
 };
 
@@ -288,9 +332,11 @@ Another requirement: recordingIds for each visit should be sorted by startTime, 
 
     const humanRowsByPath = new Map<string, RawVisitRow[]>();
     for (const row of humanRows) {
-      const items = humanRowsByPath.get(row.path) || [];
-      items.push(row);
-      humanRowsByPath.set(row.path, items);
+      if (row.path !== UNIDENTIFIED) {
+        const items = humanRowsByPath.get(row.path) || [];
+        items.push(row);
+        humanRowsByPath.set(row.path, items);
+      }
     }
     const uniqueHuman = Array.from(uniqueHumanTags);
     for (const [path, entries] of humanRowsByPath.entries()) {
@@ -509,7 +555,7 @@ export class Visit extends ModelStaticCommon<Visit> {
             [Op.and]: [
               {
                 [Op.gte]: rebuildFrom,
-                [Op.lte]: rebuildUntil, // FIXME: Is this correct, or do we want one end open?
+                [Op.lt]: rebuildUntil,
               },
             ],
           },
@@ -598,11 +644,11 @@ export class Visit extends ModelStaticCommon<Visit> {
   }
 
   static mergeConflictingHumanVisits(visits: Visit[]) {
-    // Check if there are any visits that multiple different human track tags on the same trackId
-
-    for (const visit of visits) {
-      // TODO
-    }
+    // Check if there are any visits that multiple different
+    // human track tags on the same trackId, maybe postprocess API output.
+    //for (const visit of visits) {
+    // TODO
+    //}
     return visits;
   }
 
@@ -613,6 +659,9 @@ export class Visit extends ModelStaticCommon<Visit> {
     until: Date,
   ): (transaction: Transaction) => Promise<Visit[]> {
     return async (transaction: Transaction) => {
+      if (until <= from) {
+        return [];
+      }
       // Serialize rebuilds per station to avoid interleaving delete/insert windows.
       await this.sequelize.query(
         `SELECT pg_advisory_xact_lock(:k, :stationId);`,
@@ -622,20 +671,17 @@ export class Visit extends ModelStaticCommon<Visit> {
         },
       );
       // TODO: Ideally we don't delete, if one exists then we extend?
-      // 1) Delete any existing visits that overlap the rebuild window.
-      // FIXME: Make range only be open on one side
+      // 1) Delete any existing visits that *fully* overlap the rebuild window.  Is that what we want?
       await this.destroy({
         where: {
           StationId: stationId,
           [Op.and]: [
             { startTime: { [Op.lt]: until } },
-            { endTime: { [Op.gt]: from } },
+            { endTime: { [Op.gte]: from } },
           ],
         },
         transaction,
       });
-
-      // FIXME: Make range only be open on one side
       // FIXME: We're expanding the range again?!
       // 2) Pull recordings in a slightly wider range so that visit boundaries are correct
       // near the edge of [from, until].
@@ -655,12 +701,13 @@ WITH ordered AS (
     FROM "Recordings" r
     WHERE r."deletedAt" IS NULL
       AND r.type = '${RecordingType.ThermalRaw}'
+      AND r."processingState" = '${RecordingProcessingState.Finished}'
       AND r."StationId" = :stationId
       AND r."GroupId" = :groupId
       AND r."duration" >= 3      
       AND r."recordingDateTime" is not null
       AND r."recordingDateTime" >= :queryFrom
-      AND r."recordingDateTime" <= :queryUntil
+      AND r."recordingDateTime" < :queryUntil
 ),
 flagged AS (
   SELECT *,
@@ -850,7 +897,6 @@ ORDER BY MIN(start_time) ASC;
         type: QueryTypes.SELECT,
       },
     )) as unknown as RawVisitRow[];
-    //logging.warning(`${JSON.stringify(rows, null, 2)}`);
     const visits = computeVisits(rows);
     {
       // Handle recordings without tracks.
@@ -870,7 +916,7 @@ ORDER BY MIN(start_time) ASC;
         const result = (await this.sequelize.query(
           `
               select min("recordingDateTime") as "startTime",
-                     max("recordingDateTime") as "endTime"
+                     max("recordingDateTime" + ("duration" || ' seconds')::interval) as "endTime"
               from "Recordings"
               where id in (:recordingIds);
             `,

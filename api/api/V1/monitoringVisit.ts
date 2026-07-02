@@ -135,11 +135,9 @@ export class Visit {
     } else {
       const bestAiTags = getBestGuessOverall(allVisitTracks, AI_ONLY);
       if (bestAiTags.length > 1) {
-        logging.warning("Tie-break classic visits on track mass");
         // Tie-break based on the average mass of the track in question.
         let bestMass = -1;
         let bestTag: string;
-        // FIXME: Rewrite this in terms of thumbnailScore
         for (const [tag, tracks] of bestAiTags) {
           for (const track of tracks) {
             const data = (await Track.getTrackData(
