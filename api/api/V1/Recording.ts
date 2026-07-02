@@ -742,11 +742,11 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(query("where")),
     parseJSONField(query("tags")),
     async (request: Request, response: Response, next: NextFunction) => {
-      // return next(
-      //   new ClientError(
-      //     "Bulk delete is currently disabled for performance reasons",
-      //   ),
-      // );
+      return next(
+        new ClientError(
+          "Bulk delete is currently disabled for performance reasons",
+        ),
+      );
 
       const { viewAsSuperUser, tags = [], order, where = {} } = response.locals;
       const { tagMode, limit, offset, type, hideFiltered, exclusive } =
@@ -803,6 +803,11 @@ export default (app: Application, baseUrl: string) => {
     validateFields([body("ids").isArray()]),
     parseJSONField(query("ids")),
     async (request: Request, response: Response, next: NextFunction) => {
+      return next(
+        new ClientError(
+          "Bulk undelete is currently disabled for performance reasons",
+        ),
+      );
       const { ids } = request.body;
       const { viewAsSuperUser } = response.locals;
       const userId = response.locals.requestUser.id;

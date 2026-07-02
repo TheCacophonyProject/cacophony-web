@@ -23,7 +23,7 @@ const EXCLUDE_IDS_RECORDINGS = EXCLUDE_IDS_ARRAY.concat([
   "[].tracks[].tags[].path",
 ]);
 
-describe("Recordings: bulk delete, undelete", () => {
+describe.skip("Recordings: bulk delete, undelete", () => {
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
     JSON.stringify(TEMPLATE_THERMAL_RECORDING_RESPONSE),
   );
