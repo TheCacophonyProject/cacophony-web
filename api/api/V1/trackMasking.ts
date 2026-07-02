@@ -2,7 +2,6 @@ import type { DeviceId, GroupId } from "@typedefs/api/common.js";
 import type { TrackFramePosition } from "@typedefs/api/fileProcessing.js";
 import type { MaskRegion } from "@typedefs/api/device.js";
 import earcut from "earcut";
-import { Op } from "sequelize";
 type ArrayPt = [number, number];
 import { DeviceHistory } from "@models/DeviceHistory.js";
 

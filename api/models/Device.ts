@@ -29,7 +29,7 @@ import Sequelize, { QueryTypes } from "sequelize";
 import { ModelStaticCommon } from "./index.js";
 import { Group } from "./Group.js";
 import logger from "../logging.js";
-import { DeviceType, RecordingType } from "@typedefs/api/consts.js";
+import { RecordingType } from "@typedefs/api/consts.js";
 import type {
   DeviceId,
   GroupId,

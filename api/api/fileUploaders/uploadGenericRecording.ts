@@ -45,7 +45,7 @@ import { isLatLng } from "@models/util/validation.js";
 import { tryReadingM4aMetadata } from "@api/m4a-metadata-reader/m4a-metadata-reader.js";
 import { RecordingDataSuppliedMetadata } from "@typedefs/api/fileProcessing.js";
 import { Fn } from "sequelize/lib/utils";
-import { Visit, VISITS_ADVISORY_LOCK_KEY } from "@models/Visit.js";
+import { VISITS_ADVISORY_LOCK_KEY } from "@models/Visit.js";
 import { DeviceHistory } from "@models/DeviceHistory.js";
 import { JsonDocument } from "@typedefs/api/event.js";
 import { parseFormData, Pechkin } from "pechkin";

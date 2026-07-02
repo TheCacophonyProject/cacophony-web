@@ -45,7 +45,6 @@ import {
 import { TrackTag } from "@models/TrackTag.js";
 import { Track } from "@models/Track.js";
 import { DeletedRecording } from "@api/V1/recordingUtil.js";
-import log from "@log";
 
 export type VisitId = number;
 
@@ -57,7 +56,6 @@ const UNIDENTIFIED = "all.other.unidentified";
 const NEGATIVE_TAGS = new Set([
   "all.other.part",
   "all.other.poor_tracking",
-  //"all.other.unidentified",
   "all.other.falsepositive",
   "all.other.noise",
   "all.other.static",
