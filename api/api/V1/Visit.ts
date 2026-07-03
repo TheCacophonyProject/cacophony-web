@@ -1,11 +1,15 @@
-import type { Application, NextFunction, Request, Response } from "express";
+import { Application, NextFunction, Request, Response } from "express";
 import { param, query } from "express-validator";
-import Sequelize, { FindAttributeOptions, Op, WhereOptions } from "sequelize";
+import Sequelize, {
+  FindAttributeOptions,
+  Op,
+  QueryTypes,
+  WhereOptions,
+} from "sequelize";
 import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredFlatRecordingById,
   fetchAuthorizedRequiredGroupById,
-  fetchAuthorizedRequiredStationById,
 } from "@api/extract-middleware.js";
 import { isIntArray, validateFields } from "@api/middleware.js";
 import { idOf, integerOf } from "@api/validation-middleware.js";
@@ -14,6 +18,8 @@ import { Visit } from "@models/Visit.js";
 import { TrackTag } from "@models/TrackTag.js";
 import { Station } from "@models/Station.js";
 import { LocationId } from "@typedefs/api/common.js";
+import { initSequelize } from "@models/index.js";
+import { UnprocessableError } from "@api/customErrors.js";
 
 const visitAttributes: FindAttributeOptions = [
   "startTime",
@@ -33,69 +39,10 @@ const visitAttributes: FindAttributeOptions = [
   [Sequelize.col("Station.name"), "locationName"],
 ];
 
+const sequelize = await initSequelize();
+
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/visits`;
-
-  /**
-   * Retrieve all visits for a given location within a time window.
-   *
-   * Returns visits that overlap the requested [from, until] window:
-   *   startTime < until AND endTime > from
-   */
-  app.get(
-    `${apiUrl}/for-location/:locationId`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      idOf(param("locationId")),
-      query("from").exists().isISO8601().toDate(),
-      query("until").exists().isISO8601().toDate(),
-    ]),
-    fetchAuthorizedRequiredStationById(param("locationId")),
-    async (request: Request, response: Response, _next: NextFunction) => {
-      const stationId = response.locals.station.id;
-      const from = request.query.from as unknown as Date;
-      const until = request.query.until as unknown as Date;
-      const visits = await Visit.findAll({
-        where: {
-          StationId: stationId,
-          [Op.and]: [
-            { startTime: { [Op.lt]: until } },
-            { endTime: { [Op.gte]: from } },
-          ],
-        },
-        include: [
-          {
-            model: TrackTag,
-            attributes: [["path", "aiClassification"]],
-            as: "AiTrackTag",
-          },
-          {
-            model: TrackTag,
-            attributes: [["path", "humanClassification"]],
-            as: "HumanTrackTag",
-          },
-          {
-            model: Station,
-            attributes: ["name"],
-            as: "Station",
-          },
-        ],
-        order: [
-          ["startTime", "DESC"],
-          ["humanClassification", "asc"],
-          ["aiClassification", "asc"],
-        ],
-        attributes: visitAttributes,
-      });
-
-      return successResponse(response, "Completed query.", {
-        stationId,
-        from: from.toISOString(),
-        until: until.toISOString(),
-        visits: Visit.mergeConflictingHumanVisits(visits),
-      });
-    },
-  );
 
   /**
    * Retrieve the visit(s) that a single recording is part of.
@@ -148,13 +95,81 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * Retrieve the visits for a project between `from` and `until`.
+   * Get the distribution of visits per day over time.
    */
   app.get(
-    `${apiUrl}/for-project/:projectId`,
+    `${apiUrl}/for-project/:projectId/distribution`,
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("projectId")),
+      query("from").exists().isISO8601().toDate(),
+      query("until").exists().isISO8601().toDate(),
+      query("locations")
+        .optional()
+        .toArray()
+        .isArray({ min: 1 })
+        .custom(isIntArray)
+        .withMessage(
+          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'",
+        ),
+    ]),
+    fetchAuthorizedRequiredGroupById(param("projectId")),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const projectId = response.locals.group.id;
+      const from = request.query.from as unknown as Date;
+      const until = request.query.until as unknown as Date;
+      const locations: LocationId[] = (
+        (request.query["locations"] || []) as string[]
+      ).map((locationId) => Number(locationId));
+
+      if (until < from) {
+        return next(
+          new UnprocessableError("'from' date must be less than 'until' date"),
+        );
+      }
+      const numDays = Math.ceil(
+        (until.getTime() - from.getTime()) / 1000 / 60 / 60 / 24,
+      );
+      const result = await sequelize.query(
+        `
+select 
+  d.day::date, 
+  count(v.id) AS item_count
+from generate_series(:until - (:numDays || ' days')::interval, :until, interval '1 day') AS d(day)
+left join "Visits" v
+  on v."startTime" >= d.day
+  and v."startTime" < d.day + interval '1 day'
+  and v."GroupId" = :projectId
+  ${locations.length ? `and v."StationId" in (${locations.join(",")})` : ""}  
+group by d.day
+order by d.day;
+      `,
+        {
+          type: QueryTypes.SELECT,
+          replacements: {
+            projectId,
+            until: until.toISOString(),
+            from: from.toISOString(),
+            numDays,
+          },
+        },
+      );
+      return successResponse(response, "Got visits distribution.", {
+        distribution: result,
+      });
+    },
+  );
+
+  /**
+   * Retrieve the visits for a project between `from` and `until`.
+   * Optionally filter by location, supply max results
+   */
+  app.get(
+    `${apiUrl}/for-project/:projectId{/:count}`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("projectId")),
+      param("count").optional().equals("count"),
       query("from").exists().isISO8601().toDate(),
       query("until").exists().isISO8601().toDate(),
       integerOf(query("max-results"), 1000),
@@ -169,6 +184,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredGroupById(param("projectId")),
     async (request: Request, response: Response, _next: NextFunction) => {
+      const countOnly = request.params.count === "count";
       const projectId = response.locals.group.id;
       const from = request.query.from as unknown as Date;
       const until = request.query.until as unknown as Date;
@@ -185,6 +201,14 @@ export default function (app: Application, baseUrl: string) {
       };
       if (locations.length) {
         whereClause.StationId = { [Op.in]: locations };
+      }
+      if (countOnly) {
+        const count = await Visit.count({
+          where: whereClause,
+        });
+        return successResponse(response, "Got visits count.", {
+          count,
+        });
       }
       const visits = await Visit.findAll({
         where: whereClause,
@@ -213,7 +237,7 @@ export default function (app: Application, baseUrl: string) {
         ],
         attributes: visitAttributes,
       });
-      return successResponse(response, "Completed query.", {
+      return successResponse(response, "Got visits.", {
         visits: Visit.mergeConflictingHumanVisits(visits),
       });
     },

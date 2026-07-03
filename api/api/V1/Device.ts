@@ -1671,10 +1671,6 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       try {
         const atTime = request.query["at-time"] as unknown as Date;
-
-        logging.warning(
-          `get settings from ${new Date().toISOString()}, ${atTime.toISOString()}`,
-        );
         // // Always ask for one second from now, as sometimes during testing we get a later timestamp in the DB for the
         // // entry that's *just* been inserted.
         // atTime.setSeconds(atTime.getSeconds() + 1);

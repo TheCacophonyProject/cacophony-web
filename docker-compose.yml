@@ -1,6 +1,7 @@
 services:
   server:
     container_name: cacophony-web
+    shm_size: 1gb
     build:
       context: .
     environment:

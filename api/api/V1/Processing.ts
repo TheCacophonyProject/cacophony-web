@@ -369,7 +369,6 @@ export default function (app: Application, baseUrl: string) {
                 attributes: ["id"],
               });
               if (!otherRecordingsQueued) {
-                logging.warning(`Rebuild for recording ${recording.id}`);
                 await Visit.rebuildForRecording(recording);
               }
             }
