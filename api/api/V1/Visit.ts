@@ -66,17 +66,17 @@ export default function (app: Application, baseUrl: string) {
         include: [
           {
             model: TrackTag,
-            attributes: [["path", "aiClassification"]],
+            attributes: [],
             as: "AiTrackTag",
           },
           {
             model: TrackTag,
-            attributes: [["path", "humanClassification"]],
+            attributes: [],
             as: "HumanTrackTag",
           },
           {
             model: Station,
-            attributes: ["name"],
+            attributes: [],
             as: "Station",
           },
         ],
@@ -225,7 +225,7 @@ order by d.day;
           },
           {
             model: Station,
-            attributes: ["name"],
+            attributes: [],
             as: "Station",
           },
         ],

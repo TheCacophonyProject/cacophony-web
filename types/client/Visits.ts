@@ -87,7 +87,7 @@ const getAllVisitsForProject =
         untilDate,
         locations,
       )) || 0;
-    const maxResults = 1000; // Get this dynamically from the visits distribution?
+    const maxResults = 10000; // Get this dynamically from the visits distribution?
     const getVisitsForProjectFn = getVisitsForProject(api, authKey);
     const visits = [];
     let until = new Date(untilDate);

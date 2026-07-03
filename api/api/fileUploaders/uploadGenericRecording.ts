@@ -488,6 +488,17 @@ const parseDateTimeFromFilename = (
       const month = dateParts.slice(4, 6);
       const day = dateParts.slice(6, 8);
       return `${year}-${month}-${day}T${hour}:${mins}:${secs}${offset}`;
+    } else if (parts.length === 7 && device.location) {
+      // Reference "2025-06-26--04-48-28.aac"
+      const deviceTimezone = tzLookup(device.location.lat, device.location.lng);
+      const offset = getTimezoneOffset(deviceTimezone);
+      const hour = parts[4];
+      const mins = parts[5];
+      const secs = parts[6];
+      const year = parts[0];
+      const month = parts[1];
+      const day = parts[2];
+      return `${year}-${month}-${day}T${hour}:${mins}:${secs}${offset}`;
     }
   } else {
     // Reference: "/var/spool/cptv/failed-uploads/2026-01-21--06-12-45.cptv"

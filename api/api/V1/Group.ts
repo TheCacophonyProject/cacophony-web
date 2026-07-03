@@ -252,7 +252,6 @@ export default function (app: Application, baseUrl: string) {
     fetchUnauthorizedOptionalGroupByNameOrId(body(["groupname", "groupName"])),
     async (request: Request, response: Response, next: NextFunction) => {
       if (!response.locals.group) {
-        // Check for urlNormalised versions of group name.
         const groupName = extractValFromRequest(
           request,
           body(["groupname", "groupName"]),
@@ -267,23 +266,23 @@ export default function (app: Application, baseUrl: string) {
             ),
           );
         }
-
-        await fetchUnauthorizedOptionalGroupByNameOrId(urlNormalisedGroupName)(
-          request,
-          response,
-          next,
+        // Check for urlNormalised versions of group name against url normalised versions of *all* other group names.
+        const allGroups = await Group.findAll({
+          attributes: ["groupName"],
+        });
+        const urlNormalisedExistingGroups = allGroups.map((group) =>
+          urlNormaliseName(group.groupName),
         );
+        if (urlNormalisedExistingGroups.includes(urlNormalisedGroupName)) {
+          return next(
+            new ClientError("Group name in use", HttpStatusCode.Unprocessable),
+          );
+        }
       } else {
-        next();
-      }
-    },
-    async (_request: Request, response: Response, next: NextFunction) => {
-      if (response.locals.group) {
         return next(
           new ClientError("Group name in use", HttpStatusCode.Unprocessable),
         );
       }
-      next();
     },
     async (request: Request, response: Response) => {
       const groupName = (
