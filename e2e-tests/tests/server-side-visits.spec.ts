@@ -68,7 +68,7 @@ test("A single recording, single tag server-side visit is computed the same as c
   expect(visit.recordings[0].recId, "it's the recording we added").toEqual(recordingId);
   expect(visit.classification, "visit classification is correct").toEqual("possum");
   expect(visit.classFromUserTag, "visit is based on AI classification").toBe(false);
-  const staticVisit = (await User.Visits.forProject(
+  const staticVisit = (await User.Visits.getVisitsForProject(
     projectHandle.id,
     initialDateTime,
     now,
@@ -488,7 +488,7 @@ test("Visit computation only happens when all current pending recordings for pro
     false,
   );
 
-  const visits = (await AdminUser.Visits.forProject(
+  const visits = (await AdminUser.Visits.getVisitsForProject(
     project.projectHandle.id,
     initialDateTime,
     now,
@@ -632,7 +632,7 @@ test("AI tags in the discarded/filtered list make 'none/null' visits", async ({ 
     project.locationBase,
     oneFrameCptv,
   );
-  const visits = (await AdminUser.Visits.forProject(
+  const visits = (await AdminUser.Visits.getVisitsForProject(
     project.projectHandle.id,
     initialDateTime,
     now,
