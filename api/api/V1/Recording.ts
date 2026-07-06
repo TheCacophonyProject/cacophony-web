@@ -1900,7 +1900,7 @@ export default (app: Application, baseUrl: string) => {
             trackTagId: tag.id,
           });
         } else {
-          // FIXME - should probably not be success
+          // FIXME - should probably not be success, 304 not changed?
           return successResponse(response, "Tag already exists.");
         }
       } catch (_e) {

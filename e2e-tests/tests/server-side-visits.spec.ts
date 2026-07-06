@@ -397,6 +397,72 @@ test("Multiple recordings with a mixture of AI and human classifications, multip
   });
 });
 
+test("AI visit classification can't be false-positive", async ({ oneFrameCptv }) => {
+  const initialDateTime = new Date("2026-05-01T10:00:00Z");
+  const now = new Date();
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const AdminUser = project.api();
+  const _upload = await uploadRecordingsFromDeviceWithTimesAndDurations(
+    [
+      {
+        recordingDateTime: addMinutes(initialDateTime, 2),
+        durationSeconds: 40,
+        tracks: ["false-positive"],
+      },
+    ],
+    project.getDevice(),
+    project.locationBase,
+    oneFrameCptv,
+  );
+
+  const visits = (await AdminUser.Visits.getVisitsForProject(
+    project.projectHandle.id,
+    initialDateTime,
+    now,
+  )) as ApiStaticVisitResponse[];
+
+  // We never really want AI visits of "false-positive", let's just make them be "none"
+  expect(visits[0].humanClassification, "no human classification").toBeNull();
+  expect(visits[0].aiClassification, "no AI classification").toBeNull();
+});
+
+test("Replace AI tag with false-positive human tag", async ({ oneFrameCptv }) => {
+  const initialDateTime = new Date("2026-05-01T10:00:00Z");
+  const now = new Date();
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const User = project.api();
+  const [{ recordingId, tracks }] = await uploadRecordingsFromDeviceWithTimesAndDurations(
+    [
+      {
+        recordingDateTime: addMinutes(initialDateTime, 2),
+        durationSeconds: 40,
+        tracks: ["possum"],
+      },
+    ],
+    project.getDevice(),
+    project.locationBase,
+    oneFrameCptv,
+  );
+  expect(
+    await checkVisitClassification(project, initialDateTime, now),
+    "single visit is possum",
+  ).toEqual(["all.mammal.possum"]);
+  await test.step("Add a user tag to the first track on the first recording", async () => {
+    const trackTagId = await User.Recordings.replaceTrackTag(
+      {
+        what: "false-positive",
+      },
+      recordingId,
+      tracks[0],
+    );
+    expect(trackTagId, "added user trackTag").toBeTruthy();
+    expect(
+      await checkVisitClassification(project, initialDateTime, now),
+      "single visit is false positive",
+    ).toEqual(["all.other.falsepositive"]);
+  });
+});
+
 test.skip("Multiple recordings with a mixture of AI and human classifications, conflicting human classifications", async ({
   oneFrameCptv,
 }) => {
@@ -501,6 +567,8 @@ test("Calculating visit islands", async ({ oneFrameCptv }) => {
   const initialDateTime = new Date("2026-05-01T10:00:00Z");
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
+  // NOTE: These get all uploaded, and then all processed sequentially, to avoid race-conditions that emerge
+  // non-deterministically especially in a test enviroment, and that's not really what we're trying to test here.
   const _uploads = await uploadRecordingsFromDeviceWithTimesAndDurations(
     [
       {
@@ -522,6 +590,8 @@ test("Calculating visit islands", async ({ oneFrameCptv }) => {
     project.getDevice(),
     project.locationBase,
     oneFrameCptv,
+    true,
+    true,
   );
   // NOTE: Visits are returned reverse chronologically
   expect(
@@ -625,7 +695,7 @@ test("AI tags in the discarded/filtered list make 'none/null' visits", async ({ 
       {
         recordingDateTime: addMinutes(initialDateTime, 2),
         durationSeconds: 40,
-        tracks: ["unidentified"],
+        tracks: ["false-positive"],
       },
     ],
     project.getDevice(),
@@ -814,7 +884,7 @@ test("Filtered out AI tags", async () => {
       [
         [
           ["possum", "human"],
-          ["unidentified", "ai"],
+          ["false-positive", "ai"],
         ],
       ],
     ]),

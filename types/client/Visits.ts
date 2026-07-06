@@ -91,7 +91,6 @@ const getAllVisitsForProject =
     const getVisitsForProjectFn = getVisitsForProject(api, authKey);
     const visits = [];
     let until = new Date(untilDate);
-    let i = 0;
     while (true) {
       const visitsResponse = await getVisitsForProjectFn(
         projectId,
@@ -111,7 +110,6 @@ const getAllVisitsForProject =
       if (visits.length >= visitsTotalCount) {
         break;
       }
-      i++;
     }
     return visits;
   };
@@ -123,8 +121,8 @@ const getVisitsForRecording =
       api.get(
         authKey,
         `/api/v1/visits/for-recording/${recordingId}`,
-      ) as Promise<FetchResult<{ visit: ApiStaticVisitResponse }>>,
-      "visit",
+      ) as Promise<FetchResult<{ visits: ApiStaticVisitResponse[] }>>,
+      "visits",
     );
   };
 

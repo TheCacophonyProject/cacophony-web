@@ -205,36 +205,71 @@ export const uploadRecordingsFromDeviceWithTimesAndDurations = async (
   location: LatLng,
   file: ArrayBuffer,
   shouldProcess = true,
+  sequentially = false,
 ): Promise<{ recordingId: RecordingId; tracks: TrackId[] }[]> => {
   // Upload multiple recordings at offset times with different durations to help testing visit islands.
   return test.step("Upload recordings and processing classifications", async () => {
-    return Promise.all(
-      visitRecordingSpecs.map((rec) => {
+    if (!sequentially) {
+      return Promise.all(
+        visitRecordingSpecs.map((rec) => {
+          const uploadTime = new Date(rec.recordingDateTime);
+          const durationSeconds = rec.durationSeconds || 30;
+          uploadTime.setSeconds(uploadTime.getSeconds() + durationSeconds);
+          return new Promise<{ recordingId: RecordingId; tracks: TrackId[] }>((resolve, reject) => {
+            uploadThermalRecordingFromDevice({
+              file,
+              recordingDateTime: rec.recordingDateTime,
+              location,
+              deviceHandle,
+              uploadTime: addMinutes(uploadTime, 1),
+              duration: rec.durationSeconds, // >2 Needed so we aren't filtered out of visits
+            }).then((recordingId) => {
+              if (shouldProcess) {
+                processRecordingWithTracksAndTags(recordingId, rec.tracks, durationSeconds).then(
+                  (trackIds) => {
+                    resolve({ recordingId, tracks: trackIds });
+                  },
+                );
+              } else {
+                resolve({ recordingId, tracks: [] });
+              }
+            });
+          });
+        }),
+      );
+    } else {
+      const recordingIds = [];
+      const results = [];
+      for (const rec of visitRecordingSpecs) {
         const uploadTime = new Date(rec.recordingDateTime);
         const durationSeconds = rec.durationSeconds || 30;
         uploadTime.setSeconds(uploadTime.getSeconds() + durationSeconds);
-        return new Promise<{ recordingId: RecordingId; tracks: TrackId[] }>((resolve, reject) => {
-          uploadThermalRecordingFromDevice({
+        recordingIds.push(
+          await uploadThermalRecordingFromDevice({
             file,
             recordingDateTime: rec.recordingDateTime,
             location,
             deviceHandle,
             uploadTime: addMinutes(uploadTime, 1),
             duration: rec.durationSeconds, // >2 Needed so we aren't filtered out of visits
-          }).then((recordingId) => {
-            if (shouldProcess) {
-              processRecordingWithTracksAndTags(recordingId, rec.tracks, durationSeconds).then(
-                (trackIds) => {
-                  resolve({ recordingId: recordingId, tracks: trackIds });
-                },
-              );
-            } else {
-              resolve({ recordingId: recordingId, tracks: [] });
-            }
-          });
-        });
-      }),
-    );
+          }),
+        );
+      }
+      const zip = <A, B>(a: A[], b: B[]) => a.map((k, i) => [k, b[i]] as [A, B]);
+      for (const [recordingId, rec] of zip(recordingIds, visitRecordingSpecs)) {
+        if (shouldProcess) {
+          const trackIds = await processRecordingWithTracksAndTags(
+            recordingId,
+            rec.tracks,
+            rec.durationSeconds || 30,
+          );
+          results.push({ recordingId, tracks: trackIds });
+        } else {
+          results.push({ recordingId, tracks: [] });
+        }
+      }
+      return results;
+    }
   });
 };
 
@@ -247,7 +282,11 @@ export const checkVisitClassification = async (project: ProjectBundle, from: Dat
         from,
         until,
       ),
-      TestApiImpl.Visits.withAuth(adminUser).forProject(project.projectHandle.id, from, until),
+      TestApiImpl.Visits.withAuth(adminUser).getVisitsForProject(
+        project.projectHandle.id,
+        from,
+        until,
+      ),
     ])) as [BulkVisitsResponse, ApiStaticVisitResponse[]];
     expect(runtimeVisits.visits.length, "runtime visit count agrees with static").toEqual(
       staticVisits.length,
@@ -256,9 +295,10 @@ export const checkVisitClassification = async (project: ProjectBundle, from: Dat
       const visitClassification = (item.humanClassification || item.aiClassification) as string;
       expect(visitClassification, "static classification exists").not.toBeNull();
       const runtimeVisit = runtimeVisits.visits[index];
-      expect(runtimeVisit.classification, "runtime visit agrees with static").toEqual(
-        visitClassification.split(".").pop(),
-      );
+      expect(
+        (runtimeVisit.classification || "").replaceAll("-", ""),
+        "runtime visit agrees with static",
+      ).toEqual(visitClassification.split(".").pop());
       expect(runtimeVisit.classFromUserTag, "runtime tagger agrees with static").toEqual(
         item.humanClassification !== null,
       );

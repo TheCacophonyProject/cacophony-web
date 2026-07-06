@@ -1,6 +1,7 @@
 import { successResponse } from "../V1/responseUtil.js";
 import { validateFields } from "../middleware.js";
 import log from "@log";
+import logging from "@log";
 import { body, oneOf, param, query } from "express-validator";
 import _ from "lodash";
 import {
@@ -49,12 +50,13 @@ import type {
   MinimalTrackRequestData,
   MinimalTracksRequestData,
 } from "@/../types/api/fileProcessing.js";
-import { Visit } from "@models/Visit.js";
+import { Visit, VISITS_ADVISORY_LOCK_KEY } from "@models/Visit.js";
 import LabelPaths from "@/classifications/label_paths.json" with { type: "json" };
 import { RecordingId, type TrackId } from "@typedefs/api/common.js";
 import { ApiThermalRecordingMetadataResponse } from "@typedefs/api/recording.js";
-import logging from "@log";
+import { initSequelize } from "@models/index.js";
 
+const sequelize = await initSequelize();
 const NULL_TRACK_ID = 1;
 
 export default function (app: Application, baseUrl: string) {
@@ -203,14 +205,14 @@ export default function (app: Application, baseUrl: string) {
           if (newProcessedFileKey) {
             recording.fileKey = newProcessedFileKey;
           }
-          const nextJob = recording.getNextState();
-          const complete = nextJob === RecordingProcessingState.Finished;
-          recording.processingState = nextJob;
+          recording.processingState = recording.getNextState();
           recording.processingEndTime = new Date().toISOString();
           recording.processingFailedCount = 0;
-
           // Process extra data from file processing
           if (result && result.fieldUpdates) {
+            // FIXME: This allows us to set a non-finished processingState to a finished job, and we even have
+            //  legacy tests that enforce this behaviour, but should it ever be allowed?
+
             // TODO(jon): if the previous step was tracking, here would be the best time to consolidate tracks - however,
             //  we need to make sure that the AI is reading these tracks back out to do its classifications:
             //  #1283385 is a great example of why we need this.
@@ -227,6 +229,9 @@ export default function (app: Application, baseUrl: string) {
               }
             }
           }
+          // NOTE: This goes here, because processingState can currently be set by incoming data
+          const complete =
+            recording.processingState === RecordingProcessingState.Finished;
           let tracks: Track[] | null = null;
           if (
             complete &&
@@ -286,7 +291,6 @@ export default function (app: Application, baseUrl: string) {
             }
           }
           await recording.save();
-
           if (
             complete &&
             prevState !== RecordingProcessingState.TrackAndAnalyse &&
@@ -312,6 +316,74 @@ export default function (app: Application, baseUrl: string) {
               }
             }
           }
+
+          if (complete && recording.type === RecordingType.ThermalRaw) {
+            if (!recording.StationId) {
+              logging.warning(
+                `Can't find location id for recording ${recording.id}, weird`,
+              );
+            } else {
+              const addSeconds = (startDate: Date, secs: number) => {
+                const result = new Date(startDate);
+                result.setSeconds(result.getSeconds() + secs);
+                return result;
+              };
+
+              await sequelize.transaction(async (transaction) => {
+                await sequelize.query(
+                  `SELECT pg_advisory_xact_lock(:k, :stationId)`,
+                  {
+                    replacements: {
+                      k: VISITS_ADVISORY_LOCK_KEY,
+                      stationId: recording.StationId,
+                    },
+                    transaction,
+                  },
+                );
+                console.assert(
+                  recording.processingState ===
+                    RecordingProcessingState.Finished,
+                );
+                await recording.save({ transaction });
+                // Check that this is the *last* of the thermal recordings to be processed for this location, for
+                // the visit window
+                const otherRecordingsQueued = await Recording.findOne({
+                  where: {
+                    id: { [Op.ne]: recording.id },
+                    StationId: recording.StationId,
+                    GroupId: recording.GroupId,
+                    processingState: {
+                      [Op.ne]: RecordingProcessingState.Finished,
+                    },
+                    deletedAt: null,
+                    recordingDateTime: {
+                      [Op.and]: [
+                        {
+                          [Op.lt]: addSeconds(
+                            recording.recordingDateTime,
+                            recording.duration + 600,
+                          ),
+                        },
+                        {
+                          [Op.gte]: addSeconds(
+                            recording.recordingDateTime,
+                            -1200,
+                          ),
+                        },
+                      ],
+                    },
+                    type: RecordingType.ThermalRaw,
+                  },
+                  attributes: ["id"],
+                  transaction,
+                });
+                if (!otherRecordingsQueued) {
+                  await Visit.rebuildForRecording(recording, transaction);
+                }
+              });
+            }
+          }
+
           const twentyFourHoursMs = 24 * 60 * 60 * 1000;
           const recordingAgeMs =
             new Date().getTime() - recording.recordingDateTime.getTime();
@@ -325,53 +397,6 @@ export default function (app: Application, baseUrl: string) {
             // FIXME: Maybe since we *just* created thumbnails, we don't need to pull them out again to send the alert
             //  we can just use what we already have in scope.
             await sendAlerts(recording);
-          }
-
-          if (complete && recording.type === RecordingType.ThermalRaw) {
-            if (!recording.StationId) {
-              logging.warning(
-                `Can't find location id for recording ${recording.id}, weird`,
-              );
-            } else {
-              const addSeconds = (startDate: Date, secs: number) => {
-                const result = new Date(startDate);
-                result.setSeconds(result.getSeconds() + secs);
-                return result;
-              };
-              // Check that this is the *last* of the thermal recordings to be processed for this location, for
-              // the visit window
-              const otherRecordingsQueued = await Recording.findOne({
-                where: {
-                  id: { [Op.ne]: recording.id },
-                  StationId: recording.StationId,
-                  processingState: {
-                    [Op.ne]: RecordingProcessingState.Finished,
-                  },
-                  deletedAt: null,
-                  recordingDateTime: {
-                    [Op.and]: [
-                      {
-                        [Op.lt]: addSeconds(
-                          recording.recordingDateTime,
-                          recording.duration + 600,
-                        ),
-                      },
-                      {
-                        [Op.gte]: addSeconds(
-                          recording.recordingDateTime,
-                          -1200,
-                        ),
-                      },
-                    ],
-                  },
-                  type: RecordingType.ThermalRaw,
-                },
-                attributes: ["id"],
-              });
-              if (!otherRecordingsQueued) {
-                await Visit.rebuildForRecording(recording);
-              }
-            }
           }
         } catch (e) {
           log.error("Failed to save recording: %s", e);

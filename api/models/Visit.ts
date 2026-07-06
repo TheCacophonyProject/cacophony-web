@@ -52,11 +52,11 @@ const VISIT_GAP_SECONDS = 10 * 60; // rolling window length / max gap allowed be
 export const VISITS_ADVISORY_LOCK_KEY = 924_001; // arbitrary constant to namespace station locks
 
 const UNIDENTIFIED = "all.other.unidentified";
+const FALSE_POSITIVE = "all.other.falsepositive";
 
 const NEGATIVE_TAGS = new Set([
   "all.other.part",
   "all.other.poor_tracking",
-  "all.other.falsepositive",
   "all.other.noise",
   "all.other.static",
   "all.other.rain",
@@ -299,7 +299,7 @@ Another requirement: recordingIds for each visit should be sorted by startTime, 
   // NOTE: other recordings with no tracks will be merged in later, and distributed to all visits emitted by this function.
   for (const row of rows) {
     if (row.aiTagged) {
-      if (!row.trackId) {
+      if (!row.trackId || row.path === FALSE_POSITIVE) {
         blankRows.push(row);
       } else {
         aiRows.push(row);
@@ -844,8 +844,6 @@ ORDER BY MIN(start_time) ASC;
       )(transaction);
     } else {
       return await this.sequelize.transaction(async (transaction) => {
-        // FIXME: Might need to plumb this lock right up to all callers of this, and have it as a
-        //  higher level transaction.
         return await this.rebuildStationWindowInternal(
           stationId,
           groupId,
