@@ -68,9 +68,8 @@ const device = computed<ApiDeviceResponse | null>(() => {
 const settingsLoading = resourceIsLoading(settings);
 const lastSyncedSettingsLoading = resourceIsLoading(lastSyncedSettings);
 
-const nodeGroupInfoLoading = resourceIsLoading(deviceModel);
 const isTc2Device = computed<boolean>(() => {
-  return deviceModel.value === "hybrid-thermal-audio";
+  return saltNodeGroupOrDefault.value.includes("tc2");
 });
 const defaultWindows = {
   powerOn: "-30m",
@@ -163,15 +162,19 @@ const loadResource = async (
   });
 };
 const initialised = ref<boolean>(false);
+const saltNodeGroup = ref<LoadedResource<string>>(null);
+const saltNodeGroupOrDefault = computed<string>(() => {
+  if (saltNodeGroup.value) {
+    return saltNodeGroup.value;
+  }
+  return "tc2-prod";
+});
 onBeforeMount(async () => {
   await projectDevicesLoaded();
   await loadResource(settings, fetchSettings);
-  await loadResource(deviceModel, async () => {
-    const res = await ClientApi.Devices.getDeviceModel(deviceId.value);
-    if (res.success) {
-      return res.result.type;
-    }
-  });
+  await loadResource(saltNodeGroup, () =>
+    ClientApi.Devices.getDeviceNodeGroup(deviceId.value),
+  );
   initialised.value = true;
   if (settings.value && !settings.value.synced) {
     // Load last synced settings
