@@ -289,7 +289,6 @@ export default function (app: Application, baseUrl: string) {
       const groupName = (
         request.body.groupname || request.body.groupName
       ).trim();
-      logging.warning("HERE");
       const newGroup = await Group.create({ groupName });
       if (!config.productionEnv) {
         for (const secretName of config.groupNamesWithRedactedThermalRecordings ||

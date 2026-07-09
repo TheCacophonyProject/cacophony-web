@@ -1607,8 +1607,10 @@ export default (app: Application, baseUrl: string) => {
         deletedAt: null,
         deletedBy: null,
       });
-      await updateRecordingTimeBookkeeping(recording);
-      await Visit.rebuildForRecording(recording);
+      await Promise.all([
+        updateRecordingTimeBookkeeping(recording),
+        Visit.rebuildForRecording(recording),
+      ]);
       return successResponse(response, "Undeleted recording.");
     },
   );

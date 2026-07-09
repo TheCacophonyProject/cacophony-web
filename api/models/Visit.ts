@@ -97,7 +97,7 @@ interface VisitClassification {
   aiClassificationTrackTagId: TrackTagId | null;
   aiClassificationTrackId: TrackId | null;
   aiClassification: string | null;
-  recordingIds: RecordingId[];
+  recordingIds: [RecordingId, Date][];
   startTime: Date;
   endTime: Date;
 }
@@ -105,7 +105,7 @@ interface VisitClassification {
 const getTimespanAndRecordings = (visitRows: RawVisitRow[]) => {
   let startTime = new Date();
   let endTime = new Date(0);
-  const recordingIds = new Set<RecordingId>();
+  const recordingIds = new Set<[RecordingId, Date]>();
 
   for (const row of visitRows) {
     const start = new Date(row.recordingStart);
@@ -117,10 +117,12 @@ const getTimespanAndRecordings = (visitRows: RawVisitRow[]) => {
       endTime = end;
     }
 
-    recordingIds.add(row.recordingId);
+    recordingIds.add([row.recordingId, start]);
   }
   const ids = Array.from(recordingIds);
-  ids.sort();
+  ids.sort((a, b) => {
+    return a[1].getTime() - b[1].getTime();
+  });
   return { startTime, endTime, recordingIds: ids };
 };
 
@@ -361,7 +363,7 @@ Another requirement: recordingIds for each visit should be sorted by startTime, 
       const bestHumanRow = getBestTrackRowForTag(entries);
 
       const humanVisitAiRows = aiRows.filter((row) =>
-        recordingIds.includes(row.recordingId),
+        recordingIds.some((r) => r[0] === row.recordingId),
       );
 
       const bestAiForVisit = bestAiClassification(
@@ -669,10 +671,10 @@ export class Visit extends ModelStaticCommon<Visit> {
         },
       );
       // TODO: Ideally we don't delete, if one exists then we extend?
-      // 1) Delete any existing visits that *fully* overlap the rebuild window.  Is that what we want?
       await this.destroy({
         where: {
           StationId: stationId,
+          GroupId: groupId,
           [Op.and]: [
             { startTime: { [Op.lt]: until } },
             { endTime: { [Op.gte]: from } },
@@ -763,12 +765,6 @@ ORDER BY MIN(start_time) ASC;
       if (!islands || islands.length === 0) {
         return;
       }
-
-      // Compute classification outside SQL (can be as simple or as sophisticated as you like).
-
-      // Are we actually wanting to insert multiple visits for a time range, or just
-      // a single visit based on a recording passed in?  For back-fill, inserting multiple sounds useful...
-
       const rowsToInsert: VisitRow[] = [];
       for (const island of islands) {
         const recordingIds = island.recordingIds as RecordingId[];
@@ -784,7 +780,7 @@ ORDER BY MIN(start_time) ASC;
               GroupId: island.groupId as GroupId,
               startTime: new Date(classification.startTime),
               endTime: new Date(classification.endTime),
-              recordingIds: classification.recordingIds,
+              recordingIds: classification.recordingIds.map((r) => r[0]),
               aiClassificationTrackTagId:
                 classification.aiClassificationTrackTagId,
               aiClassificationRecordingId:
@@ -897,7 +893,7 @@ ORDER BY MIN(start_time) ASC;
     {
       // Handle recordings without tracks.
       const allVisitRecordingIds = new Set(
-        visits.flatMap((v) => v.recordingIds),
+        visits.flatMap((v) => v.recordingIds.map((r) => r[0])),
       );
       const recordingIdsWithoutTracks = [];
       // Add any recordingIds that didn't come back from the query (these were recordings with no tracks).
@@ -911,29 +907,39 @@ ORDER BY MIN(start_time) ASC;
         // We need to get the start and end times of these recordings.
         const result = (await this.sequelize.query(
           `
-              select min("recordingDateTime") as "startTime",
-                     max("recordingDateTime" + ("duration" || ' seconds')::interval) as "endTime"
+              select 
+              id, 
+              "recordingDateTime" as "startTime",
+              "recordingDateTime" + ("duration" || ' seconds')::interval as "endTime"
               from "Recordings"
               where id in (:recordingIds);
             `,
           {
             transaction,
-            replacements: { recordingIds },
+            replacements: { recordingIds: recordingIdsWithoutTracks },
             type: QueryTypes.SELECT,
           },
-        )) as unknown as [
-          {
-            startTime: IsoFormattedDateString;
-            endTime: IsoFormattedDateString;
-          },
-        ];
+        )) as unknown as {
+          id: RecordingId;
+          startTime: IsoFormattedDateString;
+          endTime: IsoFormattedDateString;
+        }[];
         if (result.length > 0) {
           // Add these recordings to all visits,
           // adjust the start and end times.
-          const startTime = new Date(result[0].startTime);
-          const endTime = new Date(result[0].endTime);
+          const startTime = new Date(
+            Math.min(...result.map((r) => new Date(r.startTime).getTime())),
+          );
+          const endTime = new Date(
+            Math.max(...result.map((r) => new Date(r.endTime).getTime())),
+          );
+          const recordingIdsWithStartTimes = result.map((r) => [
+            r.id,
+            new Date(r.startTime),
+          ]) as [RecordingId, Date][];
           for (const visit of visits) {
-            visit.recordingIds.push(...recordingIdsWithoutTracks);
+            visit.recordingIds.push(...recordingIdsWithStartTimes);
+            visit.recordingIds.sort((a, b) => a[1].getTime() - b[1].getTime());
             if (startTime < visit.startTime) {
               visit.startTime = startTime;
             }
