@@ -105,7 +105,7 @@ interface VisitClassification {
 const getTimespanAndRecordings = (visitRows: RawVisitRow[]) => {
   let startTime = new Date();
   let endTime = new Date(0);
-  const recordingIds = new Set<[RecordingId, Date]>();
+  const recordingIds = new Map<RecordingId, Date>();
 
   for (const row of visitRows) {
     const start = new Date(row.recordingStart);
@@ -116,8 +116,7 @@ const getTimespanAndRecordings = (visitRows: RawVisitRow[]) => {
     if (end > endTime) {
       endTime = end;
     }
-
-    recordingIds.add([row.recordingId, start]);
+    recordingIds.set(row.recordingId, start);
   }
   const ids = Array.from(recordingIds);
   ids.sort((a, b) => {
