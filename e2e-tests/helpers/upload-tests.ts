@@ -26,6 +26,17 @@ export type FileFixtures = {
 // TODO: maybe include mime type?
 
 export const test = base.extend<FileFixtures & { globalHooks: void }>({
+  // Overriding built-in page fixture
+  page: async ({ baseURL, page }, use) => {
+    // Automatically navigate to the base url before the test blocks execute
+    if (baseURL) {
+      await page.goto(baseURL);
+    }
+
+    // Hand the pre-navigated page off to your test case
+    await use(page);
+  },
+
   // For every test, swap nodes' fetch impl with playwrights, so that requests show up properly in the playwright UI.
   globalHooks: [
     async ({ request }, use) => {

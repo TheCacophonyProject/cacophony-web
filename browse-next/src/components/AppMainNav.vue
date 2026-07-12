@@ -253,6 +253,7 @@ onMounted(() => {
           data-bs-toggle="tooltip"
           data-bs-placement="right"
           data-bs-original-title="Search"
+          data-cy="activity search"
         >
           <span class="nav-icon-wrapper d-flex">
             <material-symbol name="search" />

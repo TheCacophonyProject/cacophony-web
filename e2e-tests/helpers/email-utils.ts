@@ -29,7 +29,7 @@ export interface TestEmail {
 
 export const startMailServerStub = async () => {
   return test.step("Initialize mail server stub", async () => {
-    await dockerExecNodeTestScript("concurrent-mailserver-stub.js");
+    return await dockerExecNodeTestScript("concurrent-mailserver-stub.js");
   });
 };
 

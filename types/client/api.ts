@@ -152,9 +152,9 @@ const cacophonyFetchWrapper = async <T>(
   };
   if (abortable) {
     request.signal = CurrentViewAbortController.controller.signal;
-    request.signal?.addEventListener("onabort", (e) => {
-      console.warn("Aborted", e, request.signal);
-    });
+    // request.signal?.addEventListener("onabort", (e) => {
+    //   console.warn("Aborted", e, request.signal);
+    // });
   }
   const credentials = (await stateResolvers.requestCredentialsResolver(
     authKey,
@@ -287,15 +287,15 @@ const cacophonyFetchWrapper = async <T>(
       success: ok as true,
     };
   } catch (e: Error | unknown) {
-    console.log("!!", e);
+    // console.log("!!", e);
     if ((e as Error).name === "AbortError") {
-      console.warn(
-        "!! Abort, abort",
-        e,
-        (e as Error).name,
-        url,
-        request.signal,
-      );
+      // console.warn(
+      //   "!! Abort, abort",
+      //   e,
+      //   (e as Error).name,
+      //   url,
+      //   request.signal,
+      // );
       return {
         result: {
           errors: ["Request aborted before fulfillment"],

@@ -200,8 +200,6 @@ const register = async () => {
         .replace(/:/g, ".");
     }
   }
-  console.log("Signing up with invite token", signupInviteToken);
-
   const newUserResponse = await ClientApi.Users.register(
     name,
     password,

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
+import type { ComputedRef, Ref } from "vue";
 import {
   computed,
   inject,
@@ -9,15 +10,12 @@ import {
   ref,
   watch,
 } from "vue";
-import type { Ref, ComputedRef } from "vue";
 import { ClientApi } from "@/api";
+import type { SelectedProject } from "@models/LoggedInUser";
 import {
-  shouldViewAsSuperUser,
   showUnimplementedModal,
   urlNormalisedCurrentProjectName,
 } from "@models/LoggedInUser";
-import type { SelectedProject } from "@models/LoggedInUser";
-import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import HorizontalOverflowCarousel from "@/components/HorizontalOverflowCarousel.vue";
 import InlineViewModal from "@/components/InlineViewModal.vue";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
@@ -26,13 +24,12 @@ import LocationVisitSummary from "@/components/LocationVisitSummary.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
 import { BButton, BSpinner } from "bootstrap-vue-next";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
-import { RouterLink, useRoute, useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useMediaQuery } from "@vueuse/core";
 import {
-  getClassifications,
   displayLabelForClassificationLabel,
-  getClassificationForLabel,
   flatClassifications,
+  getClassifications,
 } from "@api/classificationsUtils.ts";
 import TagImage from "@/components/TagImage.vue";
 import {
@@ -42,28 +39,39 @@ import {
   userProjects,
 } from "@models/provides";
 import type { LoadedResource } from "@apiClient/types";
-import BimodalSwitch from "@/components/BimodalSwitch.vue";
 import {
   canonicalLatLngForLocations,
   latLngApproxDistance,
 } from "@/helpers/Location";
-import { sortTagPrecedence } from "@models/visitsUtils";
-import type { LatLng, StationId as LocationId } from "@typedefs/api/common";
+import {
+  sortTagPrecedence,
+  visitClassificationLabel,
+  visitClassificationLabelFromPath,
+  visitClassificationPath,
+} from "@models/visitsUtils";
+import type {
+  LatLng,
+  RecordingId,
+  StationId as LocationId,
+} from "@typedefs/api/common";
 import { DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS } from "@/consts.ts";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import { ActivitySearchDisplayMode } from "@/components/activitySearchUtils.ts";
+import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
+import type { VisitsStaticQueryResult } from "@apiClient/Monitoring.ts";
+import { recordingUpdatedInVisitsContext } from "@/helpers/patch-visits-context.ts";
 
-const selectedVisit = ref<ApiVisitResponse | null>(null);
+const selectedVisit = ref<ApiStaticVisitResponse | null>(null);
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
-const visitsContext = ref<ApiVisitResponse[] | null>(null);
+const visitsContext = ref<ApiStaticVisitResponse[] | null>(null);
 provide("currentlySelectedVisit", selectedVisit);
 provide("currentlyHighlightedLocation", currentlyHighlightedLocation);
 
-const currentVisitsFilter = ref<((visit: ApiVisitResponse) => boolean) | null>(
-  null,
-);
+const currentVisitsFilter = ref<
+  ((visit: ApiStaticVisitResponse) => boolean) | null
+>(null);
 
-const visitIsTombstoned = (visit: ApiVisitResponse): boolean => {
+const visitIsTombstoned = (visit: ApiStaticVisitResponse): boolean => {
   return visit.hasOwnProperty("tombstoned");
 };
 
@@ -72,13 +80,13 @@ const pathForTag = (tag: string): string => {
 };
 
 const currentVisitsFilterComputed = computed<
-  (visit: ApiVisitResponse) => boolean
+  (visit: ApiStaticVisitResponse) => boolean
 >(() => {
   if (currentVisitsFilter.value === null) {
     return (visit) => !visitorIsIgnored(visit) && !visitIsTombstoned(visit);
   } else {
     return (visit) =>
-      (currentVisitsFilter.value as (visit: ApiVisitResponse) => boolean)(
+      (currentVisitsFilter.value as (visit: ApiStaticVisitResponse) => boolean)(
         visit,
       ) &&
       !visitIsTombstoned(visit) &&
@@ -86,8 +94,8 @@ const currentVisitsFilterComputed = computed<
   }
 });
 
-const dashboardVisits = computed<ApiVisitResponse[]>(() => {
-  return ((visitsContext.value || []) as ApiVisitResponse[]).filter(
+const dashboardVisits = computed<ApiStaticVisitResponse[]>(() => {
+  return ((visitsContext.value || []) as ApiStaticVisitResponse[]).filter(
     (visit) => !visitorIsIgnored(visit) && !visitIsTombstoned(visit),
   );
 });
@@ -95,9 +103,9 @@ const dashboardVisits = computed<ApiVisitResponse[]>(() => {
 // TODO: Move to provides/inject
 // FIXME: Any time any visit is mutated (tags change etc, we have to recompute this,
 //  which could be very slow for a large list?
-const maybeFilteredVisitsContext = computed<ApiVisitResponse[]>(() => {
+const maybeFilteredVisitsContext = computed<ApiStaticVisitResponse[]>(() => {
   if (visitsContext.value) {
-    return (visitsContext.value as ApiVisitResponse[]).filter(
+    return (visitsContext.value as ApiStaticVisitResponse[]).filter(
       currentVisitsFilterComputed.value,
     );
   }
@@ -116,18 +124,19 @@ const ignoredTags = computed<string[]>(() => {
   return DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS;
 });
 
-const visitorIsIgnored = (visit: ApiVisitResponse): boolean => {
-  if (visit && visit.classification) {
-    if (ignoredTags.value.includes(visit.classification)) {
+const visitorIsIgnored = (visit: ApiStaticVisitResponse): boolean => {
+  const path = visitClassificationPath(visit);
+  if (path === null) {
+    return true;
+  }
+  if (path) {
+    if (ignoredTags.value.includes(visitClassificationLabelFromPath(path))) {
       return true;
     }
-    const classification = getClassificationForLabel(visit.classification);
-    if (classification && typeof classification.path === "string") {
-      const parts = classification.path.split(".");
-      for (const part of parts) {
-        if (ignoredTags.value.includes(part)) {
-          return true;
-        }
+    const parts = path.split(".");
+    for (const part of parts) {
+      if (ignoredTags.value.includes(part)) {
+        return true;
       }
     }
   }
@@ -136,16 +145,14 @@ const visitorIsIgnored = (visit: ApiVisitResponse): boolean => {
 
 const visitHasClassification =
   (tag: string) =>
-  (visit: ApiVisitResponse): boolean => {
-    return (visit &&
-      visit.classification &&
-      visit.classification === tag) as boolean;
+  (visit: ApiStaticVisitResponse): boolean => {
+    return (visitClassificationLabel(visit) === tag) as boolean;
   };
 
 const visitHasLocation =
   (location: LocationId) =>
-  (visit: ApiVisitResponse): boolean => {
-    return (visit && visit.stationId === location) as boolean;
+  (visit: ApiStaticVisitResponse): boolean => {
+    return (visit && visit.locationId === location) as boolean;
   };
 
 const recordingMode = ref<"Thermal" | "Audio">("Thermal");
@@ -172,50 +179,32 @@ const currentProject = inject(currentActiveProject) as ComputedRef<
 watch(
   selectedVisit,
   async (
-    visit: ApiVisitResponse | null,
-    prevVisit: ApiVisitResponse | null,
+    visit: ApiStaticVisitResponse | null,
+    prevVisit: ApiStaticVisitResponse | null,
   ) => {
     if (visit && !prevVisit) {
       // Set route so that modal shows up
-
-      const recordingIds = visit.recordings.map(({ recId, tracks }) => ({
-        recId,
-        tracks,
-      }));
-      const visitClassification = visit.classification || "";
-      let firstRec = visit.recordings[0];
-      let firstTrack =
-        (firstRec.tracks &&
-          firstRec.tracks.length !== 0 &&
-          firstRec.tracks[0]) ||
-        undefined;
-      if (visitClassification !== "") {
-        // Make sure we set the first recording as one that contains the visit classification.
-        const firstRecordingWithVisitClassification = visit.recordings.find(
-          (rec) =>
-            rec.tracks.some(
-              (track) =>
-                track.tag === visit.classification ||
-                (!track.tag && track.aiTag === visit.classification),
-            ),
-        );
-        if (firstRecordingWithVisitClassification) {
-          firstRec = firstRecordingWithVisitClassification;
-          firstTrack = firstRec.tracks.find(
-            (track) =>
-              track.tag === visit.classification ||
-              (!track.tag && track.aiTag === visit.classification),
-          );
-        }
-      }
+      const classificationPath = visitClassificationPath(visit);
       const params: Record<string, string> = {
-        visitLabel: visit.classification || "",
-        currentRecordingId: firstRec.recId.toString(),
-        trackId: (firstTrack && firstTrack.id.toString()) as string,
+        visitLabel:
+          visitClassificationLabelFromPath(classificationPath || "") || "none",
       };
-      if (recordingIds.length) {
-        params.recordingIds = recordingIds.map(({ recId }) => recId).join(",");
+      const recId =
+        visit.humanClassificationRecordingId ||
+        visit.aiClassificationRecordingId ||
+        visit.recordingIds[0];
+      const trackId =
+        visit.humanClassificationTrackId || visit.aiClassificationTrackId;
+      if (recId) {
+        params.currentRecordingId = recId.toString();
       }
+      if (trackId) {
+        params.trackId = trackId.toString();
+      }
+      if (visit.recordingIds.length) {
+        params.recordingIds = visit.recordingIds.join(",");
+      }
+
       await router.push({
         name: "dashboard-visit",
         params,
@@ -241,15 +230,21 @@ const visitsOrRecordings = ref<"visits" | "recordings">("visits");
 const speciesOrLocations = ref<"species" | "location">("species");
 const loadingVisitsProgress = ref<number>(0);
 
+const fromTime = computed(() => {
+  const from = new Date();
+  from.setDate(from.getDate() - timePeriodDays.value);
+  return from;
+});
+
 const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
 
 const speciesSummary = computed<Record<string, number>>(() => {
   return dashboardVisits.value.reduce(
-    (acc: Record<string, number>, currentValue: ApiVisitResponse) => {
-      if (currentValue.classification) {
-        acc[currentValue.classification] =
-          acc[currentValue.classification] || 0;
-        acc[currentValue.classification]++;
+    (acc: Record<string, number>, currentValue: ApiStaticVisitResponse) => {
+      const classification = visitClassificationLabel(currentValue);
+      if (classification) {
+        acc[classification] = acc[classification] || 0;
+        acc[classification]++;
       }
       return acc;
     },
@@ -283,16 +278,17 @@ const earliestDate = computed<Date>(() => {
 const loadVisits = async () => {
   if (currentProject.value) {
     visitsContext.value = null;
-    const allVisits = await ClientApi.Monitoring.getAllVisitsForProject(
+    visitsContext.value = await ClientApi.Visits.getAllVisitsForProject(
       (currentProject.value as SelectedProject).id,
-      timePeriodDays.value,
-      shouldViewAsSuperUser.value,
+      fromTime.value,
+      new Date(),
+      [],
+      10000,
       (val: number) => {
         // TODO - Do we want to display loading progress via the UI?
         loadingVisitsProgress.value = val;
       },
     );
-    visitsContext.value = allVisits.visits;
   }
 };
 
@@ -391,7 +387,9 @@ provide(latLngForActiveLocations, canonicalLatLngForActiveLocations);
 
 onMounted(async () => {
   if (currentProject.value) {
+    performance.mark("Dashboard starts loading");
     await reloadDashboard(currentProject.value);
+    performance.mark("Dashboard finishes loading");
   }
   // Load visits for time period.
   // Get species summary.
@@ -461,6 +459,27 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   );
 });
 
+const recordingUpdated = async (
+  recordingId: RecordingId,
+  action: "deleted" | "updated",
+  newClassification?: string,
+  oldClassification?: string,
+) => {
+  console.log("Recording updated", recordingId, action);
+  console.assert(visitsContext.value !== null);
+  await recordingUpdatedInVisitsContext(
+    recordingId,
+    action,
+    newClassification,
+    oldClassification,
+    selectedVisit,
+    visitsContext as Ref<ApiStaticVisitResponse[]>, // TODO: Because this is potentially filtered, we might need other tests here
+    route,
+    (currentProject.value as SelectedProject).id,
+    [],
+  );
+};
+
 // TODO: When hovering a visit entry, highlight station on the map.  What's the best way to plumb this reactivity through?
 </script>
 <template>
@@ -492,9 +511,11 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
             class="form-select form-select-sm text-end"
             v-model="timePeriodDays"
           >
-            <option value="7">7 days</option>
             <option value="1">24 hours</option>
             <option value="3">3 days</option>
+            <option value="7">7 days</option>
+            <!--            <option value="30">30 days</option>-->
+            <!--            <option value="60">60 days</option>-->
           </select>
         </div>
         <!--        <div class="d-flex flex-row align-items-center justify-content-between">-->
@@ -562,7 +583,9 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       :visits="dashboardVisits"
       :location="canonicalLatLngForActiveLocations"
       :highlighted-location="currentlyHighlightedLocation"
-      @selected-visit="(visit: ApiVisitResponse) => (selectedVisit = visit)"
+      @selected-visit="
+        (visit: ApiStaticVisitResponse) => (selectedVisit = visit)
+      "
       @change-highlighted-location="
         (loc: LocationId | null) => (currentlyHighlightedLocation = loc)
       "
@@ -613,6 +636,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
         <p>
           <!-- TODO: cater for no locations, no devices, show different copy? -->
           <span
+            data-cy="no results"
             v-if="
               locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.length ===
               0
@@ -622,7 +646,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
             <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
             ><span v-else>day</span> for this project.
           </span>
-          <span v-else>
+          <span v-else data-cy="no results">
             There were no visits for any target species in any of the active
             locations in the last
             <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
@@ -647,6 +671,7 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   </div>
   <inline-view-modal
     @close="selectedVisit = null"
+    @recording-updated="recordingUpdated"
     :fade-in="loadedRouteName === 'dashboard'"
     :parent-route-name="'dashboard'"
     @shown="() => (loadedRouteName = 'dashboard')"

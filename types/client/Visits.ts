@@ -16,6 +16,7 @@ const getVisitsForProject =
     untilDate: Date,
     locations: LocationId[] = [],
     maxResults?: number,
+    abortable = false,
   ) => {
     const params = new URLSearchParams();
     params.append("from", fromDate.toISOString());
@@ -32,6 +33,7 @@ const getVisitsForProject =
       api.get(
         authKey,
         `/api/v1/visits/for-project/${projectId}?${params}`,
+        abortable,
       ) as Promise<
         FetchResult<{
           visits: ApiStaticVisitResponse[];
@@ -77,6 +79,7 @@ const getAllVisitsForProject =
     fromDate: Date,
     untilDate: Date,
     locations: LocationId[] = [],
+    maxResults = 10000,
     progressUpdater?: (progress: number) => void,
   ) => {
     // Maybe we want to query the total number of visits for this query first?
@@ -87,7 +90,6 @@ const getAllVisitsForProject =
         untilDate,
         locations,
       )) || 0;
-    const maxResults = 10000; // Get this dynamically from the visits distribution?
     const getVisitsForProjectFn = getVisitsForProject(api, authKey);
     const visits = [];
     let until = new Date(untilDate);

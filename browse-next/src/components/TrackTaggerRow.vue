@@ -622,8 +622,11 @@ onMounted(async () => {
           >{{ index + 1 }}</span
         >
         <div v-if="!hasUserTag && masterTag" class="d-flex flex-column">
-          <span class="fs-6">AI Classification</span>
+          <span class="fs-6" data-cy="classification type"
+            >AI Classification</span
+          >
           <span
+            data-cy="classification"
             class="classification text-capitalize d-inline-block fw-semibold"
             v-if="masterTag"
             >{{
@@ -636,8 +639,9 @@ onMounted(async () => {
           >
         </div>
         <span v-else-if="hasUserTag" class="d-flex flex-column">
-          <span class="fs-6">Manual ID</span>
+          <span class="fs-6" data-cy="classification type">Manual ID</span>
           <span
+            data-cy="classification"
             class="classification text-capitalize d-inline-flex fw-semibold gap-1"
             v-if="
               consensusUserTag &&
@@ -658,6 +662,7 @@ onMounted(async () => {
           </span>
           <span
             class="classification text-capitalize d-inline-block fw-semibold"
+            data-cy="classification"
             v-else-if="
               consensusUserTag &&
               masterTag &&
@@ -679,6 +684,7 @@ onMounted(async () => {
           <!-- Controversial tag, should be automatically flagged for review. -->
           <span
             class="classification text-capitalize d-inline-block fw-semibold conflicting-tags"
+            data-cy="classification"
             v-else-if="
               !consensusUserTag &&
               masterTag &&
@@ -851,6 +857,7 @@ onMounted(async () => {
       <div class="classification-btns">
         <button
           type="button"
+          :data-cy="`classification button ${isAudioRecording ? tag.displayAudio : tag.display}`"
           class="btn btn-classification text-capitalize d-flex flex-column gap-1 align-items-center justify-content-evenly"
           :class="[
             tag.label,

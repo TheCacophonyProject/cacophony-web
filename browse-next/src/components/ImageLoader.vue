@@ -20,7 +20,7 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-  (e: "image-not-found"): void;
+  (e: "image-not-found", src: string): void;
 }>();
 
 const loading = ref<boolean>(true);
@@ -35,7 +35,7 @@ const handleImageError = (e: ErrorEvent) => {
   if (image.value) {
     image.value.alt = "";
   }
-  emit("image-not-found");
+  emit("image-not-found", props.src);
 };
 
 const handleImageLoaded = (e: Event) => {

@@ -136,6 +136,7 @@ const computedConfirmationLabel = computed<string>(() => {
         class="mb-2"
       ></div>
       <button
+        data-cy="confirm action"
         @click.stop.prevent="
           () => {
             action();

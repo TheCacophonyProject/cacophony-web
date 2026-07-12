@@ -94,7 +94,18 @@ const timeObjToTimeStr = (time: Time): string => {
 const fetchSettings = async () => {
   const response = await ClientApi.Devices.getSettingsForDevice(deviceId.value);
   if (response && response.success && response.result.settings) {
-    return response.result.settings;
+    const settings = response.result.settings;
+    if (settings && !settings.synced) {
+      // Load last synced settings
+      const response = await ClientApi.Devices.getSettingsForDevice(
+        deviceId.value,
+        true,
+      );
+      if (response && response.success && response.result.settings) {
+        syncedSettings.value = response.result.settings;
+      }
+    }
+    return settings;
   }
   return {
     windows: defaultWindows,
@@ -170,22 +181,15 @@ const saltNodeGroupOrDefault = computed<string>(() => {
   return "tc2-prod";
 });
 onBeforeMount(async () => {
-  await projectDevicesLoaded();
-  await loadResource(settings, fetchSettings);
-  await loadResource(saltNodeGroup, () =>
-    ClientApi.Devices.getDeviceNodeGroup(deviceId.value),
-  );
+  initialised.value = false;
+  await Promise.all([
+    projectDevicesLoaded(),
+    loadResource(settings, fetchSettings),
+    loadResource(saltNodeGroup, () =>
+      ClientApi.Devices.getDeviceNodeGroup(deviceId.value),
+    ),
+  ]);
   initialised.value = true;
-  if (settings.value && !settings.value.synced) {
-    // Load last synced settings
-    const response = await ClientApi.Devices.getSettingsForDevice(
-      deviceId.value,
-      true,
-    );
-    if (response && response.success && response.result.settings) {
-      syncedSettings.value = response.result.settings;
-    }
-  }
 });
 
 const useLowPowerMode = computed<boolean>({

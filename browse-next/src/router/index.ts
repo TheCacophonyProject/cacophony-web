@@ -492,7 +492,7 @@ router.onError((e) => {
 });
 
 router.afterEach(async (to, from, failure) => {
-  if (failure) {
+  /* if (failure) {
     let type = "unknown";
     if (isNavigationFailure(failure, NavigationFailureType.aborted)) {
       type = "aborted";
@@ -502,7 +502,7 @@ router.afterEach(async (to, from, failure) => {
       type = "duplicated";
     }
     console.warn("NAVIGATION FAILURE", type, failure, to, from);
-  }
+  }*/
   // Use next tick to handle router history correctly
   // see: https://github.com/vuejs/vue-router/issues/914#issuecomment-384477609
   await nextTick(() => {

@@ -10,7 +10,17 @@ import { RecordingType } from "@typedefs/api/consts.ts";
 
 const route = useRoute();
 const router = useRouter();
-const emit = defineEmits(["close", "shown"]);
+const emit = defineEmits<{
+  (e: "close"): void;
+  (e: "shown"): void;
+  (
+    e: "recording-updated",
+    recording: RecordingId,
+    action: "deleted" | "updated",
+    newClassification?: string,
+    oldClassification?: string,
+  ): void;
+}>();
 
 const urlNormalisedGroupName = inject(
   urlNormalisedCurrentSelectedProjectName,
@@ -68,7 +78,20 @@ const onShown = () => {
   emit("shown");
 };
 const recordingType = ref<RecordingType>(RecordingType.ThermalRaw);
-const updatedRecording = (recordingId: RecordingId, action: string) => {};
+const updatedRecording = (
+  recordingId: RecordingId,
+  action: "deleted" | "updated",
+  newClassification?: string,
+  oldClassification?: string,
+) => {
+  emit(
+    "recording-updated",
+    recordingId,
+    action,
+    newClassification,
+    oldClassification,
+  );
+};
 const loadedRecording = (type: RecordingType) => {
   recordingType.value = type;
 };

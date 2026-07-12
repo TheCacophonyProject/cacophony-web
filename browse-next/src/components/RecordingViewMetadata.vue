@@ -156,7 +156,7 @@ const mapPointForRecording = computed<NamedPoint[]>(() => {
         </div>
         <div class="d-flex align-items-center ms-3">
           <material-symbol name="schedule" size="1.125rem" class="me-1" />
-          <span v-html="recordingStartTime" />
+          <span v-html="recordingStartTime" data-cy="recording start time" />
         </div>
       </div>
       <slot></slot>

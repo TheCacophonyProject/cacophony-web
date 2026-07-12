@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
-import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import { computed, inject } from "vue";
 import type { Ref } from "vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
@@ -9,6 +8,7 @@ import { visitsByLocation, visitsCountBySpecies } from "@models/visitsUtils";
 import type { NamedPoint } from "@models/mapUtils";
 import { displayLabelForClassificationLabel } from "@api/classificationsUtils.ts";
 import type { StationId as LocationId } from "@typedefs/api/common";
+import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
 
 const currentlyHighlightedLocation = inject(
   "currentlyHighlightedLocation",
@@ -19,13 +19,13 @@ const props = withDefaults(
     location: ApiLocationResponse;
     locations: ApiLocationResponse[] | null;
     activeLocations: ApiLocationResponse[];
-    visits: ApiVisitResponse[];
+    visits: ApiStaticVisitResponse[];
   }>(),
   { locations: null },
 );
 
-const visitsForLocation = computed<ApiVisitResponse[]>(() => {
-  return props.visits.filter((visit) => visit.stationId === props.location.id);
+const visitsForLocation = computed<ApiStaticVisitResponse[]>(() => {
+  return props.visits.filter((visit) => visit.locationId === props.location.id);
 });
 
 const visitCount = computed<number>(() => visitsForLocation.value.length);

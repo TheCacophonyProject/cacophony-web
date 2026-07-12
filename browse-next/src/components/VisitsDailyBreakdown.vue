@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import { computed, inject, ref } from "vue";
 import type { Ref } from "vue";
@@ -7,9 +6,6 @@ import {
   visitsCountBySpecies as visitsCountBySpeciesCalc,
   timeAtLocation,
   visitDuration,
-  VisitProcessingStates,
-  someRecordingStillProcessing,
-  intlFormatForLocation,
 } from "@models/visitsUtils";
 import type { DateTime } from "luxon";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
@@ -20,22 +16,21 @@ import {
   getClassificationForLabel,
 } from "@api/classificationsUtils.ts";
 import ImageLoader from "@/components/ImageLoader.vue";
-import { RecordingProcessingState } from "@typedefs/api/consts.ts";
-import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import { BSpinner } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import LocationName from "@/components/LocationName.vue";
+import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
-// TODO: Empty nights in our time window should still show, assuming we had heartbeat events during them?
-//  Of course, we don't currently do this.
+// TODO: Empty nights in our time window should still show, assuming we had startup/shutdown events during them?
+//  Of course, we don't currently do this.  This could be done with new "activity days" API.
 
 const currentlySelectedVisit = inject(
   "currentlySelectedVisit",
-) as Ref<ApiVisitResponse | null>;
+) as Ref<ApiStaticVisitResponse | null>;
 
 const now = new Date();
 const props = defineProps<{
-  visits: ApiVisitResponse[];
+  visits: ApiStaticVisitResponse[];
   startTime: DateTime;
   isNocturnal: boolean;
   location: LatLng;
@@ -43,7 +38,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "selected-visit", payload: ApiVisitResponse): void;
+  (e: "selected-visit", payload: ApiStaticVisitResponse): void;
   (e: "change-highlighted-location", payload: LocationId | null): void;
 }>();
 
@@ -70,7 +65,7 @@ interface EventItem {
 
 interface VisitEventItem extends EventItem {
   type: "visit";
-  data: ApiVisitResponse;
+  data: ApiStaticVisitResponse;
 }
 
 interface SunEventItem extends EventItem {
@@ -79,21 +74,23 @@ interface SunEventItem extends EventItem {
 
 const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
   // Take visits and interleave sunrise/sunset events.
-  // TODO - When visits are loaded, should we make the timeStart and timeEnd be Dates?
-  for (const visit of props.visits) {
-    if (!visit.classification) {
-      console.warn("No classification found for visit.", visit);
-    }
-  }
   const events: (VisitEventItem | SunEventItem)[] = props.visits.map(
-    (visit) =>
-      ({
+    (visit) => {
+      const classification = (
+        visit.humanClassification ||
+        visit.aiClassification ||
+        "none"
+      )
+        .split(".")
+        .pop();
+      return {
         type: "visit",
-        name: visit.classification,
-        timeStart: visit.timeStart,
+        name: classification,
+        timeStart: visit.startTime,
         data: visit,
-        date: new Date(visit.timeStart),
-      }) as VisitEventItem,
+        date: new Date(visit.startTime),
+      } as VisitEventItem;
+    },
   );
   const now = new Date();
   if (props.isNocturnal) {
@@ -258,27 +255,20 @@ const hasVisits = computed<boolean>(() => {
 const visitTime = (timeIsoString: string) =>
   timeAtLocation(timeIsoString, props.location);
 
-const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
-  if (visit.recordings.length) {
-    let foundTrack;
-    let foundRec;
-    for (const rec of visit.recordings) {
-      const track = rec.tracks.find(
-        (track) => track.tag === visit.classification,
-      );
-      if (track) {
-        foundRec = rec;
-        foundTrack = track;
-        break;
-      }
-    }
-    // FIXME: Just move this to a proper client API function?
-    if (foundTrack && foundRec) {
-      return `${ClientApi.getApiRoot()}/api/v1/recordings/${foundRec.recId}/thumbnail?trackId=${foundTrack.id}`;
-    }
-    return `${ClientApi.getApiRoot()}/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
+const thumbnailSrcForVisit = (
+  visit: ApiStaticVisitResponse,
+  prevUrl?: string,
+): string => {
+  const recId =
+    visit.humanClassificationRecordingId || visit.aiClassificationRecordingId;
+  const trackId =
+    visit.humanClassificationTrackId || visit.humanClassificationTrackId;
+  if (recId && trackId && !prevUrl) {
+    return `${ClientApi.getApiRoot()}/api/v1/recordings/${recId}/thumbnail?trackId=${trackId}`;
+  } else if (recId) {
+    return `${ClientApi.getApiRoot()}/api/v1/recordings/${recId}/thumbnail`;
   }
-  return "";
+  return `${ClientApi.getApiRoot()}/api/v1/recordings/${visit.recordingIds[0]}/thumbnail`;
 };
 
 const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
@@ -289,7 +279,7 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
 
 const highlightedLocation = (visit: VisitEventItem | SunEventItem) => {
   if (visit.type === "visit") {
-    emit("change-highlighted-location", visit.data.stationId);
+    emit("change-highlighted-location", visit.data.locationId);
   }
 };
 const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
@@ -300,13 +290,14 @@ const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
 
 const isStillProcessing = computed<boolean>(() => {
   // TODO: Poll to see if processing has finished
-  return visitEvents.value.some(
-    (visit) =>
-      visit.type === "visit" &&
-      visit.data.recordings.some((rec) =>
-        VisitProcessingStates.includes(rec.processingState),
-      ),
-  );
+  // return visitEvents.value.some(
+  //   (visit) =>
+  //     visit.type === "visit" &&
+  //     visit.data.recordings.some((rec) =>
+  //       VisitProcessingStates.includes(rec.processingState),
+  //     ),
+  // );
+  return false;
 });
 </script>
 <template>
@@ -334,13 +325,6 @@ const isStillProcessing = computed<boolean>(() => {
         />
       </div>
       <div class="d-flex align-items-center flex-shrink-0">
-        <span
-          v-if="isStillProcessing"
-          class="d-inline-flex align-items-center bg-light px-1 rounded-1 flex-shrink-0"
-        >
-          <b-spinner small variant="secondary" />
-          <span class="ms-2 me-1 fs-6 text-body-tertiary">AI Queued</span>
-        </span>
         <material-symbol
           v-if="hasVisits"
           :name="showVisitsDetail ? 'keyboard_arrow_up' : 'keyboard_arrow_down'"
@@ -362,6 +346,7 @@ const isStillProcessing = computed<boolean>(() => {
         <div
           v-for="([classification, path, count], index) in visitCountBySpecies"
           class="visit-species-count"
+          :data-cy="`visit species ${classification}`"
           :class="[classification, ...path.split('.')]"
           :key="index"
         >
@@ -374,9 +359,11 @@ const isStillProcessing = computed<boolean>(() => {
               variant="light"
               class="mx-1"
             />
-            <span :class="{ 'me-1': classification === 'unclassified' }">{{
-              count
-            }}</span>
+            <span
+              :class="{ 'me-1': classification === 'unclassified' }"
+              data-cy="visit count"
+              >{{ count }}</span
+            >
           </span>
           <span class="text-capitalize species d-inline-block">
             {{ displayLabelForClassificationLabel(classification) }}
@@ -389,6 +376,7 @@ const isStillProcessing = computed<boolean>(() => {
         v-for="(visit, index) in visitEvents"
         :key="index"
         class="visit-event-item px-1 d-flex user-select-none"
+        :data-cy="`${visit.type} ${index}`"
         :class="[
           visit.type,
           {
@@ -406,10 +394,13 @@ const isStillProcessing = computed<boolean>(() => {
             visit.type === 'visit' ? 'text-secondary' : 'text-body-tertiary'
           "
         >
-          <span :class="visit.type === 'visit' ? 'lh-sm pb-1' : ''">{{
-            visitTime(visit.timeStart)
-          }}</span>
           <span
+            data-cy="visit start time"
+            :class="visit.type === 'visit' ? 'lh-sm pb-1' : ''"
+            >{{ visitTime(visit.timeStart) }}</span
+          >
+          <span
+            data-cy="visit duration"
             class="duration lh-sm"
             v-if="visit.type === 'visit'"
             v-html="visitDuration(visit.data)"
@@ -460,17 +451,26 @@ const isStillProcessing = computed<boolean>(() => {
         <div v-if="visit.type === 'sun'" class="py-2 fs-6">
           {{ visit.name }}
         </div>
-        <div v-else class="d-flex py-2 flex-fill overflow-hidden">
+        <div
+          v-else
+          class="d-flex py-2 flex-fill overflow-hidden"
+          :data-cy="`visit species ${visit.name}`"
+        >
           <div class="visit-thumb rounded-1">
             <image-loader
               :src="thumbnailSrcForVisit(visit.data)"
+              @image-not-found="
+                (prevUrl) => thumbnailSrcForVisit(visit.data, prevUrl)
+              "
               alt="Thumbnail for first recording of this visit"
               width="48"
               height="48"
             />
-            <span class="num-recordings fw-medium px-1">{{
-              visit.data.recordings.length
-            }}</span>
+            <span
+              class="num-recordings fw-medium px-1"
+              data-cy="visit recording count"
+              >{{ visit.data.recordingIds.length }}</span
+            >
           </div>
           <div class="ps-2 ps-sm-3 overflow-hidden">
             <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
@@ -483,35 +483,28 @@ const isStillProcessing = computed<boolean>(() => {
                     ''
                   ).split('.'),
                 ]"
-                ><b-spinner
-                  small
-                  class="me-1"
-                  variant="light"
-                  v-if="someRecordingStillProcessing(visit.data)"
-                /><span v-if="someRecordingStillProcessing(visit.data)"
-                  >AI Queued</span
-                ><span v-else>{{
+                ><span>{{
                   displayLabelForClassificationLabel(visit.name)
                 }}</span>
 
                 <material-symbol
-                  v-if="visit.data.classFromUserTag"
+                  v-if="visit.data.humanClassification"
                   name="check"
                   size="1.125rem"
                   class="ms-1"
                 />
               </span>
-              <span
-                v-if="visit.data.userTagsConflict"
-                class="visit-species-tag text-capitalize d-inline-flex align-items-center bg-warning text-black"
-              >
-                <material-symbol name="swords" size="1.125rem" class="me-1" />
-                Controversial
-              </span>
+              <!--              <span-->
+              <!--                v-if="visit.data.userTagsConflict"-->
+              <!--                class="visit-species-tag text-capitalize d-inline-flex align-items-center bg-warning text-black"-->
+              <!--              >-->
+              <!--                <material-symbol name="swords" size="1.125rem" class="me-1" />-->
+              <!--                Controversial-->
+              <!--              </span>-->
             </div>
             <span class="track-metadata d-flex align-items-center">
               <location-name
-                :name="(visit as VisitEventItem).data.stationName || ''"
+                :name="(visit as VisitEventItem).data.locationName || ''"
                 truncate
                 class="fs-6"
               />

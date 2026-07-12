@@ -24,6 +24,7 @@ import {
   formatDuration,
   timeAtLocation,
   timezoneForLatLng,
+  visitClassificationLabel,
   visitDuration,
 } from "@models/visitsUtils";
 import type {
@@ -34,10 +35,6 @@ import type {
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
 import router from "@/router";
-import type {
-  ApiVisitResponse,
-  VisitRecordingTag,
-} from "@typedefs/api/monitoring";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { DateTime } from "luxon";
 import CptvPlayer from "@/components/cptv-player/CptvPlayer.vue";
@@ -68,19 +65,28 @@ import RecordingViewMetadata from "@/components/RecordingViewMetadata.vue";
 import RecordingViewTabs from "@/components/RecordingViewTabs.vue";
 import { BModal, BTooltip } from "bootstrap-vue-next";
 import LocationName from "@/components/LocationName.vue";
+import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
 
 const selectedVisit = inject(
   "currentlySelectedVisit",
-) as Ref<ApiVisitResponse | null>;
+) as Ref<ApiStaticVisitResponse | null>;
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
-const visitsContext = inject("visitsContext") as Ref<ApiVisitResponse[] | null>;
+const visitsContext = inject("visitsContext") as Ref<
+  ApiStaticVisitResponse[] | null
+>;
 const route = useRoute();
 const emit = defineEmits<{
   (e: "close"): void;
   (e: "start-blocking-work"): void;
   (e: "end-blocking-work"): void;
   (e: "loaded-recording", type: RecordingType): void;
-  (e: "recording-updated", recordingId: RecordingId, action: string): void;
+  (
+    e: "recording-updated",
+    recordingId: RecordingId,
+    action: "deleted" | "updated",
+    newClassification?: string,
+    oldClassification?: string,
+  ): void;
 }>();
 const inlineModalEl = ref<HTMLDivElement>();
 const { height: inlineModalHeight } = useElementSize(inlineModalEl);
@@ -205,25 +211,25 @@ watch(
   },
 );
 
-const nextVisit = computed<ApiVisitResponse | null>(() => {
+const nextVisit = computed<ApiStaticVisitResponse | null>(() => {
   return (
     (currentVisitIndex.value !== null &&
       visitsContext.value &&
       currentVisitIndex.value !== 0 &&
-      (visitsContext.value as ApiVisitResponse[])[
+      (visitsContext.value as ApiStaticVisitResponse[])[
         currentVisitIndex.value - 1
       ]) ||
     null
   );
 });
 
-const previousVisit = computed<ApiVisitResponse | null>(() => {
+const previousVisit = computed<ApiStaticVisitResponse | null>(() => {
   return (
     (currentVisitIndex.value !== null &&
       visitsContext.value &&
       (currentVisitIndex.value as number) <
-        (visitsContext.value as ApiVisitResponse[]).length &&
-      (visitsContext.value as ApiVisitResponse[])[
+        (visitsContext.value as ApiStaticVisitResponse[]).length &&
+      (visitsContext.value as ApiStaticVisitResponse[])[
         currentVisitIndex.value + 1
       ]) ||
     null
@@ -299,8 +305,8 @@ const isInVisitContext = computed<boolean>(() => {
 const currentVisitIndex = computed<number | null>(() => {
   if (visitsContext.value && selectedVisit.value) {
     const currentVisitIndex = (
-      visitsContext.value as ApiVisitResponse[]
-    ).indexOf(selectedVisit.value as ApiVisitResponse);
+      visitsContext.value as ApiStaticVisitResponse[]
+    ).indexOf(selectedVisit.value as ApiStaticVisitResponse);
     if (currentVisitIndex !== -1) {
       return currentVisitIndex;
     }
@@ -350,7 +356,7 @@ const gotoNextRecording = async () => {
 const gotoNextVisit = async () => {
   if (nextVisit.value) {
     selectedVisit.value = nextVisit.value;
-    return gotoVisit(selectedVisit.value as ApiVisitResponse, true);
+    return gotoVisit(selectedVisit.value as ApiStaticVisitResponse, true);
   }
 };
 
@@ -382,21 +388,25 @@ const gotoRecording = async (recordingId: RecordingId) => {
   });
 };
 
-const gotoVisit = async (visit: ApiVisitResponse, startOfVisit: boolean) => {
+const gotoVisit = async (
+  visit: ApiStaticVisitResponse,
+  startOfVisit: boolean,
+) => {
   let recId;
   if (!startOfVisit) {
-    recId = visit.recordings[visit.recordings.length - 1].recId;
+    recId = visit.recordingIds[visit.recordingIds.length - 1];
   } else {
-    recId = visit.recordings[0].recId;
+    recId = visit.recordingIds[0];
   }
-  const recordingIds = visit.recordings.map(({ recId }) => recId).join(",");
+  const recordingIds = visit.recordingIds.join(",");
   const params: RouteParams = {
     ...route.params,
     currentRecordingId: recId.toString(),
     recordingIds,
   };
-  if (visit.classification) {
-    params.visitLabel = visit.classification;
+  const visitLabel = visitClassificationLabel(visit);
+  if (visitLabel) {
+    params.visitLabel = visitLabel;
   }
   delete params.trackId;
   delete params.detail;
@@ -422,177 +432,8 @@ const gotoPreviousRecording = async () => {
 const gotoPreviousVisit = async () => {
   if (previousVisit.value) {
     selectedVisit.value = previousVisit.value;
-    return gotoVisit(selectedVisit.value as ApiVisitResponse, false);
+    return gotoVisit(selectedVisit.value as ApiStaticVisitResponse, false);
   }
-};
-
-const visitForRecording = computed<string>(() => {
-  if (recording.value) {
-    const humanTags: Record<string, number> = {};
-    const aiTags: Record<string, number> = {};
-    for (const track of (recording.value as ApiRecordingResponse).tracks) {
-      for (const tag of track.tags) {
-        if (!tag.automatic) {
-          humanTags[tag.what] = humanTags[tag.what] || 0;
-          humanTags[tag.what] += 1;
-        } else {
-          aiTags[tag.what] = aiTags[tag.what] || 0;
-          aiTags[tag.what] += 1;
-        }
-      }
-    }
-
-    const humanTagCounts = Object.entries(humanTags);
-    if (humanTagCounts.length) {
-      let bestHumanTagCount = 0;
-      let bestHumanTag;
-      // If there's anything human tagged that's not false-positive or unidentified, use that first.
-      for (const [tag, count] of humanTagCounts.filter(
-        ([tag, _]) => !["false-positive", "unidentified"].includes(tag),
-      )) {
-        if (count > bestHumanTagCount) {
-          bestHumanTagCount = count;
-          bestHumanTag = tag;
-        }
-      }
-      if (!bestHumanTag) {
-        for (const [tag, count] of humanTagCounts) {
-          if (count > bestHumanTagCount) {
-            bestHumanTagCount = count;
-            bestHumanTag = tag;
-          }
-        }
-      }
-      return (
-        (bestHumanTag &&
-          displayLabelForClassificationLabel(bestHumanTag, false)) ||
-        ""
-      );
-    } else {
-      const aiTagCounts = Object.entries(aiTags);
-      if (aiTagCounts.length) {
-        let bestAiTagCount = 0;
-        let bestAiTag;
-
-        // TODO: If the counts are the same, prefer non-other based tags.
-
-        for (const [tag, count] of aiTagCounts) {
-          if (count > bestAiTagCount) {
-            bestAiTagCount = count;
-            bestAiTag = tag;
-          }
-        }
-        return (
-          (bestAiTag && displayLabelForClassificationLabel(bestAiTag, true)) ||
-          ""
-        );
-      }
-    }
-    return "None";
-  }
-  return "";
-});
-
-const negativeThingTags = [
-  "part",
-  "poor tracking",
-  "unidentified",
-  "unknown",
-  "false-positive",
-];
-
-// TODO - Handle previous visits
-const recalculateCurrentVisit = async (
-  track: ApiTrackResponse,
-  addedTag?: ApiHumanTrackTagResponse,
-  removedTag?: string,
-) => {
-  if (recording.value && isInVisitContext.value) {
-    // When a tag for the current visit changes, we need to recalculate visits.  Should we tell the parent to do this,
-    // or just do it ourselves and get out of sync with the parent?  I'm leaning towards telling the parent.
-    const recordingId = (recording.value as ApiRecordingResponse).id;
-    // Find the visit:
-    const targetVisit =
-      visitsContext.value &&
-      (visitsContext.value as ApiVisitResponse[]).find((visit) =>
-        visit.recordings.find(({ recId }) => recId === recordingId),
-      );
-    if (targetVisit) {
-      const targetVisitRecording = targetVisit.recordings.find(
-        ({ recId }) => recId === recordingId,
-      ) as { recId: number; start: string; tracks: VisitRecordingTag[] };
-      const targetTrack = targetVisitRecording.tracks.find(
-        ({ id }) => id === track.id,
-      );
-      if (targetTrack) {
-        if (removedTag) {
-          // If we removed the last human tag from the visit, then the visit classification will fall back to the best
-          // AI tag.
-          targetTrack.isAITagged = true;
-          targetTrack.tag = null;
-          // If there are still user tags, then the visit classification becomes the next user tag.
-        } else if (addedTag) {
-          targetTrack.isAITagged = false;
-          targetTrack.tag = addedTag.what;
-        }
-        await mutateCurrentVisit(targetVisit);
-      } else {
-        console.warn("failed to find target track in visit");
-      }
-    } else {
-      console.warn("failed to find visit context to update");
-    }
-  }
-};
-
-const mutateCurrentVisit = async (targetVisit: ApiVisitResponse) => {
-  // Now, recalculate the visit:
-  // If there are any human tags, pick the most numerous one as the classification,
-  // Unless it is a false-positive or similar, but only if there is another animal tag
-  const humanTags: Record<string, number> = {};
-  for (const recording of targetVisit.recordings) {
-    for (const track of recording.tracks) {
-      if (!track.isAITagged && track.tag !== null) {
-        humanTags[track.tag as string] = humanTags[track.tag as string] || 0;
-        humanTags[track.tag as string] += 1;
-      }
-    }
-  }
-
-  const hasNonFalsePositiveTag =
-    Object.keys(humanTags).filter((tag) => !negativeThingTags.includes(tag))
-      .length !== 0;
-  const humanTagCounts = Object.entries(humanTags);
-  if (humanTagCounts.length) {
-    let bestHumanTagCount = 0;
-    let bestHumanTag;
-    for (const [tag, count] of humanTagCounts) {
-      if (
-        (hasNonFalsePositiveTag && !negativeThingTags.includes(tag)) ||
-        !hasNonFalsePositiveTag
-      ) {
-        if (count > bestHumanTagCount) {
-          bestHumanTagCount = count;
-          bestHumanTag = tag;
-        }
-      }
-    }
-    targetVisit.classification = bestHumanTag;
-    targetVisit.classFromUserTag = true;
-  } else {
-    // If there are no human tags, pick the most pre-calculated AI one.
-    targetVisit.classification = targetVisit.classificationAi;
-    targetVisit.classFromUserTag = false;
-  }
-  const params = {
-    ...route.params,
-    visitLabel: targetVisit.classification,
-  };
-  await router.replace({
-    name: route.name as string,
-    params,
-    query: route.query,
-  });
 };
 
 const trackRemoved = ({ trackId }: { trackId: TrackId }) => {
@@ -643,9 +484,12 @@ const trackTagChanged = async ({
             what === tag && userId === currentUser.value?.id,
         );
         if (changedTag) {
-          await recalculateCurrentVisit(
-            track,
-            changedTag as ApiHumanTrackTagResponse,
+          emit(
+            "recording-updated",
+            recording.value.id,
+            "updated",
+            tag,
+            changedTag.what,
           );
         } else {
           console.error("Failed to find changed tag", tag);
@@ -654,7 +498,13 @@ const trackTagChanged = async ({
           await selectedTrack(-1, true);
         }
       } else if (action === "remove") {
-        await recalculateCurrentVisit(track, undefined, tag);
+        emit(
+          "recording-updated",
+          recording.value.id,
+          "updated",
+          undefined,
+          tag,
+        );
       }
       if (!isInVisitContext.value) {
         updatedRecording(recording.value as ApiRecordingResponse);
@@ -922,7 +772,7 @@ const visitDurationString = computed<string>(() => {
   let date;
   const now = new Date();
   if (selectedVisit.value) {
-    date = DateTime.fromISO(selectedVisit.value.timeStart);
+    date = DateTime.fromISO(selectedVisit.value.startTime);
   } else {
     //date = DateTime.fromJSDate(new Date());
   }
@@ -942,10 +792,10 @@ const visitDurationString = computed<string>(() => {
     dateString = "";
   }
   if (selectedVisit.value && locationContext && locationContext.value) {
-    const visit = selectedVisit.value as ApiVisitResponse;
+    const visit = selectedVisit.value as ApiStaticVisitResponse;
     const duration = visitDuration(visit, !!isDesktop.value);
-    let visitStart = timeAtLocation(visit.timeStart, locationContext.value);
-    const visitEnd = timeAtLocation(visit.timeEnd, locationContext.value);
+    let visitStart = timeAtLocation(visit.startTime, locationContext.value);
+    const visitEnd = timeAtLocation(visit.endTime, locationContext.value);
     if (visitStart === visitEnd) {
       return `${dateString}${visitStart} (${duration})`;
     }
@@ -1221,73 +1071,37 @@ const recordingType = computed<RecordingType | null>(() => {
 interface MaybeDeletedRecording extends ApiRecordingResponse {
   tombstoned?: boolean;
 }
-interface MaybeDeletedVisit extends ApiVisitResponse {
-  tombstoned?: boolean;
-}
 
 const deleteRecording = async () => {
   if (recording.value) {
     const recordingIdToDelete = recording.value.id;
-    const deleteResponse = await ClientApi.Recordings.deleteRecording(
-      recording.value.id,
-    );
+    const deleteResponse =
+      await ClientApi.Recordings.deleteRecording(recordingIdToDelete);
     if (deleteResponse.success) {
-      const hasNextRec = hasNextRecording.value;
-      const hasNextVis = hasNextVisit.value;
-      const hasPrevRec = hasPreviousRecording.value;
-      const hasPrevVis = hasPreviousVisit.value;
-
-      if (hasNextRec || hasNextVis || hasPrevRec || hasPrevVis) {
-        if (hasNextRec || hasNextVis) {
-          await gotoNextRecordingOrVisit();
-        } else {
-          await gotoPreviousRecordingOrVisit();
-        }
-      } else {
-        // Close the modal if there are no other recordings to move to.
-        emit("close");
-      }
       if (isInVisitContext.value) {
-        const ids = (
-          (route.params.recordingIds &&
-            (route.params.recordingIds as string).split(",").map(Number)) ||
-          []
-        ).filter((id) => id !== recordingIdToDelete);
-        const params = {
-          ...route.params,
-          recordingIds: ids.map((id) => String(id)).join(","),
-        };
-        await router.replace({
-          name: route.name as string,
-          params,
-          query: route.query,
-        });
-      }
-      if (isInVisitContext.value) {
-        // Remove from visits context, then recalc current visit.
-        // Find the visit:
-        const targetVisit =
-          visitsContext.value &&
-          (visitsContext.value as ApiVisitResponse[]).find((visit) =>
-            visit.recordings.find(({ recId }) => recId === recordingIdToDelete),
-          );
-        if (targetVisit) {
-          const targetVisitRecordingIndex = targetVisit.recordings.findIndex(
-            ({ recId }) => recId === recordingIdToDelete,
-          );
-          targetVisit.recordings.splice(targetVisitRecordingIndex, 1);
-          if (targetVisit.recordings.length !== 0) {
-            await mutateCurrentVisit(targetVisit);
-          } else {
-            (targetVisit as MaybeDeletedVisit).tombstoned = true;
-          }
-        }
+        emit("recording-updated", recordingIdToDelete, "deleted");
       } else {
         const targetRecording = (loadedRecordings.value || []).find(
           (rec) => rec.id === recordingIdToDelete,
         );
         if (targetRecording) {
           (targetRecording as MaybeDeletedRecording).tombstoned = true;
+        }
+        const hasNextRec = hasNextRecording.value;
+        const hasNextVis = hasNextVisit.value;
+        const hasPrevRec = hasPreviousRecording.value;
+        const hasPrevVis = hasPreviousVisit.value;
+
+        if (hasNextRec || hasNextVis || hasPrevRec || hasPrevVis) {
+          if (hasNextRec || hasNextVis) {
+            await gotoNextRecordingOrVisit();
+          } else {
+            await gotoPreviousRecordingOrVisit();
+          }
+        } else {
+          // Close the modal if there are no other recordings to move to.
+          console.log("No recordings to advance to, close modal automatically");
+          emit("close");
         }
       }
     }
@@ -1304,10 +1118,22 @@ const onScroll = (e: Event) => {
     );
   }
 };
+
+const locationName = (
+  visitOrRecording: ApiStaticVisitResponse | ApiRecordingResponse,
+): string => {
+  if ("stationName" in visitOrRecording) {
+    return visitOrRecording.stationName || "";
+  } else if ("locationName" in visitOrRecording) {
+    return visitOrRecording.locationName;
+  }
+  return "";
+};
 </script>
 <template>
   <div
     class="recording-view d-flex flex-column"
+    data-cy="recording view"
     :class="{
       'recording-type-audio':
         recordingType && recordingType === RecordingType.Audio,
@@ -1335,27 +1161,30 @@ const onScroll = (e: Event) => {
             truncate
             v-if="isMobileView && (selectedVisit || recording)"
             :name="
-              (
-                (selectedVisit || recording) as
-                  | ApiVisitResponse
-                  | ApiRecordingResponse
-              ).stationName || ''
+              locationName(
+                (selectedVisit as ApiStaticVisitResponse) ||
+                  (recording as ApiRecordingResponse),
+              )
             "
         /></span>
         <div
           class="recording-header-details d-flex align-items-baseline mb-1 mb-sm-0"
         >
-          <span class="recording-header-label fw-semibold text-capitalize">{{
-            displayLabelForClassificationLabel(visitLabel)
-          }}</span>
+          <span
+            class="recording-header-label fw-semibold text-capitalize"
+            data-cy="recording visit classification"
+            >{{ displayLabelForClassificationLabel(visitLabel) }}</span
+          >
           <span
             v-if="isInGreaterVisitContext"
+            data-cy="visit duration"
             v-html="visitDurationString"
             class="recording-header-time ms-2 ms-sm-2 text-secondary"
           />
           <span
-            class="recording-header-time ms-2 ms-sm-2 text-secondary"
             v-else
+            data-cy="visit duration"
+            class="recording-header-time ms-2 ms-sm-2 text-secondary"
             v-html="visitDurationString"
           ></span>
         </div>
@@ -1384,21 +1213,13 @@ const onScroll = (e: Event) => {
         </span>
         <div class="recording-header-details mb-1 mb-sm-0">
           <span
-            class="recording-header-label fw-semibold text-capitalize"
-            v-if="isInVisitContext"
-            >{{ visitForRecording }}</span
-          >
-          <span
             v-html="recordingDurationString"
             class="recording-header-time text-muted"
-            :class="{
-              'ms-sm-3': isInVisitContext,
-              'ms-2': isInVisitContext,
-            }"
           />
         </div>
       </div>
       <button
+        data-cy="close recording view"
         type="button"
         class="btn btn-icon d-flex align-items-center"
         @click.stop.prevent="() => emit('close')"
@@ -1570,6 +1391,7 @@ const onScroll = (e: Event) => {
         <div class="prev-button d-flex">
           <!-- Mobile only button without labels, advances through recordings and visits -->
           <button
+            data-cy="goto previous recording or visit"
             type="button"
             class="btn btn-icon d-flex d-md-none flex-row-reverse align-items-center position-relative"
             :disabled="!hasPreviousRecording && !hasPreviousVisit"
@@ -1594,6 +1416,7 @@ const onScroll = (e: Event) => {
             <template #target>
               <button
                 type="button"
+                data-cy="goto previous visit"
                 class="btn d-none d-md-flex flex-row-reverse align-items-center position-relative"
                 :disabled="!hasPreviousVisit"
                 @click.prevent="gotoPreviousVisit"
@@ -1611,8 +1434,8 @@ const onScroll = (e: Event) => {
                   >
                     {{
                       displayLabelForClassificationLabel(
-                        previousVisit.classification as string,
-                      )
+                        visitClassificationLabel(previousVisit),
+                      ) || "none"
                     }}
                   </span>
                 </span>
@@ -1634,6 +1457,7 @@ const onScroll = (e: Event) => {
           >
             <template #target>
               <button
+                data-cy="goto previous recording"
                 type="button"
                 class="btn d-none d-md-flex flex-row-reverse align-items-center position-relative"
                 @click.prevent="gotoPreviousRecording"
@@ -1695,6 +1519,7 @@ const onScroll = (e: Event) => {
             <!-- Desktop only button, advances through recordings -->
             <template #target>
               <button
+                data-cy="goto next recording"
                 type="button"
                 class="btn d-none d-md-flex align-items-center position-relative"
                 @click.prevent="gotoNextRecording"
@@ -1733,6 +1558,7 @@ const onScroll = (e: Event) => {
             <!-- Desktop only button, advances through visits -->
             <template #target>
               <button
+                data-cy="goto next visit"
                 type="button"
                 class="btn d-none d-md-flex align-items-center position-relative"
                 :disabled="!hasNextVisit"
@@ -1743,8 +1569,8 @@ const onScroll = (e: Event) => {
                   <span v-if="nextVisit" class="text-capitalize fw-medium fs-6">
                     {{
                       displayLabelForClassificationLabel(
-                        nextVisit.classification as string,
-                      )
+                        visitClassificationLabel(nextVisit),
+                      ) || "none"
                     }}
                   </span>
                 </span>
@@ -1763,6 +1589,7 @@ const onScroll = (e: Event) => {
             class="btn btn-icon d-flex d-md-none align-items-center"
             :disabled="!hasNextRecording && !hasNextVisit"
             @click.prevent="gotoNextRecordingOrVisit"
+            data-cy="goto next recording or visit"
           >
             <material-symbol
               v-if="hasNextRecording"

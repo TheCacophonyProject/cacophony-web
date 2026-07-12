@@ -231,7 +231,6 @@ const selectedItem = (e: MouseEvent, item: CardTableRow<any>) => {
     }
     target = target.parentElement as HTMLElement;
   }
-  console.log("Selected item", item);
   emit("select-item", item);
 };
 

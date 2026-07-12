@@ -381,10 +381,10 @@ export const switchCurrentProject = (newGroup: {
   if (newGroup.id !== loggedInUser.settings?.currentSelectedGroup?.id) {
     if (currentSelectedProject.value) {
       // Abort requests for the previous group.
-      console.warn(
-        "!!! Abort requests for ",
-        JSON.stringify(currentSelectedProject.value),
-      );
+      // console.warn(
+      //   "!!! Abort requests for ",
+      //   JSON.stringify(currentSelectedProject.value),
+      // );
       CurrentViewAbortController.newView();
     }
     DevicesForCurrentProject.value = null;

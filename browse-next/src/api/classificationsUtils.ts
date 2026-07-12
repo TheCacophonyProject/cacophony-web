@@ -131,7 +131,6 @@ export const displayLabelForClassificationLabel = (
   isAudioContext = false,
 ) => {
   if (!label) {
-    console.warn("No label supplied");
     return "";
   }
   label = label.toLowerCase();
@@ -140,6 +139,9 @@ export const displayLabelForClassificationLabel = (
   }
   if (label === "unidentified" && aiTag) {
     return "Unidentified";
+  }
+  if (label === "falsepositive") {
+    label = "false-positive";
   }
   const classifications = flatClassifications.value;
   if (!classifications[label]) {

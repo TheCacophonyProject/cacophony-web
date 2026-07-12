@@ -237,7 +237,8 @@ const notImplemented = () => {
     <two-step-action-button
       icon="delete"
       tooltip-label="Delete"
-      aria-label="Delete record"
+      aria-label="Delete recording"
+      data-cy="delete recording"
       confirmation-label="Delete recording"
       :action="() => emit('delete-recording')"
       placement="top"

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import {
   computed,
   inject,
@@ -12,23 +11,24 @@ import {
 import type { Ref } from "vue";
 import {
   timezoneForLatLng,
+  visitClassificationLabel,
+  visitClassificationLabelFromPath,
+  visitClassificationPath,
   visitsBySpecies as visitsBySpeciesCalc,
 } from "@models/visitsUtils";
 import { DateTime } from "luxon";
 import type { NamedPoint } from "@models/mapUtils";
-import {
-  displayLabelForClassificationLabel,
-  getPathForLabel,
-} from "@api/classificationsUtils.ts";
+import { displayLabelForClassificationLabel } from "@api/classificationsUtils.ts";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import TooltipOnTruncation from "@/components/TooltipOnTruncation.vue";
+import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
 
 const currentlyHighlightedLocation = inject(
   "currentlyHighlightedLocation",
 ) as Ref<LocationId | null>;
 
 const props = defineProps<{
-  visits: ApiVisitResponse[];
+  visits: ApiStaticVisitResponse[];
   locations: NamedPoint[];
   startDate: Date;
 }>();
@@ -118,7 +118,7 @@ const dateLabels = computed<DateTime[]>(() => {
 // Recalculate clipping of date labels whenever the dates change.
 watch(dateLabels, () => nextTick(evaluateLabelClipping));
 
-const visitsBySpecies = computed<[string, ApiVisitResponse[]][]>(() =>
+const visitsBySpecies = computed<[string, ApiStaticVisitResponse[]][]>(() =>
   visitsBySpeciesCalc(props.visits).sort((a, b) => {
     // Sort by count and break ties by name alphabetically
     const order = b[1].length - a[1].length;
@@ -155,11 +155,11 @@ const dateAndDayOfWeek = (date: DateTime): string => {
   return `${date.weekdayShort} ${date.day}`;
 };
 
-const mouseOverVisit = (visit: ApiVisitResponse) => {
-  currentlyHighlightedLocation.value = visit.stationId;
+const mouseOverVisit = (visit: ApiStaticVisitResponse) => {
+  currentlyHighlightedLocation.value = visit.locationId;
 };
 
-const mouseLeftVisit = (_visit: ApiVisitResponse) => {
+const mouseLeftVisit = (_visit: ApiStaticVisitResponse) => {
   currentlyHighlightedLocation.value = null;
 };
 </script>
@@ -174,37 +174,39 @@ const mouseLeftVisit = (_visit: ApiVisitResponse) => {
         <tooltip-on-truncation
           class="visits-timeline-species-name text-capitalize"
           >{{
-            displayLabelForClassificationLabel(species.toLowerCase())
+            displayLabelForClassificationLabel(
+              visitClassificationLabelFromPath(species).toLowerCase(),
+            )
           }}</tooltip-on-truncation
         >
       </div>
       <div class="flex-fill position-relative">
         <div
           v-for="visit in visits"
-          :key="visit.timeStart"
+          :key="visit.startTime"
           @mouseenter="() => mouseOverVisit(visit)"
           @mouseleave="() => mouseLeftVisit(visit)"
           :title="
-            DateTime.fromISO(visit.timeStart, {
+            DateTime.fromISO(visit.startTime, {
               zone: timezoneForActiveStations,
             }).toString()
           "
           :style="{
             left: `${getLeft(
               minTime,
-              new Date(visit.timeStart).getTime(),
+              new Date(visit.startTime).getTime(),
               maxTime,
             )}%`,
             right: `${getRight(
               minTime,
-              new Date(visit.timeEnd).getTime(),
+              new Date(visit.endTime).getTime(),
               maxTime,
             )}%`,
           }"
           :class="[
             'event-item-visit',
-            visit.classification,
-            ...(getPathForLabel(visit.classification || '') || '').split('.'),
+            visitClassificationLabel(visit),
+            ...(visitClassificationPath(visit) || '').split('.'),
           ]"
         />
         <div

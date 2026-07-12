@@ -14,6 +14,7 @@ import usersInit from "@apiClient/User.ts";
 import projectsInit from "@apiClient/Project.ts";
 import alertsInit from "@apiClient/Alert.ts";
 import devicesInit from "@apiClient/Device.ts";
+import visitsInit from "@apiClient/Visits.ts";
 import recordingsInit from "@apiClient/Recording";
 import locationsInit from "@apiClient/Location";
 import monitoringInit from "@apiClient/Monitoring";
@@ -264,6 +265,7 @@ const Classifications = classificationsInit(api);
 const Recordings = recordingsInit(api);
 const Locations = locationsInit(api);
 const Monitoring = monitoringInit(api);
+const Visits = visitsInit(api);
 
 export const ClientApi = {
   Alerts,
@@ -274,6 +276,7 @@ export const ClientApi = {
   Projects,
   Users,
   Recordings,
+  Visits,
   registerCredentials: (
     authKey: TestHandle,
     creds: LoggedInDeviceCredentials | LoggedInUserAuth,

@@ -62,7 +62,11 @@ export const signOutFromSetup = async (page: Page) => {
   });
 };
 
-export const signInExistingUser = async (page: Page, userName: string, password: string) => {
+export const signInExistingUser = async (
+  page: Page,
+  userName: string,
+  password: string = "password",
+) => {
   await test.step("Sign in existing user", async () => {
     const url = `*/sign-in*`;
     const pattern = new URLPattern({ pathname: url });

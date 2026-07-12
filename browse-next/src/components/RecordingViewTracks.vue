@@ -359,14 +359,7 @@ const addOrRemoveUserTag = async ({
           thisUserTag.id,
         );
         if (removeTagResponse.success) {
-          const completelyRemoved = !track.tags.some(
-            (tag) =>
-              displayLabelForClassificationLabel(tag.what, tag.automatic) ===
-              displayLabelForClassificationLabel(thisUserTag.what),
-          );
-          if (completelyRemoved) {
-            emit("track-tag-changed", { track, tag, action: "remove" });
-          }
+          emit("track-tag-changed", { track, tag, action: "remove" });
         } else {
           // Add the tag back if failed
           track.tags.push(thisUserTag);
@@ -413,7 +406,6 @@ const addOrRemoveUserTag = async ({
           const newTagResponse = await ClientApi.Recordings.replaceTrackTag(
             {
               what: tag,
-              confidence: 0.85,
             },
             props.recording.id,
             trackId,
@@ -610,6 +602,7 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
       v-for="(track, index) in recordingTracksPossiblyFiltered"
       :key="track.id"
       :index="index"
+      :data-cy="`track ${index}`"
       :processing-state="recording.processingState"
       :is-audio-recording="recordingType === RecordingType.Audio"
       @expanded-changed="expandedItemChanged"

@@ -1,4 +1,3 @@
-import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import type { LatLng } from "@typedefs/api/common";
 import { DateTime, Duration } from "luxon";
 import tzLookup from "tz-lookup-oss";
@@ -7,10 +6,10 @@ import * as sunCalc from "suncalc";
 import {
   flatClassifications,
   getClassifications,
-  getPathForLabel,
 } from "@api/classificationsUtils.ts";
 import type { Classification } from "@typedefs/api/trackTag";
 import { RecordingProcessingState } from "@typedefs/api/consts.ts";
+import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
 
 export const MINUTES_BEFORE_DUSK_AND_AFTER_DAWN = 60;
 
@@ -49,15 +48,15 @@ const tagPrecedence = [
 })();
 
 export const visitsByLocation = (
-  visits: ApiVisitResponse[],
-): Record<number, ApiVisitResponse[]> =>
+  visits: ApiStaticVisitResponse[],
+): Record<number, ApiStaticVisitResponse[]> =>
   visits.reduce(
     (acc, visit) => {
-      acc[visit.stationId] = acc[visit.stationId] || [];
-      acc[visit.stationId].push(visit);
+      acc[visit.locationId] = acc[visit.locationId] || [];
+      acc[visit.locationId].push(visit);
       return acc;
     },
-    {} as Record<number, ApiVisitResponse[]>,
+    {} as Record<number, ApiStaticVisitResponse[]>,
   );
 
 export const sortTagPrecedence = (a: string, b: string): number => {
@@ -79,29 +78,24 @@ export const VisitProcessingStates = [
   RecordingProcessingState.Tracking,
   RecordingProcessingState.Analyse,
 ];
-export const someRecordingStillProcessing = (
-  visit: ApiVisitResponse,
-): boolean => {
-  // TODO: Poll to see if processing has finished
-  return visit.recordings.some((rec) =>
-    VisitProcessingStates.includes(rec.processingState),
-  );
-};
 export const visitsBySpecies = (
-  visits: ApiVisitResponse[],
-): [string, ApiVisitResponse[]][] => {
+  visits: ApiStaticVisitResponse[],
+): [string, ApiStaticVisitResponse[]][] => {
   const summary = visits.reduce(
     (
-      acc: Record<string, ApiVisitResponse[]>,
-      currentValue: ApiVisitResponse,
+      acc: Record<string, ApiStaticVisitResponse[]>,
+      currentValue: ApiStaticVisitResponse,
     ) => {
-      if (someRecordingStillProcessing(currentValue)) {
-        acc["unclassified"] = acc["unclassified"] || [];
-        acc["unclassified"].push(currentValue);
-      } else if (currentValue.classification) {
-        acc[currentValue.classification] =
-          acc[currentValue.classification] || [];
-        acc[currentValue.classification].push(currentValue);
+      let classification =
+        currentValue.humanClassification ||
+        currentValue.aiClassification ||
+        "none";
+      if (classification) {
+        if (classification === "all.other.falsepositive") {
+          classification = "all.other.false-positive";
+        }
+        acc[classification] = acc[classification] || [];
+        acc[classification].push(currentValue);
       }
       return acc;
     },
@@ -112,12 +106,12 @@ export const visitsBySpecies = (
 };
 
 export const visitsCountBySpecies = (
-  visits: ApiVisitResponse[],
+  visits: ApiStaticVisitResponse[],
 ): [string, string, number][] =>
   (
     visitsBySpecies(visits).map(([classification, visits]) => [
-      classification,
-      getPathForLabel(classification) || "",
+      classification.split(".").pop(),
+      classification || "",
       visits.length,
     ]) as [string, string, number][]
   ).sort((a, b) => {
@@ -133,6 +127,7 @@ export const eventsAreNocturnalOnlyAtLocation = (
   eventDates: Date[],
   location: LatLng,
 ): boolean => {
+  let daylightEventCount = 0;
   for (const eventDate of eventDates) {
     const visitDay = new Date(eventDate);
     const { sunrise, sunset } = sunCalc.getTimes(
@@ -145,31 +140,36 @@ export const eventsAreNocturnalOnlyAtLocation = (
     );
     sunset.setMinutes(sunset.getMinutes() - MINUTES_BEFORE_DUSK_AND_AFTER_DAWN);
     if (eventDate > sunrise && eventDate < sunset) {
-      return false;
+      daylightEventCount++;
     }
   }
-  return true;
+  // NOTE: Sometimes you get some daylight events on a camera that only records at night when a user services
+  // the camera during the day and makes test recordings.  Try to filter out those cases, so the display
+  // doesn't jump from nocturnal to night and day when more visits are lazily loaded.
+  const percentageOfDaylightEvents =
+    (daylightEventCount / eventDates.length) * 100;
+  return percentageOfDaylightEvents < 1;
 };
 
 export const visitsAreNocturnalOnlyAtLocation = (
-  visits: ApiVisitResponse[],
+  visits: ApiStaticVisitResponse[],
   location: LatLng,
 ) =>
   eventsAreNocturnalOnlyAtLocation(
-    visits.map(({ timeStart }) => new Date(timeStart)),
+    visits.map(({ startTime }) => new Date(startTime)),
     location,
   );
 
 export const visitsByNightAtLocation = (
-  visits: ApiVisitResponse[],
+  visits: ApiStaticVisitResponse[],
   location: LatLng,
-): [DateTime, ApiVisitResponse[]][] => {
+): [DateTime, ApiStaticVisitResponse[]][] => {
   const zone = timezoneForLatLng(location);
-  const visitsChunked: [DateTime, ApiVisitResponse[]][] = [];
+  const visitsChunked: [DateTime, ApiStaticVisitResponse[]][] = [];
   for (const visit of visits) {
     // If the visit is after sunset, and before sunrise, it goes to the current day
     // otherwise, it goes to the previous day?
-    const visitDay = new Date(visit.timeStart);
+    const visitDay = new Date(visit.startTime);
     const { sunset } = sunCalc.getTimes(visitDay, location.lat, location.lng);
     let visitSunset = new Date(sunset);
     visitSunset.setMinutes(
@@ -208,22 +208,22 @@ export const visitsByNightAtLocation = (
 };
 
 export const visitsByDayAtLocation = (
-  visits: ApiVisitResponse[],
+  visits: ApiStaticVisitResponse[],
   location: LatLng,
-): [DateTime, ApiVisitResponse[]][] => {
+): [DateTime, ApiStaticVisitResponse[]][] => {
   // Chunk visits from midnight to midnight at the given location.
   // Visits are ordered from oldest to most recent in each day.
 
   // Note that we count visits as being on the day that they started:  A visit that straddles midnight
   // will only be counted on the previous day.
   const zone = timezoneForLatLng(location);
-  const visitsChunked: [DateTime, ApiVisitResponse[]][] = [];
+  const visitsChunked: [DateTime, ApiStaticVisitResponse[]][] = [];
 
   // FIXME - the first chunk will not be a full day at the moment, since we're not going back to the beginning of the
   //  day when we request the visits.  Should we always do that, and then crop events when we display timeline etc?
 
   for (const visit of visits) {
-    const visitDay = DateTime.fromISO(visit.timeStart, { zone });
+    const visitDay = DateTime.fromISO(visit.startTime, { zone });
     const visitDayStart = visitDay.set({
       hour: 0,
       minute: 0,
@@ -275,11 +275,11 @@ export const formatDuration = (
     : minsSecs.toFormat("ss's'");
 };
 export const visitDuration = (
-  visit: ApiVisitResponse,
+  visit: ApiStaticVisitResponse,
   longForm = false,
 ): string => {
   const millis =
-    new Date(visit.timeEnd).getTime() - new Date(visit.timeStart).getTime();
+    new Date(visit.endTime).getTime() - new Date(visit.startTime).getTime();
   return formatDuration(millis, longForm);
 };
 export const timeAtLocation = (
@@ -315,4 +315,24 @@ export const intlFormatForLocation = (location: LatLng) => {
     hour12: true,
     timeZone: timezoneForLatLng(location),
   });
+};
+
+export const visitClassificationPath = (
+  visit?: ApiStaticVisitResponse,
+): string | null => {
+  if (!visit) {
+    return null;
+  }
+  return visit.humanClassification || visit.aiClassification;
+};
+
+export const visitClassificationLabel = (
+  visit: ApiStaticVisitResponse,
+): string => {
+  const classificationPath = visitClassificationPath(visit) || "";
+  return classificationPath.split(".").pop() as string;
+};
+
+export const visitClassificationLabelFromPath = (path: string = ""): string => {
+  return path.split(".").pop() as string;
 };
