@@ -60,6 +60,7 @@ import { ActivitySearchDisplayMode } from "@/components/activitySearchUtils.ts";
 import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
 import type { VisitsStaticQueryResult } from "@apiClient/Monitoring.ts";
 import { recordingUpdatedInVisitsContext } from "@/helpers/patch-visits-context.ts";
+import BimodalSwitch from "@/components/BimodalSwitch.vue";
 
 const selectedVisit = ref<ApiStaticVisitResponse | null>(null);
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
@@ -465,7 +466,6 @@ const recordingUpdated = async (
   newClassification?: string,
   oldClassification?: string,
 ) => {
-  console.log("Recording updated", recordingId, action);
   console.assert(visitsContext.value !== null);
   await recordingUpdatedInVisitsContext(
     recordingId,
@@ -486,12 +486,12 @@ const recordingUpdated = async (
   <div class="header-container">
     <section-header>Dashboard</section-header>
     <div class="dashboard-scope mt-sm-3 d-sm-flex flex-column align-items-end">
-      <!--      <bimodal-switch-->
-      <!--        class="justify-content-end"-->
-      <!--        :modes="['Thermal', 'Audio']"-->
-      <!--        v-model="recordingMode"-->
-      <!--        v-if="currentSelectedProjectHasAudioAndThermal"-->
-      <!--      />-->
+      <bimodal-switch
+        class="justify-content-end"
+        :modes="['Thermal', 'Audio']"
+        v-model="recordingMode"
+        v-if="currentSelectedProjectHasAudioAndThermal"
+      />
       <div
         class="scope-filters d-flex align-items-sm-center flex-row mb-3 mb-sm-0"
       >
@@ -531,144 +531,151 @@ const recordingUpdated = async (
       </div>
     </div>
   </div>
-  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
-    Species summary
-  </h2>
-  <horizontal-overflow-carousel
-    class="species-summary-container mb-4 mb-sm-4 mb-md-5"
-    v-if="hasVisitsForSelectedTimePeriod"
-  >
-    <div class="species-summary flex-sm-nowrap flex-wrap d-flex gap-2 gap-sm-0">
+  <div v-if="recordingMode === 'Thermal'">
+    <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+      Species summary
+    </h2>
+    <horizontal-overflow-carousel
+      class="species-summary-container mb-4 mb-sm-4 mb-md-5"
+      v-if="hasVisitsForSelectedTimePeriod"
+    >
       <div
-        v-for="[key, val] in speciesSummarySorted"
-        :key="key"
-        class="species-summary__item d-flex flex-row align-items-center gap-2 gap-sm-3"
-        @click="showVisitsForTag(key)"
+        class="species-summary flex-sm-nowrap flex-wrap d-flex gap-2 gap-sm-0"
       >
         <div
-          class="species-summary__item__icon p-1 p-md-2"
-          :class="[...pathForTag(key).split('.')]"
-          :key="`d_${key}`"
+          v-for="[key, val] in speciesSummarySorted"
+          :key="key"
+          class="species-summary__item d-flex flex-row align-items-center gap-2 gap-sm-3"
+          @click="showVisitsForTag(key)"
         >
-          <tag-image :tag="key" :key="`i_${key}`" width="24" height="24" />
-        </div>
-        <div
-          class="d-flex justify-content-evenly flex-sm-column align-items-center align-items-sm-start"
-        >
-          <div class="species-summary__item__count lh-sm me-1">
-            {{ val }}
+          <div
+            class="species-summary__item__icon p-1 p-md-2"
+            :class="[...pathForTag(key).split('.')]"
+            :key="`d_${key}`"
+          >
+            <tag-image :tag="key" :key="`i_${key}`" width="24" height="24" />
           </div>
-          <div class="species-summary__item__name lh-sm text-capitalize">
-            {{ displayLabelForClassificationLabel(key) }}
+          <div
+            class="d-flex justify-content-evenly flex-sm-column align-items-center align-items-sm-start"
+          >
+            <div class="species-summary__item__count lh-sm me-1">
+              {{ val }}
+            </div>
+            <div class="species-summary__item__name lh-sm text-capitalize">
+              {{ displayLabelForClassificationLabel(key) }}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </horizontal-overflow-carousel>
-  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
-    Visits summary
-  </h2>
-  <div class="row g-1 g-lg-3 mb-3 mb-sm-4 mb-md-5">
-    <project-visits-summary
-      v-if="!isMobileView && hasVisitsForSelectedTimePeriod"
-      class="mb-3 col-12 col-lg-7 col-xl-8 order-2 order-lg-1"
-      :locations="allLocations"
-      :active-locations="locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
-      :visits="dashboardVisits"
-      :start-date="earliestDate"
-      :loading="isLoading"
-    />
-    <visits-breakdown-list
-      class="col-12 col-lg-5 col-xl-4 order-1 order-lg-2"
-      :visits="dashboardVisits"
-      :location="canonicalLatLngForActiveLocations"
-      :highlighted-location="currentlyHighlightedLocation"
-      @selected-visit="
-        (visit: ApiStaticVisitResponse) => (selectedVisit = visit)
-      "
-      @change-highlighted-location="
-        (loc: LocationId | null) => (currentlyHighlightedLocation = loc)
-      "
-    />
-  </div>
-  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
-    Locations summary
-  </h2>
-  <horizontal-overflow-carousel
-    v-if="hasVisitsForSelectedTimePeriod"
-    class="locations-summary-wrapper mb-3 mb-lg-4"
-  >
-    <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
-    <div
-      class="species-summary d-flex gap-3 flex-sm-nowrap mb-3 mb-sm-0"
-      v-if="!isLoading && hasVisitsForSelectedTimePeriod"
-    >
-      <location-visit-summary
-        v-for="(
-          location, index
-        ) in locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
-        :location="location"
+    </horizontal-overflow-carousel>
+    <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+      Visits summary
+    </h2>
+    <div class="row g-1 g-lg-3 mb-3 mb-sm-4 mb-md-5">
+      <project-visits-summary
+        v-if="!isMobileView && hasVisitsForSelectedTimePeriod"
+        class="mb-3 col-12 col-lg-7 col-xl-8 order-2 order-lg-1"
+        :locations="allLocations"
         :active-locations="
           locationsWithOnlineOrActiveDevicesInSelectedTimeWindow
         "
-        @click="showVisitsForLocation(location)"
-        :locations="allLocations"
         :visits="dashboardVisits"
-        :key="index"
+        :start-date="earliestDate"
+        :loading="isLoading"
+      />
+      <visits-breakdown-list
+        class="col-12 col-lg-5 col-xl-4 order-1 order-lg-2"
+        :visits="dashboardVisits"
+        :location="canonicalLatLngForActiveLocations"
+        :highlighted-location="currentlyHighlightedLocation"
+        @selected-visit="
+          (visit: ApiStaticVisitResponse) => (selectedVisit = visit)
+        "
+        @change-highlighted-location="
+          (loc: LocationId | null) => (currentlyHighlightedLocation = loc)
+        "
       />
     </div>
-  </horizontal-overflow-carousel>
-  <div
-    v-if="isLoading || !hasVisitsForSelectedTimePeriod"
-    class="d-flex justify-content-sm-center flex-fill flex-column align-items-center justify-content-center mb-5 mb-sm-0"
-  >
-    <div v-if="isLoading">
-      <b-spinner variant="secondary" />
-    </div>
-    <div v-else class="d-flex justify-content-center flex-column">
-      <div class="text-body-tertiary text-center py-3">
-        <material-symbol
-          name="search_off"
-          size="2.4rem"
-          grade="thin"
-          class="mb-2"
+    <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+      Locations summary
+    </h2>
+    <horizontal-overflow-carousel
+      v-if="hasVisitsForSelectedTimePeriod"
+      class="locations-summary-wrapper mb-3 mb-lg-4"
+    >
+      <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
+      <div
+        class="species-summary d-flex gap-3 flex-sm-nowrap mb-3 mb-sm-0"
+        v-if="!isLoading && hasVisitsForSelectedTimePeriod"
+      >
+        <location-visit-summary
+          v-for="(
+            location, index
+          ) in locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
+          :location="location"
+          :active-locations="
+            locationsWithOnlineOrActiveDevicesInSelectedTimeWindow
+          "
+          @click="showVisitsForLocation(location)"
+          :locations="allLocations"
+          :visits="dashboardVisits"
+          :key="index"
         />
-        <p>
-          <!-- TODO: cater for no locations, no devices, show different copy? -->
-          <span
-            data-cy="no results"
-            v-if="
-              locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.length ===
-              0
-            "
+      </div>
+    </horizontal-overflow-carousel>
+    <div
+      v-if="isLoading || !hasVisitsForSelectedTimePeriod"
+      class="d-flex justify-content-sm-center flex-fill flex-column align-items-center justify-content-center mb-5 mb-sm-0"
+    >
+      <div v-if="isLoading">
+        <b-spinner variant="secondary" />
+      </div>
+      <div v-else class="d-flex justify-content-center flex-column">
+        <div class="text-body-tertiary text-center py-3">
+          <material-symbol
+            name="search_off"
+            size="2.4rem"
+            grade="thin"
+            class="mb-2"
+          />
+          <p>
+            <!-- TODO: cater for no locations, no devices, show different copy? -->
+            <span
+              data-cy="no results"
+              v-if="
+                locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.length ===
+                0
+              "
+            >
+              There were no active locations in the last
+              <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
+              ><span v-else>day</span> for this project.
+            </span>
+            <span v-else data-cy="no results">
+              There were no visits for any target species in any of the active
+              locations in the last
+              <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
+              ><span v-else>day</span> for this project.
+            </span>
+          </p>
+          <b-button
+            variant="outline-secondary"
+            :to="{
+              name: 'activity',
+              params: {
+                projectName: urlNormalisedCurrentProjectName,
+              },
+              query: {
+                displayMode: ActivitySearchDisplayMode.Visits,
+              },
+            }"
+            >View latest visits</b-button
           >
-            There were no active locations in the last
-            <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
-            ><span v-else>day</span> for this project.
-          </span>
-          <span v-else data-cy="no results">
-            There were no visits for any target species in any of the active
-            locations in the last
-            <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
-            ><span v-else>day</span> for this project.
-          </span>
-        </p>
-        <b-button
-          variant="outline-secondary"
-          :to="{
-            name: 'activity',
-            params: {
-              projectName: urlNormalisedCurrentProjectName,
-            },
-            query: {
-              displayMode: ActivitySearchDisplayMode.Visits,
-            },
-          }"
-          >View latest visits</b-button
-        >
+        </div>
       </div>
     </div>
   </div>
+  <div v-else>Audio dashboard!</div>
   <inline-view-modal
     @close="selectedVisit = null"
     @recording-updated="recordingUpdated"

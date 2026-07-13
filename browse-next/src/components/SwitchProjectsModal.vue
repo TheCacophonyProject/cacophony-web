@@ -458,7 +458,7 @@ watch(userToFilterProjects, (userId) => {
     </div>
     <div class="list-group" v-if="sortedUserProjects">
       <p v-if="currentUser.globalPermission !== 'off'" class="mb-2">
-        My projects
+        Your projects
       </p>
       <router-link
         :class="[

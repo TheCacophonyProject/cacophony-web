@@ -32,14 +32,9 @@ export const recordingUpdatedInVisitsContext = async (
     const newVisits = ((await ClientApi.Visits.getVisitsForRecording(
       recordingId,
     )) || []) as ApiStaticVisitResponse[];
-
-    console.log(
-      `New class ${newClassification}, old class ${oldClassification}`,
-    );
     let newSelectedVisit: ApiStaticVisitResponse | undefined;
     const selectedVisitIndexInContext =
       visitsContextArray.value.indexOf(prevVisit);
-    console.log("selectedVisit", selectedVisitIndexInContext);
     // Of the new visits, which is the one that matches our old context?
     if (newVisits.length === 1) {
       newSelectedVisit = newVisits[0];

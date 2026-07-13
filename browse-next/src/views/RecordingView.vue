@@ -1100,7 +1100,6 @@ const deleteRecording = async () => {
           }
         } else {
           // Close the modal if there are no other recordings to move to.
-          console.log("No recordings to advance to, close modal automatically");
           emit("close");
         }
       }

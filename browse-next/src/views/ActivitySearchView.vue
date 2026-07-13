@@ -532,7 +532,7 @@ const deserialiseAndValidateRouteValue = (
         }
       }
     } else {
-      console.log("Invalid timespan?", value);
+      console.warn("Invalid timespan?", value);
     }
   } else if (key === "devices") {
     value = value || [];
@@ -1345,16 +1345,11 @@ const resetQuery = (
   currentQueryHash.value = newQueryHash;
   currentQueryLoaded.value = 0;
   completedCurrentQuery.value = false;
-  // NOTE: If it's the first load for a given query, lazily get the count as a separate query.
-  // TODO Also, make it abortable if we change queries.
   currentQueryCount.value = undefined;
   currentQueryCursor.value = {
     fromDateTime: new Date(fromDateTime),
     untilDateTime: new Date(untilDateTime),
   };
-  console.log(
-    `Current query cursor ${(currentQueryCursor.value.fromDateTime as Date).toISOString()} -- ${(currentQueryCursor.value.untilDateTime as Date).toISOString()}`,
-  );
 };
 
 const displayMode = computed<ActivitySearchDisplayMode>(
@@ -1572,7 +1567,6 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           );*/
           if (loadedFewerItemsThanRequested) {
             if (reachedMinDateForSelectedLocations || inVisitsMode.value) {
-              console.log("Cancel observer");
               currentObserver && currentObserver.stop();
               currentObserver = null;
               // We're at the limit
@@ -1902,7 +1896,6 @@ const recordingUpdated = async (
   newClassification?: string,
   oldClassification?: string,
 ) => {
-  console.log("Recording updated", recordingId, action);
   if (inVisitsMode.value) {
     let locations: LocationId[] = [];
     const isAnyLocation = selectedLocations.value.includes("any");
