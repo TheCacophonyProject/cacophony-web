@@ -21,6 +21,7 @@ import fs from "fs";
 import path from "path";
 import logger from "@log";
 import { fileURLToPath } from "url";
+import config from "@config";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -31,21 +32,34 @@ export default async function (app: Application) {
     "responseUtil.js",
     "recordingUtil.js",
     "eventUtil.js",
+    "monitoringUtil.js",
     "monitoringPage.js",
     "monitoringVisit.js",
     "apidoc.js",
+    "tagUtil.js",
+    "trackMasking.js",
+    "recordingsBulkQueryUtil.js",
   ];
   // Filter out files that are not added to app directly, and filter out typescript versions of files.
-
+  const isProduction = config.productionEnv;
   const apiRoutes = fs
     .readdirSync(__dirname)
-    .filter((file) => file.endsWith(".js") && !excludedFiles.includes(file));
+    .filter((file) => file.endsWith(".js") && !excludedFiles.includes(file))
+    .filter(
+      (file) => !isProduction || (isProduction && !file.endsWith(".test.js")),
+    );
   for (const route of apiRoutes) {
     try {
       const routeModule = await import(path.join(__dirname, route));
-      routeModule.default && routeModule.default(app, "/api/v1");
-    } catch (e) {
-      logger.warning(e.message);
+      if (routeModule.default) {
+        routeModule.default(app, "/api/v1");
+      }
+    } catch (e: unknown) {
+      let message = `unknown route ${route}`;
+      if (e instanceof Error) {
+        message = e.message;
+      }
+      logger.warning(message);
     }
   }
 }

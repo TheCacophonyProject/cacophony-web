@@ -8,18 +8,19 @@
       "src/**/*.d.ts",
   ],
   "compilerOptions": {
-    "lib": ["ESNext", "dom", "dom.iterable"],
+    "lib": ["esnext", "dom", "dom.iterable"],
     "baseUrl": "./",
     "paths": {
       "@/*": ["./src/*"],
       "@api/*": ["./src/api/*"],
       "@views/*": ["./src/views/*"],
       "@models/*": ["./src/models/*"],
-      "@typedefs/*":  ["../types/*"]
+      "@typedefs/*":  ["../types/*"],
+      "@apiClient/*":  ["../types/client/*"]
     },
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "ignoreDeprecations": "5.0"
+    "noUncheckedIndexedAccess": false
   },
 
   "references": [

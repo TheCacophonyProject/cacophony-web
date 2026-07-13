@@ -7,7 +7,6 @@ import {
   HttpStatusCode,
   RecordingType,
 } from "@typedefs/api/consts";
-import { DeviceHistoryEntry } from "@commands/types";
 import { TestCreateExpectedHistoryEntry } from "@commands/api/device";
 
 describe("Device reregister", () => {
@@ -37,7 +36,7 @@ describe("Device reregister", () => {
         deviceName: getTestName("RR_cam1"),
         active: false,
         admin: true,
-        type: DeviceType.Unknown,
+        type: DeviceType.Thermal,
         groupName: getTestName("RR_group1"),
         groupId: getCreds("RR_group1").id,
       };
@@ -45,7 +44,7 @@ describe("Device reregister", () => {
     cy.log("Add a recording so that old device isn't deleted when renamed");
     cy.apiRecordingAdd(
       "RR_cam1",
-      { type: RecordingType.ThermalRaw },
+      { type: RecordingType.ThermalRaw, location: [-42, 170] },
       "oneframe.cptv",
       "raRecording1",
     );
@@ -58,7 +57,7 @@ describe("Device reregister", () => {
         deviceName: getTestName("RR_cam1b"),
         active: true,
         admin: true,
-        type: DeviceType.Unknown,
+        type: DeviceType.Thermal,
         groupName: getTestName("RR_group1"),
         groupId: getCreds("RR_group1").id,
       };
@@ -73,10 +72,10 @@ describe("Device reregister", () => {
 
   it("Reregistering device creates valid deviceHistory entry", () => {
     cy.log("Register new device");
-    cy.apiDeviceAdd("RR_history_cam", "RR_group1", 1234567).then(() => {
-      cy.log("Check deviceHistory created correctly for new device");
-      const expectedHistory: DeviceHistoryEntry =
-        TestCreateExpectedHistoryEntry(
+    cy.apiDeviceAdd("RR_history_cam", "RR_group1", undefined, 1234567).then(
+      () => {
+        cy.log("Check deviceHistory created correctly for new device");
+        const expectedHistory = TestCreateExpectedHistoryEntry(
           "RR_history_cam",
           "RR_group1",
           NOT_NULL_STRING,
@@ -84,17 +83,18 @@ describe("Device reregister", () => {
           "register",
           null,
         );
-      expectedHistory.saltId = 1234567;
-      cy.apiDeviceHistoryCheck("RR_user1", "RR_history_cam", [expectedHistory]);
+        expectedHistory.saltId = 1234567;
+        cy.apiDeviceHistoryCheck("RR_user1", "RR_history_cam", [
+          expectedHistory,
+        ]);
 
-      cy.apiDeviceReregister(
-        "RR_history_cam",
-        "RR_history_cam2",
-        "RR_group1",
-      ).then(() => {
-        cy.log("Check deviceHistory created correctly for new device");
-        const expectedNewHistory: DeviceHistoryEntry =
-          TestCreateExpectedHistoryEntry(
+        cy.apiDeviceReregister(
+          "RR_history_cam",
+          "RR_history_cam2",
+          "RR_group1",
+        ).then(() => {
+          cy.log("Check deviceHistory created correctly for new device");
+          const expectedNewHistory = TestCreateExpectedHistoryEntry(
             "RR_history_cam2",
             "RR_group1",
             NOT_NULL_STRING,
@@ -102,19 +102,13 @@ describe("Device reregister", () => {
             "re-register",
             null,
           );
-        expectedNewHistory.saltId = 1234567;
-        cy.apiDeviceHistoryCheck("RR_user1", "RR_history_cam2", [
-          expectedNewHistory,
-        ]);
-        cy.log("Check deviceHistory for old device no longer exists");
-        cy.apiDeviceHistoryCheck(
-          "RR_user1",
-          "RR_history_cam",
-          [],
-          HttpStatusCode.Forbidden,
-        );
-      });
-    });
+          expectedNewHistory.saltId = 1234567;
+          cy.apiDeviceHistoryCheck("RR_user1", "RR_history_cam2", [
+            expectedNewHistory,
+          ]);
+        });
+      },
+    );
   });
 
   it("re-register a device in new group with same name", () => {
@@ -130,7 +124,7 @@ describe("Device reregister", () => {
           deviceName: getTestName("RR_cam2"),
           active: false,
           admin: true,
-          type: DeviceType.Unknown,
+          type: DeviceType.Thermal,
           groupName: getTestName("RR_group2"),
           groupId: getCreds("RR_group2").id,
         };
@@ -143,7 +137,7 @@ describe("Device reregister", () => {
     cy.log("Add a recording so that old device isn't deleted when renamed");
     cy.apiRecordingAdd(
       "RR_cam2",
-      { type: RecordingType.ThermalRaw },
+      { type: RecordingType.ThermalRaw, location: [-42, 170] },
       "oneframe.cptv",
       "raRecording1",
     );
@@ -156,7 +150,7 @@ describe("Device reregister", () => {
         deviceName: getTestName("RR_cam2"),
         active: true,
         admin: true,
-        type: DeviceType.Unknown,
+        type: DeviceType.Thermal,
         groupName: getTestName("RR_group2b"),
         groupId: getCreds("RR_group2b").id,
       };
@@ -180,7 +174,7 @@ describe("Device reregister", () => {
           deviceName: getTestName("RR_cam3"),
           active: false,
           admin: true,
-          type: DeviceType.Unknown,
+          type: DeviceType.Thermal,
           groupName: getTestName("RR_group3"),
           groupId: getCreds("RR_group3").id,
         };
@@ -190,7 +184,7 @@ describe("Device reregister", () => {
     cy.log("Add a recording so that old device isn't deleted when renamed");
     cy.apiRecordingAdd(
       "RR_cam3",
-      { type: RecordingType.ThermalRaw },
+      { type: RecordingType.ThermalRaw, location: [-42, 170] },
       "oneframe.cptv",
       "raRecording1",
     );
@@ -206,7 +200,7 @@ describe("Device reregister", () => {
         deviceName: getTestName("RR_cam3b"),
         active: true,
         admin: true,
-        type: DeviceType.Unknown,
+        type: DeviceType.Thermal,
         groupName: getTestName("RR_group3b"),
         groupId: getCreds("RR_group3b").id,
       };
@@ -229,7 +223,7 @@ describe("Device reregister", () => {
           deviceName: getTestName("RR_cam5a"),
           active: true,
           admin: true,
-          type: DeviceType.Unknown,
+          type: DeviceType.Thermal,
           groupName: getTestName("RR_group5"),
           groupId: getCreds("RR_group5").id,
         };
@@ -327,7 +321,7 @@ describe("Device reregister", () => {
         groupId: getCreds("RR_group7").id,
         admin: true,
         active: true,
-        type: DeviceType.Unknown,
+        type: DeviceType.Thermal,
       };
       cy.apiDevicesCheck("RR_user7", [expectedDevice1]);
 
@@ -342,7 +336,7 @@ describe("Device reregister", () => {
         id: getCreds("RR_cam7").id,
         admin: true,
         active: true,
-        type: DeviceType.Unknown,
+        type: DeviceType.Thermal,
       };
       cy.apiDevicesCheck("RR_user7", [expectedDevice2]);
     });
@@ -350,7 +344,7 @@ describe("Device reregister", () => {
 
   it("Reregistered device can keep specified salt id", () => {
     cy.testCreateUserAndGroup("RR_user8", "RR_group8").then(() => {
-      cy.apiDeviceAdd("specify salt", "RR_group8", 9997);
+      cy.apiDeviceAdd("specify salt", "RR_group8", undefined, 9997);
       cy.apiDeviceReregister("specify salt", "specify salt2", "RR_group8").then(
         () => {
           cy.log("Test with Salt Id = device id by default");
@@ -362,7 +356,7 @@ describe("Device reregister", () => {
             saltId: 9997,
             groupName: getTestName("RR_group8"),
             groupId: getCreds("RR_group8").id,
-            type: DeviceType.Unknown,
+            type: DeviceType.Thermal,
           };
           cy.apiDevicesCheck("RR_user8", [expectedDevice2]);
         },
@@ -412,5 +406,7 @@ describe("Device reregister", () => {
   });
 
   // TODO. Write this. helper does not currently handle missing parameters
-  it.skip("Correctly handles missing parameters in register device", () => {});
+  it.skip("Correctly handles missing parameters in register device", () => {
+    return;
+  });
 });

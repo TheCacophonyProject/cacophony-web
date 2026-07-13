@@ -342,7 +342,7 @@ export default defineComponent({
       if (response.success) {
         trackTags.value = response.result.rows.map((row) => ({
           label: row.what,
-          labeller: row.userName,
+          labeler: row.userName,
           group: { id: row.groupId, name: row.groupName },
           station: { id: row.stationId, name: row.stationName },
           device: { id: row.deviceId, name: row.deviceName },
@@ -378,7 +378,7 @@ export default defineComponent({
             checkQuery("station") &&
             checkQuery("device") &&
             (userFocus.value !== null
-              ? userFocus.value === trackTag.labeller
+              ? userFocus.value === trackTag.labeler
               : true)
           );
         })
@@ -486,7 +486,7 @@ export default defineComponent({
       tagTotals.value = totalOf("label");
       stationTotals.value = totalOf("station.name");
       groupTotals.value = totalOf("group.name");
-      userTotals.value = totalOf("labeller");
+      userTotals.value = totalOf("labeler");
     });
 
     const { tag, station, group, device, user } = route.value.query;

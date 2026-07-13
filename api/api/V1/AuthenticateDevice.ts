@@ -21,8 +21,11 @@ import { body, query } from "express-validator";
 import { successResponse } from "./responseUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
 import {
-  anyOf,
+  allOrNoneOf,
+  atMostOneOf,
   deprecatedField,
+  exactlyOneOf,
+  exactlyOneOfOrDefault,
   idOf,
   validNameOf,
   validPasswordOf,
@@ -33,8 +36,7 @@ import { AuthenticationError, ClientError } from "../customErrors.js";
 import type { DeviceId } from "@typedefs/api/common.js";
 import { createEntityJWT } from "@api/auth.js";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiAuthenticateDeviceRequestBody {
+export interface ApiAuthenticateDeviceRequestBody {
   password: string; // Password for the device account
   deviceName?: string; // The name identifying a valid device account.  Must be paired with groupName
   groupName?: string; // The name identifying the group to which the device account belongs
@@ -60,24 +62,28 @@ export default function (app: Application) {
     "/authenticate_device",
     validateFields([
       validPasswordOf(body("password")),
-      anyOf(
-        deprecatedField(validNameOf(body("devicename"))).optional(),
-        validNameOf(body("deviceName")).optional(),
+      exactlyOneOf(
+        atMostOneOf(
+          validNameOf(body("deviceName")).optional(),
+          deprecatedField(validNameOf(body("devicename"))).optional(),
+        ),
+        allOrNoneOf(
+          atMostOneOf(
+            validNameOf(body("groupName")).optional(),
+            deprecatedField(validNameOf(body("groupname"))).optional(),
+          ),
+          atMostOneOf(
+            idOf(body("deviceId")).optional(),
+            deprecatedField(idOf(body("deviceID"))).optional(),
+          ),
+        ),
       ),
-      anyOf(
-        deprecatedField(validNameOf(body("groupname"))).optional(),
-        validNameOf(body("groupName")).optional(),
-      ),
-      anyOf(
-        idOf(body("deviceId")).optional(),
-        deprecatedField(idOf(body("deviceID"))).optional(),
-      ),
-      anyOf(
-        query("onlyActive").default(false).isBoolean().toBoolean(),
-        query("only-active").default(false).isBoolean().toBoolean(),
+      exactlyOneOfOrDefault(false)(
+        query("only-active").optional().isBoolean().toBoolean(),
+        deprecatedField(query("onlyActive")).optional().isBoolean().toBoolean(),
       ),
     ]),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (request: Request, _response: Response, next: NextFunction) => {
       const b = request.body;
       if ((b.deviceName || b.devicename) && (b.groupName || b.groupname)) {
         next();
@@ -128,13 +134,12 @@ export default function (app: Application) {
       next();
     },
     async (request: Request, response: Response, next: NextFunction) => {
-      const passwordMatch = await (
-        response.locals.device as Device
-      ).comparePassword(request.body.password);
+      const device = response.locals.device as Device;
+      const passwordMatch = await device.comparePassword(request.body.password);
       if (passwordMatch) {
         return successResponse(response, "Successful login.", {
-          id: response.locals.device.id,
-          token: `JWT ${createEntityJWT(response.locals.device)}`,
+          id: device.id,
+          token: `JWT ${createEntityJWT(device)}`,
         });
       } else {
         return next(new AuthenticationError("Wrong password or deviceName."));

@@ -1,4 +1,3 @@
-
 /*
 cacophony-api: The Cacophony Project API server
 Copyright (C) 2018  The Cacophony Project
@@ -44,11 +43,11 @@ function migrationAddBelongsTo(queryInterface, childTable, parentTable, opts) {
   return new Promise(function (resolve, reject) {
     queryInterface.sequelize
       .query(
-        `ALTER TABLE "${childTable}" ADD COLUMN "${columnName}" INTEGER ${columnNull};`
+        `ALTER TABLE "${childTable}" ADD COLUMN "${columnName}" INTEGER ${columnNull};`,
       )
       .then(() => {
         return queryInterface.sequelize.query(
-          `ALTER TABLE "${childTable}" ADD CONSTRAINT "${constraintName}" FOREIGN KEY ("${columnName}") REFERENCES "${parentTable}" (id) ON DELETE ${deleteBehaviour} ON UPDATE CASCADE;`
+          `ALTER TABLE "${childTable}" ADD CONSTRAINT "${constraintName}" FOREIGN KEY ("${columnName}") REFERENCES "${parentTable}" (id) ON DELETE ${deleteBehaviour} ON UPDATE CASCADE;`,
         );
       })
       .then(() => resolve())
@@ -62,10 +61,10 @@ exports.migrationAddBelongsTo = migrationAddBelongsTo;
 function renameTableAndIdSeq(queryInterface, oldName, newName) {
   return Promise.all([
     queryInterface.sequelize.query(
-      `ALTER TABLE "${oldName}" RENAME TO "${newName}";`
+      `ALTER TABLE "${oldName}" RENAME TO "${newName}";`,
     ),
     queryInterface.sequelize.query(
-      `ALTER TABLE "${oldName}_id_seq" RENAME TO "${newName}_id_seq";`
+      `ALTER TABLE "${oldName}_id_seq" RENAME TO "${newName}_id_seq";`,
     ),
   ]);
 }
@@ -74,7 +73,7 @@ function migrationRemoveBelongsTo(
   queryInterface,
   childTable,
   parentTable,
-  opts = {}
+  opts = {},
 ) {
   let columnName = `${parentTable.substring(0, parentTable.length - 1)}Id`;
   if (opts.name) {
@@ -86,7 +85,7 @@ function migrationRemoveBelongsTo(
   }
   return queryInterface.sequelize.query(
     `ALTER TABLE "${childTable}" DROP COLUMN "${columnName}";`,
-    options
+    options,
   );
 }
 exports.migrationRemoveBelongsTo = migrationRemoveBelongsTo;
@@ -99,20 +98,20 @@ function belongsToMany(queryInterface, viaTable, table1, table2) {
   return new Promise(function (resolve, reject) {
     Promise.all([
       queryInterface.sequelize.query(
-        `ALTER TABLE "${viaTable}" ADD COLUMN "${columnName1}" INTEGER;`
+        `ALTER TABLE "${viaTable}" ADD COLUMN "${columnName1}" INTEGER;`,
       ),
       queryInterface.sequelize.query(
-        `ALTER TABLE "${viaTable}" ADD COLUMN "${columnName2}" INTEGER;`
+        `ALTER TABLE "${viaTable}" ADD COLUMN "${columnName2}" INTEGER;`,
       ),
     ])
       .then(() => {
         console.log("Adding belongs to many constraint.");
         return Promise.all([
           queryInterface.sequelize.query(
-            `ALTER TABLE "${viaTable}" ADD CONSTRAINT "${constraintName1}" FOREIGN KEY ("${columnName1}") REFERENCES "${table1}" (id) ON DELETE CASCADE ON UPDATE CASCADE;`
+            `ALTER TABLE "${viaTable}" ADD CONSTRAINT "${constraintName1}" FOREIGN KEY ("${columnName1}") REFERENCES "${table1}" (id) ON DELETE CASCADE ON UPDATE CASCADE;`,
           ),
           queryInterface.sequelize.query(
-            `ALTER TABLE "${viaTable}" ADD CONSTRAINT "${constraintName2}" FOREIGN KEY ("${columnName2}") REFERENCES "${table2}" (id) ON DELETE CASCADE ON UPDATE CASCADE;`
+            `ALTER TABLE "${viaTable}" ADD CONSTRAINT "${constraintName2}" FOREIGN KEY ("${columnName2}") REFERENCES "${table2}" (id) ON DELETE CASCADE ON UPDATE CASCADE;`,
           ),
         ]);
       })
@@ -127,7 +126,7 @@ function removeBelongsToMany(
   viaTable,
   table1,
   table2,
-  options
+  options,
 ) {
   const columnName1 = `${table1.substring(0, table1.length - 1)}Id`;
   const constraintName1 = `${viaTable}_${columnName1}_fkey`;
@@ -138,11 +137,11 @@ function removeBelongsToMany(
     Promise.all([
       queryInterface.sequelize.query(
         `ALTER TABLE "${viaTable}" DROP COLUMN "${columnName1}";`,
-        options
+        options,
       ),
       queryInterface.sequelize.query(
         `ALTER TABLE "${viaTable}" DROP COLUMN "${columnName2}";`,
-        options
+        options,
       ),
     ])
       .then(() => {
@@ -150,11 +149,11 @@ function removeBelongsToMany(
         return Promise.all([
           queryInterface.sequelize.query(
             `ALTER TABLE "${viaTable}" DROP CONSTRAINT "${constraintName1}";`,
-            options
+            options,
           ),
           queryInterface.sequelize.query(
             `ALTER TABLE "${viaTable}" DROP CONSTRAINT "${constraintName2}";`,
-            options
+            options,
           ),
         ]);
       })
@@ -166,7 +165,7 @@ exports.removeBelongsToMany = removeBelongsToMany;
 
 function addSerial(queryInterface, tableName) {
   return queryInterface.sequelize.query(
-    `ALTER TABLE "${tableName}" ADD COLUMN id SERIAL PRIMARY KEY;`
+    `ALTER TABLE "${tableName}" ADD COLUMN id SERIAL PRIMARY KEY;`,
   );
 }
 exports.addSerial = addSerial;

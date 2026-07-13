@@ -113,7 +113,7 @@ onBeforeUnmount(() => {
 }
 .inner {
   overflow-x: auto;
-  scrollbar-color: #999 transparent;
+  scrollbar-color: #c2c2c2 transparent;
   &::-webkit-scrollbar {
     height: 0.5em;
   }

@@ -1,4 +1,4 @@
-import { GroupId, IsoFormattedDateString, UserId } from "./common";
+import type { GroupId, IsoFormattedDateString, UserId } from "./common.ts";
 
 export interface ApiGroupUserResponse {
   userName: string; // Full name of user, or email address of invited user.
@@ -13,6 +13,8 @@ export interface ApiGroupResponse {
   groupName: string; // Name of the group
   lastThermalRecordingTime?: IsoFormattedDateString; // ISO formatted date string of time of last thermal recording seen for group
   lastAudioRecordingTime?: IsoFormattedDateString; // ISO formatted date string of time of last audio recording seen for group
+  earliestThermalRecordingTime?: IsoFormattedDateString; // ISO formatted date string of time of earliest thermal recording seen for group
+  earliestAudioRecordingTime?: IsoFormattedDateString; // ISO formatted date string of time of earliest audio recording seen for group
   admin: boolean; // Is the calling user an admin of this group?
   owner: boolean; // Is the calling user an owner of this group?
   pending?: "invited" | "requested"; // Has the calling user been invited to the group, but not accepted yet?  Has the calling user requested to join the group?

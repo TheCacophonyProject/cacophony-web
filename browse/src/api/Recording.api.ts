@@ -183,7 +183,7 @@ export interface TrackTagRow {
   station: { id: number; name: string };
   device: { id: number; name: string };
   label: string;
-  labeller: string;
+  labeler: string;
 }
 
 export interface TrackTagQuery {
@@ -475,7 +475,7 @@ function replaceTrackTag(
     automatic,
   };
   return CacophonyApi.post(
-    `${apiPath}/${recordingId}/tracks/${trackId}/replaceTag`,
+    `${apiPath}/${recordingId}/tracks/${trackId}/replace-tag`,
     body
   );
 }

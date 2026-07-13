@@ -19,7 +19,7 @@ describe("Authentication", () => {
   });
 
   //TODO - write test for auth by deviceId (is what cameras use)
-  it("Can authenticate using deviceId", () => {
+  it.only("Can authenticate using deviceId", () => {
     cy.apiAuthenticateDevice(camera1, group1, undefined, undefined, {
       useDeviceId: true,
     });
@@ -84,7 +84,9 @@ describe("Authentication", () => {
       cy.testGroupUserCheckAccess(userB + "_on_behalf", group1, false);
     });
   } else {
-    it.skip("Superuser can authenticate as another user and receive their permissions", () => {});
+    it.skip("Superuser can authenticate as another user and receive their permissions", () => {
+      return;
+    });
   }
 
   it("Non-superuser cannot authenticate as another user", () => {

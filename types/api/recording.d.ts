@@ -1,4 +1,4 @@
-import {
+import type {
   DeviceId,
   GroupId,
   IsoFormattedDateString,
@@ -6,11 +6,11 @@ import {
   RecordingId,
   Seconds,
   StationId,
-} from "./common";
-import { ApiRecordingTagResponse } from "./tag";
-import { ApiTrackResponse } from "./track";
-import { RecordingProcessingState, RecordingType } from "./consts.js";
-import { DeviceBatteryChargeState } from "./device";
+} from "./common.ts";
+import type { ApiRecordingTagResponse } from "./tag.ts";
+import type { ApiTrackResponse } from "./track.ts";
+import { RecordingProcessingState, RecordingType } from "./consts.ts";
+import type { DeviceBatteryChargeState } from "./device.ts";
 
 export interface ApiRecordingResponse {
   id: RecordingId;
@@ -30,41 +30,38 @@ export interface ApiRecordingResponse {
   stationId?: StationId;
   stationName?: string;
   comment?: string;
+  status?: string;
   rawMimeType?: string;
   redacted?: boolean;
 }
 
-export interface ApiThermalRecordingMetadataResponse {
+export interface ApiThermalRecordingMetadataResponse extends Record<
+  string,
+  unknown
+> {
   trackingTime?: Seconds;
   previewSecs?: Seconds;
   totalFrames?: number;
   algorithm?: number;
-  thumbnailRegion?: {
+  thumbnail_region?: {
     x: number;
     y: number;
     width: number;
     height: number;
-    frameNumber: number;
+    frame_number: number;
+    mass?: number;
+    blank?: boolean;
+    pixel_variance?: number;
+    in_trap?: boolean;
   };
   metadataSource?: string;
+  status?: "test" | "startup" | "shutdown";
 }
 
-export interface ApiTrailCamImageMetadataResponse {
-  width: number;
-  height: number;
-  ISO?: number;
-  make?: string;
-  model?: string;
-  deviceName?: string;
-  aperture?: number;
-  shutterSpeed?: number;
-  softwareVersion?: number;
-  exposureTime?: number;
-  fStop?: number;
-  inHg?: number;
-  dateTime?: string;
-}
-export interface ApiAudioRecordingMetadataResponse {
+export interface ApiAudioRecordingMetadataResponse extends Record<
+  string,
+  unknown
+> {
   analysis?: {
     speech_detection?: boolean;
     speech_detection_version?: string;
@@ -83,18 +80,12 @@ export interface ApiAudioRecordingMetadataResponse {
   "Android API Level": number;
   "Phone manufacturer": string;
   "App has root access": boolean;
+  status?: "test";
 }
 
-export interface ApiTrailCamImageResponse extends ApiRecordingResponse {
-  additionalMetadata?: ApiTrailCamImageMetadataResponse;
-  type: RecordingType.TrailCamImage;
-}
 export interface ApiThermalRecordingResponse extends ApiRecordingResponse {
   additionalMetadata?: ApiThermalRecordingMetadataResponse;
-  type:
-    | RecordingType.ThermalRaw
-    | RecordingType.InfraredVideo
-    | RecordingType.TrailCamVideo;
+  type: RecordingType.ThermalRaw | RecordingType.InfraredVideo;
 }
 
 export interface CacophonyIndex {
@@ -113,23 +104,42 @@ export interface ApiAudioRecordingResponse extends ApiRecordingResponse {
   cacophonyIndex?: CacophonyIndex[];
   type: RecordingType.Audio;
   fileMimeType?: string;
-  additionalMetadata?: ApiAudioRecordingMetadataResponse | any;
+  additionalMetadata?: ApiAudioRecordingMetadataResponse;
 }
 
 export interface ApiRecordingProcessingJob {
   jobKey: string;
   id: RecordingId;
   type: RecordingType;
-  hasAlert: boolean;
   updatedAt: IsoFormattedDateString;
+  recordingDateTime: IsoFormattedDateString;
+  processingState: RecordingProcessingState;
   processingStartTime?: IsoFormattedDateString;
   processingEndTime?: IsoFormattedDateString;
+  currentStateStartTime?: IsoFormattedDateString;
+  processingFailedCount: number;
+  GroupId: GroupId;
+  DeviceId: DeviceId;
+  StationId: StationId;
+  processing: boolean;
+  // ... Other fields we don't care about right now
 }
 
 export interface ApiRecordingUpdateRequest {
   comment?: string;
-  additionalMetadata?: Record<string, any>;
+  additionalMetadata?: Record<string, unknown>;
 }
 
 export type ApiGenericRecordingResponse = ApiThermalRecordingResponse &
   ApiAudioRecordingResponse;
+
+export interface ApiRecordingUploadData {
+  fileHash?: string | null;
+  status?: "test" | "startup" | "shutdown";
+  location?: LatLng;
+  type?: RecordingType;
+  recordingDateTime?: Date | IsoFormattedDateString;
+  duration?: number;
+  metadata?: object;
+  additionalMetadata?: Record<string, unknown>;
+}

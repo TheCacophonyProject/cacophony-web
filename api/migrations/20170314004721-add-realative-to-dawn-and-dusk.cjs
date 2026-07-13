@@ -1,37 +1,35 @@
-
-
 module.exports = {
   up: function (queryInterface, Sequelize) {
     return Promise.all([
       queryInterface.addColumn(
         "AudioRecordings",
         "relativeToDawn",
-        Sequelize.INTEGER
+        Sequelize.INTEGER,
       ),
       queryInterface.addColumn(
         "IrVideoRecordings",
         "relativeToDawn",
-        Sequelize.INTEGER
+        Sequelize.INTEGER,
       ),
       queryInterface.addColumn(
         "ThermalVideoRecordings",
         "relativeToDawn",
-        Sequelize.INTEGER
+        Sequelize.INTEGER,
       ),
       queryInterface.addColumn(
         "AudioRecordings",
         "relativeToDusk",
-        Sequelize.INTEGER
+        Sequelize.INTEGER,
       ),
       queryInterface.addColumn(
         "IrVideoRecordings",
         "relativeToDusk",
-        Sequelize.INTEGER
+        Sequelize.INTEGER,
       ),
       queryInterface.addColumn(
         "ThermalVideoRecordings",
         "relativeToDusk",
-        Sequelize.INTEGER
+        Sequelize.INTEGER,
       ),
     ]);
   },

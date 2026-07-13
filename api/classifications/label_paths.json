@@ -19,9 +19,12 @@
   "otter": "all.mammal.mustelid.otter",
   "pig": "all.mammal.pig",
   "possum": "all.mammal.possum",
+  "agouti": "all.mammal.agouti",
   "rodent": "all.mammal.rodent",
   "mouse": "all.mammal.rodent.mouse",
   "rat": "all.mammal.rodent.rat",
+  "ship rat": "all.mammal.rodent.rat.ship_rat",
+  "norway rat": "all.mammal.rodent.rat.norway_rat",
   "sealion": "all.mammal.sealion",
   "sheep": "all.mammal.sheep",
   "wallaby": "all.mammal.wallaby",
@@ -36,8 +39,6 @@
   "sugar glider": "all.mammal.glider.sugar_glider",
   "vole": "all.mammal.rodent.vole",
   "other": "all.other",
-  "bunyip": "all.other.bunyip",
-  "drop bear": "all.other.drop_bear",
   "false-positive": "all.other.falsepositive",
   "frog": "all.other.frog",
   "insect": "all.other.insect",
@@ -50,6 +51,7 @@
   "poor tracking": "all.other.poor_tracking",
   "rain": "all.other.rain",
   "static": "all.other.static",
+  "noise": "all.other.noise",
   "unidentified": "all.other.unidentified",
   "vehicle": "all.other.vehicle",
   "water": "all.other.water",
@@ -549,5 +551,6 @@
   "white-browed woodswallow": "all.bird.woodswallow.whitebrowed_woodswallow",
   "wrybill": "all.bird.wrybill",
   "yellowhammer": "all.bird.yellowhammer",
-  "yellowhead": "all.bird.yellowhead"
+  "yellowhead": "all.bird.yellowhead",
+  "cow": "all.mammal.cow"
 }

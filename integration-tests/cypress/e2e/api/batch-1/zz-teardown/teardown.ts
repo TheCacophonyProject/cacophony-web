@@ -1,7 +1,9 @@
 import { testRunOnApi } from "@commands/server";
 
 describe("Teardown test data", () => {
-  before(() => {});
+  before(() => {
+    return;
+  });
 
   it.skip("Remove test data from database", () => {
     if (Cypress.env("running_in_a_dev_environment") == true) {

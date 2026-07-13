@@ -1,0 +1,95 @@
+:root {
+  --cp-font-family: Lexend, sans-serif;
+  --cp-font-size-h1: 1.5rem; // 24px
+  --cp-font-size-h2: 1.3125rem; // 21px
+  --cp-font-size-h3: 1.125rem; // 18px
+  --cp-font-size-h4: 1rem; // 16px
+  --cp-font-size-h5: 0.875rem; // 14px
+  --cp-font-size-lg: 1rem; // 16px
+  --cp-font-size-md: 0.875rem; // 14px
+  --cp-font-size-sm: 0.75rem; // 12px
+  --cp-font-size-xs: 0.625rem; // 10px - use very, VERY sparsely.
+
+  --cp-font-weight-regular: 350;
+  --cp-font-weight-medium: 450;
+  --cp-font-weight-semilbold: 550;
+  --cp-font-weight-bold: 650;
+
+  --cp-line-height-lg: 1.6;
+  --cp-line-height-md: 1.4;
+  --cp-line-height-sm: 1.2;
+}
+
+/* Headings */
+
+.h1 {
+  font-weight: var(--cp-font-weight-bold);
+  @media screen and (max-width: 575px) {
+    font-size: var(--cp-font-size-h3);
+  }
+  @media screen and (min-width: 576px) {
+    font-size: var(--cp-font-size-h1);
+  }
+}
+
+.h2 {
+  font-size: var(--cp-font-size-h2);
+}
+
+.h3 {
+  font-size: var(--cp-font-size-h3);
+}
+
+.h4 {
+  font-weight: var(--cp-font-weight-semilbold);
+  @media screen and (max-width: 575px) {
+    font-size: var(--cp-font-size-h5);
+  }
+  @media screen and (min-width: 576px) {
+    font-size: var(--cp-font-size-h4);
+  }
+}
+
+.h5 {
+  font-size: var(--cp-font-size-h5);
+}
+
+/* Font sizes only */
+/* TODO: remove once we've done a pass over everything? */
+
+.fs-1 {
+  font-size: var(--cp-font-size-h1) !important;
+}
+.fs-2 {
+  font-size: var(--cp-font-size-h2) !important;
+}
+.fs-3 {
+  font-size: var(--cp-font-size-h3) !important;
+}
+.fs-4 {
+  font-size: var(--cp-font-size-h4) !important;
+}
+.fs-5 {
+  font-size: var(--cp-font-size-h5) !important;
+}
+.fs-6 {
+  font-size: var(--cp-font-size-sm) !important;
+}
+.fs-7 {
+  font-size: var(--cp-font-size-xs) !important; // avoid using
+}
+/*.fw-bold {
+  font-weight: 500 !important;
+}*/
+
+/*
+10px = 0.625rem
+12px = 0.75rem
+14px = 0.875rem
+16px = 1rem (base)
+18px = 1.125rem
+20px = 1.25rem
+24px = 1.5rem
+30px = 1.875rem
+32px = 2rem
+*/

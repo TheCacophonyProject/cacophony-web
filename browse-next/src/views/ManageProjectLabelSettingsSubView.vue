@@ -4,7 +4,7 @@ import type { SelectedProject } from "@models/LoggedInUser";
 import { computed, inject, ref } from "vue";
 import type { Ref } from "vue";
 import CardTable from "@/components/CardTable.vue";
-import type { CardTableRows } from "@/components/CardTableTypes";
+import type { CardTableItem, CardTableRows } from "@/components/CardTableTypes";
 import {
   DEFAULT_AUDIO_RECORDING_LABELS,
   DEFAULT_CAMERA_RECORDING_LABELS,
@@ -12,6 +12,10 @@ import {
 } from "@/consts";
 import { currentSelectedProject } from "@models/provides";
 import type { RecordingLabel } from "@typedefs/api/group";
+import SectionCard from "@/components/SectionCard.vue";
+import { BFormInput, BModal } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 
@@ -106,35 +110,43 @@ const addAudioLabel = async (label: string, description: string) => {
   }
 };
 
-const cameraLabelTableItems = computed<CardTableRows<string>>(() => {
-  return customCameraLabels.value.map((label: RecordingLabel) => ({
-    label: {
-      value: label.text || label.value,
-    },
-    description: {
-      value: label.description || "",
-      cellClasses: ["w-100"],
-    },
-    _deleteAction: {
-      value: label,
-    },
-  }));
-});
+const cameraLabelTableItems = computed<CardTableRows<string | RecordingLabel>>(
+  () => {
+    return customCameraLabels.value.map((label: RecordingLabel) => ({
+      label: {
+        value: label.text || label.value || "",
+        cellClasses: ["w-25"],
+      },
+      description: {
+        value: label.description || "",
+        cellClasses: ["mw-100"],
+      },
+      _deleteAction: {
+        value: label,
+        cellClasses: ["text-end"],
+      },
+    }));
+  },
+);
 
-const audioLabelTableItems = computed<CardTableRows<string>>(() => {
-  return customAudioLabels.value.map((label: RecordingLabel) => ({
-    label: {
-      value: label.text || label.value,
-    },
-    description: {
-      value: label.description || "",
-      cellClasses: ["w-100"],
-    },
-    _deleteAction: {
-      value: label,
-    },
-  }));
-});
+const audioLabelTableItems = computed<CardTableRows<string | RecordingLabel>>(
+  () => {
+    return customAudioLabels.value.map((label: RecordingLabel) => ({
+      label: {
+        value: label.text || label.value || "",
+        cellClasses: ["w-25"],
+      },
+      description: {
+        value: label.description || "",
+        cellClasses: ["mw-100"],
+      },
+      _deleteAction: {
+        value: label,
+        cellClasses: ["text-end"],
+      },
+    }));
+  },
+);
 
 const resetCameraLabels = async () => {
   localCameraLabels.value = [...DEFAULT_CAMERA_RECORDING_LABELS];
@@ -190,108 +202,158 @@ const reset = () => {
 // Add tag.  delete tag, move tag up, move tag down, reset to defaults
 </script>
 <template>
-  <h1 class="h5 d-none d-md-block">Project label settings</h1>
-  <div>
-    <p>
-      Manage the set of default labels that users can apply to camera recordings
-      or bird recordings, and what those labels mean in the context of your
-      project.
-    </p>
-  </div>
-  <hr class="mt-4" />
-  <div
-    class="d-flex flex-column flex-md-row justify-content-md-between mb-3 align-items-center"
-  >
-    <h2 class="h6">Camera labels</h2>
-    <div class="d-flex align-items-end justify-content-end ms-md-5">
-      <button
-        type="button"
-        class="btn btn-outline-secondary ms-2"
-        @click.stop.prevent="showAddCameraLabelModal = true"
-      >
-        Add
-      </button>
-      <button
-        type="button"
-        class="btn btn-outline-danger ms-2"
-        :disabled="
-          !canReset(localCameraLabels, DEFAULT_CAMERA_RECORDING_LABELS)
-        "
-        @click.stop.prevent="resetCameraLabels"
-      >
-        Reset
-      </button>
+  <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
+    <div class="col-lg-3">
+      <h3 class="section-card-heading">Project label settings</h3>
+      <p class="text-secondary pb-1">
+        Manage the set of default labels that users can apply to thermal video
+        recordings or audio recordings, and what those labels mean in the
+        context of your project.
+      </p>
+    </div>
+    <div class="col-lg-9">
+      <section-card>
+        <template #header-title> Thermal video labels </template>
+        <template #header-action>
+          <div class="d-inline-flex gap-2 ms-2">
+            <two-step-action-button
+              :action="resetCameraLabels"
+              :btn-variant-class="`btn-outline-secondary`"
+              :icon="null"
+              :confirmation-label="`Reset thermal labels`"
+              :label="`Reset`"
+              :placement="`bottom`"
+              :disabled="
+                !canReset(localCameraLabels, DEFAULT_CAMERA_RECORDING_LABELS)
+              "
+            />
+            <button
+              type="button"
+              class="btn btn-secondary"
+              @click.stop.prevent="showAddCameraLabelModal = true"
+            >
+              Add
+            </button>
+          </div>
+        </template>
+        <card-table
+          :items="cameraLabelTableItems"
+          compact
+          :max-card-width="575"
+        >
+          <template #_deleteAction="{ cell }">
+            <two-step-action-button
+              :action="() => removeCameraLabel(cell.value)"
+              icon="delete"
+              :confirmation-label="`Delete label`"
+              tooltip-label="Delete"
+            />
+          </template>
+          <template
+            #card="{
+              card,
+            }: {
+              card: {
+                label: CardTableItem<any>;
+                description: CardTableItem<any>;
+              };
+            }"
+          >
+            <div class="d-flex flex-row">
+              <div class="d-flex flex-column flex-grow-1 me-3">
+                <span
+                  ><strong>{{ card.label.value }}</strong></span
+                >
+                <span>{{ card.description.value }}</span>
+              </div>
+
+              <div
+                class="d-inline-flex align-items-center justify-content-center my-auto"
+              >
+                <two-step-action-button
+                  :action="() => removeCameraLabel(card.label.value)"
+                  icon="delete"
+                  :confirmation-label="`Delete label`"
+                  tooltip-label="Delete"
+                />
+              </div>
+            </div>
+          </template>
+        </card-table>
+      </section-card>
     </div>
   </div>
-  <card-table :items="cameraLabelTableItems" compact :max-card-width="575">
-    <template #_deleteAction="{ cell }">
-      <button class="btn" @click.prevent="() => removeCameraLabel(cell.value)">
-        <font-awesome-icon icon="trash-can" />
-      </button>
-    </template>
-    <template #card="{ card }">
-      <div class="d-flex flex-row">
-        <div class="d-flex flex-column flex-grow-1 me-3">
-          <span
-            ><strong>{{ card.label.value }}</strong></span
+
+  <div class="row mb-3">
+    <div class="col-lg-3"></div>
+    <div class="col-lg-9">
+      <section-card>
+        <template #header-title> Audio labels </template>
+        <template #header-action>
+          <div class="d-inline-flex gap-2 ms-2">
+            <two-step-action-button
+              :action="resetAudioLabels"
+              :btn-variant-class="`btn-outline-secondary`"
+              :icon="null"
+              :confirmation-label="`Reset audio labels`"
+              :label="`Reset`"
+              :placement="`bottom`"
+              :disabled="
+                !canReset(localAudioLabels, DEFAULT_AUDIO_RECORDING_LABELS)
+              "
+            />
+            <button
+              type="button"
+              class="btn btn-secondary"
+              @click.stop.prevent="showAddAudioLabelModal = true"
+            >
+              Add
+            </button>
+          </div>
+        </template>
+        <card-table :items="audioLabelTableItems" compact :max-card-width="575">
+          <template #_deleteAction="{ cell }">
+            <two-step-action-button
+              :action="() => removeAudioLabel(cell.value)"
+              icon="delete"
+              :confirmation-label="`Delete label`"
+              tooltip-label="Delete"
+            />
+          </template>
+          <template
+            #card="{
+              card,
+            }: {
+              card: {
+                label: CardTableItem<any>;
+                description: CardTableItem<any>;
+              };
+            }"
           >
-          <span>{{ card.description.value }}</span>
-        </div>
-        <button
-          class="btn"
-          @click.prevent="() => removeCameraLabel(card.label.value)"
-        >
-          <font-awesome-icon icon="trash-can" />
-        </button>
-      </div>
-    </template>
-  </card-table>
-  <hr class="mt-4" />
-  <div
-    class="d-flex flex-column flex-md-row justify-content-md-between my-3 align-items-center"
-  >
-    <h2 class="h6">Bird recording labels</h2>
-    <div class="d-flex align-items-end justify-content-end ms-md-5">
-      <button
-        type="button"
-        class="btn btn-outline-secondary ms-2"
-        @click.stop.prevent="showAddAudioLabelModal = true"
-      >
-        Add
-      </button>
-      <button
-        type="button"
-        class="btn btn-outline-danger ms-2"
-        @click.stop.prevent="resetAudioLabels"
-        :disabled="!canReset(localAudioLabels, DEFAULT_AUDIO_RECORDING_LABELS)"
-      >
-        Reset
-      </button>
+            <div class="d-flex flex-row">
+              <div class="d-flex flex-column flex-grow-1 me-3">
+                <span
+                  ><strong>{{ card.label.value }}</strong></span
+                >
+                <span>{{ card.description.value }}</span>
+              </div>
+              <div
+                class="d-inline-flex align-items-center justify-content-center my-auto"
+              >
+                <two-step-action-button
+                  :action="() => removeAudioLabel(card.label.value)"
+                  icon="delete"
+                  :confirmation-label="`Delete label`"
+                  tooltip-label="Delete"
+                />
+              </div>
+            </div>
+          </template>
+        </card-table>
+      </section-card>
     </div>
   </div>
-  <card-table :items="audioLabelTableItems" compact :max-card-width="575">
-    <template #_deleteAction="{ cell }">
-      <button class="btn" @click.prevent="() => removeAudioLabel(cell.value)">
-        <font-awesome-icon icon="trash-can" />
-      </button>
-    </template>
-    <template #card="{ card }">
-      <div class="d-flex flex-row">
-        <div class="d-flex flex-column flex-grow-1 me-3">
-          <span
-            ><strong>{{ card.label.value }}</strong></span
-          >
-          <span>{{ card.description.value }}</span>
-        </div>
-        <button
-          class="btn"
-          @click.prevent="() => removeCameraLabel(card.label.value)"
-        >
-          <font-awesome-icon icon="trash-can" />
-        </button>
-      </div>
-    </template>
-  </card-table>
+
   <b-modal
     v-model="showAddCameraLabelModal"
     title="Add project camera label"
@@ -309,7 +371,7 @@ const reset = () => {
     <b-form-input
       id="camera-label"
       v-model="pendingLabel"
-      placeholder="enter a new label"
+      placeholder="Enter a new label"
       class="mb-3"
     />
     <label for="camera-description" class="form-label"
@@ -318,7 +380,7 @@ const reset = () => {
     <b-form-input
       id="camera-description"
       v-model="pendingDescription"
-      placeholder="describe the label usage in your project"
+      placeholder="Describe the label usage in your project"
     />
   </b-modal>
   <b-modal
@@ -338,7 +400,7 @@ const reset = () => {
     <b-form-input
       id="audio-label"
       v-model="pendingLabel"
-      placeholder="enter a new label"
+      placeholder="Enter a new label"
       class="mb-3"
     />
     <label for="audio-description" class="form-label"
@@ -347,7 +409,7 @@ const reset = () => {
     <b-form-input
       id="audio-description"
       v-model="pendingDescription"
-      placeholder="describe the label usage in your project"
+      placeholder="Describe the label usage in your project"
     />
   </b-modal>
 </template>

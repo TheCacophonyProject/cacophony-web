@@ -16,25 +16,45 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import type Sequelize from "sequelize";
-import type { ModelCommon, ModelStaticCommon } from "./index.js";
+import Sequelize, { CreationOptional, DataTypes, ForeignKey } from "sequelize";
+import { ModelStaticCommon } from "./index.js";
 import type { ApiGroupUserSettings } from "@typedefs/api/group.js";
+import { GroupId, UserId } from "@typedefs/api/common.js";
+import { User } from "@models/User.js";
+import { Group } from "@models/Group.js";
 
-export interface GroupUsers extends Sequelize.Model, ModelCommon<GroupUsers> {
-  admin: boolean;
-  owner: boolean;
-  pending: "requested" | "invited";
-  settings?: ApiGroupUserSettings;
-  transferredItems: number;
-  transferredBytes: number;
-  removedAt?: Date;
+export class GroupUsers extends ModelStaticCommon<GroupUsers> {
+  declare id: CreationOptional<number>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  // FIXME: Admin is NULLable in the DB
+  declare admin: CreationOptional<boolean>;
+  declare owner: CreationOptional<boolean>;
+  declare GroupId: ForeignKey<GroupId>;
+  declare UserId: ForeignKey<UserId>;
+  declare settings?: CreationOptional<ApiGroupUserSettings>;
+  declare removedAt?: CreationOptional<Date>;
+  declare transferredBytes: CreationOptional<number>;
+  declare transferredItems: CreationOptional<number>;
+  declare pending: CreationOptional<"requested" | "invited">;
+
+  static addAssociations() {
+    this.belongsTo(User);
+    this.belongsTo(Group);
+  }
 }
-export interface GroupUsersStatic extends ModelStaticCommon<GroupUsers> {}
 
-export default function (sequelize, DataTypes): GroupUsersStatic {
-  const name = "GroupUsers";
-
+export const init = (sequelizeInstance: Sequelize.Sequelize) => {
   const attributes = {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE,
+
     admin: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
@@ -46,7 +66,7 @@ export default function (sequelize, DataTypes): GroupUsersStatic {
     pending: {
       type: DataTypes.ENUM("requested", "invited"),
       allowNull: true,
-      defaultValue: null,
+      defaultValue: null as "requested" | "invited" | null,
     },
     settings: {
       type: DataTypes.JSONB,
@@ -67,25 +87,13 @@ export default function (sequelize, DataTypes): GroupUsersStatic {
       allowNull: true,
     },
   };
-
-  const GroupUsers = sequelize.define(
-    name,
-    attributes,
-  ) as unknown as GroupUsersStatic;
-  const models = sequelize.models;
-  GroupUsers.addAssociations = function () {
-    // models.Group.hasMany(models.Device);
-    // models.Group.belongsToMany(models.User, { through: models.GroupUsers });
-    // models.Group.hasMany(models.Recording);
-    // models.Group.hasMany(models.Station);
-    // models.Group.hasMany(models.GroupInvites);
-    models.GroupUsers.belongsTo(models.User);
-    models.GroupUsers.belongsTo(models.Group);
-  };
-
-  //---------------
-  // CLASS METHODS
-  //---------------
-
+  GroupUsers.init(attributes, {
+    sequelize: sequelizeInstance,
+    tableName: "GroupUsers",
+    name: {
+      singular: "GroupUser",
+      plural: "GroupUsers",
+    },
+  });
   return GroupUsers;
-}
+};

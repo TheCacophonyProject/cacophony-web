@@ -1,4 +1,3 @@
-
 const util = require("./util/util.cjs");
 
 module.exports = {
@@ -22,7 +21,7 @@ module.exports = {
               "rabbit",
               "hare",
               "human",
-              "bird"
+              "bird",
             ),
           },
           confidence: {
@@ -83,17 +82,17 @@ module.exports = {
             util.migrationAddBelongsTo(
               queryInterface,
               "Tags",
-              "AudioRecordings"
+              "AudioRecordings",
             ),
             util.migrationAddBelongsTo(
               queryInterface,
               "Tags",
-              "IrVideoRecordings"
+              "IrVideoRecordings",
             ),
             util.migrationAddBelongsTo(
               queryInterface,
               "Tags",
-              "ThermalVideoRecordings"
+              "ThermalVideoRecordings",
             ),
             util.migrationAddBelongsTo(queryInterface, "Tags", "Users", {
               name: "tagger",

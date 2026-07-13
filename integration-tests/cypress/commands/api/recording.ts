@@ -8,22 +8,22 @@ import {
   saveJobKeyByName,
   checkTreeStructuresAreEqualExcept,
   removeUndefinedParams,
-  saveJWTByName,
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
-import {
-  ApiRecordingSet,
-  ApiRecordingNeedsTagReturned,
-  ApiRecordingColumns,
-} from "../types";
-import { ApiRecordingColumnNames } from "../constants";
+import { ApiRecordingSet } from "../types";
 import {
   ApiAudioRecordingResponse,
+  ApiRecordingProcessingJob,
   ApiRecordingResponse,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
-import { HttpStatusCode } from "@typedefs/api/consts";
-import { RecordingId } from "@typedefs/api/common";
+import {
+  HttpStatusCode,
+  RecordingProcessingState,
+  RecordingType,
+  TagMode,
+} from "@typedefs/api/consts";
+import { RecordingId, TrackId } from "@typedefs/api/common";
 import {
   TEMPLATE_THERMAL_RECORDING,
   TEMPLATE_TRACK,
@@ -33,15 +33,422 @@ import { TestGetLocationArray } from "@commands/api/station";
 
 // 1,thermalRaw,cy_rreGroup_4b6009cc,cy_rreCamera1_4b6009cc,,2021-07-18,08:13:17,-45.29115,169.30845,15.6666666666667,,,1,cat,,,http://test.site/recording/1,,"
 
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Cypress {
+    interface Chainable {
+      /** Check the values returned by /api/fileProcessing (get)
+       * specify type and processingState (state)
+       * Verify that the recording data matched the expectedRecording
+       * Optionally: check for a non-200 statusCode
+       * Optionally: check for a returned error message (additionalChecks.message)
+       */
+      processingApiCheck(
+        userName: string,
+        type: string,
+        state: string,
+        recordingName: string,
+        expectedRecording: unknown,
+        excludeCheckOn?: string[],
+        statusCode?: HttpStatusCode,
+        additionalChecks?: { message?: string },
+      ): Chainable<void>;
+
+      /** Put to /api/fileProcessing 'done' endpoint
+       * recordingId and jobkey is looked up using recordingName
+       * other parameters are passed to the endpoint transparently
+       * Optionally: check for a non-200 statusCode
+       */
+
+      processingApiPut(
+        userName: string,
+        recordingName: string,
+        success: boolean,
+        result: unknown,
+        newProcessedFileKey: string,
+        statusCode?: HttpStatusCode,
+      ): Chainable<void>;
+
+      /** Post to /api/fileProcessing/algorithm
+       * Add or look up algorithm matching supplied JSON algorithm
+       * Returns algorithmId
+       */
+
+      processingApiAlgorithmPost(
+        userName: string,
+        algorithm: unknown,
+      ): Chainable<number>;
+
+      /** Post to /api/fileProcessing/:id/tracks
+       * recordingId is looked up using recordingName
+       * other parameters are passed to the endpoint transparently
+       * Optionally: check for a non-200 statusCode
+       */
+      processingApiTracksPost(
+        userName: string,
+        trackName: string,
+        recordingName: string,
+        data: unknown,
+        algorithmId: number,
+        statusCode?: HttpStatusCode,
+      ): Chainable<TrackId>;
+
+      /** Post to /api/fileProcessing/:id/tracksAndTags
+       * recordingId is looked up using recordingName
+       * other parameters are passed to the endpoint transparently
+       * Optionally: check for a non-200 statusCode
+       */
+      processingApiTracksAndTagsPost(
+        userName: string,
+        trackName: string,
+        recordingName: string,
+        data: unknown[],
+        algorithmId: number,
+        statusCode?: HttpStatusCode,
+      ): Chainable<void>;
+
+      /** Post to /api/fileProcessing/:id/tracks/:trackId/tagsBulk
+       * recordingId is looked up using recordingName
+       * other parameters are passed to the endpoint transparently
+       * Optionally: check for a non-200 statusCode
+       */
+      processingApiTracksTagsBulkPost(
+        userName: string,
+        trackName: string,
+        recordingName: string,
+        data: unknown,
+        statusCode?: HttpStatusCode,
+      ): Chainable<void>;
+
+      /** Post to /api/fileProcessing/:id/tracks/:trackId/tags
+       * recordingId is looked up using recordingName
+       * other parameters are passed to the endpoint transparently
+       * Optionally: check for a non-200 statusCode
+       */
+      processingApiTracksTagsPost(
+        userName: string,
+        trackName: string,
+        recordingName: string,
+        what: unknown,
+        confidence: number,
+        data?: object,
+        statusCode?: HttpStatusCode,
+      ): Chainable<void>;
+
+      /** Delete from /api/fileProcessing/:id/tracks
+       * recordingId is looked up using recordingName
+       * Optionally: add additional parameters from additionalParams
+       * Optionally: check for a non-200 statusCode
+       */
+      processingApiTracksDelete(
+        userName: string,
+        recordingName: string,
+        statusCode?: HttpStatusCode,
+      ): Chainable<void>;
+
+      /**
+       * upload a single recording to for a particular camera using deviceId and user credentials
+       * Optionally, save the id against provided recordingName
+       */
+      apiRecordingAddOnBehalfUsingDevice(
+        userName: string,
+        deviceName: string,
+        details: ApiRecordingSet,
+        recordingName?: string,
+        fileName?: string | { filename: string; key: string }[],
+        statusCode?: HttpStatusCode,
+        additionalChecks?: { useRawDeviceName?: boolean },
+      ): Cypress.Chainable<RecordingId>;
+
+      /**
+       * upload a single recording to for a particular camera using deviceName and groupName and user credentials
+       * Optionally, save the id against provided recordingName
+       */
+      apiRecordingAddOnBehalfUsingGroup(
+        userName: string,
+        deviceName: string,
+        groupName: string,
+        data: ApiRecordingSet,
+        recordingName?: string,
+        fileName?: string | { filename: string; key: string }[],
+        statusCode?: HttpStatusCode,
+        additionalChecks?: {
+          useRawDeviceName?: boolean;
+          useRawGroupName?: boolean;
+          message?: string;
+        },
+      ): Cypress.Chainable<RecordingId>;
+
+      /**
+       * Upload a single recording using device credentials
+       * Save the provided ID against the provided recording name
+       * Optionally, check for a non-200 return statusCode
+       */
+      apiRecordingAdd(
+        deviceName: string,
+        data: ApiRecordingSet,
+        fileName?: string | { filename: string; key: string }[],
+        recordingName?: string,
+        statusCode?: number,
+        additionalChecks?: { message?: string },
+        filenameToUse?: string,
+      ): Cypress.Chainable<RecordingId>;
+
+      /**
+       * Upload a single recording with trackTags using device credentials
+       * Save the provided ID against the provided recording name
+       */
+      apiRecordingAddWithTracks(
+        deviceName: string,
+        tracks?: string[][],
+        recordingDateTime?: string,
+        location?: [number, number],
+      ): Cypress.Chainable<RecordingId>;
+
+      /** Get a single recording response using api/v1/recordings/{id}
+       */
+      apiRecordingGet(
+        userName: string,
+        recordingNameOrId: RecordingId,
+        statusCode?: HttpStatusCode,
+      ): Chainable<
+        Cypress.Response<{
+          recording: ApiRecordingResponse;
+          rawSize?: number;
+          downloadRawJWT?: string;
+        }>
+      >;
+
+      apiRecordingGetFile(
+        userName: string,
+        recordingNameOrId: RecordingId,
+        statusCode?: HttpStatusCode,
+      ): Chainable<Cypress.Response<Uint8Array>>;
+
+      /** Get a single recording using api/v1/recordings/{id}
+       * Verify that the recording data matched the expectedRecording
+       * Optionally: check for a non-200 statusCode
+       * By default function looks up the recording Id using the recordingNameOrId supplied when
+       * recording was created
+       * Optionally: specify recording by id (not saved name) using additionalChecks["useRawRecordingId"] === true
+       */
+      apiRecordingCheck(
+        userName: string,
+        recordingNameOrId: string,
+        expectedRecording: ApiRecordingResponse,
+        excludeCheckOn?: string[],
+        statusCode?: HttpStatusCode,
+        additionalChecks?: { useRawRecordingId?: boolean; message?: string },
+      ): Chainable<void>;
+
+      apiRecordingDownloadCheck(
+        userName: string,
+        recordingNameOrId: string,
+      ): Chainable<void>;
+
+      /** Update a single recording using api/v1/recordings/{id} PATCH
+       * Optionally: check for a non-200 statusCode
+       * By default function looks up the recording Id using the recordingNameOrId supplied when
+       * recording was created
+       * Optionally: specify recording by id (not saved name) using additionalChecks["useRawRecordingId"] === true
+       * Optionally: check for returned messages (additionalChecks.message)
+       */
+      apiRecordingUpdate(
+        userName: string,
+        recordingNameOrId: string,
+        updates: object,
+        statusCode?: HttpStatusCode,
+        additionalChecks?: { useRawRecordingId?: boolean; message?: string },
+      ): Chainable<void>;
+
+      /** Get thumbnail for recording using api/v1/recordings/{id}/thumbnail
+       * Verify that the recording returns a file
+       * Optionally: check for a non-200 statusCode
+       * By default function looks up the recording Id using the recordingNameOrId supplied when
+       * recording was created
+       * Optionally: specify recording by id (not saved name) using additionalChecks["useRawRecordingId"] === true
+       */
+      apiRecordingThumbnailCheck(
+        userName: string,
+        recordingNameOrId: string,
+        statusCode?: HttpStatusCode,
+        additionalChecks?: {
+          useRawRecordingId?: boolean;
+          message?: string;
+          type?: "PNG";
+        },
+        trackName?: string,
+      ): Chainable<void>;
+
+      /** Query recordings (/api/v1/recordings) using where (query["where"]) and optional (query[...]) API parameters
+       * Verify that the recording data matched the expectedRecordings
+       * Optionally: check for a non-200 statusCode
+       * Optionally: check returned messages for additionalChecks["message"]
+       */
+      apiRecordingsQueryCheck(
+        userName: string,
+        query: {
+          where: unknown;
+          order?: string;
+          deleted?: boolean;
+          offset?: number;
+          limit?: number;
+          tags?: string;
+          "view-mode"?: "user";
+          tagMode?: TagMode;
+          countAll?: boolean;
+        },
+        expectedRecordings?: (
+          | ApiThermalRecordingResponse
+          | ApiAudioRecordingResponse
+        )[],
+        excludeCheckOn?: string[],
+        statusCode?: HttpStatusCode,
+        additionalChecks?: { message?: string; count?: number },
+      ): Chainable<
+        Cypress.Response<{
+          messages: string[];
+          rows: unknown[];
+          count: number;
+        }>
+      >;
+
+      /** Query recordings in a project (/api/v1/recordings/for-project/) using query parameters
+       * Verify that the recording data matched the expectedRecordings
+       * Optionally: check for a non-200 statusCode
+       * Optionally: check returned messages for additionalChecks["message"]
+       */
+      apiRecordingsQueryV2Check(
+        userName: string,
+        projectId: number,
+        query: URLSearchParams,
+        expectedRecordings?: (
+          | ApiThermalRecordingResponse
+          | ApiAudioRecordingResponse
+        )[],
+        excludeCheckOn?: string[],
+        statusCode?: HttpStatusCode,
+        additionalChecks?: {
+          message?: string;
+          count?: number;
+          "num-results"?: number;
+        },
+      ): Chainable<{
+        messages: string[];
+        count: number;
+        "num-results": number;
+        recordings: ApiRecordingResponse[];
+      }>;
+
+      /** Query recordings count (/api/v1/recordings/count) using where (query["where"]) and optional (query[...]) API parameters
+       * Verify that the recording data matched the expectedCount
+       * Optionally: check for a non-200 statusCode
+       * Optionally: check returned messages for additionalChecks["message"]
+       */
+      apiRecordingsCountCheck(
+        userName: string,
+        query: {
+          where?: unknown;
+          order?: string;
+          offset?: number;
+          limit?: number;
+          deleted?: boolean;
+          type?: RecordingType;
+          tagMode?: TagMode;
+          processingState?: RecordingProcessingState;
+        },
+        expectedCount: number,
+        statusCode?: HttpStatusCode,
+        additionalChecks?: { message?: string },
+      ): Cypress.Chainable<number>;
+
+      /** Delete a single recording using api/v1/recordings/{id} DELETE
+       * Optionally: check for a non-200 statusCode
+       * By default function looks up the recording Id using the recordingNameOrId supplied when
+       * recording was created
+       * Optionally: specify recording by id (not saved name) using additionalChecks["useRawRecordingId"] === true
+       * Optionally: add additional paramaters to request (additionalChecks["additionalParams"]={...})
+       */
+      apiRecordingDelete(
+        userName: string,
+        recordingNameOrId: string,
+        statusCode?: HttpStatusCode,
+        additionalChecks?: {
+          useRawRecordingId?: boolean;
+          message?: string;
+          additionalParams?: object;
+        },
+      ): Chainable<void>;
+
+      /** Undelete a single recording using api/v1/recordings/{id}/undelete GET
+       * Optionally: check for a non-200 statusCode
+       * By default function looks up the recording Id using the recordingNameOrId supplied when
+       * recording was created
+       * Optionally: specify recording by id (not saved name) using additionalChecks["useRawRecordingId"] === true
+       * Optionally: add additional paramaters to request (additionalChecks["additionalParams"]={...})
+       */
+      apiRecordingUndelete(
+        userName: string,
+        recordingNameOrId: string,
+        statusCode?: HttpStatusCode,
+        additionalChecks?: {
+          useRawRecordingId?: boolean;
+          message?: string;
+          additionalParams?: object;
+        },
+      ): Chainable<void>;
+
+      /* Delete a single recording using api/v1/recordings/{id} DELETE
+       * Optionally: check for a non-200 statusCode
+       * By default function looks up the recording Id using the recordingNameOrId supplied when
+       * recording was created
+       * Optionally: specify recording by id (not saved name) using additionalChecks["useRawRecordingId"] === true
+       * Optionally: add additional parameters to request (additionalChecks["additionalParams"]={...})
+       */
+      apiRecordingBulkDelete(
+        userName: string,
+        query: { where: unknown },
+        statusCode?: HttpStatusCode,
+        additionalChecks?: { message?: string; count?: number },
+      ): Chainable<void>;
+
+      /* Undelete recording using api/v1/recordings/undelete PATCH
+       * Optionally: check for a non-200 statusCode
+       * By default function looks up the recording Id using the recordingNameOrId supplied when
+       * recording was created
+       * Optionally: specify recording by id (not saved name) using additionalChecks["useRawRecordingId"] === true
+       * Optionally: add additional parameters to request (additionalChecks["additionalParams"]={...})
+       */
+      apiRecordingBulkUndelete(
+        userName: string,
+        recordingIds: number[],
+        statusCode?: HttpStatusCode,
+        additionalChecks?: { message?: string },
+      ): Chainable<void>;
+
+      /* Mark a list of recordings (recordingIds[]) for reprocessing
+       * Optionally: check for a non-200 statusCode
+       * Optionally: check for a returned error message (additionalChecks["message"])
+       */
+      apiReprocess(
+        userName: string,
+        recordingIds: number[],
+        statusCode?: HttpStatusCode,
+        additionalChecks?: { message?: string; fail?: unknown[] },
+      ): Chainable<void>;
+    }
+  }
+}
+
 Cypress.Commands.add(
   "processingApiPut",
   (
     userName: string,
     recordingName: string,
     success: boolean,
-    result: any,
+    result: unknown,
     newProcessedFileKey: string,
-    statusCode: number = 200,
+    statusCode = 200,
   ) => {
     const id = getCreds(recordingName).id;
     let jobKey = getCreds(recordingName).jobKey;
@@ -84,9 +491,9 @@ Cypress.Commands.add(
     userName: string,
     trackName: string,
     recordingName: string,
-    data: any,
+    data: unknown,
     algorithmId: number,
-    statusCode: number = 200,
+    statusCode = 200,
   ) => {
     const id = getCreds(recordingName).id;
     logTestDescription(`Adding tracks for recording ${recordingName}`, {
@@ -108,7 +515,7 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ trackId: TrackId }>) => {
       expect(response.status, "Check return statusCode is").to.equal(
         statusCode,
       );
@@ -119,7 +526,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "processingApiTracksDelete",
-  (userName: string, recordingName: string, statusCode: number = 200) => {
+  (userName: string, recordingName: string, statusCode = 200) => {
     const id = getCreds(recordingName).id;
     logTestDescription(`Deleting tracks from recording ${recordingName}`, {
       id: id,
@@ -143,15 +550,55 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
+  "processingApiTracksTagsBulkPost",
+  (
+    userName: string,
+    trackName: string,
+    recordingName: string,
+    data: unknown,
+    statusCode = 200,
+  ) => {
+    const id = getCreds(recordingName).id;
+    const trackId = getCreds(trackName).id;
+    logTestDescription(`Adding tracktags for recording ${recordingName}`, {
+      id: id,
+      trackId: trackId,
+      data,
+    });
+
+    const url = v1ApiPath(
+      "processing/" +
+        id.toString() +
+        "/tracks/" +
+        trackId.toString() +
+        "/tags-bulk",
+    );
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url: url,
+        body: { data: JSON.stringify(data) },
+      },
+      userName,
+      statusCode,
+    ).then((response) => {
+      expect(response.status, "Check return statusCode is").to.equal(
+        statusCode,
+      );
+    });
+  },
+);
+
+Cypress.Commands.add(
   "processingApiTracksTagsPost",
   (
     userName: string,
     trackName: string,
     recordingName: string,
-    what: any,
+    what: unknown,
     confidence: number,
-    data: any = {},
-    statusCode: number = 200,
+    data: object = {},
+    statusCode = 200,
   ) => {
     const id = getCreds(recordingName).id;
     const trackId = getCreds(trackName).id;
@@ -186,7 +633,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "processingApiAlgorithmPost",
-  (userName: string, algorithm: any) => {
+  (userName: string, algorithm: unknown) => {
     logTestDescription(
       `Getting id for algorithm ${JSON.stringify(algorithm)}`,
       {
@@ -206,7 +653,7 @@ Cypress.Commands.add(
       },
       userName,
       200,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ algorithmId: number }>) => {
       cy.wrap(response.body.algorithmId);
     });
   },
@@ -219,10 +666,10 @@ Cypress.Commands.add(
     type: string,
     state: string,
     recordingName: string,
-    expectedRecording: any,
+    expectedRecording: unknown,
     excludeCheckOn: string[] = [],
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: { message?: string } = {},
   ) => {
     logTestDescription(
       `Request recording ${type}  in state '${state} for processing'`,
@@ -242,35 +689,42 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (statusCode === 200) {
-        if (response.body.recording !== undefined) {
-          saveJobKeyByName(recordingName, response.body.recording.jobKey);
-        }
-        if (expectedRecording === undefined) {
-          expect(
+    ).then(
+      (
+        response: Cypress.Response<{
+          recording: ApiRecordingProcessingJob;
+          messages: string[];
+        }>,
+      ) => {
+        if (statusCode === 200) {
+          if (response.body.recording !== undefined) {
+            saveJobKeyByName(recordingName, response.body.recording.jobKey);
+          }
+          if (expectedRecording === undefined) {
+            expect(
+              response.body.recording,
+              "Expect response to contain no recordings",
+            ).to.be.undefined;
+          } else {
+            expect(
+              response.body.recording,
+              "Expect response to contain a recording",
+            ).to.exist;
+          }
+          checkTreeStructuresAreEqualExcept(
+            expectedRecording,
             response.body.recording,
-            "Expect response to contain no recordings",
-          ).to.be.undefined;
-        } else {
-          expect(
-            response.body.recording,
-            "Expect response to contain a recording",
-          ).to.exist;
-        }
-        checkTreeStructuresAreEqualExcept(
-          expectedRecording,
-          response.body.recording,
-          excludeCheckOn,
-        );
-      } else {
-        if (additionalChecks["message"] !== undefined) {
-          expect(response.body.messages.join("|")).to.include(
-            additionalChecks["message"],
+            excludeCheckOn,
           );
+        } else {
+          if (additionalChecks.message !== undefined) {
+            expect(response.body.messages.join("|")).to.include(
+              additionalChecks.message,
+            );
+          }
         }
-      }
-    });
+      },
+    );
   },
 );
 
@@ -280,9 +734,9 @@ Cypress.Commands.add(
     deviceName: string,
     data: ApiRecordingSet,
     fileName: string | { filename: string; key: string }[] = "invalid.cptv",
-    recordingName: string = "recording1",
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    recordingName = "recording1",
+    statusCode = 200,
+    additionalChecks: { message?: string } = {},
     filenameToUse?: string,
   ) => {
     logTestDescription(
@@ -292,6 +746,9 @@ Cypress.Commands.add(
 
     const url = v1ApiPath("recordings");
 
+    if (!("fileHash" in data)) {
+      data.fileHash = null;
+    }
     uploadFile(
       url,
       deviceName,
@@ -311,8 +768,55 @@ Cypress.Commands.add(
       if (recordingName !== null && statusCode === HttpStatusCode.Ok) {
         saveIdOnly(recordingName, x.recordingId);
       }
-      if (additionalChecks["message"] !== undefined) {
-        expect(x.messages.join("|")).to.include(additionalChecks["message"]);
+      if (additionalChecks.message !== undefined) {
+        expect(x.messages.join("|")).to.include(additionalChecks.message);
+      }
+    });
+  },
+);
+
+Cypress.Commands.add(
+  "processingApiTracksAndTagsPost",
+  (
+    userName: string,
+    trackName: string,
+    recordingName: string,
+    data: unknown[],
+    algorithmId: number,
+    statusCode = 200,
+  ) => {
+    const id = getCreds(recordingName).id;
+    logTestDescription(`Adding tracks for recording ${recordingName}`, {
+      id,
+      data,
+      algorithmId: algorithmId,
+    });
+    const params = {
+      data,
+      algorithmId: algorithmId,
+    };
+
+    const url = v1ApiPath(`processing/${id.toString()}/tracks-and-tags`);
+    makeAuthorizedRequestWithStatus(
+      {
+        method: "POST",
+        url,
+        body: params,
+      },
+      userName,
+      statusCode,
+    ).then((response: Cypress.Response<{ trackIds: TrackId[] }>) => {
+      expect(response.status, "Check return statusCode is").to.equal(
+        statusCode,
+      );
+      let i = 0;
+      for (const trackId of response.body.trackIds) {
+        i++;
+        let name = trackName;
+        if (response.body.trackIds.length > 1) {
+          name = `${name}-${i}`;
+        }
+        saveIdOnly(name, trackId);
       }
     });
   },
@@ -341,9 +845,9 @@ Cypress.Commands.add(
         const prediction = trackT.predictions.pop();
         for (const tag of track) {
           const trackTag = JSON.parse(JSON.stringify(prediction));
-          trackTag.label = tag;
-          trackTag.confident_tag = tag;
-          trackTag.confidence = 0.9;
+          trackTag.confident = true;
+          trackTag.tag = tag;
+          trackTag.confidence = 90;
           trackT.predictions.push(trackTag);
         }
         data.metadata.tracks.push(trackT);
@@ -384,9 +888,9 @@ Cypress.Commands.add(
   (
     userName: string,
     recordingNameOrId: string,
-    updates: any,
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    updates: object,
+    statusCode = 200,
+    additionalChecks: { useRawRecordingId?: boolean; message?: string } = {},
   ) => {
     logTestDescription(`Update recording ${recordingNameOrId}`, {
       recording: recordingNameOrId,
@@ -394,7 +898,7 @@ Cypress.Commands.add(
     });
 
     let recordingId: string;
-    if (additionalChecks["useRawRecordingId"] === true) {
+    if (additionalChecks.useRawRecordingId === true) {
       recordingId = recordingNameOrId;
     } else {
       recordingId = getCreds(recordingNameOrId).id.toString();
@@ -414,10 +918,10 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (additionalChecks["message"] !== undefined) {
+    ).then((response: Cypress.Response<{ messages: string[] }>) => {
+      if (additionalChecks.message !== undefined) {
         expect(response.body.messages.join("|")).to.include(
-          additionalChecks["message"],
+          additionalChecks.message,
         );
       }
     });
@@ -426,7 +930,7 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "apiRecordingGet",
-  (userName: string, recordingId: RecordingId, statusCode: number = 200) => {
+  (userName: string, recordingId: RecordingId, statusCode = 200) => {
     const url = v1ApiPath(`recordings/${recordingId}`);
     makeAuthorizedRequestWithStatus(
       {
@@ -435,15 +939,17 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      cy.wrap(response);
-    });
+    ).then(
+      (response: Cypress.Response<{ recording: ApiRecordingResponse }>) => {
+        cy.wrap(response);
+      },
+    );
   },
 );
 
 Cypress.Commands.add(
   "apiRecordingGetFile",
-  (userName: string, recordingId: RecordingId, statusCode: number = 200) => {
+  (userName: string, recordingId: RecordingId, statusCode = 200) => {
     const url = v1ApiPath(`recordings/raw/${recordingId}`);
     makeAuthorizedRequestWithStatus(
       {
@@ -453,7 +959,7 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
+    ).then((response: Cypress.Response<Uint8Array>) => {
       cy.wrap(response);
     });
   },
@@ -464,16 +970,20 @@ Cypress.Commands.add(
   (
     userName: string,
     recordingNameOrId: string,
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: {
+      useRawRecordingId?: boolean;
+      message?: string;
+      additionalParams?: object;
+    } = {},
   ) => {
-    const additionalParams = additionalChecks["additionalParams"];
+    const additionalParams = additionalChecks.additionalParams;
     logTestDescription(`Delete recording ${recordingNameOrId} `, {
       recordingName: recordingNameOrId,
     });
 
     let recordingId: string;
-    if (additionalChecks["useRawRecordingId"] === true) {
+    if (additionalChecks.useRawRecordingId === true) {
       recordingId = recordingNameOrId;
     } else {
       recordingId = getCreds(recordingNameOrId).id.toString();
@@ -487,10 +997,10 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (additionalChecks["message"] !== undefined) {
+    ).then((response: Cypress.Response<{ messages: string[] }>) => {
+      if (additionalChecks.message !== undefined) {
         expect(response.body.messages.join("|")).to.include(
-          additionalChecks["message"],
+          additionalChecks.message,
         );
       }
     });
@@ -502,16 +1012,20 @@ Cypress.Commands.add(
   (
     userName: string,
     recordingNameOrId: string,
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: {
+      useRawRecordingId?: boolean;
+      message?: string;
+      additionalParams?: object;
+    } = {},
   ) => {
-    const additionalParams = additionalChecks["additionalParams"];
+    const additionalParams = additionalChecks.additionalParams;
     logTestDescription(`Undelete recording ${recordingNameOrId} `, {
       recordingName: recordingNameOrId,
     });
 
     let recordingId: string;
-    if (additionalChecks["useRawRecordingId"] === true) {
+    if (additionalChecks.useRawRecordingId === true) {
       recordingId = recordingNameOrId;
     } else {
       recordingId = getCreds(recordingNameOrId).id.toString();
@@ -526,10 +1040,10 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (additionalChecks["message"] !== undefined) {
+    ).then((response: Cypress.Response<{ messages: string[] }>) => {
+      if (additionalChecks.message !== undefined) {
         expect(response.body.messages.join("|")).to.include(
-          additionalChecks["message"],
+          additionalChecks.message,
         );
       }
     });
@@ -540,9 +1054,9 @@ Cypress.Commands.add(
   "apiRecordingBulkDelete",
   (
     userName: string,
-    query: any,
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    query: { where: unknown },
+    statusCode = 200,
+    additionalChecks: { message?: string; count?: number } = {},
   ) => {
     const params = removeUndefinedParams(query);
     params["where"] = JSON.stringify(query["where"]);
@@ -560,18 +1074,20 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (additionalChecks["message"] !== undefined) {
-        expect(response.body.messages.join("|")).to.include(
-          additionalChecks["message"],
-        );
-      }
-      if (additionalChecks["count"] !== undefined) {
-        expect(response.body.count, "Count should be: ").to.equal(
-          additionalChecks["count"],
-        );
-      }
-    });
+    ).then(
+      (response: Cypress.Response<{ messages: string[]; count: number }>) => {
+        if (additionalChecks.message !== undefined) {
+          expect(response.body.messages.join("|")).to.include(
+            additionalChecks.message,
+          );
+        }
+        if (additionalChecks.count !== undefined) {
+          expect(response.body.count, "Count should be: ").to.equal(
+            additionalChecks.count,
+          );
+        }
+      },
+    );
   },
 );
 
@@ -580,8 +1096,8 @@ Cypress.Commands.add(
   (
     userName: string,
     recordingIds: number[],
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: { message?: string } = {},
   ) => {
     logTestDescription(`Undelete recordings: ${recordingIds} `, {
       ids: recordingIds,
@@ -596,10 +1112,10 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (additionalChecks["message"] !== undefined) {
+    ).then((response: Cypress.Response<{ messages: string[] }>) => {
+      if (additionalChecks.message !== undefined) {
         expect(response.body.messages.join("|")).to.include(
-          additionalChecks["message"],
+          additionalChecks.message,
         );
       }
     });
@@ -638,24 +1154,36 @@ Cypress.Commands.add(
     recordingNameOrId: string,
     expectedRecording: ApiRecordingResponse,
     excludeCheckOn: string[] = [],
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: { useRawRecordingId?: boolean; message?: string } = {},
   ) => {
     logTestDescription(`Check recording ${recordingNameOrId} `, {
       recordingName: recordingNameOrId,
     });
 
     let recordingId: RecordingId;
-    if (additionalChecks["useRawRecordingId"] === true) {
+    if (additionalChecks.useRawRecordingId === true) {
       recordingId = recordingNameOrId as unknown as RecordingId;
     } else {
       recordingId = getCreds(recordingNameOrId).id;
     }
     cy.apiRecordingGet(userName, recordingId as RecordingId, statusCode).then(
-      (response) => {
+      (
+        response: Cypress.Response<{
+          rawSize?: number;
+          downloadRawJWT?: string;
+          recording: ApiRecordingResponse;
+          messages: string[];
+        }>,
+      ) => {
         if (statusCode === 200) {
-          expect(response.body.rawSize).to.exist;
-          expect(response.body.downloadRawJWT).to.exist;
+          if (
+            response.body.recording.processingState !==
+            RecordingProcessingState.Corrupt
+          ) {
+            expect(response.body.rawSize, "rawSize").to.exist;
+            expect(response.body.downloadRawJWT).to.exist;
+          }
           checkTreeStructuresAreEqualExcept(
             expectedRecording,
             response.body.recording,
@@ -666,9 +1194,9 @@ Cypress.Commands.add(
             ],
           );
         } else {
-          if (additionalChecks["message"] !== undefined) {
+          if (additionalChecks.message !== undefined) {
             expect(response.body.messages.join("|")).to.include(
-              additionalChecks["message"],
+              additionalChecks.message,
             );
           }
         }
@@ -682,8 +1210,12 @@ Cypress.Commands.add(
   (
     userName: string,
     recordingNameOrId: string,
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: {
+      useRawRecordingId?: boolean;
+      message?: string;
+      type?: "PNG";
+    } = {},
     trackName?: string,
   ) => {
     logTestDescription(
@@ -694,7 +1226,7 @@ Cypress.Commands.add(
     );
 
     let recordingId: string;
-    if (additionalChecks["useRawRecordingId"] === true) {
+    if (additionalChecks.useRawRecordingId === true) {
       recordingId = recordingNameOrId;
     } else {
       recordingId = getCreds(recordingNameOrId).id.toString();
@@ -713,20 +1245,23 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ messages?: string[] } | string>) => {
       if (statusCode === 200) {
-        expect(response.body.length, "Returned file has length>0").to.be.gt(0);
-        if (additionalChecks["type"] == "PNG") {
+        expect(
+          (response.body as string).length,
+          "Returned file has length>0",
+        ).to.be.gt(0);
+        if (additionalChecks.type === "PNG") {
           expect(
-            response.body.slice(1, 4),
+            (response.body as string).slice(1, 4),
             "Expect PNG file signature",
           ).to.equal("PNG");
         }
       } else {
-        if (additionalChecks["message"] !== undefined) {
-          expect(response.body.messages.join("|")).to.include(
-            additionalChecks["message"],
-          );
+        if (additionalChecks.message !== undefined) {
+          expect(
+            (response.body as { messages: string[] }).messages.join("|"),
+          ).to.include(additionalChecks.message);
         }
       }
     });
@@ -742,8 +1277,12 @@ Cypress.Commands.add(
     data: ApiRecordingSet,
     recordingName: string,
     fileName: string | { filename: string; key: string }[] = "invalid.cptv",
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: {
+      useRawDeviceName?: boolean;
+      useRawGroupName?: boolean;
+      message?: string;
+    } = {},
   ) => {
     logTestDescription(
       `Upload recording on behalf using group${prettyLog(
@@ -754,13 +1293,13 @@ Cypress.Commands.add(
 
     //look up device Id for this deviceName unless we're asked not to
     let fullDeviceName: string;
-    if (additionalChecks["useRawDeviceName"] === true) {
+    if (additionalChecks.useRawDeviceName === true) {
       fullDeviceName = deviceName;
     } else {
       fullDeviceName = getTestName(deviceName);
     }
     let fullGroupName: string;
-    if (additionalChecks["useRawGroupName"] === true) {
+    if (additionalChecks.useRawGroupName === true) {
       fullGroupName = groupName;
     } else {
       fullGroupName = getTestName(groupName);
@@ -795,10 +1334,10 @@ Cypress.Commands.add(
     userName: string,
     deviceName: string,
     data: ApiRecordingSet,
-    recordingName: string = "recording1",
+    recordingName = "recording1",
     fileName: string | { filename: string; key: string }[] = "invalid.cptv",
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: { useRawDeviceName?: boolean } = {},
   ) => {
     logTestDescription(
       `Upload recording on behalf using device ${prettyLog(
@@ -809,7 +1348,7 @@ Cypress.Commands.add(
 
     //look up device Id for this deviceName unless we're asked not to
     let deviceId: string;
-    if (additionalChecks["useRawDeviceName"] === true) {
+    if (additionalChecks.useRawDeviceName === true) {
       deviceId = deviceName;
     } else {
       deviceId = getCreds(deviceName).id.toString();
@@ -840,20 +1379,20 @@ Cypress.Commands.add(
   "apiRecordingsQueryCheck",
   (
     userName: string,
-    query: any,
+    query: { where: unknown; order?: string; deleted?: boolean },
     expectedRecordings: (
       | ApiAudioRecordingResponse
       | ApiThermalRecordingResponse
     )[] = undefined,
     excludeCheckOn: string[] = [],
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: { message?: string; count?: number } = {},
   ) => {
     const params = removeUndefinedParams(query);
-    params["where"] = JSON.stringify(query["where"]);
+    params.where = JSON.stringify(query.where);
 
     logTestDescription(
-      `Query recordings where '${JSON.stringify(params["where"])}'`,
+      `Query recordings where '${JSON.stringify(params.where)}'`,
       { user: userName, params: params, expected: expectedRecordings },
     );
 
@@ -865,26 +1404,34 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (statusCode === 200) {
-        checkTreeStructuresAreEqualExcept(
-          expectedRecordings,
-          response.body.rows,
-          excludeCheckOn,
-        );
-      }
-      if (additionalChecks["message"] !== undefined) {
-        expect(response.body.messages.join("|")).to.include(
-          additionalChecks["message"],
-        );
-      }
-      if (additionalChecks["count"] !== undefined) {
-        expect(response.body.count, "Count should be: ").to.equal(
-          additionalChecks["count"],
-        );
-      }
-      cy.wrap(response.body.rows);
-    });
+    ).then(
+      (
+        response: Cypress.Response<{
+          messages: string[];
+          rows: unknown[];
+          count: number;
+        }>,
+      ) => {
+        if (statusCode === 200) {
+          checkTreeStructuresAreEqualExcept(
+            expectedRecordings,
+            response.body.rows,
+            excludeCheckOn,
+          );
+        }
+        if (additionalChecks.message !== undefined) {
+          expect(response.body.messages.join("|")).to.include(
+            additionalChecks.message,
+          );
+        }
+        if (additionalChecks.count !== undefined) {
+          expect(response.body.count, "Count should be: ").to.equal(
+            additionalChecks.count,
+          );
+        }
+        cy.wrap(response.body.rows);
+      },
+    );
   },
 );
 
@@ -899,8 +1446,12 @@ Cypress.Commands.add(
       | ApiThermalRecordingResponse
     )[] = undefined,
     excludeCheckOn: string[] = [],
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: {
+      message?: string;
+      count?: number;
+      "num-results"?: number;
+    } = {},
   ) => {
     logTestDescription(`Query recordings where '${query}'`, {
       user: userName,
@@ -916,107 +1467,45 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (
-        statusCode === 200 &&
-        expectedRecordings &&
-        expectedRecordings.length
-      ) {
-        checkTreeStructuresAreEqualExcept(
-          expectedRecordings,
-          response.body.recordings,
-          excludeCheckOn,
-        );
-      }
-      if (additionalChecks["message"] !== undefined) {
-        expect(response.body.messages.join("|")).to.include(
-          additionalChecks["message"],
-        );
-      }
-      if (additionalChecks["count"] !== undefined) {
-        expect(response.body.count, "Count should be: ").to.equal(
-          additionalChecks["count"],
-        );
-      }
-      if (additionalChecks["num-results"] !== undefined) {
-        expect(
-          response.body.recordings.length,
-          "Num results should be: ",
-        ).to.equal(additionalChecks["num-results"]);
-      }
-      cy.wrap(response.body);
-    });
-  },
-);
-
-Cypress.Commands.add(
-  "apiRecordingsReportCheck",
-  (
-    userName: string,
-    query: any,
-    expectedResults: ApiRecordingColumns[] = [],
-    excludeCheckOn: string[] = [],
-    statusCode: number = 200,
-    additionalChecks: any = {},
-  ) => {
-    const params = removeUndefinedParams(query);
-    params["where"] = JSON.stringify(query["where"]);
-
-    logTestDescription(
-      `Generate report for recordings where '${JSON.stringify(
-        params["where"],
-      )}'`,
-      { user: userName, params: params },
-    );
-
-    const url = v1ApiPath("recordings/report", params);
-    makeAuthorizedRequestWithStatus(
-      {
-        method: "GET",
-        url: url,
-      },
-      userName,
-      statusCode,
-    ).then((response) => {
-      if (statusCode === 200) {
-        const allrows = response.body.split(/\r?\n/);
-        const columns = allrows[0].split(",");
-        const rows = allrows.slice(1);
-
-        expect(JSON.stringify(columns), "CSV columns match expected").to.equal(
-          JSON.stringify(ApiRecordingColumnNames),
-        );
-
-        expect(
-          rows.length,
-          `Expect ${expectedResults.length} results to be returned`,
-        ).to.equal(expectedResults.length);
-
-        for (let count = 0; count < expectedResults.length; count++) {
-          const columns = rows[count].split(",");
-          for (
-            let column = 0;
-            column < ApiRecordingColumnNames.length;
-            column++
-          ) {
-            if (excludeCheckOn.indexOf(ApiRecordingColumnNames[column]) == -1) {
-              expect(
-                columns[column],
-                `Row ${count}, ${ApiRecordingColumnNames[column]} should be`,
-              ).to.equal(
-                expectedResults[count][ApiRecordingColumnNames[column]],
-              );
-            }
-          }
-        }
-      } else {
-        if (additionalChecks["message"] !== undefined) {
-          expect(response.body.messages.join("|")).to.include(
-            additionalChecks["message"],
+    ).then(
+      (
+        response: Cypress.Response<{
+          messages: string[];
+          count: number;
+          "num-results": number;
+          recordings: ApiRecordingResponse[];
+        }>,
+      ) => {
+        if (
+          statusCode === 200 &&
+          expectedRecordings &&
+          expectedRecordings.length
+        ) {
+          checkTreeStructuresAreEqualExcept(
+            expectedRecordings,
+            response.body.recordings,
+            excludeCheckOn,
           );
         }
-      }
-    });
+        if (additionalChecks.message !== undefined) {
+          expect(response.body.messages.join("|")).to.include(
+            additionalChecks.message,
+          );
+        }
+        if (additionalChecks.count !== undefined) {
+          expect(response.body.count, "Count should be: ").to.equal(
+            additionalChecks.count,
+          );
+        }
+        if (additionalChecks["num-results"] !== undefined) {
+          expect(
+            response.body.recordings.length,
+            "Num results should be: ",
+          ).to.equal(additionalChecks["num-results"]);
+        }
+        cy.wrap(response.body);
+      },
+    );
   },
 );
 
@@ -1024,14 +1513,14 @@ Cypress.Commands.add(
   "apiRecordingsCountCheck",
   (
     userName: string,
-    query: any,
+    query: { where: unknown },
     expectedCount: number,
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: { message?: string } = {},
   ) => {
     const params = removeUndefinedParams(query);
-    if (query["where"]) {
-      params["where"] = JSON.stringify(query["where"]);
+    if (query.where) {
+      params["where"] = JSON.stringify(query.where);
     }
 
     logTestDescription(
@@ -1047,22 +1536,24 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (statusCode === 200) {
-        if (expectedCount !== undefined) {
-          expect(response.body.count, "Recording count should be").to.equal(
-            expectedCount,
-          );
+    ).then(
+      (response: Cypress.Response<{ messages: string[]; count: number }>) => {
+        if (statusCode === 200) {
+          if (expectedCount !== undefined) {
+            expect(response.body.count, "Recording count should be").to.equal(
+              expectedCount,
+            );
+          }
+          cy.wrap(response.body.count);
+        } else {
+          if (additionalChecks.message !== undefined) {
+            expect(response.body.messages.join("|")).to.include(
+              additionalChecks.message,
+            );
+          }
         }
-        cy.wrap(response.body.count);
-      } else {
-        if (additionalChecks["message"] !== undefined) {
-          expect(response.body.messages.join("|")).to.include(
-            additionalChecks["message"],
-          );
-        }
-      }
-    });
+      },
+    );
   },
 );
 
@@ -1071,8 +1562,8 @@ Cypress.Commands.add(
   (
     userName: string,
     recordingIds: number[],
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: { message?: string; fail?: unknown[] } = {},
   ) => {
     logTestDescription(
       `Mark recordings for reprocess '${JSON.stringify(recordingIds)}'`,
@@ -1089,21 +1580,23 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (additionalChecks["message"] !== undefined) {
-        expect(response.body.messages.join("|")).to.include(
-          additionalChecks["message"],
-        );
-      }
-      if (additionalChecks["fail"] !== undefined) {
-        expect(
-          response.body.fail.length,
-          "Number of fail expected to be",
-        ).to.equal(additionalChecks["fail"].length);
-        additionalChecks["fail"].forEach((fail: any) => {
-          expect(response.body.fail).to.contain(fail);
-        });
-      }
-    });
+    ).then(
+      (response: Cypress.Response<{ messages: string[]; fail: unknown[] }>) => {
+        if (additionalChecks.message !== undefined) {
+          expect(response.body.messages.join("|")).to.include(
+            additionalChecks.message,
+          );
+        }
+        if (additionalChecks.fail !== undefined) {
+          expect(
+            response.body.fail.length,
+            "Number of fail expected to be",
+          ).to.equal(additionalChecks.fail.length);
+          additionalChecks.fail.forEach((fail) => {
+            expect(response.body.fail).to.contain(fail);
+          });
+        }
+      },
+    );
   },
 );

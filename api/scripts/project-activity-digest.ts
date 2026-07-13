@@ -1,5 +1,5 @@
 import log from "@log";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import { sendProjectActivityDigestEmail } from "@/emails/transactionalEmails.js";
 import {
   calculateMonitoringPageCriteria,
@@ -9,8 +9,14 @@ import { RecordingType } from "@typedefs/api/consts.js";
 import { generateVisits, type Visit } from "@api/V1/monitoringVisit.js";
 import { displayLabelForClassificationLabel } from "@/classifications/classifications.js";
 import type { GroupId } from "@typedefs/api/common.js";
-import type { User } from "@models/User.js";
-const models = await modelsInit();
+import { User } from "@models/User.js";
+import os from "os";
+import { Group } from "@models/Group.js";
+import config from "@config";
+import { Op } from "sequelize";
+import { Recording } from "@models/Recording.js";
+import tzLookup from "tz-lookup-oss";
+import process from "process";
 
 const allVisitsForProjectInTimespan = async (
   projectId: GroupId,
@@ -25,7 +31,7 @@ const allVisitsForProjectInTimespan = async (
     pageSize: 50,
     from,
     until,
-    types: [RecordingType.ThermalRaw, RecordingType.TrailCamImage],
+    types: [RecordingType.ThermalRaw],
   };
   // TODO: Switch to new visit calculation functions when ready and tested.
   let searchDetails = await calculateMonitoringPageCriteria(
@@ -36,7 +42,7 @@ const allVisitsForProjectInTimespan = async (
   searchDetails.compareAi = "Master";
   searchDetails.types = params.types;
   const visits = [];
-  // eslint-disable-next-line no-constant-condition
+
   while (true) {
     const visitsPage = await generateVisits(user.id, searchDetails, false);
 
@@ -68,28 +74,64 @@ const allVisitsForProjectInTimespan = async (
   return visits;
 };
 
+const currentHourInTimezone = (timeZone: string, now: Date): number => {
+  const formatter = new Intl.DateTimeFormat("en-NZ", {
+    hour: "numeric",
+    hour12: false,
+    hourCycle: "h24",
+    timeZone: timeZone,
+  });
+
+  const formattedOutput = formatter.format(now);
+  return Number(formattedOutput);
+};
+
 (async () => {
-  // Default to daily, but can pass "weekly" on the command line for weekly behaviour.
-  const timespan = process.argv[2] || "daily";
-  let numDays = 1;
-  if (timespan === "weekly") {
-    numDays = 7;
+  const args = process.argv.slice(2); // Remove the first two default paths
+  const forceRun = args.includes("--force");
+  if (config.cronScriptProcessingHostname !== os.hostname() && !forceRun) {
+    return;
   }
-  const now = new Date();
+  await initSequelize(!forceRun);
+  // Default to daily, but can pass "weekly" on the command line for weekly behaviour.
+  let daily = args.includes("daily");
+  const weekly = args.includes("weekly");
+  const suppliedNow = args.find((item) => item.includes("--at-time="));
+  let numDays = 1;
+  if (weekly) {
+    console.log("weekly", weekly);
+    numDays = 7;
+  } else {
+    daily = true;
+  }
+  let now;
+  let suppliedNowDate = new Date();
+  if (suppliedNow) {
+    // In testing, we can supply a current time.
+    now = new Date(suppliedNow.replace("--at-time=", ""));
+    suppliedNowDate = new Date(now);
+    console.log(`Set time to ${now.toISOString()}`);
+  } else {
+    now = new Date();
+  }
   // We send the email at 9.10am, but let's make it so it's only up to 9am.
   now.setHours(9, 0, 0, 0);
+  console.log(`Script run at ${now.toISOString()}`);
   const startOfPeriod = new Date(now);
   startOfPeriod.setHours(startOfPeriod.getHours() - 24 * numDays);
-  const digestGroups = await models.Group.findAll({
+  console.log(`Start of period ${startOfPeriod.toISOString()}`);
+  const digestGroups = await Group.findAll({
     attributes: ["groupName", "id"],
     include: [
       {
-        model: models.User,
+        model: User,
         through: {
           where: {
-            ...(timespan === "daily"
+            ...(daily
               ? { "settings.notificationPreferences.dailyDigest": true }
               : { "settings.notificationPreferences.weeklyDigest": true }),
+            removedAt: { [Op.eq]: null },
+            pending: { [Op.eq]: null },
           },
         },
         required: true,
@@ -97,17 +139,38 @@ const allVisitsForProjectInTimespan = async (
     ],
   });
   for (const group of digestGroups) {
+    const groupTimezoneRecording = await Recording.findOne({
+      where: { GroupId: group.id, location: { [Op.ne]: null } },
+      attributes: ["location"],
+      order: [["recordingDateTime", "DESC"]],
+      limit: 1,
+    });
+    if (groupTimezoneRecording) {
+      const timeZone = tzLookup(
+        groupTimezoneRecording.location.lat,
+        groupTimezoneRecording.location.lng,
+      );
+      // NOTE: We ignore the possibility of a project having devices in multiple timezones,
+      // or that the timezone of the project may not reflect the timezone of the recipient.
+      if (currentHourInTimezone(timeZone, suppliedNowDate) !== 9) {
+        // It's not time for this projects' email
+        continue;
+      }
+    }
     const recipients = group.Users.map(({ email, userName }) => ({
       email,
       userName,
     }));
-    const recordingData = {};
+    // TODO: Add in some bird tag stats if audio recording is happening
+
+    const recordingData: Record<string, number> = {};
     // NOTE: If there was no activity, check to see if this is the *first* time there has been no activity for this time period.
     // If so, then send the email saying there was no activity, and that another email won't be sent until there is again.
     const visits = await allVisitsForProjectInTimespan(
       group.id,
       startOfPeriod,
       now,
+      // NOTE: Any of the projects' users will do here.
       group.Users[0],
     );
     const noVisitsInTimespan = visits.length === 0;
@@ -160,8 +223,7 @@ const allVisitsForProjectInTimespan = async (
       // New controversial or flagged for review tags.
       // New cool tags?
       await sendProjectActivityDigestEmail(
-        "browse-next.cacophony.org.nz",
-        timespan === "weekly" ? "Weekly" : "Daily",
+        weekly ? "Weekly" : "Daily",
         group.groupName,
         recipients,
         speciesList,

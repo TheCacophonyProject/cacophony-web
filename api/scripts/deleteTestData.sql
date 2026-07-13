@@ -1,8 +1,8 @@
 BEGIN;
 set statement_timeout = 120000;
--- Delete privilages for test users
+-- Delete privileges for test users
 DELETE FROM "GroupUsers" where "UserId" in (select "id" from "Users" u where u."userName" like 'cy_%');
-DELETE FROM "GroupUsers" where "GroupId" in (select "id" from "Groups" g where g."groupname" like 'cy_%');
+DELETE FROM "GroupUsers" where "GroupId" in (select "id" from "Groups" g where g."groupName" like 'cy_%');
 
 -- Delete Tracks, Tags and TrackTags attached to test recordings
 DELETE FROM "Tags" where "RecordingId" in (

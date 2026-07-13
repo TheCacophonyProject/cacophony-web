@@ -1,9 +1,7 @@
-
-
 module.exports = {
   up: async (queryInterface) => {
     await queryInterface.sequelize.query(
-      `CREATE INDEX events_datetime ON "Events" ("dateTime");`
+      `CREATE INDEX events_datetime ON "Events" ("dateTime");`,
     );
   },
 

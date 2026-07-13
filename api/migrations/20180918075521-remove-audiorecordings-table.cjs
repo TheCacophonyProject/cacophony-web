@@ -1,5 +1,4 @@
-
-const util =  require("./util/util.cjs");
+const util = require("./util/util.cjs");
 
 module.exports = {
   up: function (queryInterface) {
@@ -33,10 +32,14 @@ module.exports = {
       })
       .then(() => util.addSerial(queryInterface, "AudioRecordings"))
       .then(() =>
-        util.migrationAddBelongsTo(queryInterface, "AudioRecordings", "Groups")
+        util.migrationAddBelongsTo(queryInterface, "AudioRecordings", "Groups"),
       )
       .then(() =>
-        util.migrationAddBelongsTo(queryInterface, "AudioRecordings", "Devices")
+        util.migrationAddBelongsTo(
+          queryInterface,
+          "AudioRecordings",
+          "Devices",
+        ),
       );
   },
 };

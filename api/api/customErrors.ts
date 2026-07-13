@@ -16,47 +16,65 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import log from "../logging.js";
+import log, { colourForStatusCode } from "../logging.js";
 import { format } from "util";
 import { asyncLocalStorage } from "@/Globals.js";
 import type { NextFunction, Request, Response } from "express";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 import { serverErrorResponse, someResponse } from "@api/V1/responseUtil.js";
+import { ValidationError as ExpressValidationError } from "express-validator";
+import {
+  ResultWithContext,
+  ResultWithContextImpl,
+} from "express-validator/lib/chain/index.js";
+import { AddErrorOptions, Context } from "express-validator/lib/context.js";
 
 function errorHandler(
   err: Error,
   request: Request,
   response: Response,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  next: NextFunction,
+  _next: NextFunction,
 ) {
   if (
     err instanceof SyntaxError &&
-    (err as any).type === "entity.parse.failed"
+    "type" in err &&
+    err.type === "entity.parse.failed"
   ) {
     err = new ClientError(err.message, HttpStatusCode.Unprocessable); // Convert invalid JSON body error to UnprocessableEntity
   }
   const session = asyncLocalStorage.getStore();
   let requestId;
   if (session) {
-    requestId = (session as Map<string, any>).get("requestId").split("-")[0];
+    requestId = (
+      (session as Map<string, unknown>).get("requestId") as string
+    ).split("-")[0];
   }
   if (err instanceof CustomError) {
-    log.warning(err.toString());
+    const errString = err.toString();
+    if (
+      !errString.includes("No reference image available for device at time") &&
+      !errString.includes("No device mask-regions found")
+    ) {
+      log.warning(err.toString());
+    }
     const error = err.toJson();
     if (!request.headers["user-agent"].includes("okhttp")) {
       // FIXME - leave this in for sidekick etc, since currently it expects a 'message' error response.
       delete error.message;
     }
-    return someResponse(
-      response,
-      (err as CustomError).statusCode,
-      err.message,
-      {
-        ...error,
-        requestId,
-      },
-    );
+    try {
+      return someResponse(
+        response,
+        (err as CustomError).statusCode,
+        err.messages,
+        {
+          ...error,
+          requestId,
+        },
+      );
+    } catch (error) {
+      log.error(error);
+    }
   }
   return serverErrorResponse(
     request,
@@ -72,13 +90,21 @@ function errorHandler(
 
 export class CustomError extends Error {
   statusCode: HttpStatusCode;
+  messages: string[] | string;
   constructor(
-    message: string = "Internal server error.",
+    message: string[] | string = "Internal server error.",
     statusCode: HttpStatusCode = HttpStatusCode.ServerError,
   ) {
     super();
     this.name = this.constructor.name;
-    this.message = message;
+
+    if (typeof message !== "string") {
+      this.message = message.join("; ");
+      this.messages = message;
+    } else {
+      this.message = message;
+      this.messages = [message];
+    }
     this.statusCode = statusCode;
   }
 
@@ -90,41 +116,48 @@ export class CustomError extends Error {
   }
 
   toString() {
-    return format("%s [%d]: %s", this.name, this.statusCode, this.message);
+    return format(
+      "%s %s: %s",
+      this.name,
+      `${colourForStatusCode(Number(this.statusCode))}`,
+      this.message,
+    );
   }
 
   toJson() {
     return {
-      message: this.message,
+      message: this.messages,
       errorType: this.getErrorType(),
     };
   }
 }
 
 export class ValidationError extends CustomError {
-  errors: Record<string, any>;
-  constructor(errors) {
-    let message;
-    if (errors.array) {
-      message = errors.array();
-    } else if (typeof errors === "object" && Array.isArray(errors)) {
-      message = errors;
+  errors: ExpressValidationError[];
+  constructor(result: ResultWithContext | AddErrorOptions) {
+    let resultWithContext: ResultWithContext;
+    if ("type" in result && result.type === "field") {
+      const context = new Context([], [], [], false, false);
+      context.addError(result);
+      resultWithContext = new ResultWithContextImpl(context);
+    } else {
+      resultWithContext = result as ResultWithContext;
     }
-    message = message
-      .filter((error) => typeof error.msg === "string")
-      .map(({ msg, location, param }) => `${location}.${param}: ${msg}`)
-      .join("; ");
-    super(message, HttpStatusCode.Unprocessable);
-    this.errors = errors;
+    const allErrors = resultWithContext.array();
+    super(
+      allErrors.map((e) => e.msg),
+      HttpStatusCode.Unprocessable,
+    );
+    this.errors = allErrors;
   }
 
   toJson() {
     return {
       errorType: this.getErrorType(),
       message: `${
-        (this.errors.array && this.errors.array().length) || this.errors.length
+        this.errors.length
       } request validation errors found. Request payload could not be processed.`,
-      errors: (this.errors.array && this.errors.array()) || this.errors,
+      errors: this.errors,
     };
   }
 }

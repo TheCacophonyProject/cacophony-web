@@ -1,7 +1,7 @@
+import { ApiLoggedInUserResponse } from "@shared/api/user";
+
 export const DEFAULT_DATE = new Date(2021, 4, 9, 22);
 import { logTestDescription } from "./descriptions";
-
-import { format as urlFormat } from "url";
 
 import { NOT_NULL_STRING } from "./constants";
 import { ApiLocation } from "./types";
@@ -10,23 +10,28 @@ export function apiPath(): string {
   return Cypress.env("cacophony-api-server");
 }
 
-export function v1ApiPath(page: string, queryParams: any = {}): string {
-  const urlpage = urlFormat({
-    pathname: `/api/v1/${page}`,
-    query: queryParams,
-  });
-  return `${Cypress.env("cacophony-api-server")}${urlpage}`;
+export function v1ApiPath(page: string, queryParams = {}): string {
+  const urlpage = new URL(Cypress.env("cacophony-api-server"));
+  urlpage.pathname = `/api/v1/${page}`;
+  for (const [key, value] of Object.entries(queryParams)) {
+    if (Array.isArray(value)) {
+      for (const val of value) {
+        urlpage.searchParams.append(key, val);
+      }
+    } else {
+      urlpage.searchParams.append(key, String(value));
+    }
+  }
+  return urlpage.toString();
 }
 
-export function processingApiPath(
-  page: string = "",
-  queryParams: any = {},
-): string {
-  const urlpage = urlFormat({
-    pathname: `/api/fileProcessing/${page}`,
-    query: queryParams,
-  });
-  return `${Cypress.env("cacophony-processing-api-server")}${urlpage}`;
+export function processingApiPath(page = "", queryParams = {}): string {
+  const urlpage = new URL(Cypress.env("cacophony-processing-api-server"));
+  urlpage.pathname = `/api/fileProcessing/${page}`;
+  for (const [key, value] of Object.entries(queryParams)) {
+    urlpage.searchParams.append(key, String(value));
+  }
+  return urlpage.toString();
 }
 
 // time string should look like "21:09"
@@ -34,7 +39,7 @@ export function convertToDate(timeOrDate: Date | string): Date {
   if (timeOrDate instanceof Date) {
     return timeOrDate as Date;
   } else if (timeOrDate) {
-    const parts = (timeOrDate as String).split(":");
+    const parts = (timeOrDate as string).split(":");
     if (parts.length == 2) {
       const nums = parts.map((item) => parseInt(item));
       const date = new Date(DEFAULT_DATE);
@@ -52,7 +57,7 @@ interface ApiCreds {
   email: string;
   password: string;
   headers: {
-    authorization: any;
+    authorization: unknown;
   };
   jwt: string;
   jobKey: string;
@@ -136,7 +141,12 @@ export function renameCreds(oldName: string, newName: string) {
 }
 
 export function saveCreds(
-  response: Cypress.Response<any>,
+  response: Cypress.Response<{
+    userData?: ApiLoggedInUserResponse;
+    token: string;
+    jobKey?: string;
+    location?: unknown;
+  }>,
   name: string,
   id = 0,
 ) {
@@ -173,7 +183,7 @@ export function makeAuthorizedRequestWithStatus(
   requestDetails: Partial<Cypress.RequestOptions>,
   credName: string,
   statusCode: number,
-): Cypress.Chainable<Cypress.Response<any>> {
+): Cypress.Chainable<Cypress.Response<unknown>> {
   if (statusCode && statusCode > 200) {
     // must set failOnStatusCode to false, to stop cypress from failing the test due to a failed status code before the then is called.
     requestDetails.failOnStatusCode = false;
@@ -212,13 +222,16 @@ export function checkRequestFails(
 export function makeAuthorizedRequest(
   requestDetails: Partial<Cypress.RequestOptions>,
   credName: string,
-): Cypress.Chainable<Cypress.Response<any>> {
+): Cypress.Chainable<Cypress.Response<unknown>> {
   const creds = getCreds(credName);
   requestDetails.headers = creds.headers;
   return cy.request(requestDetails);
 }
 
-export function expectRequestHasFailed(response: any, statusCode: number) {
+export function expectRequestHasFailed(
+  response: Cypress.Response<unknown>,
+  statusCode: number,
+) {
   expect(
     response.isOkStatusCode,
     "Request should return a failure status code.",
@@ -231,13 +244,16 @@ export function expectRequestHasFailed(response: any, statusCode: number) {
   return response;
 }
 
-export function checkResponse(response: Cypress.Response<any>, code: number) {
+export function checkResponse(
+  response: Cypress.Response<unknown>,
+  code: number,
+) {
   expect(response.status, "Expected specified status code").to.eq(code);
   return response;
 }
 
-export function sortArrayOnHash(theArray: any, theKey: string) {
-  theArray.sort(function (a: any, b: any) {
+export function sortArrayOnHash<T>(theArray: T[], theKey: string) {
+  theArray.sort(function (a, b) {
     if (JSON.stringify(a[theKey]) < JSON.stringify(b[theKey])) {
       return -1;
     }
@@ -249,21 +265,41 @@ export function sortArrayOnHash(theArray: any, theKey: string) {
   return theArray;
 }
 
-export function sortArrayOn(theArray: any, theKey: string) {
-  theArray.sort(function (a: any, b: any) {
-    if (a[theKey] < b[theKey]) {
-      return -1;
-    }
-    if (a[theKey] > b[theKey]) {
-      return 1;
-    }
-    return 0;
-  });
+export function sortArrayOn<T>(
+  theArray: T[],
+  theKey: string,
+  sortOrder?: string[],
+) {
+  if (sortOrder) {
+    theArray.sort((a, b) => {
+      if (sortOrder.indexOf(a[theKey]) < sortOrder.indexOf(b[theKey])) {
+        return -1;
+      }
+      if (sortOrder.indexOf(a[theKey]) > sortOrder.indexOf(b[theKey])) {
+        return 1;
+      }
+      return 0;
+    });
+  } else {
+    theArray.sort((a, b) => {
+      if (a[theKey] < b[theKey]) {
+        return -1;
+      }
+      if (a[theKey] > b[theKey]) {
+        return 1;
+      }
+      return 0;
+    });
+  }
   return theArray;
 }
 
-export function sortArrayOnTwoKeys(theArray: any, key1: string, key2: string) {
-  theArray.sort(function (a: any, b: any) {
+export function sortArrayOnTwoKeys<T>(
+  theArray: T[],
+  key1: string,
+  key2: string,
+) {
+  theArray.sort(function (a, b) {
     if (a[key1] + a[key2] < b[key1] + b[key2]) {
       return -1;
     }
@@ -276,24 +312,22 @@ export function sortArrayOnTwoKeys(theArray: any, key1: string, key2: string) {
 }
 
 export function checkFlatStructuresAreEqualExcept(
-  containedStruct: any,
-  containingStruct: any,
-  excludeKeys: any,
+  containedStruct: object,
+  containingStruct: object,
+  excludeKeys: string[],
 ) {
   const containedKeys: string[] = Object.keys(containedStruct).sort();
   const containingKeys: string[] = Object.keys(containingStruct).sort();
-  for (let count = 0; count < containedKeys.length; count++) {
-    if (!excludeKeys.includes(containedKeys[count])) {
+  for (const containedKey of containedKeys) {
+    if (!excludeKeys.includes(containedKey)) {
       expect(
         containingKeys,
-        `result includes parameter ${containedKeys[count]}`,
-      ).includes(containedKeys[count]);
+        `result includes parameter ${containedKey}`,
+      ).includes(containedKey);
       expect(
-        containingStruct[containedKeys[count]],
-        `${containedKeys[count]} should equal ${
-          containedStruct[containedKeys[count]]
-        }`,
-      ).to.equal(containedStruct[containedKeys[count]]);
+        containingStruct[containedKey],
+        `${containedKey} should equal ${containedStruct[containedKey]}`,
+      ).to.equal(containedStruct[containedKey]);
     }
   }
 }
@@ -302,12 +336,12 @@ export function checkFlatStructuresAreEqualExcept(
 // treeSoFar is an internal variable used to pass the current point in the tree when making recursive calls
 // prettyTreeSoFar is same as treeSoFar but includes array element numbers and is used for display purposes only
 export function checkTreeStructuresAreEqualExcept(
-  containedStruct: any,
-  containingStruct: any,
-  excludeKeys: any = [],
-  treeSoFar: string = "",
-  prettyTreeSoFar: string = "",
-  approximateTimes: any = [],
+  containedStruct: unknown[] | unknown,
+  containingStruct: unknown,
+  excludeKeys: unknown[] = [],
+  treeSoFar = "",
+  prettyTreeSoFar = "",
+  approximateTimes: unknown[] = [],
 ) {
   if (isArrayOrHash(containingStruct)) {
     if (Array.isArray(containingStruct)) {
@@ -315,7 +349,7 @@ export function checkTreeStructuresAreEqualExcept(
       expect(
         containingStruct.length,
         `Expect ${prettyTreeSoFar} number of elements should match`,
-      ).to.equal(containedStruct.length);
+      ).to.equal((containedStruct as unknown[]).length);
 
       //iterate over array
       for (let count = 0; count < containingStruct.length; count++) {
@@ -346,9 +380,15 @@ export function checkTreeStructuresAreEqualExcept(
       const keyDiff = (a, b) => {
         return {
           missingKeys:
-            a && Object.keys(a).filter((key) => b && !b.hasOwnProperty(key)),
+            a &&
+            Object.keys(a).filter(
+              (key) => b && !Object.prototype.hasOwnProperty.call(b, key),
+            ),
           unknownKeys:
-            b && Object.keys(b).filter((key) => a && !a.hasOwnProperty(key)),
+            b &&
+            Object.keys(b).filter(
+              (key) => a && !Object.prototype.hasOwnProperty.call(a, key),
+            ),
         };
       };
 
@@ -357,8 +397,8 @@ export function checkTreeStructuresAreEqualExcept(
         let expectedKeys = Object.keys(containedStruct);
 
         const excludedElementNames = [];
-        for (let count = 0; count < keys.length; count++) {
-          const elementName = treeSoFar + "." + keys[count];
+        for (const key of keys) {
+          const elementName = treeSoFar + "." + key;
           if (excludeKeys.includes(elementName)) {
             excludedElementNames.push(elementName);
           }
@@ -384,16 +424,15 @@ export function checkTreeStructuresAreEqualExcept(
 
         const containedKeys: string[] = keys;
         //iterate over hash
-        for (let count = 0; count < containedKeys.length; count++) {
-          const elementName = treeSoFar + "." + containedKeys[count];
-          const prettyElementName =
-            prettyTreeSoFar + "." + containedKeys[count];
+        for (const containedKey of containedKeys) {
+          const elementName = treeSoFar + "." + containedKey;
+          const prettyElementName = prettyTreeSoFar + "." + containedKey;
 
           //if element is a nested object, recursively call this function again over the nested onject
-          if (isArrayOrHash(containingStruct[containedKeys[count]])) {
+          if (isArrayOrHash(containingStruct[containedKey])) {
             checkTreeStructuresAreEqualExcept(
-              containedStruct[containedKeys[count]],
-              containingStruct[containedKeys[count]],
+              containedStruct[containedKey],
+              containingStruct[containedKey],
               excludeKeys,
               elementName,
               prettyElementName,
@@ -401,25 +440,25 @@ export function checkTreeStructuresAreEqualExcept(
             );
           } else {
             //check we were asked to validate, or validate NOT NULL
-            if (containedStruct[containedKeys[count]] == NOT_NULL_STRING) {
+            if (containedStruct[containedKey] == NOT_NULL_STRING) {
               expect(
-                containingStruct[containedKeys[count]],
+                containingStruct[containedKey],
                 `Expected ${prettyElementName} should not be NULL`,
               ).to.not.be.null;
             } else if (approximateTimes.includes(elementName)) {
               const comparedTime = new Date(
-                containingStruct[containedKeys[count]],
+                containingStruct[containedKey],
               ).getTime();
               const expectedTime = new Date(
-                containedStruct[containedKeys[count]],
+                containedStruct[containedKey],
               ).getTime();
               expect(
                 new Date(comparedTime),
-                `Time ${containedKeys[count]} should be approximately ${containedKeys[count]}`,
+                `Time ${containedKey} should be approximately ${containedKey}`,
               ).to.be.within(expectedTime - 60000, expectedTime + 60000);
             } else {
               //otherwise, check the values are as expected
-              const testVal = containingStruct[containedKeys[count]];
+              const testVal = containingStruct[containedKey];
               if (typeof testVal === "number" && !(testVal % 1 === 0)) {
                 // This is a floating point value, and we might have some precision issues, so allow a small
                 // 'epsilon' value of fuzziness when testing equality:
@@ -427,22 +466,22 @@ export function checkTreeStructuresAreEqualExcept(
                 expect(
                   testVal,
                   `Expected ${prettyElementName} should be more than ${JSON.stringify(
-                    containedStruct[containedKeys[count]],
+                    containedStruct[containedKey],
                   )}`,
-                ).to.be.gt(containedStruct[containedKeys[count]] - EPSILON);
+                ).to.be.gt(containedStruct[containedKey] - EPSILON);
                 expect(
                   testVal,
                   `Expected ${prettyElementName} should be less than ${JSON.stringify(
-                    containedStruct[containedKeys[count]],
+                    containedStruct[containedKey],
                   )}`,
-                ).to.be.lt(containedStruct[containedKeys[count]] + EPSILON);
+                ).to.be.lt(containedStruct[containedKey] + EPSILON);
               } else {
                 expect(
-                  containingStruct[containedKeys[count]],
+                  containingStruct[containedKey],
                   `Expected ${prettyElementName} should equal ${JSON.stringify(
-                    containedStruct[containedKeys[count]],
+                    containedStruct[containedKey],
                   )}`,
-                ).to.equal(containedStruct[containedKeys[count]]);
+                ).to.equal(containedStruct[containedKey]);
               }
             }
           }
@@ -460,7 +499,7 @@ export function checkTreeStructuresAreEqualExcept(
   }
 }
 
-function isArrayOrHash(theObject: any) {
+function isArrayOrHash(theObject: unknown) {
   return (
     typeof theObject === "object" &&
     theObject !== undefined &&
@@ -468,7 +507,7 @@ function isArrayOrHash(theObject: any) {
   );
 }
 
-export function removeUndefinedParams(jsStruct: any): any {
+export function removeUndefinedParams<T>(jsStruct: T | null | undefined): T {
   if (jsStruct !== undefined && jsStruct !== null) {
     const resultStruct = {};
     for (const [key, val] of Object.entries(jsStruct)) {
@@ -476,7 +515,7 @@ export function removeUndefinedParams(jsStruct: any): any {
         resultStruct[key] = val;
       }
     }
-    return resultStruct;
+    return resultStruct as T;
   } else {
     return jsStruct;
   }
@@ -489,7 +528,7 @@ export function testRunOnApi(
 ) {
   if (Cypress.env("running_in_a_dev_environment") == true) {
     cy.exec(
-      `cd ../api && docker-compose exec -T server bash -lic ${command}`,
+      `cd ../api && docker exec cacophony-web bash -lic "${command}"`,
       options,
     ).then((val) => callback && callback(val));
   } else {
@@ -505,7 +544,16 @@ export function testRunOnApi(
   }
 }
 
-export function checkMessages(response: any, expectedMessages: string[]) {
+export const testRunDockerCommand = async (command: string, options = {}) => {
+  return new Promise((resolve) => {
+    testRunOnApi(command, options, resolve);
+  });
+};
+
+export function checkMessages(
+  response: Cypress.Response<{ messages: string[] }>,
+  expectedMessages: string[],
+) {
   const messages = response.body.messages;
   expect(messages).to.exist;
   expectedMessages.forEach(function (message: string) {
@@ -516,13 +564,16 @@ export function checkMessages(response: any, expectedMessages: string[]) {
   });
 }
 
-export function checkWarnings(response: any, expectedWarnings: any) {
+export function checkWarnings(
+  response: Cypress.Response<{ warnings?: string[] }>,
+  expectedWarnings: string | string[],
+) {
   const warnings = response.body.warnings;
-  if (expectedWarnings == "none") {
+  if (expectedWarnings === "none") {
     expect(response.body.warnings).to.be.undefined;
   } else {
     expect(warnings).to.exist;
-    expectedWarnings.forEach(function (warning: string) {
+    (expectedWarnings as string[]).forEach(function (warning: string) {
       expect(
         warnings.find((el: string) => el.includes(warning)),
         `Messages should contain ${warning}`,

@@ -2,9 +2,12 @@ import { TestCreateExpectedUser } from "@commands/api/user";
 
 import { getTestEmail, getTestName } from "@commands/names";
 import { HttpStatusCode } from "@typedefs/api/consts";
+import { ApiUserUpdateRequest } from "@shared/api/user";
 
 describe("User: update", () => {
-  before(() => {});
+  before(() => {
+    return;
+  });
 
   it("User can update themselves", () => {
     cy.log("Create user");
@@ -93,7 +96,7 @@ describe("User: update", () => {
       cy.log("Unsupported: firstName");
       cy.apiUserUpdate(
         "uupUser3",
-        { firstName: "bob" },
+        { firstName: "bob" } as unknown as ApiUserUpdateRequest,
         HttpStatusCode.Unprocessable,
         {
           message: "Unknown fields found",
@@ -262,11 +265,12 @@ describe("User: update", () => {
     });
   });
 
-  it("Invaliid passwords rejected", () => {
-    cy.apiUserAdd("uupUser8").then(() => {
+  it.only("Invalid passwords rejected", () => {
+    cy.apiUserAdd("uupUser8").then((user) => {
+      cy.log("Added user", user);
       cy.log("Blank password");
       cy.apiUserUpdate(
-        "uupUser7",
+        "uupUser8",
         { password: "" },
         HttpStatusCode.Unprocessable,
         {
@@ -275,7 +279,7 @@ describe("User: update", () => {
       );
       cy.log("Short password");
       cy.apiUserUpdate(
-        "uupUser7",
+        "uupUser8",
         { password: "1234567" },
         HttpStatusCode.Unprocessable,
         { useRawUserName: true },

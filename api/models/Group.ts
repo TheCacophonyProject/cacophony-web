@@ -16,185 +16,96 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import type Sequelize from "sequelize";
+import Sequelize, {
+  BelongsToMany,
+  BelongsToManyAddAssociationMixin,
+  BelongsToManyGetAssociationsMixin,
+  CreationOptional,
+  DataTypes,
+  HasMany,
+  HasManyGetAssociationsMixin,
+  NonAttribute,
+} from "sequelize";
 import { Op } from "sequelize";
-import type { ModelCommon, ModelStaticCommon } from "./index.js";
-import type { User } from "./User.js";
-import type { CreateStationData, Station } from "./Station.js";
-import type { Recording, RecordingStatic } from "./Recording.js";
-import type { Device } from "./Device.js";
-import type { GroupId, UserId } from "@typedefs/api/common.js";
+import { ModelStaticCommon } from "./index.js";
+import { User } from "@models/User.js";
+import type { CreateStationData } from "./Station.js";
+import { Station } from "@models/Station.js";
+import type {
+  DeviceId,
+  GroupId,
+  StationId,
+  UserId,
+} from "@typedefs/api/common.js";
 import type { ApiGroupSettings } from "@typedefs/api/group.js";
-import {
-  latLngApproxDistance,
-  locationsAreEqual,
-  MIN_STATION_SEPARATION_METERS,
-  tryToMatchRecordingToStation,
-} from "@models/util/locationUtils.js";
+import { locationsAreEqual } from "@models/util/locationUtils.js";
+import { GroupUsers } from "@models/GroupUsers.js";
+import { Recording } from "@models/Recording.js";
+import { Device } from "@models/Device.js";
+import { Alert } from "@models/Alert.js";
+import { GroupInvites } from "@models/GroupInvites.js";
 
 export const stationLocationHasChanged = (
   oldStation: Station,
   newStation: CreateStationData,
 ) => !locationsAreEqual(oldStation.location, newStation);
 
-export const checkThatStationsAreNotTooCloseTogether = (
-  stations: Array<CreateStationData | Station>,
-): string | null => {
-  const allStations = stations.map((s) => {
-    if (s.hasOwnProperty("lat")) {
-      return s as CreateStationData;
-    } else {
-      return {
-        name: (s as Station).name,
-        ...(s as Station).location,
-      };
-    }
-  });
-  const tooClosePairs: Record<
-    string,
-    { station: CreateStationData; others: CreateStationData[] }
-  > = {};
-  for (const a of allStations) {
-    for (const b of allStations) {
-      if (a !== b && a.name !== b.name) {
-        if (latLngApproxDistance(a, b) < MIN_STATION_SEPARATION_METERS) {
-          if (!tooClosePairs.hasOwnProperty(a.name)) {
-            tooClosePairs[a.name] = { station: a, others: [] };
-          }
-          if (
-            !tooClosePairs[a.name].others.find((item) => item.name === b.name)
-          ) {
-            tooClosePairs[a.name].others.push(b);
-          }
-        }
-      }
-    }
-  }
-  if (Object.values(tooClosePairs).length !== 0) {
-    const pairs = {};
-    let warnings = "Stations too close together: ";
-    for (const { station, others } of Object.values(tooClosePairs)) {
-      for (const other of others) {
-        const first = station.name < other.name;
-        const key = first
-          ? `${station.name}_${other.name}`
-          : `${other.name}_${station.name}`;
-        if (!pairs.hasOwnProperty(key)) {
-          warnings += `\n'${station.name}', '${
-            other.name
-          }': ${latLngApproxDistance(
-            station,
-            other,
-          )}m apart, must be at least ${MIN_STATION_SEPARATION_METERS}m apart.`;
-          pairs[key] = true;
-        }
-      }
-    }
-    return warnings;
-  }
-  return null;
-};
+export class Group extends ModelStaticCommon<Group> {
+  declare id: CreationOptional<GroupId>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const updateExistingRecordingsForGroupWithMatchingStationsFromDate = async (
-  staticRecording: RecordingStatic,
-  staticGroup: GroupStatic,
-  authUserId: UserId,
-  group: Group,
-  fromDate: Date,
-  stations: Station[],
-  untilDate?: Date,
-): Promise<Promise<{ station: Station; recording: Recording }>[]> => {
-  // Now addedStations are properly resolved with ids:
-  // Now we can look for all recordings in the group back to startDate, and check if any of them
-  // should be assigned to any of our stations.
+  // FIXME: Maybe this shouldn't actually be CreationOptional, but the field is NULLable
+  declare groupName: CreationOptional<string>;
+  declare settings: CreationOptional<ApiGroupSettings>;
+  declare earliestThermalRecordingTime: CreationOptional<Date>;
+  declare earliestAudioRecordingTime: CreationOptional<Date>;
+  declare lastThermalRecordingTime: CreationOptional<Date>;
+  declare lastAudioRecordingTime: CreationOptional<Date>;
+  declare addUser: BelongsToManyAddAssociationMixin<User, UserId>;
+  declare getUsers: BelongsToManyGetAssociationsMixin<User>; // , UserId, GroupUsers
+  declare getStations: HasManyGetAssociationsMixin<Station>;
+  declare getDevices: HasManyGetAssociationsMixin<Device>;
 
-  let dateRange: any = {
-    [Op.gte]: fromDate.toISOString(),
+  declare Users?: NonAttribute<User[]>;
+
+  declare static associations: {
+    Users: BelongsToMany<User>;
+    Stations: HasMany<Station>;
+    Recordings: HasMany<Recording>;
+    Devices: HasMany<Device>;
   };
-  if (untilDate) {
-    dateRange = {
-      [Op.and]: [
-        {
-          [Op.gte]: fromDate.toISOString(),
-        },
-        {
-          [Op.lt]: untilDate.toISOString(),
-        },
-      ],
-    };
+
+  static async getActiveUsers(groupId: GroupId): Promise<GroupUsers[]> {
+    return await GroupUsers.findAll({
+      where: {
+        GroupId: groupId,
+        removedAt: { [Op.eq]: null },
+        pending: { [Op.eq]: null },
+      },
+      attributes: ["UserId"],
+    });
   }
 
-  // Get recordings for group starting at date:
-  const builder = new staticRecording.queryBuilder().init(authUserId, {
-    where: {
-      // Group id, and after date
-      GroupId: group.id,
-      recordingDateTime: dateRange,
-    },
-  });
-  builder.query.distinct = true;
-  delete builder.query.limit;
-  const recordingsFromStartDate: Recording[] = await staticRecording.findAll(
-    builder.get(),
-  );
-  const recordingOpPromises = [];
-  // Find matching recordings to apply stations to from `applyToRecordingsFromDate`
-  for (const recording of recordingsFromStartDate) {
-    // NOTE: This await call won't actually block, since we're passing all the stations in.
-    const matchingStation = await tryToMatchRecordingToStation(
-      staticGroup,
-      recording,
-      stations,
-    );
-    if (matchingStation !== null) {
-      recordingOpPromises.push(
-        new Promise((resolve) => {
-          recording.setStation(matchingStation).then(() => {
-            resolve({
-              station: matchingStation,
-              recording,
-            });
-          });
-        }),
-      );
-    }
+  static addAssociations() {
+    this.hasMany(Device);
+    this.belongsToMany(User, { through: GroupUsers });
+    this.hasMany(Recording);
+    this.hasMany(Station);
+    this.hasMany(GroupInvites);
   }
-  return recordingOpPromises;
-};
 
-export interface Group extends Sequelize.Model, ModelCommon<Group> {
-  id: GroupId;
-  groupName: string;
-  lastThermalRecordingTime?: Date;
-  lastAudioRecordingTime?: Date;
-  settings?: ApiGroupSettings;
-  addUser: (userToAdd: User, through: any) => Promise<void>;
-  addStation: (stationToAdd: Station) => Promise<Station>;
-  getUsers: (options?: {
-    through?: any;
-    where?: any;
-    include?: any;
-    attributes?: string[];
-  }) => Promise<User[]>;
-  getDevices: (options?: {
-    where?: any;
-    attributes?: string[];
-  }) => Promise<Device[]>;
-
-  getStations: (options?: {
-    where?: any;
-    attributes?: string[];
-  }) => Promise<Station[]>;
-}
-export interface GroupStatic extends ModelStaticCommon<Group> {
-  addOrUpdateGroupUser: (
+  /**
+   * Adds a user to a Group, if the given user has permission to do so.
+   * The user must be a group admin to do this.
+   */
+  static async addOrUpdateGroupUser(
     group: Group,
     userToAdd: User,
     admin: boolean,
     owner: boolean,
-    pending: "invited" | "requested" | null
-  ) => Promise<{
+    pending: "invited" | "requested" | null,
+  ): Promise<{
     action: string;
     added: boolean;
     permissionChanges: {
@@ -203,72 +114,14 @@ export interface GroupStatic extends ModelStaticCommon<Group> {
       newAdmin: boolean;
       newOwner: boolean;
     };
-  }>;
-  removeUserFromGroup: (
-    group: Group,
-    userToRemove: User
-  ) => Promise<{ removed: boolean; wasPending: boolean }>;
-  getFromId: (id: GroupId) => Promise<Group>;
-  getIdFromName: (groupName: string) => Promise<GroupId | null>;
-}
-
-export default function (sequelize, DataTypes): GroupStatic {
-  const name = "Group";
-
-  const attributes = {
-    groupName: {
-      type: DataTypes.STRING,
-      unique: true,
-    },
-    lastThermalRecordingTime: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    lastAudioRecordingTime: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    settings: {
-      type: DataTypes.JSONB,
-      allowNull: true,
-    },
-  };
-
-  const Group = sequelize.define(name, attributes) as unknown as GroupStatic;
-
-  Group.apiSettableFields = [];
-
-  //---------------
-  // Class methods
-  //---------------
-  const models = sequelize.models;
-
-  Group.addAssociations = function (models) {
-    models.Group.hasMany(models.Device);
-    models.Group.belongsToMany(models.User, { through: models.GroupUsers });
-    models.Group.hasMany(models.Recording);
-    models.Group.hasMany(models.Station);
-    models.Group.hasMany(models.GroupInvites);
-  };
-
-  /**
-   * Adds a user to a Group, if the given user has permission to do so.
-   * The user must be a group admin to do this.
-   */
-  Group.addOrUpdateGroupUser = async function (
-    group,
-    userToAdd,
-    admin,
-    owner,
-    pending,
-  ) {
+  }> {
     // Get association if already there and update it.
-    const groupUser = await models.GroupUsers.findOne({
+    const groupUser = (await GroupUsers.findOne({
       where: {
         GroupId: group.id,
         UserId: userToAdd.id,
       },
-    });
+    })) as GroupUsers | null;
     if (groupUser !== null && groupUser.removedAt === null) {
       const wasAdmin = groupUser.admin;
       const wasOwner = groupUser.owner;
@@ -338,23 +191,48 @@ export default function (sequelize, DataTypes): GroupStatic {
       },
       added: true,
     };
-  };
+  }
 
   /**
    * Removes a user from a Group
    */
-  Group.removeUserFromGroup = async function (group, userToRemove) {
+  static async removeUserFromGroup(group: Group, userToRemove: User) {
     // Get association if already there and update it.
-    const groupUser = await models.GroupUsers.findOne({
+    const groupUser = (await GroupUsers.findOne({
       where: {
         GroupId: group.id,
         UserId: userToRemove.id,
         removedAt: { [Op.eq]: null },
       },
-    });
+    })) as GroupUsers | null;
 
     if (groupUser === null) {
       return { removed: false, wasPending: false };
+    }
+
+    // Remove all animal alerts for this user that relate to this group.
+    const alerts = await Alert.query({}, userToRemove.id);
+    if (alerts.length !== 0) {
+      const alertsToRemove = [];
+      const groupDevices: DeviceId[] = (await group.getDevices()).map(
+        (device) => device.id,
+      );
+      const groupStations: StationId[] = (await group.getStations()).map(
+        (station) => station.id,
+      );
+      for (const alert of alerts) {
+        // Check if the alert belongs to this group
+        if (alert.DeviceId && groupDevices.includes(alert.DeviceId)) {
+          alertsToRemove.push(alert);
+        } else if (alert.StationId && groupStations.includes(alert.StationId)) {
+          alertsToRemove.push(alert);
+        } else if (alert.GroupId && group.id === alert.GroupId) {
+          alertsToRemove.push(alert);
+        }
+      }
+      if (alertsToRemove.length !== 0) {
+        await Promise.all(alertsToRemove.map((alert) => alert.destroy()));
+      }
     }
 
     if (groupUser.pending !== null) {
@@ -369,25 +247,56 @@ export default function (sequelize, DataTypes): GroupStatic {
       removedAt: new Date(),
     });
     return { removed: true, wasPending: false };
-  };
+  }
 
-  Group.getFromId = async function (id) {
-    return this.findByPk(id);
-  };
-
-  Group.getFromName = async function (name): Promise<Group | null> {
+  static async getFromName(name: string): Promise<Group | null> {
     return this.findOne({ where: { groupName: name } });
-  };
-
-  // NOTE: It doesn't seem that there are any consumers of this function right now.
-  Group.getIdFromName = async function (name): Promise<GroupId | null> {
-    const group = await Group.getFromName(name);
-    return (group && group.getDataValue("id")) || null;
-  };
-
-  //------------------
-  // Instance methods
-  //------------------
-
-  return Group;
+  }
 }
+
+export const init = (sequelizeInstance: Sequelize.Sequelize) => {
+  const attributes = {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE,
+
+    groupName: {
+      type: DataTypes.STRING,
+      unique: true,
+    },
+    earliestThermalRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    earliestAudioRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastThermalRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastAudioRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    settings: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+    },
+  };
+
+  Group.init(attributes, {
+    tableName: "Groups",
+    name: {
+      plural: "Groups",
+      singular: "Group",
+    },
+    sequelize: sequelizeInstance,
+  });
+  return Group;
+};

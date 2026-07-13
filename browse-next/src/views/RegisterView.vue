@@ -1,15 +1,23 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { BAlert } from "bootstrap-vue-next";
 import {
-  setLoggedInUserCreds,
-  setLoggedInUserData,
-} from "@models/LoggedInUser";
-import { getEUAVersion, register as registerUser } from "@api/User";
+  BAlert,
+  BForm,
+  BFormCheckbox,
+  BFormInput,
+  BFormInvalidFeedback,
+} from "bootstrap-vue-next";
+import { setLoggedInUserData } from "@models/LoggedInUser";
+import { ClientApi } from "@/api";
 import { formFieldInputText, isValidName } from "@/utils";
-import type { ErrorResult, FieldValidationError } from "@api/types";
+import {
+  DEFAULT_AUTH_ID,
+  type ErrorResult,
+  type FieldValidationError,
+} from "@apiClient/types";
 import type { FormInputValue, FormInputValidationState } from "@/utils";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 // ---------- userName ------------
 const userName: FormInputValue = formFieldInputText();
@@ -133,7 +141,10 @@ const hasNonValidationError = computed({
 });
 
 const registerErrorMessagesDisplay = computed(() => {
-  if (registerErrorMessage.value) {
+  if (
+    registerErrorMessage.value &&
+    Array.isArray(registerErrorMessage.value.messages)
+  ) {
     return registerErrorMessage.value.messages.join(", ");
   } else {
     return "";
@@ -157,6 +168,7 @@ const submittedDetails = ref<{
 } | null>(null);
 
 const router = useRouter();
+const route = useRoute();
 const register = async () => {
   const emailAddress = userEmailAddress.value.trim();
   const password = userPassword.value.trim();
@@ -171,26 +183,39 @@ const register = async () => {
 
   registrationInProgress.value = true;
   // Register, then log the user in.
-  const latestEUAVersionResponse = await getEUAVersion();
+  const latestEUAVersionResponse = await ClientApi.Users.getEUAVersion();
   let latestEUAVersion = undefined;
   if (latestEUAVersionResponse.success) {
     latestEUAVersion = latestEUAVersionResponse.result.euaVersion;
   }
-  const newUserResponse = await registerUser(
+
+  const tokenUrlPrefix = "/accept-invite/";
+  let signupInviteToken;
+  if (route.query.nextUrl) {
+    const nextUrl = route.query.nextUrl as unknown as string;
+    if (nextUrl.startsWith(tokenUrlPrefix)) {
+      // We're a new user signing up from an email link with a project invite.
+      signupInviteToken = nextUrl
+        .replace(tokenUrlPrefix, "")
+        .replace(/:/g, ".");
+    }
+  }
+  const newUserResponse = await ClientApi.Users.register(
     name,
     password,
     emailAddress,
     latestEUAVersion,
+    signupInviteToken,
   );
   if (newUserResponse.success) {
     const newUser = newUserResponse.result;
     setLoggedInUserData({
       ...newUser.userData,
     });
-    setLoggedInUserCreds({
+    ClientApi.registerCredentials(DEFAULT_AUTH_ID, {
       refreshToken: newUser.refreshToken,
       apiToken: newUser.token,
-      refreshingToken: false,
+      userData: newUser.userData,
     });
     await router.push({
       name: "setup",
@@ -202,11 +227,11 @@ const register = async () => {
 };
 </script>
 <template>
-  <div class="register-form px-4 pb-4 pt-5">
+  <div class="register-form p-4">
     <img
-      src="../assets/logo-full.svg"
+      src="../assets/cacophony-monitoring-logo.svg"
       alt="The Cacophony Project logo"
-      width="220"
+      width="256"
       class="mx-auto d-block mb-5"
     />
     <h1 class="h4 text-center mb-4">Register a new account</h1>
@@ -230,20 +255,20 @@ const register = async () => {
           v-model="userName.value"
           @blur="() => (userName.touched = true)"
           :state="needsValidationAndIsValidUserName"
-          aria-label="Display name"
-          placeholder="display name"
+          aria-label="Name"
+          placeholder="Name"
           data-cy="username"
           :disabled="registrationInProgress"
           required
         />
         <b-form-invalid-feedback :state="needsValidationAndIsValidUserName">
           <span v-if="userNameIsTooShort">
-            Username must be at least 3 characters
+            Name must be at least 3 characters.
           </span>
           <span v-else-if="!isValidName(userName.value.trim())">
-            Username must contain at least one letter (either case). It can also
-            contain numbers, underscores and hyphens and spaces, but must
-            <em>begin</em> with a letter or number.
+            Name must contain at least one letter and start with either a letter
+            or a number. Valid characters include numbers, underscores, hyphens
+            and spaces.
           </span>
           <span v-else-if="userNameInUse">
             {{ userNameFieldValidationErrorMessage }}
@@ -257,14 +282,14 @@ const register = async () => {
           @blur="() => (userEmailAddress.touched = true)"
           :state="needsValidationAndIsValidEmailAddress"
           aria-label="email address"
-          placeholder="email address"
+          placeholder="Email address"
           data-cy="email address"
           :disabled="registrationInProgress"
           required
         />
         <b-form-invalid-feedback :state="needsValidationAndIsValidEmailAddress">
           <span v-if="emailInUse">{{ emailFieldValidationErrorMessage }}</span>
-          <span v-else>Enter a valid email address</span>
+          <span v-else>Enter a valid email address.</span>
         </b-form-invalid-feedback>
       </div>
       <div class="mb-3">
@@ -275,7 +300,7 @@ const register = async () => {
             @blur="() => (userPassword.touched = true)"
             :state="needsValidationAndIsValidPassword"
             aria-label="password"
-            placeholder="password"
+            placeholder="Password"
             data-cy="password"
             :disabled="registrationInProgress"
             required
@@ -286,15 +311,18 @@ const register = async () => {
             class="input-group-text toggle-password-visibility-btn justify-content-center"
             @click.stop.prevent="togglePasswordVisibility"
           >
-            <font-awesome-icon :icon="showPassword ? 'eye-slash' : 'eye'" />
+            <material-symbol
+              :name="showPassword ? 'visibility_off' : 'visibility'"
+              size="1.25rem"
+            />
           </button>
         </div>
         <b-form-invalid-feedback :state="needsValidationAndIsValidPassword">
           <span v-if="userPassword.value.trim().length === 0">
-            Password cannot be blank
+            Password cannot be blank.
           </span>
           <span v-else-if="userPassword.value.trim().length < 8">
-            Password must be at least 8 characters
+            Password must be at least 8 characters.
           </span>
         </b-form-invalid-feedback>
       </div>
@@ -304,8 +332,8 @@ const register = async () => {
           v-model="userPasswordConfirmation.value"
           @blur="() => (userPasswordConfirmation.touched = true)"
           :state="needsValidationAndIsValidPasswordConfirmation"
-          aria-label="re-enter password"
-          placeholder="re-enter password"
+          aria-label="confirm password"
+          placeholder="Confirm password"
           data-cy="password confirmation"
           :disabled="registrationInProgress"
           required
@@ -313,7 +341,7 @@ const register = async () => {
         <b-form-invalid-feedback
           :state="needsValidationAndIsValidPasswordConfirmation"
         >
-          <span>Passwords don't match</span>
+          <span>Passwords don't match.</span>
         </b-form-invalid-feedback>
       </div>
       <div class="input-group mb-3">
@@ -331,9 +359,9 @@ const register = async () => {
               target="_blank"
               href="https://www.2040.co.nz/pages/2040-end-user-agreement"
             >
-              end user agreement
+              <span>end user agreement</span>
             </a>
-            terms
+            terms.
           </span>
         </b-form-checkbox>
         <b-form-invalid-feedback :state="needsValidationAndAcceptedEUA">
@@ -372,21 +400,7 @@ const register = async () => {
 
 <style scoped lang="less">
 .register-form {
-  background: white;
   max-width: 360px;
   width: 100%;
-  @media (min-width: 768px) {
-    border-radius: 0.25rem;
-  }
-}
-.toggle-password-visibility-btn {
-  min-width: 3rem;
-}
-.alternate-action-links a {
-  text-decoration: none;
-  text-align: center;
-  &:hover {
-    text-decoration: underline;
-  }
 }
 </style>

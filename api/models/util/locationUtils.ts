@@ -1,12 +1,8 @@
 // How close is a station allowed to be to another station?
 import type { LatLng } from "@typedefs/api/common.js";
-import type { Station } from "@models/Station.js";
+import { Station } from "@models/Station.js";
 import type { GroupId } from "@typedefs/api/common.js";
-import type { Recording } from "@models/Recording.js";
-import { Op } from "sequelize";
-import type { GroupStatic } from "@models/Group.js";
-import type { ModelsDictionary } from "@models";
-
+import { ApiDeviceHistorySettings } from "@typedefs/api/device.js";
 export const MIN_STATION_SEPARATION_METERS = 60;
 // The radius of the station is half the max distance between stations: any recording inside the radius can
 // be considered to belong to that station.
@@ -31,27 +27,13 @@ export function latLngApproxDistance(a: LatLng, b: LatLng): number {
 }
 
 export async function tryToMatchLocationToStationInGroup(
-  models: ModelsDictionary,
   location: LatLng,
   groupId: GroupId,
   activeFromDate: Date,
-  lookForwards: boolean = false,
 ): Promise<Station | null> {
   // Match the recording to any stations that the group might have:
-  let stations;
-  if (lookForwards) {
-    stations = await models.Station.activeInGroupDuringTimeRange(
-      groupId,
-      activeFromDate,
-      new Date(),
-      lookForwards,
-    );
-  } else {
-    stations = await models.Station.activeInGroupAtTime(
-      groupId,
-      activeFromDate,
-    );
-  }
+  const stations = await Station.activeInGroupAtTime(groupId, activeFromDate);
+
   const stationDistances = [];
   for (const station of stations) {
     // See if any stations match: Looking at the location distance between this recording and the stations.
@@ -76,67 +58,40 @@ export async function tryToMatchLocationToStationInGroup(
   return null;
 }
 
-export async function tryToMatchRecordingToStation(
-  staticGroup: GroupStatic,
-  recording: Recording,
-  stations?: Station[],
-): Promise<Station | null> {
-  // If the recording does not yet have a location, return
-  if (!recording.location) {
+export const removeLocationSpecificSettings = (
+  settings?: ApiDeviceHistorySettings,
+): ApiDeviceHistorySettings | null => {
+  if (!settings) {
     return null;
   }
-
-  // Match the recording to any stations that the group might have:
-  if (!stations) {
-    const group = await staticGroup.getFromId(recording.GroupId);
-    stations = await group.getStations({
-      where: {
-        activeAt: { [Op.lte]: recording.recordingDateTime },
-        retiredAt: {
-          [Op.or]: [
-            { [Op.eq]: null },
-            { [Op.gt]: recording.recordingDateTime },
-          ],
-        },
-      },
-    });
+  const newSettings = structuredClone(settings || {});
+  const keysToRemove = [
+    "referenceImagePOV",
+    "referenceImagePOVFileSize",
+    "referenceImagePOVMimeType",
+    "referenceImageInSitu",
+    "referenceImageInSituFileSize",
+    "referenceImageInSituMimeType",
+    "maskRegions",
+    "ratThresh",
+    "warp",
+    "location",
+  ];
+  for (const key of keysToRemove) {
+    delete newSettings[key];
   }
-  const stationDistances = [];
-  for (const station of stations) {
-    // See if any stations match: Looking at the location distance between this recording and the stations.
-    const distanceToStation = latLngApproxDistance(
-      station.location,
-      recording.location,
-    );
-    stationDistances.push({ distanceToStation, station });
+  if (Object.keys(newSettings).length === 0) {
+    return null;
   }
-  const validStationDistances = stationDistances.filter(
-    ({ distanceToStation }) =>
-      // eslint-disable-next-line no-undef
-      distanceToStation <= MAX_DISTANCE_FROM_STATION_FOR_RECORDING,
-  );
-
-  // There shouldn't really ever be more than one station within our threshold distance,
-  // since we check that stations aren't too close together when we add them.  However, on the off
-  // chance we *do* get two or more valid stations for a recording, take the closest one.
-  validStationDistances.sort((a, b) => {
-    return b.distanceToStation - a.distanceToStation;
-  });
-  const closest = validStationDistances.pop();
-  if (closest) {
-    return closest.station;
-  }
-  return null;
-}
-
-const EPSILON = 0.000000000001;
+  return newSettings;
+};
 
 export const canonicalLatLng = (
   location: LatLng | { coordinates: [number, number] } | [number, number],
 ): LatLng => {
   if (Array.isArray(location)) {
     return { lat: location[0], lng: location[1] };
-  } else if (location.hasOwnProperty("coordinates")) {
+  } else if ("coordinates" in location) {
     // Lat lng is stored in the database as lng/lat (X,Y).
     // If we get lat/lng in this format we are getting it from the DB.
     return {
@@ -184,4 +139,46 @@ export const locationsAreEqual = (
   const toleranceInMeters = 5; // 5 meters tolerance
 
   return haversineDistance(canonicalA, canonicalB) < toleranceInMeters;
+};
+
+export const locationsAreExactlyEqual = (
+  a: LatLng | { coordinates: [number, number] },
+  b: LatLng | { coordinates: [number, number] },
+): boolean => {
+  const canonicalA = canonicalLatLng(a);
+  const canonicalB = canonicalLatLng(b);
+  const numDecimalPlaces = 7;
+  // Still allow for different systems storing numbers with different numbers
+  // of floating point precision.  If it's the same to 6 decimal places, that's probably
+  // the same location (~10cm accuracy).  Because toFixed() will round the last digit,
+  // require 7 rather than 6 so that we can ensure the first six are identical
+  let latA = canonicalA.lat.toFixed(numDecimalPlaces);
+  if (!latA.includes(".")) {
+    latA = `${latA}.0`;
+  }
+  let latB = canonicalB.lat.toFixed(numDecimalPlaces);
+  if (!latB.includes(".")) {
+    latB = `${latB}.0`;
+  }
+  let lngA = canonicalA.lng.toFixed(numDecimalPlaces);
+  if (!lngA.includes(".")) {
+    lngA = `${lngA}.0`;
+  }
+  let lngB = canonicalB.lng.toFixed(numDecimalPlaces);
+  if (!lngB.includes(".")) {
+    lngB = `${lngB}.0`;
+  }
+  const latAPieces = latA.split(".");
+  latA = `${latAPieces[0]}.${latAPieces[1].padEnd(6, "0").slice(0, 6)}`;
+  const latBPieces = latB.split(".");
+  latB = `${latBPieces[0]}.${latBPieces[1].padEnd(6, "0").slice(0, 6)}`;
+  const lngAPieces = lngA.split(".");
+  lngA = `${lngAPieces[0]}.${lngAPieces[1].padEnd(6, "0").slice(0, 6)}`;
+  const lngBPieces = lngB.split(".");
+  lngB = `${lngBPieces[0]}.${lngBPieces[1].padEnd(6, "0").slice(0, 6)}`;
+  const tenCm = 0.000001;
+  return (
+    Math.abs(Number(latA) - Number(latB)) < tenCm &&
+    Math.abs(Number(lngA) - Number(lngB)) < tenCm
+  );
 };

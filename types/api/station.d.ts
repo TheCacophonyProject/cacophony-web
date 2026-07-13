@@ -1,11 +1,11 @@
 // Station data as supplied to API on creation.
-import {
+import type {
   GroupId,
   IsoFormattedDateString,
   LatLng,
   StationId,
   UserId,
-} from "./common";
+} from "./common.ts";
 
 export interface ApiCreateStationData {
   name: string;
@@ -34,6 +34,8 @@ export interface ApiStationResponse {
   retiredAt?: IsoFormattedDateString;
   lastThermalRecordingTime?: IsoFormattedDateString;
   lastAudioRecordingTime?: IsoFormattedDateString;
+  earliestThermalRecordingTime?: IsoFormattedDateString;
+  earliestAudioRecordingTime?: IsoFormattedDateString;
   lastActiveThermalTime?: IsoFormattedDateString;
   lastActiveAudioTime?: IsoFormattedDateString;
   automatic: boolean;

@@ -19,6 +19,7 @@
 
 <script lang="ts" setup>
 import { onMounted, ref, watch } from "vue";
+import { BFormCheckbox } from "bootstrap-vue-next";
 
 const emit = defineEmits<{
   (e: "update:modelValue", value: string): void;

@@ -12,7 +12,7 @@ import type {
 } from "@/components/cptv-player/cptv-player-types";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import { add, mul, perp } from "@/components/cptv-player/motion-paths";
-import { displayLabelForClassificationLabel } from "@api/Classifications";
+import { displayLabelForClassificationLabel } from "@api/classificationsUtils.ts";
 
 export const setLabelFontStyle = (overlayContext: CanvasRenderingContext2D) => {
   overlayContext.font = "13px sans-serif";
@@ -245,12 +245,13 @@ export const renderOverlay = (
         context,
         motionPaths[i],
         TagColours[i % TagColours.length].background,
+        pixelRatio,
       );
     }
     context.restore();
 
     if (timeSinceFFCSeconds !== null && timeSinceFFCSeconds < 10) {
-      context.font = "bold 15px Verdana";
+      context.font = "bold 15px Verdana, sans-serif";
 
       // NOTE: Make opacity of text stronger when the FFC event has just happened, then fade out
       let a = 1 / (10 - timeSinceFFCSeconds);
@@ -272,6 +273,7 @@ const renderMotionPath = (
   context: CanvasRenderingContext2D,
   path: MotionPath,
   color: string,
+  pixelRatio: number,
 ) => {
   // Here's a nice example motion track: #1301155
 
@@ -286,6 +288,7 @@ const renderMotionPath = (
 
   const curve = path.curve;
   context.strokeStyle = color;
+  context.lineWidth = 2 * Math.min(1.5, pixelRatio);
   context.globalAlpha = 0.6;
   context.beginPath();
   context.moveTo(curve[0].startPoint.x, curve[0].startPoint.y);

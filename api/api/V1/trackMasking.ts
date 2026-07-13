@@ -2,28 +2,21 @@ import type { DeviceId, GroupId } from "@typedefs/api/common.js";
 import type { TrackFramePosition } from "@typedefs/api/fileProcessing.js";
 import type { MaskRegion } from "@typedefs/api/device.js";
 import earcut from "earcut";
-import { Op } from "sequelize";
-import type { ModelsDictionary } from "@models";
 type ArrayPt = [number, number];
+import { DeviceHistory } from "@models/DeviceHistory.js";
 
-export const trackIsMasked = async (
-  models: ModelsDictionary,
+export const getMask = async (
   deviceId: DeviceId,
   groupId: GroupId,
   atTime: Date,
-  trackPositions: TrackFramePosition[],
-): Promise<boolean> => {
+): Promise<Uint8Array | null> => {
   // NOTE: When track is created, we need to check against any
   //  mask regions set on the device at the time of the recording.
-  const deviceHistoryEntry = await models.DeviceHistory.findOne({
-    where: {
-      DeviceId: deviceId,
-      GroupId: groupId,
-      location: { [Op.ne]: null },
-      fromDateTime: { [Op.lte]: atTime },
-    },
-    order: [["fromDateTime", "DESC"]],
-  });
+  const deviceHistoryEntry = await DeviceHistory.latestWithAnyLocationAtTime(
+    deviceId,
+    groupId,
+    atTime,
+  );
   if (
     deviceHistoryEntry &&
     deviceHistoryEntry.settings &&
@@ -87,24 +80,42 @@ export const trackIsMasked = async (
         }
       }
     }
-
-    // Now go through the track boxes and compare against the mask
-    // First pass, check if the center of the track is *ever* outside the mask region.
-    let maskedPositions = 0;
-    for (const position of trackPositions) {
-      const { x, y, width, height } = position;
-      // NOTE: For the initial cut of this, let's just track the bounding box centers against the mask.
-      const cX = Math.round(x + width * 0.5);
-      const cY = Math.round(y + height * 0.5);
-      const index = cY * 160 + cX;
-      if (mask[index] !== 0) {
-        maskedPositions += 1;
-      }
-    }
-    // if (region.alertOnEnter) {
-    // TODO: We might want to send an email alert the first time we see a track enter this region (and not exit?)
-    // }
-    return maskedPositions === trackPositions.length;
+    return mask;
   }
-  return false;
+  return null;
+};
+
+export const maskMatch = (
+  mask: Uint8Array,
+  trackPositions: TrackFramePosition[],
+): boolean => {
+  // Now go through the track boxes and compare against the mask
+  // First pass, check if the center of the track is *ever* outside the mask region.
+  let maskedPositions = 0;
+  for (const position of trackPositions) {
+    const { x, y, width, height } = position;
+    // NOTE: For the initial cut of this, let's just track the bounding box centers against the mask.
+    const cX = Math.round(x + width * 0.5);
+    const cY = Math.round(y + height * 0.5);
+    const index = cY * 160 + cX;
+    if (mask[index] !== 0) {
+      maskedPositions += 1;
+    }
+  }
+  // if (region.alertOnEnter) {
+  // TODO: We might want to send an email alert the first time we see a track enter this region (and not exit?)
+  // }
+  return maskedPositions === trackPositions.length;
+};
+export const trackIsMasked = async (
+  deviceId: DeviceId,
+  groupId: GroupId,
+  atTime: Date,
+  trackPositions: TrackFramePosition[],
+): Promise<boolean> => {
+  const mask = await getMask(deviceId, groupId, atTime);
+  if (!mask) {
+    return false;
+  }
+  return maskMatch(mask, trackPositions);
 };

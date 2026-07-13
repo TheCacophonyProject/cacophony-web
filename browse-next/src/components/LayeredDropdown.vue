@@ -5,7 +5,9 @@ import { onClickOutside } from "@vueuse/core";
 import {
   displayLabelForClassificationLabel,
   getClassificationForLabel,
-} from "@api/Classifications";
+} from "@api/classificationsUtils.ts";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import { BTooltip } from "bootstrap-vue-next";
 
 const props = withDefaults(
   defineProps<{
@@ -47,8 +49,8 @@ const searchTerm = ref("");
 const showOptions = ref<boolean>(false);
 
 const emit = defineEmits<{
-  (e: "change", value: Classification[]): void;
   (e: "pin", value: Classification | Classification[] | null): void;
+  (e: "change", value: Classification[]): void;
   (e: "options-change"): void; // When the option changes, the height changes, and we may want to let the parent element know about this.
   (e: "deselected"): void;
 }>();
@@ -187,18 +189,21 @@ const hasSelection = computed<boolean>(() => {
   return selections.value.length !== 0;
 });
 
-const addSelectedOption = (option: Classification) => {
+const addSelectedOption = (option: { label: string }) => {
   if (option.label === "No results") {
     return;
   }
   const canonicalOption = getClassificationForLabel(option.label.toLowerCase());
-
-  if (!props.multiselect && selections.value[0] !== canonicalOption) {
-    emit("change", [canonicalOption]);
-    closeSelect();
-  } else if (!selections.value.includes(canonicalOption)) {
-    (inputRef.value as HTMLInputElement).focus();
-    emit("change", [...selections.value, canonicalOption]);
+  if (canonicalOption) {
+    if (!props.multiselect && selections.value[0] !== canonicalOption) {
+      emit("change", [canonicalOption]);
+      closeSelect();
+    } else if (!selections.value.includes(canonicalOption)) {
+      (inputRef.value as HTMLInputElement).focus();
+      emit("change", [...selections.value, canonicalOption]);
+    } else {
+      closeSelect();
+    }
   } else {
     closeSelect();
   }
@@ -289,7 +294,11 @@ defineExpose({
 //
 </script>
 <template>
-  <div ref="optionsContainerRef" class="options-container">
+  <div
+    ref="optionsContainerRef"
+    class="options-container"
+    id="hierarchical-tag-picker"
+  >
     <div
       class="input-container d-flex flex-column fs-6"
       :class="{ open: showOptions }"
@@ -328,15 +337,22 @@ defineExpose({
         </button>
         <button
           type="button"
-          class="btn btn-outline-secondary ms-2 pin-btn"
+          class="btn btn-icon ms-2 d-flex align-items-center"
           :class="{ pinned: singleSelectionIsPinned }"
           v-if="canBePinned"
+          id="pin-btn"
+          :aria-label="singleSelectionIsPinned ? 'Unpin tag' : 'Pin tag'"
         >
-          <font-awesome-icon
-            icon="thumbtack"
+          <material-symbol
+            :name="singleSelectionIsPinned ? 'keep_off' : 'keep'"
             @click.prevent="pinCurrentSelection"
+            size="1.25rem"
           />
         </button>
+        <b-tooltip target="pin-btn">
+          <span v-if="singleSelectionIsPinned"> Unpin tag </span>
+          <span v-else> Pin tag </span>
+        </b-tooltip>
       </div>
       <div
         v-else-if="multiselect && hasSelection"
@@ -350,10 +366,10 @@ defineExpose({
         >
           {{ option.display || option.label }}
           <span
-            class="selected-option-icon d-flex justify-content-center align-items-center ms-1 p-1"
+            class="selected-option-icon d-flex justify-content-center align-items-center mx-1"
             @click="() => removeSelectedOption(option)"
           >
-            <font-awesome-icon icon="times" />
+            <material-symbol name="close" size="1rem" />
           </span>
         </button>
       </div>
@@ -363,10 +379,15 @@ defineExpose({
         <div
           class="options-path"
           :key="path"
-          v-for="path in currPath"
+          v-for="(path, index) in currPath"
           @click="() => setToPath(path)"
         >
-          {{ path }}
+          <span class="path-name">{{ path }}</span>
+          <material-symbol
+            v-if="index !== currPath.length - 1"
+            name="keyboard_arrow_right"
+            size="1rem"
+          />
         </div>
       </div>
       <div
@@ -382,18 +403,25 @@ defineExpose({
             class="options-list-label btn text-start text-capitalize"
             v-if="option.label !== 'No results'"
             @click.prevent="addSelectedOption(option)"
-            :disabled="disabledTags.includes(option.label)"
+            :disabled="(disabledTags || []).includes(option.label)"
           >
             <span style="vertical-align: middle">{{
-              displayLabelForClassificationLabel(option.label, false, withAudioContext)
+              displayLabelForClassificationLabel(
+                option.label,
+                false,
+                withAudioContext,
+              )
             }}</span
             ><span
               v-if="
                 option.display &&
-                displayLabelForClassificationLabel(option.label, false, withAudioContext) !==
-                  option.label
+                displayLabelForClassificationLabel(
+                  option.label,
+                  false,
+                  withAudioContext,
+                ) !== option.label
               "
-              class="fs-7 text-black-50"
+              class="text-black-50"
               style="vertical-align: middle"
               >&nbsp;({{ option.label }})</span
             >
@@ -407,10 +435,10 @@ defineExpose({
             v-if="option.children"
             @click="() => setToPath(option.label)"
           >
-            <font-awesome-icon
+            <material-symbol
               id="child-button-icon"
-              icon="angle-double-right"
-              class="fa-1x"
+              name="keyboard_double_arrow_right"
+              size="1.125rem"
             />
           </button>
         </div>
@@ -426,38 +454,60 @@ defineExpose({
 
 .options-path-container {
   display: flex;
+  /*flex-flow: row nowrap;*/
+  flex-wrap: wrap;
+  align-items: center;
   width: 100%;
-  height: 1.5em;
-  padding-left: 0.4em;
-  color: rgb(128, 128, 128);
-  background: rgb(248, 248, 248);
-  border-bottom: 1px solid #ccc;
-
-  :last-child {
-    color: rgb(91, 199, 97);
+  min-height: 2.4em;
+  padding: var(--cp-spacing-xxs);
+  row-gap: var(--cp-spacing-xxs);
+  /* color: rgb(128, 128, 128);*/
+  /* background: rgb(248, 248, 248);*/
+  border-bottom: 1px solid var(--bs-border-color);
+  font-size: var(--cp-font-size-sm);
+  .options-path {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    /*text-decoration: underline;*/
+    /*text-wrap: nowrap;
+    overflow: hidden;*/
+    .path-name {
+      padding: 0 var(--cp-spacing-xs);
+      font-weight: 500;
+      cursor: pointer;
+      /*background: var(--cp-color-green-50);*/
+      background: var(--bs-gray-100);
+      border-radius: var(--bs-border-radius);
+      /*text-wrap: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;*/
+      &:last-child {
+        color: var(--cp-color-green-700);
+        background: var(--cp-color-green-50);
+      }
+      &:hover {
+        background: var(--cp-color-green-50);
+      }
+    }
   }
-}
-
-.options-path {
-  margin-right: 5px;
-  font-weight: 600;
-  cursor: pointer;
 }
 
 .options-container:focus-within {
   color: rgb(46, 46, 46);
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+  box-shadow: 0 0 0 0.25rem
+    color-mix(in oklch, var(--cp-color-green-600), transparent 80%);
   border-radius: 0.375rem;
-  border-color: #86b7fe;
+  border-color: var(--cp-color-green-300);
 }
 
 .input-container {
   width: 100%;
-  min-height: 2.5rem;
+  min-height: 2.2rem;
   // TODO: Get consistent focus rings + keyboard navigation happening on this component.
   background: white;
-  border: 1px solid #ccc;
-  border-radius: 5px;
+  border: var(--bs-border-width) solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
   &.open {
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
@@ -470,8 +520,8 @@ defineExpose({
     border: none;
     outline: none;
     background: transparent;
-    font-size: 1em;
-    line-height: 2.5rem;
+    font-size: var(--bs-body-font-size);
+    line-height: 2.2rem;
     text-indent: 0.5rem;
     color: rgb(128, 128, 128);
   }
@@ -488,7 +538,7 @@ defineExpose({
     display: flex;
     font-size: 14px;
     color: white;
-    font-weight: 600;
+    font-weight: var(--cp-font-weight-medium);
     line-height: 1.25rem;
     white-space: nowrap;
 
@@ -566,24 +616,5 @@ defineExpose({
 .options-list-item:focus-within {
   background-color: #f1f1f1;
   transition: background-color 0.2s ease-in-out;
-}
-
-.pin-btn {
-  outline: none;
-  border: 0;
-  &:hover,
-  &:active,
-  &:focus {
-    background: transparent;
-    color: #444;
-  }
-  &.pinned {
-    &:hover,
-    &:active,
-    &:focus {
-      color: blue;
-    }
-    color: blue;
-  }
 }
 </style>

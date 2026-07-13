@@ -1,14 +1,18 @@
 import { EXCLUDE_IDS_ARRAY } from "@commands/constants";
 import {
-  TEMPLATE_AUDIO_RECORDING_RESPONSE,
   TEMPLATE_AUDIO_RECORDING,
-  TEMPLATE_THERMAL_RECORDING_RESPONSE,
-  TEMPLATE_TRACK,
+  TEMPLATE_AUDIO_RECORDING_RESPONSE,
   TEMPLATE_AUDIO_TRACK,
   TEMPLATE_THERMAL_RECORDING,
+  TEMPLATE_THERMAL_RECORDING_RESPONSE,
+  TEMPLATE_TRACK,
 } from "@commands/dataTemplate";
 
-import { getCreds } from "@commands/server";
+import {
+  apiPath,
+  getCreds,
+  makeAuthorizedRequestWithStatus,
+} from "@commands/server";
 import { getTestName } from "@commands/names";
 
 import {
@@ -23,6 +27,7 @@ import {
   HttpStatusCode,
   RecordingProcessingState,
   RecordingType,
+  TagMode,
 } from "@typedefs/api/consts";
 
 describe("Recordings query using where", () => {
@@ -58,15 +63,16 @@ describe("Recordings query using where", () => {
   const track1 = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
   track1.start_s = 2;
   track1.end_s = 5;
-  track1.predictions[0].label = "cat";
-  track1.predictions[0].confident_tag = "cat";
-  track1.predictions[0].confidence = 0.9;
+  track1.predictions[0].tag = "cat";
+  track1.predictions[0].condient = true;
+  track1.predictions[0].confidence = 90;
   const track2 = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
   track2.start_s = 1;
   track2.end_s = 3;
-  track2.predictions[0].label = "possum";
-  track2.predictions[0].confident_tag = "possum";
-  track2.predictions[0].confidence = 0.8;
+  track2.predictions[0].tag = "possum";
+  track2.predictions[0].confident = true;
+
+  track2.predictions[0].confidence = 90;
   const track4 = JSON.parse(JSON.stringify(TEMPLATE_TRACK));
   track4.start_s = 2;
   track4.end_s = 5;
@@ -206,7 +212,7 @@ describe("Recordings query using where", () => {
                 {
                   what: "possum",
                   automatic: false,
-                  confidence: 0.7,
+                  confidence: 70,
                   model: null,
                   trackId: -99,
                   path: "all",
@@ -339,39 +345,39 @@ describe("Recordings query using where", () => {
     cy.log("Get first page, setting limit");
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 0, limit: 3, order: "[[\"id\", \"ASC\"]]" },
+      { where: {}, offset: 0, limit: 3, order: '[["id", "ASC"]]' },
       expectedRecording.slice(0, 3),
       EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 0, limit: 3, order: "[[\"id\", \"ASC\"]]" },
+      { where: {}, offset: 0, limit: 3, order: '[["id", "ASC"]]' },
       20,
     );
 
     cy.log("Get intermediate page, setting limit");
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 3, limit: 3, order: "[[\"id\", \"ASC\"]]" },
+      { where: {}, offset: 3, limit: 3, order: '[["id", "ASC"]]' },
       expectedRecording.slice(3, 6),
       EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 3, limit: 3, order: "[[\"id\", \"ASC\"]]" },
+      { where: {}, offset: 3, limit: 3, order: '[["id", "ASC"]]' },
       20,
     );
 
     cy.log("Get final (part) page, setting limit");
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 18, limit: 3, order: "[[\"id\", \"ASC\"]]" },
+      { where: {}, offset: 18, limit: 3, order: '[["id", "ASC"]]' },
       expectedRecording.slice(18, 20),
       EXCLUDE_PARAMS,
     );
     cy.apiRecordingsCountCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 18, limit: 3, order: "[[\"id\", \"ASC\"]]" },
+      { where: {}, offset: 18, limit: 3, order: '[["id", "ASC"]]' },
       20,
     );
 
@@ -380,21 +386,21 @@ describe("Recordings query using where", () => {
     cy.log("Reverse sort order, first page");
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 0, limit: 3, order: "[[\"id\", \"DESC\"]]" },
+      { where: {}, offset: 0, limit: 3, order: '[["id", "DESC"]]' },
       expectedRecording.slice().reverse().slice(0, 3),
       EXCLUDE_PARAMS,
     );
     cy.log("Reverse sort order, intermediate page");
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 3, limit: 3, order: "[[\"id\", \"DESC\"]]" },
+      { where: {}, offset: 3, limit: 3, order: '[["id", "DESC"]]' },
       expectedRecording.slice().reverse().slice(3, 6),
       EXCLUDE_PARAMS,
     );
     cy.log("Reverse sort order, last (part) page");
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 18, limit: 3, order: "[[\"id\", \"DESC\"]]" },
+      { where: {}, offset: 18, limit: 3, order: '[["id", "DESC"]]' },
       expectedRecording.slice().reverse().slice(18, 20),
       EXCLUDE_PARAMS,
     );
@@ -403,7 +409,7 @@ describe("Recordings query using where", () => {
     //recordingDateTime order is opposite to id order, so compare with reverse of original array
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 3, limit: 30, order: "[[\"id\", \"DESC\"]]" },
+      { where: {}, offset: 3, limit: 30, order: '[["id", "DESC"]]' },
       expectedRecording.slice().reverse().slice(3, 30),
       EXCLUDE_PARAMS,
     );
@@ -441,7 +447,7 @@ describe("Recordings query using where", () => {
       "rqGroupAdmin",
       {
         where: { DeviceId: getCreds("rqCamera1").id },
-        order: "[[\"id\", \"ASC\"]]",
+        order: '[["id", "ASC"]]',
       },
       [expectedRecording1, expectedRecording2],
       EXCLUDE_PARAMS,
@@ -455,7 +461,7 @@ describe("Recordings query using where", () => {
     cy.log("GroupId");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: { GroupId: getCreds("rqGroup").id }, order: "[[\"id\", \"ASC\"]]" },
+      { where: { GroupId: getCreds("rqGroup").id }, order: '[["id", "ASC"]]' },
       [
         expectedRecording1,
         expectedRecording2,
@@ -539,7 +545,7 @@ describe("Recordings query using where", () => {
     cy.log("Less than equal");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: { duration: { $lte: 40 } }, order: "[[\"id\", \"ASC\"]]" },
+      { where: { duration: { $lte: 40 } }, order: '[["id", "ASC"]]' },
       [expectedRecording1, expectedRecording2, expectedRecording4],
       EXCLUDE_PARAMS,
     );
@@ -557,7 +563,7 @@ describe("Recordings query using where", () => {
       "rqGroupAdmin",
       {
         where: { "Device.deviceName": getTestName("rqCamera1") },
-        order: "[[\"id\", \"ASC\"]]",
+        order: '[["id", "ASC"]]',
       },
       [expectedRecording1, expectedRecording2],
       EXCLUDE_PARAMS,
@@ -573,7 +579,7 @@ describe("Recordings query using where", () => {
       "rqGroupAdmin",
       {
         where: { "Group.groupName": getTestName("rqGroup") },
-        order: "[[\"id\", \"ASC\"]]",
+        order: '[["id", "ASC"]]',
       },
       [expectedRecording1, expectedRecording2, expectedRecording3],
       EXCLUDE_PARAMS,
@@ -595,7 +601,7 @@ describe("Recordings query using where", () => {
       "rqGroupAdmin",
       {
         where: { DeviceId: getCreds("rqCamera1").id, duration: { $gte: 40 } },
-        order: "[[\"id\", \"ASC\"]]",
+        order: '[["id", "ASC"]]',
       },
       [expectedRecording2],
       EXCLUDE_PARAMS,
@@ -604,7 +610,7 @@ describe("Recordings query using where", () => {
       "rqGroupAdmin",
       {
         where: { DeviceId: getCreds("rqCamera1").id, duration: { $gte: 40 } },
-        order: "[[\"id\", \"ASC\"]]",
+        order: '[["id", "ASC"]]',
       },
       1,
     );
@@ -615,7 +621,7 @@ describe("Recordings query using where", () => {
     cy.log("Tagged as possum");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tags: "[\"possum\"]", order: "[[\"id\", \"ASC\"]]" },
+      { where: {}, tags: '["possum"]', order: '[["id", "ASC"]]' },
       [expectedRecording2, expectedRecording4],
       EXCLUDE_PARAMS,
     );
@@ -624,7 +630,7 @@ describe("Recordings query using where", () => {
     cy.log("Tagged as possum or cat");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tags: "[\"possum\", \"cat\"]", order: "[[\"id\", \"ASC\"]]" },
+      { where: {}, tags: '["possum", "cat"]', order: '[["id", "ASC"]]' },
       [expectedRecording1, expectedRecording2, expectedRecording4],
       EXCLUDE_PARAMS,
     );
@@ -633,7 +639,7 @@ describe("Recordings query using where", () => {
     cy.log("'Any' tagmode");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tagMode: "any", order: "[[\"id\", \"ASC\"]]" },
+      { where: {}, tagMode: TagMode.Any, order: '[["id", "ASC"]]' },
       [
         expectedRecording1,
         expectedRecording2,
@@ -647,7 +653,7 @@ describe("Recordings query using where", () => {
     cy.log("'untagged' tagmode");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tagMode: "untagged", order: "[[\"id\", \"ASC\"]]" },
+      { where: {}, tagMode: TagMode.UnTagged, order: '[["id", "ASC"]]' },
       [expectedRecording3],
       EXCLUDE_PARAMS,
     );
@@ -656,7 +662,7 @@ describe("Recordings query using where", () => {
     cy.log("'tagged' tagmode");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tagMode: "tagged", order: "[[\"id\", \"ASC\"]]" },
+      { where: {}, tagMode: TagMode.Tagged, order: '[["id", "ASC"]]' },
       [expectedRecording1, expectedRecording2, expectedRecording4],
       EXCLUDE_PARAMS,
     );
@@ -665,7 +671,7 @@ describe("Recordings query using where", () => {
     cy.log("'no-human' tagmode");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tagMode: "no-human", order: "[[\"id\", \"ASC\"]]" },
+      { where: {}, tagMode: TagMode.NoHuman, order: '[["id", "ASC"]]' },
       [expectedRecording1, expectedRecording2, expectedRecording3],
       EXCLUDE_PARAMS,
     );
@@ -674,7 +680,7 @@ describe("Recordings query using where", () => {
     cy.log("'automatic-only' tagmode");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tagMode: "automatic-only", order: "[[\"id\", \"ASC\"]]" },
+      { where: {}, tagMode: TagMode.AutomaticOnly, order: '[["id", "ASC"]]' },
       [expectedRecording1, expectedRecording2],
       EXCLUDE_PARAMS,
     );
@@ -683,7 +689,7 @@ describe("Recordings query using where", () => {
     cy.log("'human-only' tagmode");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tagMode: "human-only", order: "[[\"id\", \"ASC\"]]" },
+      { where: {}, tagMode: TagMode.HumanOnly, order: '[["id", "ASC"]]' },
       [expectedRecording4],
       EXCLUDE_PARAMS,
     );
@@ -692,7 +698,7 @@ describe("Recordings query using where", () => {
     cy.log("'automatic+human' tagmode");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tagMode: "automatic+human", order: "[[\"id\", \"ASC\"]]" },
+      { where: {}, tagMode: TagMode.AutomaticHuman, order: '[["id", "ASC"]]' },
       [],
       EXCLUDE_PARAMS,
     );
@@ -703,9 +709,9 @@ describe("Recordings query using where", () => {
       "rqGroupAdmin",
       {
         where: {},
-        tagMode: "automatic-only",
-        tags: "[\"possum\"]",
-        order: "[[\"id\", \"ASC\"]]",
+        tagMode: TagMode.AutomaticOnly,
+        tags: '["possum"]',
+        order: '[["id", "ASC"]]',
       },
       [expectedRecording2],
       EXCLUDE_PARAMS,
@@ -721,14 +727,14 @@ describe("Recordings query using where", () => {
     cy.log("Tagmode");
     cy.apiRecordingsQueryCheck(
       "rqGroupAdmin",
-      { where: {}, tagMode: "rubbish value" },
+      { where: {}, tagMode: "rubbish value" as TagMode },
       [],
       EXCLUDE_PARAMS,
       HttpStatusCode.Unprocessable,
     );
     cy.apiRecordingsCountCheck(
       "rqGroupAdmin",
-      { where: {}, tagMode: "rubbish value" },
+      { where: {}, tagMode: "rubbish value" as TagMode },
       undefined,
       HttpStatusCode.Unprocessable,
     );
@@ -757,7 +763,7 @@ describe("Recordings query using where", () => {
 
       cy.apiRecordingsQueryCheck(
         superuser,
-        { where: {}, "view-mode": "user", order: "[[\"id\", \"ASC\"]]" },
+        { where: {}, "view-mode": "user", order: '[["id", "ASC"]]' },
         [
           expectedRecording1,
           expectedRecording2,
@@ -778,7 +784,9 @@ describe("Recordings query using where", () => {
       );
     });
   } else {
-    it.skip("Super-user as user should see only their recordings", () => {});
+    it.skip("Super-user as user should see only their recordings", () => {
+      return;
+    });
   }
 
   it("Count shows all matches (not just current mage) if countAll=true specified", () => {
@@ -790,7 +798,7 @@ describe("Recordings query using where", () => {
         where: {},
         offset: 0,
         limit: 3,
-        order: "[[\"id\", \"ASC\"]]",
+        order: '[["id", "ASC"]]',
         countAll: true,
       },
       expectedRecording.slice(0, 3),
@@ -808,7 +816,7 @@ describe("Recordings query using where", () => {
         where: {},
         offset: 3,
         limit: 3,
-        order: "[[\"id\", \"ASC\"]]",
+        order: '[["id", "ASC"]]',
         countAll: true,
       },
       expectedRecording.slice(3, 6),
@@ -826,7 +834,7 @@ describe("Recordings query using where", () => {
         where: {},
         offset: 19,
         limit: 3,
-        order: "[[\"id\", \"ASC\"]]",
+        order: '[["id", "ASC"]]',
         countAll: true,
       },
       expectedRecording.slice(19, 20),
@@ -845,7 +853,7 @@ describe("Recordings query using where", () => {
         where: {},
         offset: 0,
         limit: 3,
-        order: "[[\"id\", \"ASC\"]]",
+        order: '[["id", "ASC"]]',
         countAll: false,
       },
       expectedRecording.slice(0, 3),
@@ -863,7 +871,7 @@ describe("Recordings query using where", () => {
         where: {},
         offset: 3,
         limit: 3,
-        order: "[[\"id\", \"ASC\"]]",
+        order: '[["id", "ASC"]]',
         countAll: false,
       },
       expectedRecording.slice(3, 6),
@@ -881,7 +889,7 @@ describe("Recordings query using where", () => {
         where: {},
         offset: 19,
         limit: 3,
-        order: "[[\"id\", \"ASC\"]]",
+        order: '[["id", "ASC"]]',
         countAll: false,
       },
       expectedRecording.slice(19, 20),
@@ -895,7 +903,7 @@ describe("Recordings query using where", () => {
     cy.log("Get first page, setting limit - expect count to count ALL results");
     cy.apiRecordingsQueryCheck(
       "rqGroup2Admin",
-      { where: {}, offset: 0, limit: 3, order: "[[\"id\", \"ASC\"]]" },
+      { where: {}, offset: 0, limit: 3, order: '[["id", "ASC"]]' },
       expectedRecording.slice(0, 3),
       EXCLUDE_PARAMS,
       HttpStatusCode.Ok,
@@ -904,5 +912,58 @@ describe("Recordings query using where", () => {
   });
 
   //TODO: wrapper would need to check results contain expected results ... not yet implemented in test wrapper
-  it.skip("Super-user should see all recordings", () => {});
+  it.skip("Super-user should see all recordings", () => {
+    return;
+  });
+
+  if (Cypress.env("running_in_a_dev_environment") == true) {
+    it("Non processing super-user should not be able to see actual thermal recordings from secret projects", () => {
+      // Create project with name `super-secret-squirrels`.
+      // Upon creation, this project id is added to the list of redacted projects in the API.
+      cy.apiSignInAs(null, superuser, suPassword);
+      cy.testCreateUserGroupAndDevice(
+        "secret-project-admin",
+        "super-secret-squirrels",
+        "secret-camera",
+      );
+
+      // Create a processing user
+      cy.apiUserAdd("processing-super-user").then((userId) => {
+        cy.log("Created processing user", userId);
+        makeAuthorizedRequestWithStatus(
+          {
+            method: "PATCH",
+            url: `${apiPath()}/api/v1/admin/global-permission/${userId}`,
+            body: { permission: "write" },
+          },
+          superuser,
+          200,
+        );
+      });
+      cy.apiRecordingAdd(
+        "secret-camera",
+        recording1,
+        undefined,
+        "secret-recording",
+      ).then((id) => {
+        cy.log("Group admin can see recording");
+        cy.apiRecordingGetFile("secret-project-admin", id).then(
+          (recResponse) => {
+            expect(recResponse.body.byteLength).to.equal(1);
+          },
+        );
+
+        cy.log("Regular super user can't see recording");
+        cy.apiRecordingGetFile(superuser, id).then((recResponse) => {
+          expect(recResponse.body.byteLength).to.not.equal(1);
+        });
+        cy.log("Processing user can see recording");
+        cy.apiRecordingGetFile("processing-super-user", id).then(
+          (recResponse) => {
+            expect(recResponse.body.byteLength).to.equal(1);
+          },
+        );
+      });
+    });
+  }
 });

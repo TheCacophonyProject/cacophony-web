@@ -1,6 +1,7 @@
 services:
   server:
-    container_name: cacophony-api
+    container_name: cacophony-web
+    shm_size: 1gb
     build:
       context: .
     environment:
@@ -15,10 +16,11 @@ services:
       - "5432:5432"
       - "9001:9001"
       - "9229:9229"
+      - "8888:8888"
     volumes:
       - ./api:/app/api
       - ./types:/app/types
       # Exclude the following folders
-      - /app/api/docker-base/
-      - /app/api/node_modules/
-      - /app/api/sql/
+      - /app/api/docker-base
+      - /app/api/node_modules
+      - /app/api/sql

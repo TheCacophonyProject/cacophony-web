@@ -5,7 +5,7 @@
     <!-- Fullscreen preview modal -->
     <b-modal
       v-model="showModal"
-      hide-footer
+      no-footer
       hide-header
       body-class="p-0"
       centered

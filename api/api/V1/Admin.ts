@@ -24,13 +24,18 @@ import {
   extractJwtAuthorisedSuperAdminUser,
   fetchUnauthorizedRequiredUserByEmailOrId,
 } from "@api/extract-middleware.js";
-import { anyOf, idOf } from "@api/validation-middleware.js";
+import {
+  emailOf,
+  exactlyOneOf,
+  idOf,
+  stringOf,
+} from "@api/validation-middleware.js";
 import { ClientError } from "@api/customErrors.js";
 import { HttpStatusCode, UserGlobalPermission } from "@typedefs/api/consts.js";
 import { SuperUsers } from "@/Globals.js";
+import config from "@config";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiUpdateGlobalPermissionRequestBody {
+export interface ApiUpdateGlobalPermissionRequestBody {
   permission: UserGlobalPermission; // Permission to apply for user
 }
 
@@ -51,10 +56,13 @@ export default function (app: Application, baseUrl: string) {
       `${apiUrl}/global-permission/:userEmailOrId`,
       extractJwtAuthorisedSuperAdminUser,
       validateFields([
-        anyOf(param("userEmailOrId").isEmail(), idOf(param("userEmailOrId"))),
-        body("permission").isIn(Object.values(UserGlobalPermission)),
+        exactlyOneOf(
+          emailOf(param("userEmailOrId")),
+          idOf(param("userEmailOrId")),
+        ),
+        stringOf(body("permission")).isIn(Object.values(UserGlobalPermission)),
       ]),
-      (request: Request, response: Response, next: NextFunction) => {
+      (_request: Request, response: Response, next: NextFunction) => {
         if (!response.locals.requestUser.hasGlobalWrite()) {
           return next(
             new ClientError(
@@ -69,8 +77,17 @@ export default function (app: Application, baseUrl: string) {
       async (request, response) => {
         const permission: UserGlobalPermission = request.body.permission;
         const userToUpdate = response.locals.user;
-        response.locals.user.globalPermission = permission;
+        userToUpdate.globalPermission = permission;
         await userToUpdate.save();
+
+        if (!config.productionEnv) {
+          // In CI, check the userName to see if it should be added to the processing users list
+          for (const userName of config.processingSuperUserNames || []) {
+            if (userToUpdate.userName.includes(userName)) {
+              config.processingUserIds.push(userToUpdate.id);
+            }
+          }
+        }
 
         // Update global super admin cache:
         if (

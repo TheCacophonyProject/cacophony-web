@@ -2,20 +2,20 @@
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import { computed, inject, ref } from "vue";
 import type { Ref } from "vue";
-import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import type { LatLng } from "leaflet";
 import VisitsTimeline from "@/components/VisitsTimeline.vue";
 import type { NamedPoint } from "@models/mapUtils";
 import { locationsAreEqual } from "@/utils";
 import type { StationId as LocationId } from "@typedefs/api/common";
+import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
 
 const currentlyHighlightedLocation = inject(
   "currentlyHighlightedLocation",
 ) as Ref<LocationId | null>;
 
 const props = defineProps<{
-  visits: ApiVisitResponse[];
+  visits: ApiStaticVisitResponse[];
   locations: ApiLocationResponse[];
   activeLocations: ApiLocationResponse[];
   startDate: Date;
@@ -86,7 +86,7 @@ const hasVisits = computed<boolean>(() => {
         :radius="30"
         :is-interactive="false"
         :zoom="false"
-        :can-change-base-map="false"
+        :can-change-base-map="true"
         :loading="loading"
       />
       <visits-timeline
@@ -103,11 +103,15 @@ const hasVisits = computed<boolean>(() => {
 </template>
 
 <style scoped lang="less">
+@import "../assets/less/elevation";
 .map {
-  height: 300px;
+  height: 40vh;
+  border-radius: var(--bs-border-radius) var(--bs-border-radius) 0 0;
 }
 .map-and-timeline {
   position: sticky;
-  top: 15px;
+  top: var(--cp-spacing-md);
+  border-radius: var(--bs-border-radius);
+  .standard-shadow();
 }
 </style>

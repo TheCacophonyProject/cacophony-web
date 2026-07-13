@@ -1,5 +1,4 @@
-
-const util =  require("./util/util.cjs");
+const util = require("./util/util.cjs");
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {

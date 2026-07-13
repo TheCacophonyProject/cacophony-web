@@ -207,6 +207,9 @@ export default {
   overflow: hidden;
   /* Above the motion paths canvas if it exists */
   z-index: 810;
+  & > div {
+    touch-action: pan-x;
+  }
 }
 .loading {
   color: #eee;
@@ -214,9 +217,9 @@ export default {
 }
 .scrub-track {
   transition: opacity 0.3s linear;
-  height: 12px;
   border-radius: 5px;
   position: absolute;
+  height: calc(1px - 1px);
 }
 .playhead {
   height: 100%;

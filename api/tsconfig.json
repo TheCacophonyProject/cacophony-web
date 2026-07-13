@@ -1,18 +1,19 @@
 {
     "compilerOptions": {
         "strictNullChecks": false,
-        "target": "es2020",
-        "sourceMap": false,
+        "target": "es2021",
+        "sourceMap": true,
         "module": "nodenext",
         "outDir": "../",
+        "rootDir": "../",
         "moduleResolution": "nodenext",
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
         "emitDecoratorMetadata": true,
         "experimentalDecorators": true,
-        "baseUrl": ".",
         "resolveJsonModule": true,
         "paths": {
+            "*": ["./*"],
             "@/*": ["./*"],
             "@typedefs/*":  ["../types/*"],
             "@schemas/*":  ["./json-schemas/*"],
@@ -40,26 +41,20 @@
     ],
     "exclude": [
         "./node_modules/*",
-        "./test/*",
-        "./test-cypress/*"
+        "../types/build-schemas.ts"
     ],
     "watchOptions": {
         "excludeDirectories": [
-            "/app/node_modules",
-            "/app/node_modules/**",
-            "/app/types/jsonSchemas",
-            "/app/types/jsonSchemas/",
-            "/app/types/jsonSchemas/**",
-            "/app/types/node_modules",
-            "/app/types/node_modules/**"
+            "./node_modules",
+            "./node_modules/**",
         ],
         "excludeFiles": [
             "*.schema.json",
-            "/app/types/jsonSchemas/**/*.json",
-            "/app/types/build-schemas.js",
-            "/app/types/build-schemas.ts",
-            "/app/types/schema-cache.json",
+            "../types/jsonSchemas/**/*.json",
+            "../types/build-schemas.js",
+            "../types/build-schemas.ts",
+            "../types/schema-cache.json",
             "schema-cache.json"
-        ]
+        ],
     }
 }

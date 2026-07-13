@@ -28,6 +28,26 @@ export const getLatestDateForLocationInRecordingMode = (
   }
   return null;
 };
+
+export const getEarliestDateForLocationInRecordingMode = (
+  location: ApiLocationResponse,
+  recordingMode: ActivitySearchRecordingMode,
+): Date | null => {
+  if (recordingMode === ActivitySearchRecordingMode.Cameras) {
+    return (
+      (location.earliestThermalRecordingTime &&
+        new Date(location.earliestThermalRecordingTime)) ||
+      null
+    );
+  } else if (recordingMode === ActivitySearchRecordingMode.Audio) {
+    return (
+      (location.earliestAudioRecordingTime &&
+        new Date(location.earliestAudioRecordingTime)) ||
+      null
+    );
+  }
+  return null;
+};
 export type DateRange = [Date, Date];
 
 export const validateLocations = (

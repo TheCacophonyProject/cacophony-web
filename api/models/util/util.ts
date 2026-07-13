@@ -32,47 +32,18 @@ import {
   ListObjectsCommand,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
-import mime from "mime";
 import config from "@config";
 import type { LatLng } from "@typedefs/api/common.js";
-import { DataTypes } from "sequelize";
+import { DataTypes, Model } from "sequelize";
 import { canonicalLatLng } from "@models/util/locationUtils.js";
-import { isLatLon } from "@models/util/validation.js";
-import type { Readable } from "stream";
-import type { ReadableStream } from "stream/web";
+import { isLatLng } from "@models/util/validation.js";
+import { NodeHttpHandler } from "@aws-sdk/node-http-handler";
+import * as https from "node:https";
 
-export function getFileName(model) {
-  let fileName;
-  const dateStr = model.getDataValue("recordingDateTime");
-  if (dateStr) {
-    fileName = new Date(dateStr)
-      .toISOString()
-      .replace(/\..+/, "")
-      .replace(/:/g, "");
-  } else {
-    fileName = "file";
-  }
-
-  const ext = mime.getExtension(model.getDataValue("mimeType") || "");
-  if (ext) {
-    fileName = fileName + "." + ext;
-  }
-  return fileName;
-}
-
-export function userCanEdit(id, user) {
-  const modelClass = this;
-  return new Promise((resolve) => {
-    //models.User.where
-    modelClass.getFromId(id, user, ["id"]).then((result) => {
-      if (result === null) {
-        return resolve(false);
-      } else {
-        return resolve(true);
-      }
-    });
-  });
-}
+const providers: Record<string, S3Client | null> = {
+  s3Local: null,
+  s3Archive: null,
+};
 
 export function openS3() {
   // This is a shim around the s3 compatible object store provider.
@@ -80,11 +51,6 @@ export function openS3() {
   // pick the correct s3 provider.  If there is a key provided, pick the provider
   // based on the prefix of the key `a_` prefix for backblaze, otherwise use the
   // local minio storage.
-
-  const providers = {
-    s3Local: null,
-    s3Archive: null,
-  };
 
   const getProviderForParams = (params: {
     Key?: string;
@@ -96,7 +62,7 @@ export function openS3() {
     }
     let chooseProvider = "s3Local";
     if (
-      config.hasOwnProperty("s3Archive") &&
+      "s3Archive" in config &&
       ((params.Key && params.Key.startsWith("a_")) ||
         (params.Prefix && params.Prefix.startsWith("a_")) ||
         (!params.Key &&
@@ -109,6 +75,16 @@ export function openS3() {
     if (chooseProvider === "s3Archive") {
       if (!providers.s3Archive) {
         const clientConfig: S3ClientConfig = {
+          requestHandler: new NodeHttpHandler({
+            httpsAgent: new https.Agent({
+              keepAlive: true,
+              maxSockets: 100,
+              maxFreeSockets: 10,
+              timeout: 60000,
+            }),
+            connectionTimeout: 5000,
+            requestTimeout: 60000,
+          }),
           region: "dummy-region",
           endpoint: config.s3Archive.endpoint,
           credentials: {
@@ -126,6 +102,16 @@ export function openS3() {
     } else {
       if (!providers.s3Local) {
         const clientConfig: S3ClientConfig = {
+          requestHandler: new NodeHttpHandler({
+            httpsAgent: new https.Agent({
+              keepAlive: true,
+              maxSockets: 100,
+              maxFreeSockets: 10,
+              timeout: 60000,
+            }),
+            connectionTimeout: 5000,
+            requestTimeout: 60000,
+          }),
           region: "dummy-region",
           endpoint: config.s3Local.endpoint,
           credentials: {
@@ -164,7 +150,11 @@ export function openS3() {
       const { client, bucket } = getProviderForParams({ Key: key });
       return client.send(new HeadObjectCommand({ Key: key, Bucket: bucket }));
     },
-    upload(key: string, body: Buffer | Uint8Array, metadata?: any) {
+    upload(
+      key: string,
+      body: Buffer | Uint8Array,
+      metadata?: Record<string, string>,
+    ) {
       const { client, bucket } = getProviderForParams({ Key: key });
       const length = (body as Buffer).length || 0; //"length" in body ? body.length : 0;
       const payload: PutObjectCommandInput = {
@@ -180,13 +170,13 @@ export function openS3() {
     },
     uploadStreaming(
       key: string,
-      body: Readable | ReadableStream,
-      metadata?: any,
+      body: ReadableStream,
+      metadata?: Record<string, string>,
     ) {
       const { client, bucket } = getProviderForParams({ Key: key });
       const payload: PutObjectCommandInput = {
         Key: key,
-        Body: body as any,
+        Body: body,
         Bucket: bucket,
       };
       if (metadata) {
@@ -225,16 +215,22 @@ export async function deleteFile(fileKey: string) {
   return s3.deleteObject(fileKey);
 }
 
-const geometrySetter = (
-  val:
-    | { coordinates: [number, number] }
-    | [number, number]
-    | LatLng
-    | string
-    | undefined
-    | null,
-): { type: "Point"; coordinates: [number, number] } | null => {
+type PossibleLocationInput =
+  | { coordinates: [number, number] }
+  | [number, number]
+  | LatLng
+  | string
+  | undefined
+  | null;
+
+export const geometrySetter = (
+  val: PossibleLocationInput,
+): { type: "Point"; coordinates: [number, number] } | null | string => {
   if (val === undefined || val === null || typeof val === "string") {
+    if (typeof val === "string" && val.includes("case")) {
+      console.log(`Geometry setter received string with 'case': ${val}`);
+      return val;
+    }
     return null;
   }
   const location = canonicalLatLng(val);
@@ -245,21 +241,21 @@ const geometrySetter = (
   };
 };
 
-export function locationField(fieldName: string = "location") {
+export function locationField(fieldName = "location") {
   return {
     type: DataTypes.GEOMETRY,
-    set(value) {
-      this.setDataValue(fieldName, geometrySetter(value));
+    set(value: PossibleLocationInput) {
+      (this as unknown as Model).setDataValue(fieldName, geometrySetter(value));
     },
-    get() {
-      const location = this.getDataValue(fieldName);
+    get(): LatLng | null {
+      const location = (this as unknown as Model).getDataValue(fieldName);
       if (location) {
         return canonicalLatLng(location);
       }
       return null;
     },
     validate: {
-      isLatLon: isLatLon,
+      isLatLon: isLatLng,
     },
   };
 }

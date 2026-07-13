@@ -1,11 +1,10 @@
-
 module.exports = {
   up: async function (queryInterface, Sequelize) {
     await queryInterface.addColumn("Recordings", "deletedAt", Sequelize.DATE);
     await queryInterface.addColumn(
       "Recordings",
       "deletedBy",
-      Sequelize.INTEGER
+      Sequelize.INTEGER,
     );
   },
 

@@ -1,22 +1,20 @@
-import type Sequelize from "sequelize";
-import type { ModelCommon, ModelStaticCommon } from "@models/index.js";
-import type { TrackTagId } from "@models/TrackTag.js";
+import Sequelize, { CreationOptional, DataTypes, ForeignKey } from "sequelize";
+import { ModelStaticCommon } from "@models/index.js";
+import { TrackTag, TrackTagId } from "@models/TrackTag.js";
 
-export interface TrackTagUserData
-  extends Sequelize.Model,
-    ModelCommon<TrackTagUserData> {
-  TrackTagId: TrackTagId;
-  gender?: "male" | "female" | null;
-  maturity?: "juvenile" | "adult" | null;
+export class TrackTagUserData extends ModelStaticCommon<TrackTagUserData> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare gender?: CreationOptional<"male" | "female">;
+  declare maturity?: CreationOptional<"juvenile" | "adult">;
+  declare TrackTagId: ForeignKey<TrackTagId>;
+
+  static addAssociations() {
+    this.belongsTo(TrackTag);
+  }
 }
-
-export interface TrackTagUserDataStatic
-  extends ModelStaticCommon<TrackTagUserData> {}
-export default function (
-  sequelize: Sequelize.Sequelize,
-  DataTypes,
-): TrackTagUserDataStatic {
-  const TrackTagUserData = sequelize.define("TrackTagUserData", {
+export const init = (sequelizeInstance: Sequelize.Sequelize) => {
+  const attributes = {
     TrackTagId: {
       type: DataTypes.INTEGER,
       primaryKey: true,
@@ -25,12 +23,12 @@ export default function (
     gender: {
       type: DataTypes.ENUM("male", "female"),
       allowNull: true,
-      defaultValue: null,
+      defaultValue: null as "male" | "female" | null,
     },
     maturity: {
       type: DataTypes.ENUM("juvenile", "adult"),
       allowNull: true,
-      defaultValue: null,
+      defaultValue: null as "juvenile" | "adult" | null,
     },
     createdAt: {
       type: DataTypes.DATE,
@@ -38,15 +36,11 @@ export default function (
     updatedAt: {
       type: DataTypes.DATE,
     },
-  }) as unknown as TrackTagUserDataStatic;
-
-  //---------------
-  // CLASS METHODS
-  //---------------
-  TrackTagUserData.addAssociations = function (models) {
-    models.TrackTagUserData.belongsTo(models.TrackTag);
-    models.TrackTag.hasOne(models.TrackTagUserData);
   };
 
+  TrackTagUserData.init(attributes, {
+    tableName: "TrackTagUserData",
+    sequelize: sequelizeInstance,
+  });
   return TrackTagUserData;
-}
+};

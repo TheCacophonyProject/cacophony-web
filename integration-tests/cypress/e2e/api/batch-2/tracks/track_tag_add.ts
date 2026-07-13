@@ -4,14 +4,9 @@ import { ApiRecordingSet } from "@commands/types";
 import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
 
-import { ApiRecordingNeedsTagReturned } from "@commands/types";
-
 import { HttpStatusCode, RecordingType } from "@typedefs/api/consts";
 
-import {
-  TestCreateRecordingData,
-  TestCreateExpectedNeedsTagData,
-} from "@commands/api/recording-tests";
+import { TestCreateRecordingData } from "@commands/api/recording-tests";
 
 import {
   ApiTrackDataRequest,
@@ -22,10 +17,7 @@ import {
   ApiTrackTagRequest,
   ApiHumanTrackTagResponse,
 } from "@typedefs/api/trackTag";
-import {
-  TEMPLATE_THERMAL_RECORDING,
-  TEMPLATE_THERMAL_RECORDING_NEEDS_TAG,
-} from "@commands/dataTemplate";
+import { TEMPLATE_THERMAL_RECORDING } from "@commands/dataTemplate";
 
 const EXCLUDE_TRACK_IDS = [
   "[].id",
@@ -44,9 +36,6 @@ describe("Track Tags: add, check, delete", () => {
     JSON.stringify(TEMPLATE_THERMAL_RECORDING),
   );
   templateRecording.metadata.tracks = [];
-
-  const templateExpectedNeedsTagRecording: ApiRecordingNeedsTagReturned =
-    JSON.parse(JSON.stringify(TEMPLATE_THERMAL_RECORDING_NEEDS_TAG));
 
   const positions1: ApiTrackPosition[] = [
     {
@@ -85,21 +74,19 @@ describe("Track Tags: add, check, delete", () => {
 
   const tag1: ApiTrackTagRequest = {
     what: "possum",
-    confidence: 0.95,
+    confidence: 95,
     automatic: false,
   };
 
   const tag2: ApiTrackTagRequest = {
     what: "cat",
-    confidence: 0.54,
+    confidence: 54,
     automatic: false,
   };
 
   const expectedTag1: ApiHumanTrackTagResponse = {
-    confidence: 0.95,
+    confidence: 95,
     createdAt: NOT_NULL_STRING,
-    //Note: data not set in a manual tag
-    data: "",
     path: "all",
     id: 99,
     automatic: false,
@@ -108,13 +95,12 @@ describe("Track Tags: add, check, delete", () => {
     what: "possum",
     userName: "xxx",
     userId: NOT_NULL,
+    model: null,
   };
 
   const expectedTag2: ApiHumanTrackTagResponse = {
     confidence: 0.54,
     createdAt: NOT_NULL_STRING,
-    //Note: data not set in a manual tag
-    data: "",
     path: "all",
     id: 99,
     automatic: false,
@@ -123,6 +109,7 @@ describe("Track Tags: add, check, delete", () => {
     what: "cat",
     userName: "xxx",
     userId: NOT_NULL,
+    model: null,
   };
 
   const algorithm1 = {
@@ -522,193 +509,4 @@ describe("Track Tags: add, check, delete", () => {
       EXCLUDE_TRACK_IDS,
     );
   });
-
-  //guest (power-tagger) tagging tests
-  if (Cypress.env("running_in_a_dev_environment") == true) {
-    it.skip("Can power-tag as non-owner by providing a valid tag JWT", () => {
-      const recording1 = TestCreateRecordingData(templateRecording);
-      const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
-      expectedTrack.filtered = true;
-      const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
-      expectedTrackWithTag.filtered = false;
-      expectedTrackWithTag.tags = [expectedTag1];
-      expectedTrackWithTag.tags[0].userName = getTestName("ttaNonMember");
-      //expectedTrackWithTag.tags[0].userId=getCreds("ttaNonMember").id;
-
-      cy.log("Add recording and track");
-      cy.apiRecordingAdd(
-        "ttaCamera1",
-        recording1,
-        undefined,
-        "ttaRecording8",
-      ).then(() => {
-        const expectedRecording1 = TestCreateExpectedNeedsTagData(
-          templateExpectedNeedsTagRecording,
-          "ttaRecording8",
-          "ttaCamera1",
-          recording1,
-        );
-        cy.apiTrackAdd(
-          "ttaGroupAdmin",
-          "ttaRecording8",
-          "ttaTrack8",
-          "ttaAlgorithm8",
-          track1,
-          algorithm1,
-        );
-
-        cy.log("Retrieve the recording's JWT");
-        cy.apiRecordingNeedsTagCheck(
-          "ttaNonMember",
-          "ttaCamera1",
-          "ttaNeedsTag8",
-          [expectedRecording1],
-          [],
-          HttpStatusCode.Ok,
-          { doNotValidate: true },
-        ).then(() => {
-          tag1.tagJWT = getCreds("ttaNeedsTag8").jwt;
-
-          cy.log("Guest can tag the track by providing tagJWT");
-          cy.apiTrackTagAdd(
-            "ttaNonMember",
-            "ttaRecording8",
-            "ttaTrack8",
-            "ttaTag8",
-            tag1,
-          );
-
-          cy.log("Check recording track & tag can be viewed correctly");
-          cy.apiTracksCheck(
-            "ttaGroupAdmin",
-            "ttaRecording8",
-            [expectedTrackWithTag],
-            EXCLUDE_TRACK_IDS,
-          );
-
-          cy.log("Delete tag");
-          cy.apiTrackTagDelete(
-            "ttaGroupAdmin",
-            "ttaRecording8",
-            "ttaTrack8",
-            "ttaTag8",
-          );
-
-          cy.log("Check tag no longer exists");
-          cy.apiTracksCheck(
-            "ttaGroupAdmin",
-            "ttaRecording8",
-            [expectedTrack],
-            EXCLUDE_TRACK_IDS,
-          );
-        });
-      });
-    });
-
-    it.skip("Cannot power-tag as non-owner by providing a non-valid tag JWT", () => {
-      const recording1 = TestCreateRecordingData(templateRecording);
-      const tagA = JSON.parse(JSON.stringify(tag1));
-
-      cy.log("Add recording and track");
-      cy.apiRecordingAdd("ttaCamera1", recording1, undefined, "ttaRecording9");
-      cy.apiTrackAdd(
-        "ttaGroupAdmin",
-        "ttaRecording9",
-        "ttaTrack9",
-        "ttaAlgorithm9",
-        track1,
-        algorithm1,
-      );
-
-      tagA.tagJWT = "BADJWT";
-
-      cy.log("Guest cannot tag the track by providing invalid tagJWT");
-      cy.apiTrackTagAdd(
-        "ttaNonMember",
-        "ttaRecording9",
-        "ttaTrack9",
-        "ttaTag9",
-        tagA,
-        HttpStatusCode.Forbidden,
-        { message: "Failed to verify JWT" },
-      );
-    });
-
-    //FIXME: This does not work. Does not accept tagJWT and does not allow without. Causing browse to fail
-    it.skip("Can delete own tag as non-owner", () => {
-      const recording1 = TestCreateRecordingData(templateRecording);
-      const expectedTrack = JSON.parse(JSON.stringify(expectedTrack1));
-      const expectedTrackWithTag = JSON.parse(JSON.stringify(expectedTrack1));
-      expectedTrackWithTag.tags = [expectedTag1];
-      expectedTrackWithTag.tags[0].userName = getTestName("ttaNonMember");
-      //expectedTrackWithTag.tags[0].userId=getCreds("ttaNonMember").id;
-
-      cy.log("Add recording and track");
-      cy.apiRecordingAdd(
-        "ttaCamera1",
-        recording1,
-        undefined,
-        "ttaRecording10",
-      ).then(() => {
-        const expectedRecording1 = TestCreateExpectedNeedsTagData(
-          templateExpectedNeedsTagRecording,
-          "ttaRecording10",
-          "ttaCamera1",
-          recording1,
-        );
-        cy.apiTrackAdd(
-          "ttaGroupAdmin",
-          "ttaRecording10",
-          "ttaTrack10",
-          "ttaAlgorithm10",
-          track1,
-          algorithm1,
-        );
-
-        cy.log("Retrieve the recording's JWT");
-        cy.apiRecordingNeedsTagCheck(
-          "ttaNonMember",
-          undefined,
-          "ttaNeedsTag10",
-          [expectedRecording1],
-          [],
-          HttpStatusCode.Ok,
-          { doNotValidate: true },
-        ).then(() => {
-          tag1.tagJWT = getCreds("ttaNeedsTag10").jwt;
-
-          cy.log("Guest can tag the track by providing tagJWT");
-          cy.apiTrackTagAdd(
-            "ttaNonMember",
-            "ttaRecording10",
-            "ttaTrack10",
-            "ttaTag10",
-            tag1,
-          );
-
-          cy.log("Guest can delete tag by providing tagJWT");
-          cy.apiTrackTagDelete(
-            "ttaNonMember",
-            "ttaRecording10",
-            "ttaTrack10",
-            "ttaTag10",
-          );
-
-          cy.log("Check tag no longer exists");
-          cy.apiTracksCheck(
-            "ttaGroupAdmin",
-            "ttaRecording10",
-            [expectedTrack],
-            EXCLUDE_TRACK_IDS,
-          );
-        });
-      });
-    });
-
-    it.skip("Cannot delete tag as non-owner by providing a non-valid tag JWT", () => {});
-  } else {
-    it.skip(
-      "DISABLED: power tagger tests cannot be run as not in a dev environment",
-    );
-  }
 });

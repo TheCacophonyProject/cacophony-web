@@ -1,34 +1,259 @@
 import { getTestName } from "../names";
 import {
-  v1ApiPath,
-  saveCreds,
-  getCreds,
-  checkRequestFails,
-  makeAuthorizedRequestWithStatus,
-  sortArrayOn,
-  checkTreeStructuresAreEqualExcept,
   checkMessages,
+  checkRequestFails,
+  checkTreeStructuresAreEqualExcept,
+  getCreds,
   makeAuthorizedRequest,
+  makeAuthorizedRequestWithStatus,
+  saveCreds,
+  sortArrayOn,
+  v1ApiPath,
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
-import { ApiDevicesDevice, DeviceHistoryEntry, TestNameAndId } from "../types";
+import { TestNameAndId } from "../types";
 import { NOT_NULL, NOT_NULL_STRING } from "../constants";
-import { LatLng } from "@typedefs/api/common";
+import { DeviceId, IsoFormattedDateString, LatLng } from "@typedefs/api/common";
+import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
+import {
+  ApiDeviceHistory,
+  ApiMaskRegionsData,
+  DeviceHistorySetBy,
+} from "@typedefs/api/device";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
 import ApiGroupUserRelationshipResponse = Cypress.ApiGroupUserRelationshipResponse;
-import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
-import { ApiMaskRegionsData } from "@typedefs/api/device";
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Cypress {
+    interface Chainable {
+      /**
+       * create a device in the given group
+       * optionally check for non-200 statusCode
+       */
+      apiDeviceAdd(
+        deviceName: string,
+        groupName: string,
+        atTime?: Date,
+        saltId?: number,
+        password?: string,
+        generateUniqueName?: boolean,
+        log?: boolean,
+        statusCode?: number,
+      ): Cypress.Chainable<DeviceId>;
+
+      /**
+       * Set an active device inactive.  Returns `true` on success
+       */
+      apiDeviceDeleteOrSetInactive(
+        userName: string,
+        deviceName: string,
+        groupName: string,
+      ): Cypress.Chainable<boolean>;
+
+      /**
+       * Update a device's station (deviceHistory) at a given time
+       * optionally check for non-200 statusCode
+       * By default deviceId and stationId are looked up from
+       * names in deviceIdOrName and stationIdOrName
+       * Optionally supply raw ids by specifying
+       *   additionalParams: {useRawDeviceId: true}
+       *   additionalParams: {useRawStationId: true}
+       */
+      apiDeviceFixLocation(
+        userName: string,
+        deviceIdOrName: string,
+        stationFromDate: string,
+        stationIdOrName: string,
+        location?: LatLng,
+        statusCode?: HttpStatusCode,
+        additionalParams?: {
+          useRawStationId?: boolean;
+          useRawDeviceId?: boolean;
+          additionalParams?: object;
+          messages?: string[];
+        },
+      ): Cypress.Chainable<void>;
+
+      /**
+       * Get history for a device
+       * compare with expected history
+       * by default DeviceId is looked up using name.  Set additionalChecks["useRawDeviceId"]=true to use Id provided
+       * By default history and expectedHistory are sorted before comparison
+       * Set additionalChecks["doNotSort"]=true to skip sorting
+       * optionally check for a non-200 status code
+       */
+      apiDeviceHistoryCheck(
+        userName: string,
+        deviceIdOrName: string,
+        expectedHistory: ApiDeviceHistory[],
+        statusCode?: HttpStatusCode,
+        additionalChecks?: { useRawDeviceId?: boolean; messages?: string[] },
+      ): Cypress.Chainable<void>;
+
+      /**
+       * register a device under a new group or name
+       * optionally check for an error response (statusCode!=200OK)
+       * optionally supply a password (autogenerate if not)
+       * optionally check for non-200 statusCode
+       */
+      apiDeviceReregister(
+        oldName: string,
+        newName: string,
+        newGroup: string,
+        newPassword?: string,
+        generateUniqueName?: boolean,
+        statusCode?: HttpStatusCode,
+      ): Cypress.Chainable<void>;
+
+      /**
+       * register a device under a new group or name
+       * optionally check for an error response (statusCode!=200OK)
+       * optionally supply a password (autogenerate if not)
+       * optionally check for non-200 statusCode
+       */
+      apiDeviceReregisterAuthorized(
+        oldName: string,
+        newName: string,
+        newGroup: string,
+        adminUserName: string,
+        newPassword?: string,
+        statusCode?: HttpStatusCode,
+      ): Cypress.Chainable<Cypress.Response<{ id: DeviceId; token: string }>>;
+
+      /**
+       * Retrieve devices list from /devices
+       * compare with expected device details (JSON equivalent to that returned by API)
+       * pass optional params (params) to API call
+       * optionally check for a non-200 status code
+       */
+      apiDevicesCheck(
+        userName: string,
+        expectedDevice: ApiDeviceResponse[],
+        params?: object,
+        statusCode?: HttpStatusCode,
+      ): Cypress.Chainable<void>;
+
+      /**
+       * Same as apiDevicesCheck but check the expected items are in the list, rather than the only things in the list
+       */
+      apiDevicesCheckContains(
+        userName: string,
+        expectedDevices: ApiDeviceResponse[],
+        params?: object,
+        statusCode?: HttpStatusCode,
+      ): Cypress.Chainable<void>;
+
+      /**
+       * Retrieve device details using id
+       */
+      apiDevice(
+        userName: string,
+        deviceName: string,
+        activeAndInactive?: boolean,
+        statusCode?: HttpStatusCode,
+      ): Cypress.Chainable<Cypress.Response<{ device: ApiDeviceResponse }>>;
+
+      /**
+       * Retrieve device details using name and groupname from /device/XX/in-group/YY
+       * use groupId if provided, otherwise groupName - the unused parameter should be set to null
+       */
+      apiDeviceInGroup(
+        userName: string,
+        deviceName: string,
+        groupName: string | null,
+        groupId: number | null,
+        params?: object,
+        statusCode?: HttpStatusCode,
+      ): Cypress.Chainable<Cypress.Response<{ device: ApiDeviceResponse }>>;
+
+      /**
+       * Retrieve device details using name and groupname from /device/XX/in-group/YY
+       * use groupId if provided, otherwise groupName - the unused parameter should be set to null
+       * compare with expected device details (JSON equivalent to that returned by API)
+       * optionally check for a non-200 status code
+       */
+      apiDeviceInGroupCheck(
+        userName: string,
+        deviceName: string,
+        groupName: string | null,
+        groupId: number | null,
+        expectedDevice: ApiDeviceResponse,
+        params?: object,
+        statusCode?: HttpStatusCode,
+      ): Cypress.Chainable<Cypress.Response<{ device: ApiDeviceResponse }>>;
+
+      // FIXME - Delete?  Just use deviceInGroup?
+      /**
+       * Retrieve list of users  who can access a device from /devices/users
+       * compare with expected list of users
+       * takes deviceName and looks up the device Id to pass tot he API.  Hence deviceName must be unique within test environment
+       * optionally check for a non-200 status code
+       */
+      apiDeviceUsersCheck(
+        userName: string,
+        deviceName: string,
+        expectedUsers: ApiGroupsUserRelationshipResponse[],
+        statusCode?: HttpStatusCode,
+      ): Chainable<void>;
+
+      apiDeviceHeartbeat(
+        deviceName: string,
+        nextHeartbeat: string,
+        statusCode?: HttpStatusCode,
+        additionalChecks?: { messages?: string[] },
+      ): Chainable<void>;
+
+      apiDeviceAddMaskRegions(
+        useName: string,
+        deviceName: string,
+        maskRegions: ApiMaskRegionsData,
+        statusCode?: HttpStatusCode,
+        additionalChecks?: { messages?: string[] },
+      ): Chainable<Cypress.Response<{ messages: string[] }>>;
+
+      apiDeviceGetMaskRegions(
+        useName: string,
+        deviceName: string,
+        atTime?: Date,
+        statusCode?: HttpStatusCode,
+        additionalChecks?: { messages?: string[] },
+      ): Chainable<Cypress.Response<ApiMaskRegionsData>>;
+
+      /**
+       * Retrieve list of users who can access a device from /devices/users
+       * compare with expected list of users
+       * takes deviceName and looks up the device Id to pass to the API.  Hence deviceName must be unique within test environment
+       * optionally check for a non-200 status code
+       */
+      createDeviceStationRecordingAndFix(
+        userName: string,
+        deviceName: string,
+        stationName: string,
+        recName: string,
+        group: string,
+        oldLocation: LatLng,
+        newLocation: LatLng,
+        recTime: string,
+        stationTime: string,
+        move?: boolean,
+        additionalRecTime?: string,
+      ): Chainable<ApiDeviceHistory[]>;
+    }
+  }
+}
 
 Cypress.Commands.add(
   "apiDeviceAdd",
   (
     deviceName: string,
     groupName: string,
+    atTime?: Date,
     saltId: number | null = null,
     password: string | null = null,
-    generateUniqueName: boolean = true,
+    generateUniqueName = true,
     log = true,
-    statusCode: number = 200,
+    statusCode = 200,
   ) => {
     logTestDescription(
       `Create camera '${deviceName}' in group '${groupName}' with saltId '${saltId}'`,
@@ -46,6 +271,7 @@ Cypress.Commands.add(
       password,
       saltId,
       generateUniqueName,
+      atTime,
     );
     if (statusCode == 200) {
       cy.request(request).then((response) => {
@@ -68,20 +294,25 @@ Cypress.Commands.add(
     stationIdOrName: string,
     recordingLocation: LatLng,
     statusCode: number = HttpStatusCode.Ok,
-    additionalChecks: any = {},
+    additionalChecks: {
+      useRawStationId?: boolean;
+      useRawDeviceId?: boolean;
+      additionalParams?: object;
+      messages?: string[];
+    } = {},
   ) => {
     let stationId: number;
     let deviceId: string;
 
     //Get station ID from name (unless we're asked not to)
-    if (additionalChecks["useRawStationId"] === true) {
+    if (additionalChecks.useRawStationId === true) {
       stationId = parseInt(stationIdOrName);
     } else {
       stationId = getCreds(getTestName(stationIdOrName)).id;
     }
 
     //Get device ID from name (unless we're asked not to)
-    if (additionalChecks["useRawDeviceId"] === true) {
+    if (additionalChecks.useRawDeviceId === true) {
       deviceId = deviceIdOrName;
     } else {
       deviceId = getCreds(deviceIdOrName).id.toString();
@@ -92,11 +323,11 @@ Cypress.Commands.add(
         fromDateTime: stationFromDate,
         stationId: stationId,
       },
-      ...additionalChecks["additionalParams"],
+      ...(additionalChecks.additionalParams || {}),
     };
 
     if (recordingLocation) {
-      body.setStationAtTime.location = recordingLocation;
+      body.setStationAtTime["location"] = recordingLocation;
     }
 
     logTestDescription(
@@ -114,9 +345,9 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (additionalChecks["messages"]) {
-        checkMessages(response, additionalChecks["messages"]);
+    ).then((response: Cypress.Response<{ messages: string[] }>) => {
+      if (additionalChecks.messages) {
+        checkMessages(response, additionalChecks.messages);
       }
     });
   },
@@ -127,14 +358,14 @@ Cypress.Commands.add(
   (
     userName: string,
     deviceIdOrName: string,
-    expectedHistory: any[],
+    expectedHistory: ApiDeviceHistory[],
     statusCode: number = HttpStatusCode.Ok,
-    additionalChecks: any = {},
+    additionalChecks: { useRawDeviceId?: boolean; messages?: string[] } = {},
   ) => {
     let deviceId: string;
 
     //Get device ID from name (unless we're asked not to)
-    if (additionalChecks["useRawDeviceId"] === true) {
+    if (additionalChecks.useRawDeviceId === true) {
       deviceId = deviceIdOrName;
     } else {
       deviceId = getCreds(deviceIdOrName).id.toString();
@@ -152,28 +383,44 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (additionalChecks["messages"]) {
-        checkMessages(response, additionalChecks["messages"]);
-      }
-      if (statusCode === null || statusCode == 200) {
-        const deviceHistory = response.body.history;
-        expect(deviceHistory.length).to.equal(expectedHistory.length);
-        let devCount: number;
-        const sortHistory = sortArrayOn(deviceHistory, "fromDateTime");
-        const sortExpectedHistory = sortArrayOn(
-          expectedHistory,
-          "fromDateTime",
-        );
-        for (devCount = 0; devCount < expectedHistory.length; devCount++) {
-          checkTreeStructuresAreEqualExcept(
-            sortExpectedHistory[devCount],
-            sortHistory[devCount],
-            [],
-          );
+    ).then(
+      (
+        response: Cypress.Response<{
+          history: ApiDeviceHistory[];
+          messages: string[];
+        }>,
+      ) => {
+        if (additionalChecks.messages) {
+          checkMessages(response, additionalChecks.messages);
         }
-      }
-    });
+        if (statusCode === null || statusCode == 200) {
+          const deviceHistory = response.body.history;
+          expect(deviceHistory.length).to.equal(expectedHistory.length);
+          let devCount: number;
+          let sortHistory = sortArrayOn(deviceHistory, "fromDateTime");
+          let sortExpectedHistory = sortArrayOn(
+            expectedHistory,
+            "fromDateTime",
+          );
+
+          // JS sort is stable, so we can re-sort to put `register` at the beginning.
+          const sortOrder = ["register", "automatic", "user"];
+          sortHistory = sortArrayOn(deviceHistory, "setBy", sortOrder);
+          sortExpectedHistory = sortArrayOn(
+            expectedHistory,
+            "setBy",
+            sortOrder,
+          );
+          for (devCount = 0; devCount < expectedHistory.length; devCount++) {
+            checkTreeStructuresAreEqualExcept(
+              sortExpectedHistory[devCount],
+              sortHistory[devCount],
+              [".id"],
+            );
+          }
+        }
+      },
+    );
   },
 );
 
@@ -184,8 +431,8 @@ Cypress.Commands.add(
     newName: string,
     newGroup: string,
     password: string | null = null,
-    generateUniqueName: boolean = true,
-    statusCode: number = 200,
+    generateUniqueName = true,
+    statusCode = 200,
   ) => {
     let uniqueName: string;
     logTestDescription(
@@ -222,7 +469,7 @@ Cypress.Commands.add(
       },
       oldName,
       statusCode,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ id: DeviceId; token: string }>) => {
       const id = response.body.id;
       saveCreds(response, newName, id);
     });
@@ -237,7 +484,7 @@ Cypress.Commands.add(
     newGroup: string,
     adminUserName: string,
     password: string | null = null,
-    statusCode: number = 200,
+    statusCode = 200,
   ) => {
     logTestDescription(
       `Reregister camera '${newName}' in group '${newGroup}'`,
@@ -267,7 +514,7 @@ Cypress.Commands.add(
       },
       oldName,
       statusCode,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ id: DeviceId; token: string }>) => {
       const id = response.body.id;
       saveCreds(response, newName, id);
     });
@@ -280,7 +527,8 @@ function createDevice(
   password: string,
   saltId: number,
   makeCameraNameTestName = true,
-): any {
+  atTime?: Date,
+) {
   const fullName = makeCameraNameTestName
     ? getTestName(deviceName)
     : deviceName;
@@ -294,6 +542,7 @@ function createDevice(
     password: string;
     group: string;
     saltId?: number;
+    fromDateTime?: IsoFormattedDateString;
   }
 
   const data: DataType = {
@@ -304,6 +553,9 @@ function createDevice(
 
   if (saltId !== null) {
     data.saltId = saltId;
+  }
+  if (atTime) {
+    data.fromDateTime = atTime.toISOString();
   }
 
   return {
@@ -317,9 +569,9 @@ Cypress.Commands.add(
   "apiDevicesCheck",
   (
     userName: string,
-    expectedDevices: ApiDevicesDevice[],
-    params: any = {},
-    statusCode: number = 200,
+    expectedDevices: ApiDeviceResponse[],
+    params: object = {},
+    statusCode = 200,
   ) => {
     const fullUrl = v1ApiPath("devices", params);
 
@@ -337,7 +589,7 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ devices: ApiDeviceResponse[] }>) => {
       if (statusCode === null || statusCode == 200) {
         const devices = response.body.devices;
         expect(devices.length).to.equal(expectedDevices.length);
@@ -371,8 +623,8 @@ Cypress.Commands.add(
   (
     userName: string,
     expectedDevices: ApiDeviceResponse[],
-    params: any = {},
-    statusCode: number = 200,
+    params: object = {},
+    statusCode = 200,
   ) => {
     const fullUrl = v1ApiPath("devices", params);
     logTestDescription(
@@ -389,7 +641,7 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ devices: ApiDeviceResponse[] }>) => {
       if (statusCode === null || statusCode == 200) {
         const devices = response.body.devices;
         expect(devices.length).to.be.at.least(expectedDevices.length);
@@ -401,7 +653,7 @@ Cypress.Commands.add(
           // Note that deviceNames only need to be unique within groups, so
           // match on groupName also.
           const found = devices.find(
-            (device: any) =>
+            (device) =>
               device.deviceName === expectedDevices[devCount].deviceName &&
               device.groupName === expectedDevices[devCount].groupName,
           );
@@ -420,8 +672,8 @@ Cypress.Commands.add(
   (
     userName: string,
     deviceName: string,
-    activeAndInactive: boolean = false,
-    statusCode: number = 200,
+    activeAndInactive = false,
+    statusCode = 200,
   ) => {
     logTestDescription(`Get device ${deviceName} for ${userName}`, {
       deviceName,
@@ -436,7 +688,7 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    );
+    ) as Cypress.Chainable<Cypress.Response<{ device: ApiDeviceResponse }>>;
   },
 );
 
@@ -447,8 +699,8 @@ Cypress.Commands.add(
     deviceName: string,
     groupName: string | null,
     groupId: number | null,
-    params: any = {},
-    statusCode: number = 200,
+    params: object = {},
+    statusCode = 200,
   ) => {
     const group = groupId !== null ? groupId : getTestName(groupName);
     const fullUrl = v1ApiPath(
@@ -468,7 +720,7 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    );
+    ) as Cypress.Chainable<Cypress.Response<{ device: ApiDeviceResponse }>>;
   },
 );
 
@@ -480,8 +732,8 @@ Cypress.Commands.add(
     groupName: string | null,
     groupId: number | null,
     expectedDevice: ApiDeviceResponse,
-    params: any = {},
-    statusCode: number = 200,
+    params: object = {},
+    statusCode = 200,
   ) => {
     logTestDescription(
       `${userName} Check user '${userName}' can see device '${deviceName}' in group '${groupName}' `,
@@ -495,7 +747,7 @@ Cypress.Commands.add(
       groupId,
       params,
       statusCode,
-    ).then((response: any) => {
+    ).then((response: Cypress.Response<{ device: ApiDeviceResponse }>) => {
       if (statusCode === null || statusCode == 200) {
         checkTreeStructuresAreEqualExcept(expectedDevice, response.body.device);
       }
@@ -509,7 +761,7 @@ Cypress.Commands.add(
     userName: string,
     deviceName: string,
     expectedUsers: ApiGroupUserRelationshipResponse[],
-    statusCode: number = 200,
+    statusCode = 200,
   ) => {
     logTestDescription(
       `${userName} Check users for device '${deviceName}' requesting as user '${userName}'`,
@@ -529,21 +781,29 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (statusCode === null || statusCode == 200) {
-        // API returns devices: [ groupName: ..., deviceName: ..., saltId, ..., Group.groupName: ... ]
-        // sort users and expected users to ensure order is the same
-        const users = sortArrayOn(response.body.users, "userName");
-        expectedUsers = sortArrayOn(expectedUsers, "userName");
-        expect(users.length).to.equal(expectedUsers.length);
+    ).then(
+      (
+        response: Cypress.Response<{
+          users: ApiGroupUserRelationshipResponse[];
+        }>,
+      ) => {
+        if (statusCode === null || statusCode == 200) {
+          // API returns devices: [ groupName: ..., deviceName: ..., saltId, ..., Group.groupName: ... ]
+          // sort users and expected users to ensure order is the same
+          const users = sortArrayOn(response.body.users, "userName");
+          expectedUsers = sortArrayOn(expectedUsers, "userName");
+          expect(users.length).to.equal(expectedUsers.length);
 
-        for (let index = 0; index < expectedUsers.length; index++) {
-          expect(users[index].id).to.equal(expectedUsers[index].id);
-          expect(users[index].userName).to.equal(expectedUsers[index].userName);
-          expect(users[index].admin).to.equal(expectedUsers[index].admin);
+          for (let index = 0; index < expectedUsers.length; index++) {
+            expect(users[index].id).to.equal(expectedUsers[index].id);
+            expect(users[index].userName).to.equal(
+              expectedUsers[index].userName,
+            );
+            expect(users[index].admin).to.equal(expectedUsers[index].admin);
+          }
         }
-      }
-    });
+      },
+    );
   },
 );
 
@@ -552,8 +812,8 @@ Cypress.Commands.add(
   (
     deviceName: string,
     nextHeartbeat: string,
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: { messages?: string[] } = {},
   ) => {
     logTestDescription(`Register heartbeat for camera '${deviceName}'`, {
       camera: deviceName,
@@ -570,9 +830,9 @@ Cypress.Commands.add(
       },
       deviceName,
       statusCode,
-    ).then((response) => {
-      if (additionalChecks["message"] !== undefined) {
-        checkMessages(response, additionalChecks["messages"]);
+    ).then((response: Cypress.Response<{ messages: string[] }>) => {
+      if (additionalChecks.messages !== undefined) {
+        checkMessages(response, additionalChecks.messages);
       }
     });
   },
@@ -597,7 +857,7 @@ Cypress.Commands.add(
   ) => {
     let fixLocation: LatLng;
     let expectedLocation: LatLng;
-    const expectedHistory: DeviceHistoryEntry[] = [];
+    const expectedHistory: ApiDeviceHistory[] = [];
     let expectedMessage = "Updated 1 recording(s)";
 
     logTestDescription(
@@ -706,7 +966,7 @@ Cypress.Commands.add(
     deviceName: string,
     maskRegions: ApiMaskRegionsData,
     statusCode?: number,
-    additionalChecks: any = {},
+    additionalChecks: { messages?: string[] } = {},
   ) => {
     logTestDescription(
       `Add ${
@@ -724,9 +984,9 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (additionalChecks["message"] !== undefined) {
-        checkMessages(response, additionalChecks["messages"]);
+    ).then((response: Cypress.Response<{ messages: string[] }>) => {
+      if (additionalChecks.messages !== undefined) {
+        checkMessages(response, additionalChecks.messages);
       }
       cy.wrap(response);
     });
@@ -740,7 +1000,7 @@ Cypress.Commands.add(
     deviceName: string,
     atTime?: Date,
     statusCode?: number,
-    additionalChecks: any = {},
+    additionalChecks: { messages?: string[] } = {},
   ) => {
     const fromTime = atTime || new Date();
     logTestDescription(
@@ -762,9 +1022,9 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (additionalChecks["message"] !== undefined) {
-        checkMessages(response, additionalChecks["messages"]);
+    ).then((response: Cypress.Response<{ messages: string[] }>) => {
+      if (additionalChecks.messages !== undefined) {
+        checkMessages(response, additionalChecks.messages);
       }
       cy.wrap(response);
     });
@@ -792,11 +1052,11 @@ Cypress.Commands.add(
 export function TestCreateExpectedDevice(
   deviceName: string,
   groupName: string,
-  hasDeviceConnected: boolean = false,
-  type: DeviceType = DeviceType.Unknown,
-  admin: boolean = true,
-  active: boolean = true,
-  isHealthy: boolean = true,
+  hasDeviceConnected = false,
+  type: DeviceType = DeviceType.Thermal,
+  admin = true,
+  active = true,
+  isHealthy = true,
 ) {
   const expectedDevice: ApiDeviceResponse = {
     id: getCreds(deviceName).id,
@@ -811,7 +1071,18 @@ export function TestCreateExpectedDevice(
   };
   if (hasDeviceConnected == true) {
     expectedDevice.lastConnectionTime = NOT_NULL_STRING;
-    expectedDevice.lastRecordingTime = NOT_NULL_STRING;
+    if (type === DeviceType.Thermal) {
+      expectedDevice.lastThermalRecordingTime = NOT_NULL_STRING;
+      expectedDevice.earliestThermalRecordingTime = NOT_NULL_STRING;
+    } else if (type === DeviceType.Audio) {
+      expectedDevice.lastAudioRecordingTime = NOT_NULL_STRING;
+      expectedDevice.earliestAudioRecordingTime = NOT_NULL_STRING;
+    } else if (type === DeviceType.Hybrid) {
+      expectedDevice.lastThermalRecordingTime = NOT_NULL_STRING;
+      expectedDevice.lastAudioRecordingTime = NOT_NULL_STRING;
+      expectedDevice.earliestThermalRecordingTime = NOT_NULL_STRING;
+      expectedDevice.earliestAudioRecordingTime = NOT_NULL_STRING;
+    }
     expectedDevice.location = {
       lat: NOT_NULL,
       lng: NOT_NULL,
@@ -825,10 +1096,10 @@ export function TestCreateExpectedHistoryEntry(
   groupName: string,
   fromDate: string,
   location: LatLng,
-  setBy: string,
+  setBy: DeviceHistorySetBy,
   stationName: string,
-): DeviceHistoryEntry {
-  const expectedHistory: DeviceHistoryEntry = {
+): ApiDeviceHistory {
+  return {
     DeviceId: getCreds(deviceName).id,
     GroupId: getCreds(groupName).id,
     deviceName: getTestName(deviceName),
@@ -840,6 +1111,4 @@ export function TestCreateExpectedHistoryEntry(
     uuid: NOT_NULL,
     settings: null,
   };
-
-  return expectedHistory;
 }

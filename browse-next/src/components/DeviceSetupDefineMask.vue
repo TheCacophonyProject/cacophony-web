@@ -2,7 +2,7 @@
 import { reactive, type Ref } from "vue";
 import { ref, onMounted, computed, inject, watch } from "vue";
 import { useDevicePixelRatio, useElementSize } from "@vueuse/core";
-import { updateMaskRegionsForDevice } from "@api/Device";
+import { ClientApi } from "@/api";
 import { useRoute } from "vue-router";
 import type {
   ApiDeviceResponse,
@@ -14,9 +14,19 @@ import type { DeviceId } from "@typedefs/api/common";
 import { selectedProjectDevices } from "@models/provides";
 import CptvSingleFrame from "@/components/CptvSingleFrame.vue";
 import { formFieldInputText, type FormInputValidationState } from "@/utils.ts";
-import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import CardTable from "@/components/CardTable.vue";
-import type { LoadedResource } from "@api/types.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
+import SectionCard from "@/components/SectionCard.vue";
+import {
+  BButton,
+  BForm,
+  BFormGroup,
+  BFormInput,
+  BFormInvalidFeedback,
+  BModal,
+} from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 interface Point {
   x: number;
   y: number;
@@ -33,7 +43,7 @@ const singleFrameCanvas = ref<HTMLCanvasElement | null>(null);
 const regionsProvided = inject(
   "latestMaskRegions",
   ref<ApiMaskRegionsData | (() => ApiMaskRegionsData)>(
-    () => ({} as unknown as ApiMaskRegionsData),
+    () => ({}) as unknown as ApiMaskRegionsData,
   ),
   true,
 );
@@ -66,9 +76,9 @@ const emit = defineEmits<{
 }>();
 
 const regionsTable = computed(() => {
-  return Object.entries(regions.value).map(([name, { alertOnEnter }]) => ({
+  return Object.entries(regions.value).map(([name /*, { alertOnEnter }*/]) => ({
     maskRegion: name,
-    alertOnEnter,
+    /*alertOnEnter,*/
     _deleteAction: { value: name },
   }));
 });
@@ -88,7 +98,10 @@ const updateExistingMaskRegions = async () => {
     }
     const regionsPayload: ApiMaskRegionsData = { maskRegions };
     emit("updated-regions", regionsPayload);
-    await updateMaskRegionsForDevice(device.value.id, regionsPayload);
+    await ClientApi.Devices.updateMaskRegionsForDevice(
+      device.value.id,
+      regionsPayload,
+    );
   }
 };
 
@@ -482,143 +495,175 @@ watch(
 );
 </script>
 <template>
-  <b-modal
-    title="Self-intersecting shape"
-    v-model="selfIntersectingError"
-    @hidden="removePoint"
-    ok-title="Remove last point"
-    ok-variant="warning"
-    ok-only
-    centered
-  >
-    <p>Shapes are not allowed to intersect with themselves.</p>
-  </b-modal>
-  <b-modal
-    v-model="createShapeEnded"
-    title="Save mask region"
-    centered
-    @hidden="resetModal"
-  >
-    <b-form @submit.stop.prevent="addCurrentRegion">
-      <b-form-input
-        type="text"
-        placeholder="Give the mask region a name"
-        data-cy="new mask region name"
-        v-model="newRegionName.value"
-        @blur="newRegionName.touched = true"
-        :state="needsValidationAndIsValidRegionName"
-        :disabled="submittingNewRegionRequest"
-      />
-      <b-form-invalid-feedback :state="needsValidationAndIsValidRegionName">
-        <span v-if="newRegionName.value.trim().length === 0">
-          Region name cannot be blank
-        </span>
-        <span v-else-if="newRegionName.value.trim().length < 3">
-          Region name must be at least 3 characters
-        </span>
-        <span
-          v-else-if="Object.keys(regions).includes(newRegionName.value.trim())"
+  <div class="mb-3 mb-lg-4">
+    <b-modal
+      title="Self-intersecting shape"
+      v-model="selfIntersectingError"
+      @hidden="removePoint"
+      ok-title="Remove last point"
+      ok-variant="primary"
+      ok-only
+      centered
+    >
+      <p class="mb-0">Shapes are not allowed to intersect with themselves.</p>
+    </b-modal>
+    <b-modal
+      v-model="createShapeEnded"
+      title="Save mask region"
+      centered
+      @hidden="resetModal"
+    >
+      <b-form @submit.stop.prevent="addCurrentRegion">
+        <b-form-group
+          label="Mask region name"
+          label-for="mask-region-name"
+          description="A unique identifier for this region, e.g. tree trunk or sky."
         >
-          Region name must be unique
-        </span>
-      </b-form-invalid-feedback>
-      <div class="mt-3">
-        <b-form-checkbox v-model="newRegionHasAlerts">
-          <span>Alert project members when an animal enters this region.</span>
-        </b-form-checkbox>
-      </div>
-    </b-form>
-    <template #footer>
-      <button
-        class="btn btn-primary"
-        type="submit"
-        data-cy="create device button"
-        @click.stop.prevent="addCurrentRegion"
-        :disabled="
-          !needsValidationAndIsValidRegionName || submittingNewRegionRequest
-        "
-      >
-        <span
-          v-if="submittingNewRegionRequest"
-          class="spinner-border spinner-border-sm"
-        ></span>
-        {{ submittingNewRegionRequest ? "Adding region" : "Add region" }}
-      </button>
-    </template>
-  </b-modal>
-  <div
-    class="w-100 d-flex justify-content-center align-items-center justify-content-lg-start align-items-lg-start"
-  >
-    <div class="d-flex flex-column justify-content-center region-creator">
-      <b-alert dismissible v-model="helpInfo"
-        ><p>
-          <strong
-            >Select multiple points on the image to form a closed shape.</strong
-          >
-        </p>
-        <p>
-          The defined <strong>&ldquo;mask region&rdquo;</strong> will be ignored
-          for motion-detection purposes while this device is recording.<br />This
-          can be useful to help reduce false-positive recordings if you have
-          (for example) moving warmer tree branches over a cold background such
-          as the night sky.
-        </p>
-        <p class="mb-0">
-          Optionally, you can receive an alert notification when an animal is
-          detected <strong><em>entering</em></strong> a masked off region.<br />This
-          is useful if you'd like to know when an animal enters a trap, but you
-          don't want subsequent recordings to be made while the animal is
-          caught.
-        </p></b-alert
-      >
-      <div class="d-flex justify-content-between flex-column flex-md-row">
+          <b-form-input
+            id="mask-region-name"
+            type="text"
+            data-cy="new mask region name"
+            v-model="newRegionName.value"
+            @blur="newRegionName.touched = true"
+            :state="needsValidationAndIsValidRegionName"
+            :disabled="submittingNewRegionRequest"
+          />
+          <b-form-invalid-feedback :state="needsValidationAndIsValidRegionName">
+            <span v-if="newRegionName.value.trim().length === 0">
+              Region name cannot be blank.
+            </span>
+            <span v-else-if="newRegionName.value.trim().length < 3">
+              Region name must be at least 3 characters.
+            </span>
+            <span
+              v-else-if="
+                Object.keys(regions).includes(newRegionName.value.trim())
+              "
+            >
+              Region name must be unique.
+            </span>
+          </b-form-invalid-feedback>
+        </b-form-group>
+
+        <!-- TODO: enable once implemented -->
+        <!--        <b-form-group class="mt-3">
+          <b-form-checkbox
+            v-model="newRegionHasAlerts">
+            Alert project members when an animal enters this region.
+          </b-form-checkbox>
+        </b-form-group>-->
+      </b-form>
+      <template #footer>
+        <button
+          class="btn btn-primary"
+          type="submit"
+          data-cy="create device button"
+          @click.stop.prevent="addCurrentRegion"
+          :disabled="
+            !needsValidationAndIsValidRegionName || submittingNewRegionRequest
+          "
+        >
+          <span
+            v-if="submittingNewRegionRequest"
+            class="spinner-border spinner-border-sm"
+          ></span>
+          {{ submittingNewRegionRequest ? "Adding region" : "Add region" }}
+        </button>
+      </template>
+    </b-modal>
+    <section-card>
+      <template #header-title> Mask regions </template>
+      <p>
+        Mask regions are areas in the video that will be ignored for
+        motion-detection purposes while a device is recording.
+      </p>
+
+      <p class="mb-4">
+        Define a mask region to help reduce false-positive recordings, e.g., if
+        the camera is pointing towards moving warmer tree branches over a cold
+        background, such as the night sky.
+      </p>
+      <!-- TODO: enable once implemented -->
+      <!--
+      <p class="mb-0">
+        Optionally, you can receive an alert notification when an animal is
+        detected <strong><em>entering</em></strong> a masked off region.<br />This
+        is useful if you'd like to know when an animal enters a trap, but you
+        don't want subsequent recordings to be made while the animal is
+        caught.
+      </p>-->
+
+      <div class="row">
         <div
-          class="position-relative canvas-container bg-dark rounded-2 d-flex justify-content-center align-items-center"
-          ref="canvasContainer"
-          @pointerup="addPoint"
-          @pointermove="speculativePoint"
-          @touchstart="(e) => e.preventDefault()"
+          class="col order-2 order-md-1 col-12 col-md-9 position-relative text-white"
         >
-          <cptv-single-frame
-            :width="'100%'"
-            :recording="latestStatusRecording"
-            :apron-pixels="8"
-            ref="singleFrameCanvas"
-            :smoothing="false"
-          />
-          <canvas
-            ref="canvas"
-            class="overlay-canvas position-absolute"
-            :width="canvasWidth * devicePixelRatio"
-            :height="canvasHeight * devicePixelRatio"
-          />
           <div
-            v-if="editMode && points.length === 0"
-            class="click-prompt position-absolute bg-light p-1 rounded-1 opacity-75"
+            class="position-relative canvas-container bg-dark rounded-2 d-flex justify-content-center align-items-center"
+            ref="canvasContainer"
+            @pointerup="addPoint"
+            @pointermove="speculativePoint"
+            @touchstart="(e) => e.preventDefault()"
           >
-            Click to begin adding points
+            <cptv-single-frame
+              :width="'100%'"
+              :recording="latestStatusRecording"
+              :apron-pixels="8"
+              ref="singleFrameCanvas"
+              :smoothing="false"
+            />
+            <canvas
+              ref="canvas"
+              class="overlay-canvas position-absolute"
+              :width="canvasWidth * devicePixelRatio"
+              :height="canvasHeight * devicePixelRatio"
+            />
+            <div
+              v-if="editMode && points.length === 0"
+              class="click-prompt position-absolute bg-light text-secondary px-2 py-1 rounded-1 opacity-75"
+            >
+              Click to begin adding points and define a closed shape
+            </div>
           </div>
+        </div>
+        <div class="col order-1 order-md-2 col-12 col-md-3 mb-3">
+          <b-button
+            v-if="!editMode"
+            variant="primary"
+            @click="editMode = true"
+            class="d-flex mb-2 mb-md-0"
+          >
+            <material-symbol name="add" size="1.25rem" class="me-1" />
+            Create mask region
+          </b-button>
+          <b-button
+            v-if="editMode"
+            :disabled="points.length === 0"
+            variant="danger"
+            @click="removePoint"
+          >
+            Undo last point
+          </b-button>
         </div>
       </div>
 
-      <card-table :items="regionsTable" compact :break-point="0">
-        <template #alertOnEnter="{ cell }">
+      <card-table
+        :items="regionsTable"
+        compact
+        :break-point="0"
+        :class="regionsTable.length ? 'mt-4' : ''"
+      >
+        <!-- TODO: enable once implemented -->
+        <!--        <template #alertOnEnter="{ cell }">
           <font-awesome-icon v-if="cell" icon="check-circle" />
           <span v-else>-</span>
-        </template>
+        </template>-->
         <template #_deleteAction="{ cell }">
           <div class="d-flex align-items-center justify-content-end">
             <two-step-action-button
               :action="() => deleteRegion(cell.value)"
-              :classes="['btn-hi', 'btn', 'btn-square', 'p-0']"
+              tooltip-label="Delete"
               :confirmation-label="`Delete region '${cell.value}'`"
-              color="#666"
-              alignment="right"
-            >
-              <template #button-content>
-                <font-awesome-icon icon="trash-can" color="#666" />
-              </template>
-            </two-step-action-button>
+            />
           </div>
         </template>
         <template #card="{ card: { maskRegion } }">
@@ -626,42 +671,22 @@ watch(
             <span class="h6 m-0">{{ maskRegion }}</span>
             <two-step-action-button
               :action="() => deleteRegion(maskRegion)"
-              :classes="['btn-hi', 'btn', 'btn-square', 'p-0']"
+              tooltip-label="Delete"
               :confirmation-label="`Delete region '${maskRegion}'`"
-              color="#666"
-              alignment="right"
-            >
-              <template #button-content>
-                <font-awesome-icon icon="trash-can" color="#666" />
-              </template>
-            </two-step-action-button>
+            />
           </div>
         </template>
       </card-table>
-      <div class="d-flex flex-column flex-md-row my-2 justify-content-between">
-        <b-button
-          v-if="!editMode"
-          variant="primary"
-          @click="editMode = true"
-          class="mb-2 mb-md-0"
-        >
-          <font-awesome-icon icon="plus" class="me-2" />
-          <span>Add a new mask region</span>
-        </b-button>
-        <b-button
-          v-if="editMode"
-          :disabled="points.length === 0"
-          variant="danger"
-          @click="removePoint"
-        >
-          Undo last point
-        </b-button>
-      </div>
-    </div>
+    </section-card>
   </div>
 </template>
 
 <style scoped lang="less">
+.single-frame-cptv-container {
+  width: 100%;
+  min-width: auto;
+  aspect-ratio: auto 4/3;
+}
 .overlay-canvas {
   width: 100%;
   aspect-ratio: auto 4/3;
@@ -671,6 +696,6 @@ watch(
   bottom: 0;
 }
 .region-creator {
-  max-width: 640px;
+  max-width: 100%;
 }
 </style>

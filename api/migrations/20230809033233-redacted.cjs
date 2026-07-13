@@ -16,7 +16,7 @@ module.exports = {
       if (!recordings.redacted) {
         await queryInterface.sequelize.query(
           `ALTER TABLE "Recordings" ADD COLUMN "redacted" boolean DEFAULT false`,
-          { transaction }
+          { transaction },
         );
       }
       await transaction.commit();
@@ -37,7 +37,7 @@ module.exports = {
       // remove new column boolean "redacted" from Recording
       await queryInterface.sequelize.query(
         `ALTER TABLE "Recordings" DROP COLUMN "redacted"`,
-        { transaction }
+        { transaction },
       );
       await transaction.commit();
     } catch (e) {

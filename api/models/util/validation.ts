@@ -21,11 +21,19 @@ import type { LatLng } from "@typedefs/api/common.js";
 import logger from "@log";
 import { canonicalLatLng } from "@models/util/locationUtils.js";
 
-export function isLatLon(
+export function isLatLng(
   point: { coordinates: [number, number] } | [number, number] | LatLng,
   shouldThrow = true,
 ) {
   let valid = true;
+  if (typeof point !== "object") {
+    valid = false;
+    if (shouldThrow) {
+      throw new Error(
+        `Location ${JSON.stringify(point, null, 2)} is not valid.`,
+      );
+    }
+  }
   if (point === null) {
     valid = false;
     logger.warning("Invalid 5");
@@ -38,8 +46,8 @@ export function isLatLon(
     valid = false;
     logger.warning("Invalid 4");
   } else if (typeof point === "object" && !Array.isArray(point)) {
-    if (point.hasOwnProperty("coordinates")) {
-      const coordinates = (point as any).coordinates;
+    if ("coordinates" in point) {
+      const coordinates = point.coordinates;
       if (!Array.isArray(coordinates)) {
         logger.warning("Invalid 3");
         valid = false;
@@ -54,10 +62,10 @@ export function isLatLon(
         valid = false;
       }
     } else if (
-      !point.hasOwnProperty("lat") ||
-      !point.hasOwnProperty("lng") ||
-      typeof (point as any).lat !== "number" ||
-      typeof (point as any).lng !== "number"
+      !("lat" in point) ||
+      !("lng" in point) ||
+      typeof point.lat !== "number" ||
+      typeof point.lng !== "number"
     ) {
       logger.warning("Invalid 1");
       valid = false;
@@ -65,18 +73,25 @@ export function isLatLon(
       // Okay
     }
   }
-  const location = canonicalLatLng(point);
-  if (
-    location.lat < -90 ||
-    90 < location.lat ||
-    location.lng < -180 ||
-    180 <= location.lng
-  ) {
-    logger.warning("Invalid 6 %s", location);
-    valid = false;
+  if (!valid && shouldThrow) {
+    throw new Error(`Location ${JSON.stringify(point, null, 2)} is not valid.`);
+  }
+  if (valid) {
+    const location = canonicalLatLng(
+      point as LatLng | { coordinates: [number, number] } | [number, number],
+    );
+    if (
+      location.lat < -90 ||
+      90 < location.lat ||
+      location.lng < -180 ||
+      180 <= location.lng
+    ) {
+      logger.warning("Location out of bounds %s", point);
+      valid = false;
+    }
   }
   if (!valid && shouldThrow) {
-    throw new Error("Location is not valid G.");
+    throw new Error(`Location ${JSON.stringify(point, null, 2)} is not valid.`);
   }
   return valid;
 }

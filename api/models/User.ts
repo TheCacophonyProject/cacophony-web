@@ -15,73 +15,173 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-
 import bcrypt from "bcrypt";
-import type { BuildOptions, ModelAttributes, ModelOptions } from "sequelize";
+import {
+  BelongsToManyGetAssociationsMixin,
+  CreationOptional,
+  DataTypes,
+  ModelAttributes,
+  NonAttribute,
+} from "sequelize";
 import Sequelize from "sequelize";
-import type { ModelCommon, ModelStaticCommon } from "./index.js";
-import type { Group } from "./Group.js";
-import type {
-  DeviceId,
-  EndUserAgreementVersion,
-  GroupId,
-  StationId,
-  UserId,
-} from "@typedefs/api/common.js";
+import { ModelStaticCommon } from "./index.js";
+import type { DeviceId, GroupId, UserId } from "@typedefs/api/common.js";
 import { UserGlobalPermission } from "@typedefs/api/consts.js";
 import { sendResetEmail } from "@/scripts/emailUtil.js";
-import type { Device } from "@models/Device.js";
 import type { ApiUserSettings } from "@typedefs/api/user.js";
-import type { Station } from "./Station.js";
-import logger from "@/logging.js";
+import { DecodedJWTToken } from "@api/auth.js";
+import { Group } from "@models/Group.js";
+import { GroupUsers } from "@models/GroupUsers.js";
+import { Device } from "@models/Device.js";
+import { Alert } from "@models/Alert.js";
 
-const Op = Sequelize.Op;
+export class User extends ModelStaticCommon<User> {
+  declare id: CreationOptional<UserId>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare password: string;
 
-export interface User extends Sequelize.Model, ModelCommon<User> {
-  getWhereDeviceVisible: () => Promise<null | { DeviceId: {} }>;
-  comparePassword: (password: string) => Promise<boolean>;
-  resetPassword: () => Promise<boolean>;
+  declare userName: string;
+  declare email: string;
+  declare emailConfirmed: CreationOptional<boolean>;
+  // FIXME: This is CreationOptional because the field in the DB is nullable, but it shouldn't be.
+  // Even when we fix that it should be CreationOptional because there is a default value
+  declare globalPermission: CreationOptional<UserGlobalPermission>;
+  declare endUserAgreement: CreationOptional<number>;
+  declare settings: CreationOptional<ApiUserSettings>;
+  declare lastActiveAt: CreationOptional<Date>;
+  declare transferredBytes: CreationOptional<number>;
+  declare transferredItems: CreationOptional<number>;
 
-  getDeviceIds: () => Promise<DeviceId[]>;
-  getGroupsIds: () => Promise<GroupId[]>;
-  getStationIds: () => Promise<StationId[]>;
-  getGroups: (options?: {
-    where: any;
-    attributes: string[];
-  }) => Promise<Group[]>;
+  declare getGroups: BelongsToManyGetAssociationsMixin<Group>;
 
-  hasGlobalWrite: () => boolean;
-  hasGlobalRead: () => boolean;
+  declare GroupUsers?: NonAttribute<GroupUsers>;
+  declare Groups?: NonAttribute<Group[]>;
 
-  admin: boolean;
-  id: UserId;
-  userName: string;
-  email: string;
-  emailConfirmed: boolean;
-  lastActiveAt: Date;
-  groups: Group[];
-  globalPermission: UserGlobalPermission;
-  endUserAgreement: EndUserAgreementVersion;
-  settings?: ApiUserSettings;
-  transferredBytes: number;
-  transferredItems: number;
+  // static associations = {
+  //   GroupUsers?: HasOne<GroupUsers>;
+  // };
+
+  static publicFields = Object.freeze(["id", "userName"]);
+  static apiSettableFields = Object.freeze([
+    "email",
+    "endUserAgreement",
+    "settings",
+  ]);
+  //---------------
+  // CLASS METHODS
+  //---------------
+  static addAssociations() {
+    this.belongsToMany(Group, {
+      through: GroupUsers,
+    });
+    this.hasMany(Alert);
+  }
+
+  static async getAll(isSuperAdmin: boolean) {
+    return this.findAll({
+      where: {},
+      attributes: [...this.publicFields, ...(isSuperAdmin ? ["email"] : [])],
+    });
+  }
+
+  static async getFromName(name: string): Promise<User | null> {
+    return this.findOne({ where: { userName: name } });
+  }
+
+  static async getFromEmail(email: string): Promise<User | null> {
+    return this.findOne({ where: { email } });
+  }
+
+  static async freeEmail(email: string): Promise<boolean> {
+    return (await this.getFromEmail(email.toLowerCase())) === null;
+  }
+
+  async resetPassword(): Promise<boolean> {
+    return sendResetEmail(this, this.password);
+  }
+
+  // Returns the groups that are associated with this user (via
+  // GroupUsers).
+  async getGroupsIds(): Promise<GroupId[]> {
+    const groups = await this.getGroups();
+    return groups.map((g) => g.id);
+  }
+
+  async comparePassword(password: string): Promise<boolean> {
+    const thisPassword = this.password;
+    return new Promise((resolve, reject) => {
+      bcrypt.compare(password, thisPassword, (err: Error, isMatch: boolean) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(isMatch);
+        }
+      });
+    });
+  }
+
+  getJwtDataValues(): DecodedJWTToken {
+    const jwtPayload: DecodedJWTToken = {
+      id: this.id,
+      _type: "user",
+    };
+    if (!this.emailConfirmed) {
+      jwtPayload.activated = false;
+    }
+    return jwtPayload;
+  }
+
+  hasGlobalWrite() {
+    return UserGlobalPermission.Write === this.globalPermission;
+  }
+
+  hasGlobalRead() {
+    return [UserGlobalPermission.Read, UserGlobalPermission.Write].includes(
+      this.globalPermission,
+    );
+  }
+
+  async getDeviceIds(): Promise<DeviceId[]> {
+    const devices = await Device.findAll({
+      where: {},
+      include: [
+        {
+          model: Group,
+          required: true,
+          attributes: [],
+          include: [
+            {
+              model: User,
+              attributes: [],
+              through: {
+                attributes: [],
+              },
+              required: true,
+              where: { id: this.id },
+            },
+          ],
+        },
+      ],
+      attributes: ["id"],
+    });
+    if (devices !== null) {
+      return devices.map((d) => d.id);
+    }
+    return [];
+  }
 }
 
-export interface UserStatic extends ModelStaticCommon<User> {
-  new (values?: object, options?: BuildOptions): User;
-  getAll: (where: any, isSuperAdmin?: boolean) => Promise<User[]>;
-  getFromName: (name: string) => Promise<User | null>;
-  getFromEmail: (email: string) => Promise<User | null>;
-  freeEmail: (email: string) => Promise<boolean>;
-  getFromId: (id: number) => Promise<User | null>;
-}
-
-export default function (
-  sequelize: Sequelize.Sequelize,
-  DataTypes,
-): UserStatic {
-  const name = "User";
+export const init = (sequelizeInstance: Sequelize.Sequelize) => {
   const attributes: ModelAttributes = {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE,
+
     userName: {
       type: DataTypes.STRING,
     },
@@ -127,199 +227,31 @@ export default function (
     },
   };
 
-  const options: ModelOptions = {
+  //----------------------
+  // VALIDATION FUNCTIONS
+  //----------------------
+
+  const beforeModify = async (user: User) => {
+    if (user.changed("password")) {
+      user.password = await bcrypt.hash(user.password, 10);
+    }
+  };
+  const beforeValidate = (user: User) => {
+    user.setDataValue("email", user.getDataValue("email").toLowerCase());
+  };
+  User.init(attributes, {
+    tableName: "Users",
+    name: {
+      singular: "User",
+      plural: "Users",
+    },
+    sequelize: sequelizeInstance,
     hooks: {
       beforeValidate: beforeValidate,
       beforeCreate: beforeModify,
       beforeUpdate: beforeModify,
       beforeUpsert: beforeModify,
     },
-  };
-
-  // Define table
-  const User = sequelize.define(
-    name,
-    attributes,
-    options,
-  ) as unknown as UserStatic;
-
-  User.publicFields = Object.freeze(["id", "userName"]);
-
-  User.apiSettableFields = Object.freeze([
-    "email",
-    "endUserAgreement",
-    "settings",
-  ]);
-  //---------------
-  // CLASS METHODS
-  //---------------
-  const models = sequelize.models;
-
-  User.addAssociations = function (models) {
-    models.User.belongsToMany(models.Group, {
-      through: models.GroupUsers,
-    });
-    models.User.hasMany(models.Alert);
-  };
-
-  User.getAll = async function (where, isSuperAdmin: boolean) {
-    return this.findAll({
-      where,
-      attributes: [...this.publicFields, ...(isSuperAdmin ? ["email"] : [])],
-    });
-  };
-
-  User.getFromId = async function (id: UserId) {
-    return this.findByPk(id);
-  };
-
-  User.getFromName = async (name: string): Promise<User | null> => {
-    return User.findOne({ where: { userName: name } });
-  };
-
-  User.getFromEmail = async (email): Promise<User | null> => {
-    return User.findOne({ where: { email } });
-  };
-
-  User.freeEmail = async (email: string): Promise<boolean> => {
-    return (await User.getFromEmail(email.toLowerCase())) === null;
-  };
-
-  //------------------
-  // INSTANCE METHODS
-  //------------------
-
-  User.prototype.hasGlobalWrite = function () {
-    return UserGlobalPermission.Write === this.globalPermission;
-  };
-
-  User.prototype.hasGlobalRead = function () {
-    return [UserGlobalPermission.Read, UserGlobalPermission.Write].includes(
-      this.globalPermission,
-    );
-  };
-
-  User.prototype.getWhereDeviceVisible = async function () {
-    if (this.hasGlobalRead()) {
-      return null;
-    }
-    const allDeviceIds = await this.getDeviceIds();
-    return { DeviceId: { [Op.in]: allDeviceIds } };
-  };
-
-  User.prototype.getJwtDataValues = function () {
-    const jwtPayload = {
-      id: this.getDataValue("id"),
-      _type: "user",
-    };
-    if (!this.emailConfirmed) {
-      (jwtPayload as any).activated = false;
-    }
-    return jwtPayload;
-  };
-
-  // Returns the groups that are associated with this user (via
-  // GroupUsers).
-  User.prototype.getGroupsIds = async function (): Promise<GroupId[]> {
-    const groups = await this.getGroups();
-    return groups.map((g) => g.id);
-  };
-
-  User.prototype.getDeviceIds = async function (): Promise<DeviceId[]> {
-    const devices = (await models.Device.findAll({
-      where: {},
-      include: [
-        {
-          model: models.Group,
-          required: true,
-          attributes: [],
-          include: [
-            {
-              model: models.User,
-              attributes: [],
-              through: {
-                attributes: [],
-              },
-              required: true,
-              where: { id: this.id },
-            },
-          ],
-        },
-      ],
-      attributes: ["id"],
-    })) as Device[];
-    if (devices !== null) {
-      return devices.map((d) => d.id);
-    }
-    return [];
-  };
-
-  User.prototype.getStationIds = async function (): Promise<StationId[]> {
-    try {
-      const stations = (await models.Station.findAll({
-        where: {},
-        include: [
-          {
-            model: models.Group,
-            required: true,
-            attributes: [],
-            include: [
-              {
-                model: models.User,
-                attributes: [],
-                through: {
-                  attributes: [],
-                },
-                required: true,
-                where: { id: this.id },
-              },
-            ],
-          },
-        ],
-        attributes: ["id"],
-      })) as Station[];
-      if (stations !== null) {
-        return stations.map((d) => d.id);
-      }
-      return [];
-    } catch (e) {
-      logger.error("%s", e);
-      logger.error("%s", e.sql);
-    }
-  };
-
-  User.prototype.comparePassword = function (
-    password: string,
-  ): Promise<boolean> {
-    const user = this;
-    return new Promise(function (resolve, reject) {
-      bcrypt.compare(password, user.password, function (err, isMatch) {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(isMatch);
-        }
-      });
-    });
-  };
-
-  User.prototype.resetPassword = async function (): Promise<boolean> {
-    return sendResetEmail(this, this.password);
-  };
-
+  });
   return User;
-}
-
-//----------------------
-// VALIDATION FUNCTIONS
-//----------------------
-
-async function beforeModify(user) {
-  if (user.changed("password")) {
-    user.password = await bcrypt.hash(user.password, 10);
-  }
-}
-
-function beforeValidate(user: User) {
-  user.setDataValue("email", user.getDataValue("email").toLowerCase());
-}
+};

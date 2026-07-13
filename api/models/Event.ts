@@ -16,153 +16,106 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import Sequelize from "sequelize";
-import type { ModelCommon, ModelStaticCommon } from "./index.js";
-import type { Device } from "./Device.js";
-import type { DetailSnapShot } from "./DetailSnapshot.js";
-import type { DeviceId, UserId } from "@typedefs/api/common.js";
+import Sequelize, {
+  BelongsTo,
+  CreationOptional,
+  DataTypes,
+  ForeignKey,
+  NonAttribute,
+} from "sequelize";
+import { ModelStaticCommon } from "./index.js";
+import { Device } from "./Device.js";
+import type { DetailSnapshotId } from "./DetailSnapshot.js";
+import { DetailSnapshot } from "./DetailSnapshot.js";
+import type { DeviceId, EventId, UserId } from "@typedefs/api/common.js";
+import { User } from "@models/User.js";
+import { Group } from "@models/Group.js";
+import { EventEnv } from "@typedefs/api/consts.js";
 
 const Op = Sequelize.Op;
 
-export interface Event extends Sequelize.Model, ModelCommon<Event> {
-  id: number;
-  dateTime: Date;
-  EventDetailId: number;
-  EventDetail: DetailSnapShot;
-  DeviceId: DeviceId;
-  dataValues: any;
-  Device: Device | null;
-  env: "tc2-dev" | "tc2-test" | "tc2-prod" | "unknown";
-}
+export class Event extends ModelStaticCommon<Event> {
+  declare id: CreationOptional<EventId>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
 
-export interface QueryOptions {
-  eventType?: string | string[];
-  admin?: boolean;
-  useCreatedDate?: boolean;
-}
+  // FIXME: This should be required, but the field is NULLable in the DB
+  declare dateTime: CreationOptional<Date>;
+  declare EventDetailId: ForeignKey<DetailSnapshotId>;
+  declare EventDetail: NonAttribute<DetailSnapshot>;
+  declare DeviceId: ForeignKey<DeviceId>;
+  declare fileName?: NonAttribute<string>;
+  declare Device?: NonAttribute<Device>;
+  declare env: CreationOptional<EventEnv>;
 
-export interface EventStatic extends ModelStaticCommon<Event> {
-  query: (
-    userId?: UserId,
-    startTime?: string,
-    endTime?: string,
-    deviceId?: DeviceId,
-    offset?: number,
-    limit?: number,
-    latest?: boolean,
-    options?: QueryOptions,
-    includeCount?: boolean
-  ) => Promise<Event[] | { rows: Event[]; count: number }>;
-  latestEvents: (
-    userId?: UserId,
-    deviceId?: DeviceId,
-    options?: QueryOptions
-  ) => Promise<Event[]>;
-}
-
-export default function (sequelize, DataTypes) {
-  const name = "Event";
-
-  const attributes = {
-    dateTime: DataTypes.DATE,
-    env: {
-      type: Sequelize.ENUM("tc2-dev", "tc2-test", "tc2-prod", "unknown"),
-      defaultValue: "unknown",
-    },
-  };
-
-  const Event = sequelize.define(name, attributes) as unknown as EventStatic;
-
-  //---------------
-  // CLASS METHODS
-  //---------------
-  const models = sequelize.models;
-
-  Event.addAssociations = function (models) {
-    models.Event.belongsTo(models.DetailSnapshot, {
-      as: "EventDetail",
-      foreignKey: "EventDetailId",
-    });
-    models.Event.belongsTo(models.Device);
+  declare static associations: {
+    Device: BelongsTo<Device>;
+    EventDetail: BelongsTo<DetailSnapshot>;
   };
 
   /**
    * Return one or more events for a user matching the query
    * arguments given.
    */
-  Event.query = async function (
-    userId,
-    startTime,
-    endTime,
-    deviceId,
-    offset,
-    limit,
-    latestFirst,
-    options,
-    includeCount,
+  static async query(
+    userId: UserId,
+    startTime?: string,
+    endTime?: string,
+    deviceId?: DeviceId,
+    offset?: number,
+    limit?: number,
+    latestFirst?: boolean,
+    eventType?: string,
+    includeCount?: boolean,
   ): Promise<Event[] | { rows: Event[]; count: number }> {
-    const where: any = {};
+    const where: Sequelize.WhereOptions<Event> = {};
     offset = offset || 0;
     limit = limit || 100;
 
     if (startTime || endTime) {
-      let dateTime;
-      if (options && options.useCreatedDate) {
-        dateTime = where.createdAt = {};
-      } else {
-        dateTime = where.dateTime = {};
-      }
+      let dateTime = {};
       if (startTime) {
-        dateTime[Op.gte] = startTime;
+        dateTime = {
+          [Op.gte]: startTime,
+        };
       }
       if (endTime) {
-        dateTime[Op.lt] = endTime;
+        dateTime = {
+          ...(dateTime || {}),
+          [Op.lt]: endTime,
+        };
       }
+      where.dateTime = dateTime;
     }
 
-    if (deviceId) {
-      where.DeviceId = deviceId;
+    const eventWhere: Sequelize.WhereOptions = {};
+    if (eventType) {
+      eventWhere.type = eventType;
     }
-    const eventWhere: any = {};
-    if (options && options.eventType) {
-      if (Array.isArray(options.eventType)) {
-        eventWhere.type = {};
-        eventWhere.type[Op.in] = options.eventType;
-      } else {
-        eventWhere.type = options.eventType;
-      }
-    }
-
-    let order: (string | string[])[] = ["dateTime"];
+    let order: Sequelize.Order = ["dateTime"];
     if (latestFirst) {
       order = [["dateTime", "DESC"]];
     }
-    let user;
-    if (userId) {
-      // NOTE: This function is sometimes called by scripts without a user
-      user = await models.User.findByPk(userId);
+    const user = await User.findByPk(userId);
+    if (deviceId) {
+      where.DeviceId = deviceId;
+    } else if (!user.hasGlobalRead()) {
+      const allDeviceIds = await user.getDeviceIds();
+      where.DeviceId = { [Op.in]: allDeviceIds };
     }
-    const result = await this[includeCount ? "findAndCountAll" : "findAll"]({
-      where: {
-        [Op.and]: [
-          where, // User query
-          // FIXME: Move permissions stuff to middleware
-          (options && options.admin) || (options && options.admin && !!deviceId)
-            ? ""
-            : await user.getWhereDeviceVisible(), // can only see devices they should
-        ],
-      },
+    return await this[includeCount ? "findAndCountAll" : "findAll"]({
+      where,
       order,
       include: [
         {
-          model: models.DetailSnapshot,
+          model: DetailSnapshot,
           as: "EventDetail",
           attributes: ["type", "details"],
           where: eventWhere,
         },
         {
           required: !!deviceId,
-          model: models.Device,
+          model: Device,
           attributes: ["deviceName"],
         },
       ],
@@ -170,76 +123,84 @@ export default function (sequelize, DataTypes) {
       limit,
       offset,
     });
-    return result;
-  };
+  }
 
   /**
    * Return the latest event of each type grouped by device id
    */
-  Event.latestEvents = async function (userId, deviceId, options) {
-    const where: any = {};
-
-    if (deviceId) {
-      where.DeviceId = deviceId;
-    }
-    const eventWhere: any = {};
-    if (options && options.eventType) {
-      if (Array.isArray(options.eventType)) {
-        eventWhere.type = {};
-        eventWhere.type[Op.in] = options.eventType;
-      } else {
-        eventWhere.type = options.eventType;
-      }
-    }
-
-    const order = [
-      ["EventDetail", "type", "DESC"],
-      ["DeviceId", "DESC"],
-      ["dateTime", "DESC"],
-    ];
-
-    let user;
-    if (userId) {
-      // NOTE - This function is called by scripts without supplying a user.
-      user = await models.User.findByPk(userId);
-    }
+  static async latestEventsOfTypes(eventTypes: string[]): Promise<Event[]> {
+    // This is currently only called by the stopped-devices report, and only ever called as admin.
     return this.findAll({
-      where: {
-        [Op.and]: [
-          where, // User query
-          // FIXME: Move permissions stuff to middleware (though this function is invoked via scripts also, so maybe not?)
-          // FIXME: Weird behaviour that this is required if a deviceId is supplied for tests to pass...
-          options && options.admin ? "" : await user.getWhereDeviceVisible(), // can only see devices they should
-        ],
-      },
-      order,
+      where: {},
       include: [
         {
-          model: models.DetailSnapshot,
+          model: DetailSnapshot,
           as: "EventDetail",
           attributes: ["type", "details"],
-          where: eventWhere,
+          where: { type: { [Op.in]: eventTypes } },
         },
         {
-          model: models.Device,
+          model: Device,
           attributes: ["id", "deviceName", "GroupId"],
           include: [
             {
-              model: models.Group,
+              model: Group,
               attributes: ["groupName", "id"],
             },
           ],
         },
       ],
       attributes: [
-        Sequelize.literal(
-          "DISTINCT ON(\"Event\".\"DeviceId\",\"EventDetail\".\"type\") 1",
-        ), // the 1 is some kind of hack that makes this work in sequelize
+        // the 1 is some kind of hack that makes this work in sequelize
+        [
+          Sequelize.literal(
+            'DISTINCT ON("Event"."DeviceId", "EventDetail"."type") 1',
+          ),
+          "device_id__event_type",
+        ],
         "id",
         "dateTime",
         "DeviceId",
       ],
+      order: [
+        ["EventDetail", "type", "DESC"],
+        ["DeviceId", "DESC"],
+        ["dateTime", "DESC"],
+      ],
     });
-  };
-  return Event;
+  }
+
+  static addAssociations() {
+    this.belongsTo(DetailSnapshot, {
+      as: "EventDetail",
+      foreignKey: "EventDetailId",
+    });
+    this.belongsTo(Device);
+  }
 }
+export const init = (sequelizeInstance: Sequelize.Sequelize) => {
+  const attributes = {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE,
+
+    dateTime: DataTypes.DATE,
+    env: {
+      type: Sequelize.ENUM("tc2-dev", "tc2-test", "tc2-prod", "unknown"),
+      defaultValue: "unknown",
+    },
+  };
+  Event.init(attributes, {
+    tableName: "Events",
+    sequelize: sequelizeInstance,
+    name: {
+      singular: "Event",
+      plural: "Events",
+    },
+  });
+  return Event;
+};

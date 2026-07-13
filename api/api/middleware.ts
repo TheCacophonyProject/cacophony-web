@@ -16,31 +16,41 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import type {
+import {
   CustomValidator,
-  Result,
   ValidationChain,
+  ContextRunner,
+  Meta,
 } from "express-validator";
-import { body, matchedData, query, validationResult } from "express-validator";
-import type { ModelStaticCommon } from "@models";
-import modelsInit from "../models/index.js";
+import { body, query } from "express-validator";
+import { ModelStaticCommon } from "@/models/index.js";
 import { format } from "util";
 import log from "../logging.js";
-import customErrors, {
-  ClientError,
-  UnprocessableError,
-  ValidationError,
-} from "./customErrors.js";
+import { ClientError, ValidationError } from "./customErrors.js";
 import type { NextFunction, Request, Response } from "express";
-import type { DecodedJWTToken } from "./auth.js";
 import levenshteinEditDistance from "levenshtein-edit-distance";
+import { User } from "@/models/User.js";
+import { Recording } from "@models/Recording.js";
+import { File } from "@/models/File.js";
+import { DetailSnapshot } from "@models/DetailSnapshot.js";
+import { Model } from "sequelize";
+import {
+  ErrorMessage,
+  FieldInstance,
+  FieldMessageFactory,
+  FieldValidationError,
+  UnknownFieldInstance,
+  ValidationError as ExpressValidationError,
+} from "express-validator/lib/base.js";
+import { extractUnknownFields } from "@api/validation-middleware.js";
+import { Context } from "express-validator/lib/context.js";
+import { ResultWithContextImpl } from "express-validator/lib/chain/index.js";
+import { Device } from "@models/Device.js";
 
-const models = await modelsInit();
-
-export const getModelByIdChain = <T>(
-  modelType: ModelStaticCommon<T>,
+export const getModelByIdChain = (
+  modelType: typeof ModelStaticCommon<Model>,
   fieldName: string,
-  checkFunc,
+  checkFunc: ValidationMiddleware,
 ) => {
   return checkFunc(fieldName).custom(async (val, { req }) => {
     log.info("Get id %s for %s", val, modelTypeName(modelType));
@@ -55,8 +65,8 @@ export const getModelByIdChain = <T>(
   });
 };
 
-export const getModelById = <T>(
-  modelType: ModelStaticCommon<T>,
+export const getModelById = (
+  modelType: typeof ModelStaticCommon<Model>,
 ): CustomValidator => {
   return async (id, { req }) => {
     log.info("Get model by id %s for %s", id, modelTypeName(modelType));
@@ -74,18 +84,18 @@ export const getModelById = <T>(
 
 type ValidationMiddleware = (
   fields?: string | string[] | undefined,
-  message?: any
+  message?: string,
 ) => ValidationChain;
 
 export const getUserByEmail = function (
   checkFunc: ValidationMiddleware,
-  fieldName: string = "email",
+  fieldName = "email",
 ): ValidationChain {
   return checkFunc(fieldName)
     .isEmail()
     .custom(async (email: string, { req }) => {
       email = email.toLowerCase();
-      const user = await models.User.getFromEmail(email);
+      const user = await User.getFromEmail(email);
       if (user === null) {
         throw new Error(`Could not find user with email: ${email}`);
       }
@@ -94,11 +104,15 @@ export const getUserByEmail = function (
     });
 };
 
-export function modelTypeName(modelType: ModelStaticCommon<any>): string {
+export function modelTypeName<T extends Model>(
+  modelType: typeof ModelStaticCommon<T>,
+): string {
   return modelType.options.name.singular.toLowerCase();
 }
 
-export function modelTypeNamePlural(modelType: ModelStaticCommon<any>): string {
+export function modelTypeNamePlural(
+  modelType: typeof ModelStaticCommon<Model>,
+): string {
   return modelType.options.name.plural.toLowerCase();
 }
 
@@ -121,7 +135,7 @@ export const convertToIdArray = function (idsAsString: string): number[] {
       } else {
         return [val];
       }
-    } catch (error) {
+    } catch (_error) {
       return [];
     }
   }
@@ -130,7 +144,7 @@ export const convertToIdArray = function (idsAsString: string): number[] {
 
 export const isDateArray = function (
   fieldName: string,
-  customError,
+  customError: FieldMessageFactory | ErrorMessage,
 ): ValidationChain {
   return body(fieldName, customError)
     .exists()
@@ -154,24 +168,20 @@ export const isDateArray = function (
 };
 
 export function getUserById(checkFunc: ValidationMiddleware): ValidationChain {
-  return getModelByIdChain(models.User, "userId", checkFunc);
+  return getModelByIdChain(User, "userId", checkFunc);
 }
 
 export const getDetailSnapshotById = (
   checkFunc: ValidationMiddleware,
   paramName: string,
-): ValidationChain =>
-  getModelByIdChain(models.DetailSnapshot, paramName, checkFunc);
+): ValidationChain => getModelByIdChain(DetailSnapshot, paramName, checkFunc);
 
 export const getFileById = (checkFunc: ValidationMiddleware): ValidationChain =>
-  getModelByIdChain(models.File, "id", checkFunc);
+  getModelByIdChain(File, "id", checkFunc);
 
 export const getRecordingByIdChain = (
   checkFunc: ValidationMiddleware,
-): ValidationChain => getModelByIdChain(models.Recording, "id", checkFunc);
-
-export const getRecordingById = (): CustomValidator =>
-  getModelById(models.Recording);
+): ValidationChain => getModelByIdChain(Recording, "id", checkFunc);
 
 export const isValidName = function (
   checkFunc: ValidationMiddleware,
@@ -185,26 +195,11 @@ export const isValidName = function (
     .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/);
 };
 
-export const isValidName2 = (val) =>
-  val
-    .isLength({ min: 3 })
-    .matches(/(?=.*[A-Za-z])^[a-zA-Z0-9]+([_ \-a-zA-Z0-9])*$/)
-    .withMessage(
-      "password must only contain letters, numbers, dash, underscore and space.  It must contain at least one letter",
-    );
-
 export const checkNewPassword = function (field: string): ValidationChain {
   return body(field, "Password must be at least 8 characters long").isLength({
     min: 8,
   });
 };
-
-export const checkNewPassword2 = (val) =>
-  val
-    .isLength({
-      min: 8,
-    })
-    .withMessage("Password must be at least 8 characters long");
 
 export const viewMode = function (): ValidationChain {
   // All api listing commands will automatically return all results if the user is a super-admin
@@ -232,13 +227,16 @@ export const parseJSON = function (
   return checkFunc(field).custom(parseJSONInternal);
 };
 
-export const parseJSONInternal = (value, { req, location, path }) => {
+export const parseJSONInternal: CustomValidator = (
+  value,
+  { req, location, path },
+) => {
   if (typeof req[location][path] === "string") {
     let result = value;
     while (typeof result === "string") {
       try {
         result = JSON.parse(result);
-      } catch (e) {
+      } catch (_e) {
         throw new Error(format("Could not parse JSON field %s.", path));
       }
     }
@@ -271,7 +269,7 @@ export const parseArray = function (
     let arr;
     try {
       arr = JSON.parse(value);
-    } catch (e) {
+    } catch (_e) {
       throw new Error(format("Could not parse JSON field %s.", path));
     }
     if (Array.isArray(arr)) {
@@ -286,224 +284,184 @@ export const parseArray = function (
   });
 };
 
-export const parseBool = function (value: any): boolean {
+export const parseBool = function (value: unknown): boolean {
   if (!value) {
     return false;
   }
-  return value.toString().toLowerCase() == "true";
-};
-
-export const requestWrapper = (fn) => (request, response: Response, next) => {
-  let logMessage = format("%s %s", request.method, request.url);
-  if (request.user) {
-    logMessage = format(
-      "%s (user: %s)",
-      logMessage,
-      request.user.get("userName"),
-    );
-  } else if (request.device) {
-    logMessage = format(
-      "%s (device: %s)",
-      logMessage,
-      request.device.get("deviceName"),
-    );
+  if (typeof value === "string" || typeof value === "object") {
+    return value.toString().toLowerCase() === "true";
   }
-  log.info(logMessage);
-  const validationErrors = validationResult(request);
-  if (!validationErrors.isEmpty()) {
-    log.warning(
-      "%s",
-      validationErrors
-        .array()
-        .map((item) => JSON.stringify(item))
-        .join(", "),
-    );
-    throw new customErrors.ValidationError(validationErrors);
-  } else {
-    Promise.resolve(fn(request, response, next)).catch(next);
-  }
+  return false;
 };
 
 export const expectedTypeOf =
   (...type: string[]) =>
-  (val) => {
+  (val: unknown, meta: Meta) => {
     let typeOf = typeof val as string;
     if (typeOf === "object" && Array.isArray(val)) {
       typeOf = "array";
     }
     if (type.length > 1) {
-      return `expected one of ${(type as string[])
+      return `${meta.location}.${meta.path}: Expected one of ${(
+        type as string[]
+      )
         .map((t) => `'${t}'`)
         .join(", ")}, got ${typeOf}`;
     }
-    return `expected ${type[0]}, got ${typeOf} : (${val})`;
+    if (typeOf === "undefined" && val === undefined) {
+      return `${meta.location}.${meta.path}: Expected ${type[0]}, got ${typeOf}`;
+    }
+    return `${meta.location}.${meta.path}: Expected ${type[0]}, got ${typeOf} : (${val})`;
   };
 
-export const isIntArray = (val) => {
+export const isIntArray = (val: unknown) => {
   if (Array.isArray(val)) {
     return !(val as string[]).some(
       (v) => isNaN(parseInt(v)) || parseInt(v).toString() !== String(v),
     );
   }
-  return !(isNaN(parseInt(val)) || parseInt(val).toString() !== String(val));
+  return !(
+    isNaN(parseInt(val as string)) ||
+    parseInt(val as string).toString() !== String(val)
+  );
 };
 
-const checkForUnknownFields = (
-  validators,
-  req: Request,
-): { unknownFields: string[]; suggestions: Record<string, string> } => {
-  const allowedFieldsKnown = validators.reduce((fields, rule) => {
-    if (rule.fieldNames) {
-      fields.push(...rule.fieldNames);
-    } else if (rule.builder) {
-      for (const field of rule.builder.fields) {
-        fields.push(field);
-      }
-    }
-    return fields;
-  }, []);
-  const matchedAllowedFields = Object.keys(
-    matchedData(req, { onlyValidData: false, includeOptionals: true }),
-  );
-  const allowed = new Set();
-  for (const field of allowedFieldsKnown) {
-    allowed.add(field);
-  }
-  for (const field of matchedAllowedFields) {
-    allowed.add(field);
-  }
-  const allowedFields: string[] = Array.from(
-    allowed.keys(),
-  ) as unknown as string[];
-
-  // Check for all common request inputs
-  let requestInput;
-  // TODO Only process the body if the content-type is json
-  if (req.headers["content-type"] !== "application/octet-stream") {
-    requestInput = { ...req.query, ...req.params, ...req.body };
-  } else {
-    requestInput = { ...req.query, ...req.params };
-  }
-  const requestFields = Object.keys(requestInput);
-  const unusedAllowedFields = allowedFields.filter(
-    (field) => !requestFields.includes(field),
-  );
-  const unknownFields = requestFields.filter(
-    (item) => !allowedFields.includes(item),
-  );
-  const suggestions = {};
-  if (unusedAllowedFields.length && unknownFields.length) {
+const getSuggestionsForUnknownFields = (
+  unusedKnownFields: FieldInstance[],
+  unknownFields: UnknownFieldInstance[],
+) => {
+  const suggestions: Record<string, FieldInstance> = {};
+  if (unusedKnownFields.length && unknownFields.length) {
     // We have unused allowed fields, see if any of our unknown fields is potentially a typo
     // of an allowed field.
     for (const unknownField of unknownFields) {
       let bestDistance = 3;
-      for (const unusedField of unusedAllowedFields) {
+      for (const unusedField of unusedKnownFields) {
         const distance = levenshteinEditDistance(
-          unknownField,
-          unusedField,
+          unknownField.path,
+          unusedField.path,
           true,
         );
         if (distance < bestDistance) {
           bestDistance = distance;
-          suggestions[unknownField] = unusedField;
+          suggestions[unknownField.path] = unusedField;
         }
       }
     }
   }
-  return { unknownFields, suggestions };
+  return suggestions;
 };
 
-// sequential processing, stops running validations chain if the previous one have failed.
-export const validateFields = (
-  validations: (
-    | (((req: Request, res: any, next: (err?: any) => void) => void) & {
-        run: (req: Request) => Promise<Result>;
-      })
-    | ValidationChain
-  )[],
-  sequentially: boolean = false,
-) => {
+export const validateFields = (validations: ContextRunner[]) => {
   return async (request: Request, response: Response, next: NextFunction) => {
-    if (sequentially) {
-      for (const validation of validations) {
-        const result = await validation.run(request);
-        if (!result.isEmpty()) {
-          break;
+    const validationPromises = [];
+    for (const validation of validations) {
+      validationPromises.push(validation.run(request));
+    }
+    const validationResults = await Promise.all(validationPromises);
+    const knownFields = [];
+    const context = new Context([], [], [], false, false);
+    const errors: ExpressValidationError[] = [];
+    for (const { result } of validationResults.map((result, index) => ({
+      field: validations[index],
+      result,
+    }))) {
+      knownFields.push(...result.context.getData());
+      errors.push(...result.array());
+    }
+    const unknownFields = extractUnknownFields(request, knownFields);
+    if (unknownFields.length !== 0) {
+      const suggestions = getSuggestionsForUnknownFields(
+        knownFields.filter((field) => field.value === undefined),
+        unknownFields,
+      );
+      context.addError({
+        type: "unknown_fields",
+        req: request,
+        message: `Unknown fields found: ${unknownFields
+          .map((item) => {
+            let field = `'${item.location}.${item.path}'`;
+            if (suggestions[item.path]) {
+              field += ` - did you mean '${suggestions[item.path].location}.${suggestions[item.path].path}'?`;
+            }
+            return field;
+          })
+          .join(", ")}`,
+        fields: unknownFields,
+      });
+    }
+    if (errors.length) {
+      // NOTE: We want to take all the sub-resultWithContext fields and merge them into a single context.
+      for (const error of errors) {
+        switch (error.type) {
+          case "field":
+            context.addError({
+              type: "field",
+              message: error.msg,
+              value: error.value,
+              meta: {
+                req: request,
+                path: error.path,
+                location: error.location,
+                pathValues: [],
+              },
+            });
+            break;
+          case "alternative":
+            context.addError({
+              type: "alternative",
+              message: error.msg,
+              req: request,
+              nestedErrors: error.nestedErrors as FieldValidationError[],
+            });
+            break;
+          case "alternative_grouped":
+            context.addError({
+              type: "alternative_grouped",
+              message: error.msg,
+              req: request,
+              nestedErrors: error.nestedErrors as FieldValidationError[][],
+            });
+            break;
+          case "unknown_fields":
+            // Already handled
+            break;
         }
       }
-    } else {
-      // FIXME - Properly handle nested anyOf groupings.
-      const validationPromises = [];
-      for (const validation of validations) {
-        validationPromises.push(validation.run(request));
-      }
-      await Promise.all(validationPromises);
-      //logger.warning("%s", validationPromises);
     }
-
-    const { unknownFields, suggestions } = checkForUnknownFields(
-      validations,
-      request,
-    );
-    if (unknownFields.length) {
-      return next(
-        new UnprocessableError(
-          `Unknown fields found: ${unknownFields
-            .map((item) => {
-              let field = `'${item}'`;
-              if (suggestions[item]) {
-                field += ` - did you mean '${suggestions[item]}'?`;
-              }
-              return field;
-            })
-            .join(", ")}`,
-        ),
-      );
-    }
-
-    {
-      const logMessage = format("%s %s", request.method, request.url);
-      const requester =
-        response.locals.token &&
-        (response.locals.token as DecodedJWTToken)._type;
-      const requestId =
-        (response.locals.user && response.locals.user.userName) ||
-        (response.locals.device && response.locals.device.devicename) ||
-        (requester && (response.locals.token as DecodedJWTToken).id) ||
-        "unknown";
-
-      // TODO: At this point *if* we have errors, we may want to lookup the userName or deviceName?
-
-      log.info(
-        "\n\t\t NEW REQUEST\n\t\t %s\n\t\t %s: %s%s",
-        logMessage,
-        requester || "unauthenticated",
-        requestId,
-        response.locals.viewAsSuperUser ? "::SUPER_USER" : "",
-      );
-      const validationErrors = validationResult(request);
-      if (!validationErrors.isEmpty()) {
-        return next(new ValidationError(validationErrors));
-      } else {
-        return next();
+    const hasValidationErrors = context.errors.length !== 0;
+    if (hasValidationErrors) {
+      // Pull out full requester for logging at the end of the request.
+      response.locals.hasValidationErrors = true;
+      if (response.locals.user && !response.locals.user.userName) {
+        const user = await User.findByPk(response.locals.user.id);
+        if (user) {
+          response.locals.user = user;
+        }
+      } else if (response.locals.device && !response.locals.device.deviceName) {
+        const device = await Device.findByPk(response.locals.device.id);
+        if (device) {
+          response.locals.device = device;
+        }
       }
     }
+
+    if (hasValidationErrors) {
+      return next(new ValidationError(new ResultWithContextImpl(context)));
+    }
+    return next();
   };
 };
 
 export default {
-  getUserById,
   getDetailSnapshotById,
   getFileById,
   getRecordingById: getRecordingByIdChain,
   isValidName,
-  isValidName2,
   checkNewPassword,
-  checkNewPassword2,
   parseJSON,
   parseArray,
   parseBool,
-  requestWrapper,
   isDateArray,
   getUserByEmail,
   viewMode,

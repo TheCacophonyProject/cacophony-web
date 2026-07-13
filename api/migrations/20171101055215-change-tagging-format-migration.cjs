@@ -1,5 +1,3 @@
-
-
 module.exports = {
   up: async function (queryInterface, Sequelize) {
     await queryInterface.removeColumn("Tags", "trapInteractionTime");
@@ -46,7 +44,7 @@ module.exports = {
         "rabbit",
         "hare",
         "human",
-        "bird"
+        "bird",
       ),
     });
   },

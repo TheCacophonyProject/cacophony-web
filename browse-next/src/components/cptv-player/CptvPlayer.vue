@@ -1,8 +1,18 @@
 <script setup lang="ts">
 import TracksScrubber from "@/components/TracksScrubber.vue";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { type ComputedRef, inject, onBeforeMount, type Ref } from "vue";
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import {
+  computed,
+  type ComputedRef,
+  inject,
+  onBeforeMount,
+  onBeforeUnmount,
+  onMounted,
+  type Ref,
+  ref,
+  useTemplateRef,
+  watch,
+} from "vue";
 import type {
   CptvFrame,
   CptvFrameHeader,
@@ -14,7 +24,11 @@ import {
   formatHeaderInfo,
   renderFrameIntoFrameBuffer,
 } from "./cptv-decoder/frameRenderUtils";
-import { useDevicePixelRatio, useElementSize } from "@vueuse/core";
+import {
+  useDevicePixelRatio,
+  useElementSize,
+  useMediaQuery,
+} from "@vueuse/core";
 import type { ApiTrackTagResponse } from "@typedefs/api/trackTag";
 import type { ApiTrackPosition, ApiTrackResponse } from "@typedefs/api/track";
 import type { RecordingId, TrackId } from "@typedefs/api/common";
@@ -35,26 +49,27 @@ import {
 import {
   clearOverlay,
   drawBottomLeftOverlayLabel,
-  drawBottomRightOverlayLabel,
-  drawRectWithText,
   renderOverlay,
 } from "@/components/cptv-player/overlay-canvas";
 import { rectanglesIntersect } from "@/components/cptv-player/track-merging";
 import type { MotionPath } from "@/components/cptv-player/motion-paths";
 import { motionPathForTrack } from "@/components/cptv-player/motion-paths";
-import type { LoggedInUserAuth, SelectedProject } from "@models/LoggedInUser";
-import { maybeRefreshStaleCredentials } from "@api/fetch";
+import type { SelectedProject } from "@models/LoggedInUser";
 import { type CancelableDelay, delayMs } from "@/utils";
-import { displayLabelForClassificationLabel } from "@api/Classifications";
+import { displayLabelForClassificationLabel } from "@api/classificationsUtils.ts";
 import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils";
-import { getReferenceImageForDeviceAtTime } from "@api/Device.ts";
-import {
-  currentSelectedProject as currentActiveProject,
-  currentUserCreds,
-  currentUserCredsDev,
-} from "@models/provides.ts";
+import { ClientApi } from "@/api";
+import { currentSelectedProject as currentActiveProject } from "@models/provides.ts";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
+import { DEFAULT_AUTH_ID } from "@apiClient/types.ts";
+import {
+  BFormCheckbox,
+  BFormGroup,
+  BProgress,
+  BSpinner,
+} from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
@@ -83,7 +98,9 @@ const props = withDefaults(
     hasPrev?: boolean;
     hasReferencePhoto?: boolean;
     displayHeaderInfo?: boolean;
-    exportRequested?: boolean | "advanced";
+    exportRequested?: boolean | "advanced" | "download";
+    downloadProgress?: number;
+    inTextEditMode?: boolean;
   }>(),
   {
     cptvSize: null,
@@ -92,13 +109,14 @@ const props = withDefaults(
     hasPrev: false,
     hasReferencePhoto: false,
     displayHeaderInfo: false,
+    inTextEditMode: false,
   },
 );
 const PlaybackSpeeds = Object.freeze([0.5, 1, 2, 4, 6]);
 
 let frames: CptvFrame[] = [];
 const backgroundFrame = ref<CptvFrame | null>(null);
-let frameBuffer: Uint8ClampedArray;
+let frameBuffer: Uint8ClampedArray<ArrayBuffer>;
 let cptvDecoder: CptvDecoder;
 
 // TODO: Check http://localhost:5173/onawe-field-trip-2022/visit/unknown/1350085/tracks
@@ -156,9 +174,10 @@ const recordingDateTime = computed<DateTime | null>(() => {
 });
 
 const playbackTimeZeroOne = computed<number>(() => {
-  const fractionalFrame =
-    (1 / (totalPlayableFrames.value - 1) / ticksBetweenDraws.value) *
-    animationTick.value;
+  const frameZeroOne =
+    (performance.now() - lastRedrawTime.value) / timeBetweenRedraw.value +
+    animationTick.value / 10000;
+  const fractionalFrame = frameZeroOne / totalPlayableFrames.value;
   return Math.max(
     0,
     Math.min(
@@ -184,18 +203,10 @@ const emit = defineEmits<{
 }>();
 
 // HTML refs
-const canvas = ref<HTMLCanvasElement | null>(null);
+const canvas: Ref<HTMLCanvasElement | null> = useTemplateRef("canvas");
+const playerChrome: Ref<HTMLDivElement | null> = useTemplateRef("playerChrome");
+const { height: chromeHeight } = useElementSize(playerChrome);
 const { width: canvasWidth, height: canvasHeight } = useElementSize(canvas);
-
-// Trailcam image ratio
-const imageBitmap = ref<ImageBitmap | null>(null);
-const imageRatio = computed<number>(() => {
-  if (imageBitmap.value) {
-    return imageBitmap.value.width / imageBitmap.value.height;
-  } else {
-    return 1;
-  }
-});
 
 watch(canvasWidth, () => {
   animationTick.value = 0;
@@ -231,7 +242,6 @@ watch(
   },
 );
 
-const container = ref<HTMLDivElement | null>(null);
 const frameNumField = ref<HTMLDivElement | null>(null);
 const ffcSecsAgo = ref<HTMLDivElement | null>(null);
 const overlayCanvas = ref<HTMLCanvasElement | null>(null);
@@ -259,7 +269,7 @@ const animationFrame = ref<number>(0);
 
 const motionPaths = computed<MotionPath[]>(() => {
   return (
-    (props.recording?.tracks
+    (tracksIntermediate.value
       .map((track) => motionPathForTrack(track, scale.value))
       .filter((m) => m !== null) as MotionPath[]) || []
   );
@@ -356,7 +366,6 @@ const setTimeAndRedraw = async ({
   timeZeroOne?: number;
   frameNumToDraw?: number;
 }) => {
-  //console.log(timeZeroOne);
   // If the user is already seeking, don't queue up new seek events until that download progress completes.
   if (!seekingInProgress.value) {
     isShowingBackgroundFrame.value = false;
@@ -450,6 +459,15 @@ const requestNextRecording = () => {
     emit("request-next-recording");
   } else {
     showAtEndOfSearch.value = true;
+  }
+};
+
+const onTouchMove = (e: TouchEvent) => {
+  if ("layerX" in e && e.target) {
+    const width = (e.target as HTMLInputElement).getBoundingClientRect().width;
+    const x = e.layerX as number;
+    referenceOpacity.value = Math.max(0, Math.min(1, x / width));
+    updateSavedOpacity(e as unknown as InputEvent);
   }
 };
 
@@ -666,53 +684,57 @@ const renderFrame = (
     } else {
       [min, max] = minMaxForFrame(frameData);
     }
-    if (!silhouetteMode.value) {
-      // Example: #1284537 for dynamic range clamping
-      // #1284559 maybe not working?
-      const range = max - min;
-      const colourMapToUse = colourMap.value[1];
-      const fd = frameData.imageData;
-      const frameBufferView = new Uint32Array(frameBuffer.buffer);
-      const len = frameBufferView.length;
-      for (let i = 0; i < len; i++) {
-        const index = ((fd[i] - min) / range) * 255.0;
-        const n = Math.min(255, Math.max(0, index));
-        const f = n << 0;
-        const ff = f == n ? f : f + 1;
-        frameBufferView[i] = colourMapToUse[ff];
-      }
-    } else {
-      // Render silhouette mode
-      if (backgroundFrame.value) {
-        const [min, max] = minMaxForFrame(backgroundFrame.value as CptvFrame);
-        const range = max - min;
-        const colourMapToUse = colourMap.value[1];
-        const fd = frameData.imageData;
-        const bg = (backgroundFrame.value as CptvFrame).imageData;
-        const threshold = 45; // Should be scaled by range.
-        const frameBufferView = new Uint32Array(frameBuffer.buffer);
-        const len = frameBufferView.length;
-        const red = (255 << 24) | (0 << 16) | (0 << 8) | 255;
-        for (let i = 0; i < len; i++) {
-          const px = Math.abs(Number(fd[i]) - Number(bg[i]));
-          if (px < threshold) {
-            const index = ((fd[i] - min) / range) * 255.0;
-            const n = Math.min(255, Math.max(0, index));
-            const f = n << 0;
-            const ff = f == n ? f : f + 1;
-            frameBufferView[i] = colourMapToUse[ff];
-          } else {
-            frameBufferView[i] = red;
-          }
-        }
-      }
+    //if (!silhouetteMode.value) {
+    // Example: #1284537 for dynamic range clamping
+    // #1284559 maybe not working?
+    const range = max - min;
+    const colourMapToUse = colourMap.value[1];
+    const fd = frameData.imageData;
+    const frameBufferView = new Uint32Array(frameBuffer.buffer);
+    const len = frameBufferView.length;
+    for (let i = 0; i < len; i++) {
+      const index = ((fd[i] - min) / range) * 255.0;
+      const n = Math.min(255, Math.max(0, index));
+      const f = n << 0;
+      const ff = f == n ? f : f + 1;
+      frameBufferView[i] = colourMapToUse[ff];
     }
+    // } else {
+    //   // Render silhouette mode
+    //   if (backgroundFrame.value) {
+    //     const [min, max] = minMaxForFrame(backgroundFrame.value as CptvFrame);
+    //     const range = max - min;
+    //     const colourMapToUse = colourMap.value[1];
+    //     const fd = frameData.imageData;
+    //     const bg = (backgroundFrame.value as CptvFrame).imageData;
+    //     const threshold = 45; // Should be scaled by range.
+    //     const frameBufferView = new Uint32Array(frameBuffer.buffer);
+    //     const len = frameBufferView.length;
+    //     const red = (255 << 24) | (0 << 16) | (0 << 8) | 255;
+    //     for (let i = 0; i < len; i++) {
+    //       const px = Math.abs(Number(fd[i]) - Number(bg[i]));
+    //       if (px < threshold) {
+    //         const index = ((fd[i] - min) / range) * 255.0;
+    //         const n = Math.min(255, Math.max(0, index));
+    //         const f = n << 0;
+    //         const ff = f == n ? f : f + 1;
+    //         frameBufferView[i] = colourMapToUse[ff];
+    //       } else {
+    //         frameBufferView[i] = red;
+    //       }
+    //     }
+    //   }
+    // }
 
     cancelAnimationFrame(animationFrame.value);
     animationFrame.value = requestAnimationFrame(() => {
       drawFrame(
         canvasContext.value,
-        new ImageData(frameBuffer, frameWidth.value, frameHeight.value),
+        new ImageData(
+          frameBuffer as Uint8ClampedArray<ArrayBuffer>,
+          frameWidth.value,
+          frameHeight.value,
+        ),
         frameNumToRender,
         force,
       );
@@ -852,22 +874,24 @@ const getPositions = (
   };
   // Add a bit of breathing room around our boxes
   const padding = 0; // 5
-  return ((positions || []) as ApiTrackPosition[]).map((position: ApiTrackPosition) => [
-    position.order ||
-      (position.frameTime && frameAtTime(position.frameTime - timeOffset)) ||
-      0,
-    [
-      Math.max(0, position.x - padding),
-      Math.max(0, position.y - padding),
-      position.x + position.width + padding,
-      position.y + position.height + padding,
+  return ((positions || []) as ApiTrackPosition[]).map(
+    (position: ApiTrackPosition) => [
+      position.order ||
+        (position.frameTime && frameAtTime(position.frameTime - timeOffset)) ||
+        0,
+      [
+        Math.max(0, position.x - padding),
+        Math.max(0, position.y - padding),
+        position.x + position.width + padding,
+        position.y + position.height + padding,
+      ],
     ],
-  ]);
+  );
 };
 
 const tracksIntermediate = computed<IntermediateTrack[]>(() => {
   return (
-    props.recording?.tracks.map(({ positions, tags, id }) => {
+    props.recording?.tracks?.map(({ positions, tags, id }) => {
       let what = null;
       let justTaggedFalseTrigger = false;
       if (tags) {
@@ -1168,7 +1192,11 @@ const exportMp4 = async (useExportOptions: TrackExportOption[] = []) => {
     }
 
     download(
-      URL.createObjectURL(new Blob([uint8Array], { type: "video/mp4" })),
+      URL.createObjectURL(
+        new Blob([uint8Array as ArrayBufferView<ArrayBuffer>], {
+          type: "video/mp4",
+        }),
+      ),
       `${recordingIdSuffix}${date.toFormat("dd-MM-yyyy--HH-mm-ss")}`,
     );
     isExporting.value = false;
@@ -1193,6 +1221,9 @@ const _ambientTemperature = computed<string | null>(() => {
 });
 
 const currentAbsoluteTime = computed<string | null>(() => {
+  if (isShowingBackgroundFrame.value) {
+    return "Background frame";
+  }
   if (recordingDateTime.value) {
     return (
       recordingDateTime.value
@@ -1209,96 +1240,46 @@ const currentAbsoluteTime = computed<string | null>(() => {
   return null;
 });
 
-const drawTrailcamImageAndOverlay = () => {
-  if (overlayContext.value && imageBitmap.value) {
-    clearCanvases();
-    const ctx = overlayContext.value;
-    const canvasWidth = ctx.canvas.width;
-    const canvasHeight = ctx.canvas.height;
-    const restrictedHeight = Math.floor(canvasWidth / imageRatio.value);
-    const offsetY = (canvasHeight - restrictedHeight) * 0.5;
-    overlayContext.value.drawImage(
-      imageBitmap.value,
-      0,
-      offsetY / pixelRatio.value,
-      canvasWidth / pixelRatio.value,
-      restrictedHeight / pixelRatio.value,
-    );
-    if (props.recording && props.recording.tracks) {
-      for (const track of props.recording.tracks) {
-        if (track.positions && track.positions.length) {
-          const pos = { ...track.positions[0] };
-          pos.y = 1 - pos.y - pos.height;
-          pos.x = (pos.x * canvasWidth) / pixelRatio.value;
-          pos.height = (pos.height * restrictedHeight) / pixelRatio.value;
-          pos.y = (pos.y * restrictedHeight) / pixelRatio.value;
-          pos.width = (pos.width * canvasWidth) / pixelRatio.value;
-          const authTag = getAuthoritativeTagForTrack(track.tags);
-          let what = "";
-          let aiTag = false;
-          if (authTag) {
-            what = authTag[0];
-            aiTag = authTag[1];
-          }
-          if (what) {
-            drawRectWithText(
-              ctx,
-              track.id,
-              [pos.x, pos.y, pos.x + pos.width, pos.y + pos.height],
-              displayLabelForClassificationLabel(what, aiTag),
-              false,
-              props.recording.tracks,
-              track,
-              pixelRatio.value,
-              1,
-              restrictedHeight,
-            );
-          }
-        }
-      }
-    }
+const elapsedTimeString = computed<string>(() => {
+  if (isShowingBackgroundFrame.value) {
+    return "";
   }
-};
+  return `${elapsedTime.value} / ${formatTime(
+    Math.max(currentTime.value, actualDuration.value),
+  )}`;
+});
 
 const updateOverlayCanvas = (frameNumToRender: number) => {
   if (overlayContext.value) {
-    if (currentRecordingType.value === "cptv") {
-      renderOverlay(
-        overlayContext.value,
-        scale.value,
-        secondsSinceLastFFC.value,
-        false,
-        frameNumToRender,
-        tracksIntermediate.value,
-        props.canSelectTracks,
-        props.currentTrack,
-        motionPathMode.value ? motionPaths.value : [],
-        pixelRatio.value,
-        tracksByFrame.value,
-        framesByTrack.value,
-        trackExportOptions.value,
-      );
+    renderOverlay(
+      overlayContext.value,
+      scale.value,
+      secondsSinceLastFFC.value,
+      false,
+      frameNumToRender,
+      tracksIntermediate.value,
+      props.canSelectTracks,
+      props.currentTrack,
+      motionPathMode.value ? motionPaths.value : [],
+      pixelRatio.value,
+      tracksByFrame.value,
+      framesByTrack.value,
+      trackExportOptions.value,
+    );
 
-      {
-        const time = `${elapsedTime.value} / ${formatTime(
-          Math.max(currentTime.value, actualDuration.value),
-        )}`;
-        drawBottomRightOverlayLabel(
-          time,
-          overlayContext.value,
-          pixelRatio.value,
-        );
-        // Draw time and temperature in
-        // overlayContext.
-        drawBottomLeftOverlayLabel(
-          currentAbsoluteTime.value,
-          overlayContext.value,
-          pixelRatio.value,
-        );
-      }
-    } else {
-      drawTrailcamImageAndOverlay();
-    }
+    // {
+    //   const time = `${elapsedTime.value} / ${formatTime(
+    //     Math.max(currentTime.value, actualDuration.value),
+    //   )}`;
+    //   drawBottomRightOverlayLabel(time, overlayContext.value, pixelRatio.value);
+    //   // Draw time and temperature in
+    //   // overlayContext.
+    //   drawBottomLeftOverlayLabel(
+    //     currentAbsoluteTime.value,
+    //     overlayContext.value,
+    //     pixelRatio.value,
+    //   );
+    // }
   }
 };
 
@@ -1314,13 +1295,26 @@ const ticksBetweenDraws = computed<number>(() => {
   );
 });
 
-const shouldRedrawThisTick = computed<boolean>(() => {
-  return (
-    (animationTick.value + (playing.value ? 1 : 0)) %
-      ticksBetweenDraws.value ===
-    0
-  );
+const lastRedrawTime = ref<number>(performance.now());
+const timeSinceLastRedraw = computed(() => {
+  return performance.now() - lastRedrawTime.value;
 });
+const timeBetweenRedraw = computed<number>(() => {
+  return 115 / speedMultiplier.value;
+});
+
+const shouldRedrawThisTick = () => {
+  const now = performance.now();
+  if (!playing.value) {
+    lastRedrawTime.value = now;
+    return false;
+  }
+  if (now - lastRedrawTime.value < timeBetweenRedraw.value) {
+    return false;
+  }
+  lastRedrawTime.value = now;
+  return true;
+};
 
 watch(playing, async (nextPlaying: boolean) => {
   if (nextPlaying) {
@@ -1384,11 +1378,12 @@ const referenceOpacity = ref<number>(0.3);
 const loadReferenceImageUrl = async () => {
   const rec = props.recording as ApiRecordingResponse;
   // Load the reference photo.
-  const referenceImageResponse = await getReferenceImageForDeviceAtTime(
-    rec.deviceId,
-    new Date(rec.recordingDateTime),
-    true,
-  );
+  const referenceImageResponse =
+    await ClientApi.Devices.getReferenceImageForDeviceAtTime(
+      rec.deviceId,
+      new Date(rec.recordingDateTime),
+      true,
+    );
   if (referenceImageResponse.success) {
     referenceImageURL.value = URL.createObjectURL(
       referenceImageResponse.result,
@@ -1398,7 +1393,10 @@ const loadReferenceImageUrl = async () => {
 
 const toggleReferencePhotoComparison = async () => {
   showingReferencePhoto.value = !showingReferencePhoto.value;
-  window.localStorage.setItem("cptv-player-show-reference-image", showingReferencePhoto.value ? "true" : "false");
+  window.localStorage.setItem(
+    "cptv-player-show-reference-image",
+    showingReferencePhoto.value ? "true" : "false",
+  );
   if (showingReferencePhoto.value) {
     await loadReferenceImageUrl();
   }
@@ -1540,11 +1538,11 @@ const toggleBackground = async (): Promise<void> => {
       );
       cancelAnimationFrame(animationFrame.value);
       if (clearOverlay(overlayContext.value, pixelRatio.value)) {
-        drawBottomLeftOverlayLabel(
-          "Background frame",
-          overlayContext.value,
-          pixelRatio.value,
-        );
+        // drawBottomLeftOverlayLabel(
+        //   "Background frame",
+        //   overlayContext.value,
+        //   pixelRatio.value,
+        // );
       }
     }
   }
@@ -1670,34 +1668,42 @@ const pollFrameTimes = () => {
   }
 };
 
-const handleKeyboardControls = (event: KeyboardEvent) => {
-  if (event.code === "Space" && !event.repeat) {
-    togglePlayback();
-  } else if (event.code === "ArrowRight") {
-    if (!event.altKey) {
-      stepForward();
-    } else if (!event.shiftKey) {
-      requestNextRecording();
-    } else {
-      requestNextVisit();
-    }
-  } else if (event.code === "ArrowLeft") {
-    if (!event.altKey) {
-      stepBackward();
-    } else if (!event.shiftKey) {
-      requestPrevRecording();
-    } else {
-      requestPrevVisit();
+const handleKeyboardControls = async (event: KeyboardEvent) => {
+  if (!props.inTextEditMode) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (event.code === "Space" && !event.repeat) {
+      await togglePlayback();
+    } else if (event.code === "ArrowRight") {
+      if (!event.altKey) {
+        await stepForward();
+      } else if (!event.shiftKey) {
+        requestNextRecording();
+      } else {
+        requestNextVisit();
+      }
+    } else if (event.code === "ArrowLeft") {
+      if (!event.altKey) {
+        await stepBackward();
+      } else if (!event.shiftKey) {
+        requestPrevRecording();
+      } else {
+        requestPrevVisit();
+      }
     }
   }
 };
 
 onBeforeMount(() => {
-  const savedReferenceImageOpacity = window.localStorage.getItem("cptv-player-reference-image-opacity");
+  const savedReferenceImageOpacity = window.localStorage.getItem(
+    "cptv-player-reference-image-opacity",
+  );
   if (savedReferenceImageOpacity !== null) {
     referenceOpacity.value = Number(savedReferenceImageOpacity);
   }
-  const showReferenceImage = window.localStorage.getItem("cptv-player-show-reference-image");
+  const showReferenceImage = window.localStorage.getItem(
+    "cptv-player-show-reference-image",
+  );
   if (showReferenceImage !== null) {
     if (showReferenceImage === "true" && props.hasReferencePhoto) {
       showingReferencePhoto.value = true;
@@ -1761,17 +1767,6 @@ watch(
     }
   },
 );
-
-const prodCreds = inject(currentUserCreds) as Ref<LoggedInUserAuth | null>;
-const devCreds = inject(currentUserCredsDev) as Ref<LoggedInUserAuth | null>;
-const creds = computed<LoggedInUserAuth | null>(() => {
-  if (import.meta.env.DEV) {
-    return devCreds.value;
-  }
-  return prodCreds.value;
-});
-
-const currentRecordingType = ref<"cptv" | "image">("cptv");
 let loadTimeout: CancelableDelay;
 const loadNextRecording = async (nextRecordingId: RecordingId) => {
   loadedStream.value = false;
@@ -1791,6 +1786,8 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
   loadTimeout && loadTimeout.cancel();
   cancelAnimationFrame(animationFrame.value);
 
+  /*
+  // NOTE: Checking if tracks can be merged automatically.
   if ((props.recording?.tracks || []).length > 1) {
     console.warn(
       "Can merge",
@@ -1798,21 +1795,24 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
       Object.keys(mergedTracks.value),
     );
   }
-  // Our api token could be out of date
-  await maybeRefreshStaleCredentials();
+   */
+  const apiToken = await ClientApi.getCredentials(DEFAULT_AUTH_ID);
   loadTimeout && loadTimeout.cancel();
-  if (creds.value) {
-    loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
-      nextRecordingId,
-      props.cptvSize || 0,
-      (creds.value as LoggedInUserAuth).apiToken,
-    );
+  if (!apiToken) {
+    console.warn("api token not found.");
+    return;
   }
-
+  loadedStream.value = await cptvDecoder.initWithRecordingIdAndKnownSize(
+    nextRecordingId,
+    props.cptvSize || 0,
+    apiToken,
+  );
   if (loadedStream.value === true) {
     loadTimeout && loadTimeout.cancel();
-    currentRecordingType.value = "cptv";
-    header.value = Object.freeze(await cptvDecoder.getHeader());
+    const h = await cptvDecoder.getHeader();
+    if (typeof h !== "string") {
+      header.value = h;
+    }
     loadTimeout && loadTimeout.cancel();
     const thisHeader = (header.value as CptvHeader) || {
       width: 160,
@@ -1848,35 +1848,11 @@ const loadNextRecording = async (nextRecordingId: RecordingId) => {
       emit("ready-to-play", thisHeader);
       playing.value = true;
     }
-  } else if (loadedStream.value instanceof Blob) {
-    currentRecordingType.value = "image";
-    loadTimeout && loadTimeout.cancel();
-    try {
-      imageBitmap.value = await createImageBitmap(loadedStream.value);
-      drawTrailcamImageAndOverlay();
-    } catch (e) {
-      console.log("Image Error", e);
-    }
-
-    frames = [];
-    header.value = null;
-    resetRecordingNormalisation();
-    buffering.value = false;
-
-    while (!props.recording) {
-      // Wait for the recording data to be loaded if it's not,
-      // so that we can seek to the beginning of any track.
-      loadTimeout = delayMs(10);
-      await loadTimeout.promise;
-    }
-    if (props.recording && props.recording.id === props.recordingId) {
-      await loadedNextRecordingData();
-      loadTimeout && loadTimeout.cancel();
-      emit("ready-to-play", header.value as unknown as CptvHeader);
-      playing.value = true;
-    }
   } else if (typeof loadedStream.value === "string") {
-    streamLoadError.value = loadedStream.value;
+    // FIXME: Show stream load error.
+    // Maybe the CPTV file was deleted.
+    console.warn("Stream load error", loadedStream.value);
+    streamLoadError.value = loadedStream.value as string;
     if (await cptvDecoder.hasStreamError()) {
       await cptvDecoder.free();
       frames = [];
@@ -1958,7 +1934,7 @@ const drawFrame = async (
       animationTick.value = 0;
     }
     // NOTE: respect fps here, render only when we should.
-    if (shouldRedrawThisTick.value || force) {
+    if (shouldRedrawThisTick() || force) {
       // Actually draw the frame contents for this requestAnimationFrame tick.
       context.putImageData(imgData, 0, 0);
       updateOverlayCanvas(frameNumToRender);
@@ -2053,12 +2029,14 @@ const moveRevealHandle = (event: PointerEvent) => {
       ),
       parentBounds.width - handleBounds.width / 2,
     );
+    const xx = (x / parentBounds.width) * 100;
     if (revealSlider.value) {
-      (revealSlider.value as HTMLDivElement).style.width = `${
-        x + handleBounds.width / 2
-      }px`;
+      (revealSlider.value as HTMLDivElement).style.width = `calc(${
+        xx
+      }% + ${handleBounds.width / 2}px
+      )`;
     }
-    target.style.left = `${x}px`;
+    target.style.left = `${(x / parentBounds.width) * 100}%`;
   }
 };
 watch(
@@ -2067,7 +2045,9 @@ watch(
     if (!hasRef && showingReferencePhoto.value) {
       showingReferencePhoto.value = false;
     } else if (hasRef) {
-      const showReferenceImage = window.localStorage.getItem("cptv-player-show-reference-image");
+      const showReferenceImage = window.localStorage.getItem(
+        "cptv-player-show-reference-image",
+      );
       if (showReferenceImage !== null) {
         if (showReferenceImage === "true") {
           showingReferencePhoto.value = true;
@@ -2082,38 +2062,32 @@ watch(
 );
 
 const updateSavedOpacity = (val: InputEvent) => {
-  window.localStorage.setItem("cptv-player-reference-image-opacity", (val.target as HTMLInputElement).value);
+  window.localStorage.setItem(
+    "cptv-player-reference-image-opacity",
+    (val.target as HTMLInputElement).value,
+  );
 };
 </script>
 <template>
-  <div class="cptv-player">
+  <div class="cptv-player position-relative">
     <div
-      key="container"
       class="video-container"
-      ref="container"
-      :class="[currentRecordingType, { 'no-reference': !hasReferencePhoto }]"
+      :class="[{ 'no-reference': !hasReferencePhoto }]"
     >
       <canvas
-        key="base"
         ref="canvas"
         :class="['video-canvas', { smoothed: videoSmoothing }]"
       />
       <canvas key="overlay" ref="overlayCanvas" class="overlay-canvas" />
-
-      <span
-        key="px-value"
-        v-show="showValueInfo"
-        ref="valueTooltip"
-        class="value-tooltip"
+      <span v-show="showValueInfo" ref="valueTooltip" class="value-tooltip"
         >{{ valueUnderCursor }}
       </span>
       <span
-        key="messaging"
         :class="['player-messaging', { show: playerMessage !== null }]"
         v-html="playerMessage"
       />
       <div
-        class="position-absolute top-0 h-100 w-100 reference-image"
+        class="reference-image"
         :class="{ hide: atEndOfPlayback }"
         ref="referenceImageContainer"
         v-if="showingReferencePhoto && hasReferencePhoto"
@@ -2139,15 +2113,13 @@ const updateSavedOpacity = (val: InputEvent) => {
           @pointerup="releaseRevealHandle"
           @pointermove="moveRevealHandle"
         >
-          <font-awesome-icon icon="left-right" />
+          <material-symbol name="arrow_range" size="2rem" />
         </div>
       </div>
-      <div key="buffering" :class="['playback-controls', { show: buffering }]">
-        <font-awesome-icon class="fa-spin buffering" icon="spinner" size="4x" />
+      <div :class="['playback-controls', { show: buffering }]">
+        <b-spinner />
       </div>
       <div
-        v-if="currentRecordingType === 'cptv'"
-        key="playback-controls"
         :class="[
           'playback-controls',
           {
@@ -2159,274 +2131,246 @@ const updateSavedOpacity = (val: InputEvent) => {
           @click.prevent="requestPrevRecording"
           :class="{ disabled: !hasPrev }"
         >
-          <font-awesome-icon icon="backward" class="replay" />
+          <material-symbol name="fast_rewind" size="3.6rem" class="replay" />
         </button>
         <button @click.prevent="togglePlayback">
-          <font-awesome-icon icon="redo-alt" class="replay" rotation="270" />
+          <material-symbol name="replay" size="3.6rem" class="replay" />
         </button>
         <button
           @click.prevent="requestNextRecording"
           :class="{ disabled: !hasNext }"
         >
-          <font-awesome-icon icon="forward" class="replay" />
+          <material-symbol name="fast_forward" size="3.6rem" class="replay" />
         </button>
       </div>
     </div>
     <div
-      key="playback-nav"
-      class="playback-nav"
-      v-if="currentRecordingType === 'cptv'"
+      class="video-footer position-absolute d-flex w-100 justify-content-between text-white"
     >
-      <button
-        @click.prevent="togglePlayback"
-        ref="playPauseButton"
-        :data-tooltip="playing ? 'Pause' : 'Play'"
-      >
-        <font-awesome-icon v-if="!playing" icon="play" />
-        <font-awesome-icon v-else icon="pause" />
-      </button>
-      <div class="right-nav">
-        <div :class="['advanced-controls', { open: showAdvancedControls && (!showingReferencePhoto || canvasWidth > 570) }]">
-          <button
-            @click.prevent="showAdvancedControls = !showAdvancedControls"
-            class="advanced-controls-btn"
-            :data-tooltip="showAdvancedControls ? 'Show less' : 'Show more'"
-            :disabled="(showingReferencePhoto && canvasWidth <= 570)"
-            ref="advancedControlsButton"
+      <span class="ps-2">{{ currentAbsoluteTime }}</span>
+      <span class="pe-2">{{ elapsedTimeString }}</span>
+    </div>
+    <div class="player-chrome" ref="playerChrome">
+      <div class="playback-nav">
+        <button
+          @click.prevent="togglePlayback"
+          ref="playPauseButton"
+          :data-tooltip="playing ? 'Pause' : 'Play'"
+          class="d-flex align-items-center justify-content-center"
+        >
+          <material-symbol
+            v-if="!playing"
+            name="play_arrow"
+            filled
+            size="1.5rem"
+          />
+          <material-symbol v-else name="pause" filled size="1.5rem" />
+        </button>
+        <div class="right-nav">
+          <div
+            :class="[
+              'advanced-controls',
+              {
+                open:
+                  showAdvancedControls &&
+                  (!showingReferencePhoto || canvasWidth > 570),
+              },
+            ]"
           >
-            <font-awesome-icon
-              icon="angle-right"
-              :rotation="(showAdvancedControls && (!showingReferencePhoto || canvasWidth > 570)) ? null : 180"
-            />
+            <button
+              @click.prevent="showAdvancedControls = !showAdvancedControls"
+              class="advanced-controls-btn d-flex align-items-center justify-content-center"
+              :data-tooltip="showAdvancedControls ? 'Show less' : 'Show more'"
+              :disabled="showingReferencePhoto && canvasWidth <= 570"
+              ref="advancedControlsButton"
+            >
+              <material-symbol
+                :name="
+                  showAdvancedControls &&
+                  (!showingReferencePhoto || canvasWidth > 570)
+                    ? 'keyboard_arrow_right'
+                    : 'keyboard_arrow_left'
+                "
+              />
+            </button>
+            <button
+              @click.prevent="showDebugTools = !showDebugTools"
+              ref="debugTools"
+              data-tooltip="Debug tools"
+              :class="{ selected: showDebugTools }"
+              class="d-flex align-items-center justify-content-center"
+            >
+              <material-symbol name="construction" size="1.25rem" />
+            </button>
+            <button
+              @click.prevent="videoSmoothing = !videoSmoothing"
+              ref="toggleSmoothingButton"
+              :data-tooltip="
+                videoSmoothing ? 'Disable smoothing' : 'Enable smoothing'
+              "
+              class="d-flex align-items-center justify-content-center"
+            >
+              <material-symbol
+                v-if="videoSmoothing"
+                name="grid_4x4"
+                size="1.25rem"
+              />
+              <material-symbol v-else name="blur_on" size="1.25rem" />
+            </button>
+            <button
+              @click.prevent="incrementPalette"
+              ref="cyclePalette"
+              data-tooltip="Cycle colour map"
+              class="d-flex align-items-center justify-content-center"
+            >
+              <material-symbol name="palette" size="1.25rem" />
+            </button>
+            <button
+              @click.prevent="requestHeaderInfoDisplay"
+              data-tooltip="Show recording header info"
+              :class="{ selected: displayHeaderInfo }"
+              ref="showHeader"
+              class="d-flex align-items-center justify-content-center"
+            >
+              <material-symbol name="info" size="1.25rem" />
+            </button>
+          </div>
+          <div
+            class="reference-opacity-container"
+            :class="{ open: showingReferencePhoto && hasReferencePhoto }"
+          >
+            <div
+              class="reference-opacity-slider"
+              :class="{
+                open: showingReferencePhoto,
+                'has-no-reference': !hasReferencePhoto,
+              }"
+            >
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                @touchmove="onTouchMove"
+                v-model.number="referenceOpacity"
+                @input="updateSavedOpacity"
+                :disabled="!hasReferencePhoto"
+                :style="`background: linear-gradient(to right, yellowgreen 0%, yellowgreen ${referenceOpacity * 100}%, #191e25 ${referenceOpacity * 100}%)`"
+                class="reference-opacity-slider-el"
+              />
+            </div>
+          </div>
+          <button
+            :disabled="!hasReferencePhoto"
+            :class="{ selected: showingReferencePhoto }"
+            @click="toggleReferencePhotoComparison"
+            ref="toggleReferencePhoto"
+            class="reference-photo-btn d-flex align-items-center justify-content-center"
+            data-tooltip="Reference photo"
+          >
+            <material-symbol name="panorama" size="1.25rem" />
           </button>
           <button
-            @click.prevent="showDebugTools = !showDebugTools"
-            ref="debugTools"
-            data-tooltip="Debug tools"
-            :class="{ selected: showDebugTools }"
+            @click.prevent="incrementSpeed"
+            ref="cyclePlaybackSpeed"
+            class="playback-speed"
+            data-tooltip="Cycle playback speed"
           >
-            <font-awesome-icon icon="wrench" />
+            <span>{{ speedMultiplier }}x</span>
+          </button>
+        </div>
+      </div>
+      <div :class="['debug-tools', { open: showDebugTools }]">
+        <div class="debug-info">
+          <div ref="frameNumField"></div>
+          <div ref="ffcSecsAgo"></div>
+        </div>
+        <div>
+          <button
+            @click.prevent="stepBackward"
+            data-tooltip="Go back one frame"
+            :disabled="!canStepBackward"
+            class="d-inline-flex align-items-center justify-content-center"
+          >
+            <material-symbol name="skip_previous" size="1.25rem" />
           </button>
           <button
-            @click.prevent="videoSmoothing = !videoSmoothing"
-            ref="toggleSmoothingButton"
+            @click.prevent="stepForward"
+            data-tooltip="Go forward one frame"
+            :disabled="!canStepForward"
+            class="d-inline-flex align-items-center justify-content-center"
+          >
+            <material-symbol name="skip_next" size="1.25rem" />
+          </button>
+          <button
+            class="d-none d-sm-inline-block d-inline-flex align-items-center justify-content-center"
+            @click.prevent="showValueInfo = !showValueInfo"
+            :class="{ selected: showValueInfo }"
             :data-tooltip="
-              videoSmoothing ? 'Disable smoothing' : 'Enable smoothing'
+              showValueInfo
+                ? 'Disable picker'
+                : 'Show raw pixel values under cursor'
             "
           >
-            <svg
-              v-if="videoSmoothing"
-              aria-hidden="true"
-              focusable="false"
-              viewBox="0 0 18 18"
-              width="16"
-              height="20"
-            >
-              <g transform="matrix(1,0,0,1,0,-249)" fill="currentColor">
-                <path
-                  d="M5.25,248.969L5.25,251.781C5.25,252.247 4.872,252.625 4.406,252.625L0.844,252.625C0.378,252.625 0,252.247 0,251.781L0,248.969C0,248.503 0.378,248.125 0.844,248.125L4.406,248.125C4.872,248.125 5.25,248.503 5.25,248.969Z"
-                  style="fill-opacity: 0.25"
-                />
-                <path
-                  d="M11.625,257.406L11.625,254.594C11.625,254.128 11.247,253.75 10.781,253.75L7.219,253.75C6.753,253.75 6.375,254.128 6.375,254.594L6.375,257.406C6.375,257.872 6.753,258.25 7.219,258.25L10.781,258.25C11.247,258.25 11.625,257.872 11.625,257.406Z"
-                />
-                <path
-                  d="M12.75,248.969L12.75,251.781C12.75,252.247 13.128,252.625 13.594,252.625L17.156,252.625C17.622,252.625 18,252.247 18,251.781L18,248.969C18,248.503 17.622,248.125 17.156,248.125L13.594,248.125C13.128,248.125 12.75,248.503 12.75,248.969Z"
-                  style="fill-opacity: 0.8"
-                />
-                <path
-                  d="M11.625,251.781L11.625,248.969C11.625,248.503 11.247,248.125 10.781,248.125L7.219,248.125C6.753,248.125 6.375,248.503 6.375,248.969L6.375,251.781C6.375,252.247 6.753,252.625 7.219,252.625L10.781,252.625C11.247,252.625 11.625,252.247 11.625,251.781Z"
-                  style="fill-opacity: 0.5"
-                />
-                <path
-                  d="M4.406,253.75L0.844,253.75C0.378,253.75 0,254.128 0,254.594L0,257.406C0,257.872 0.378,258.25 0.844,258.25L4.406,258.25C4.872,258.25 5.25,257.872 5.25,257.406L5.25,254.594C5.25,254.128 4.872,253.75 4.406,253.75Z"
-                  style="fill-opacity: 0.5"
-                />
-                <path
-                  d="M0,260.219L0,263.031C0,263.497 0.378,263.875 0.844,263.875L4.406,263.875C4.872,263.875 5.25,263.497 5.25,263.031L5.25,260.219C5.25,259.753 4.872,259.375 4.406,259.375L0.844,259.375C0.378,259.375 0,259.753 0,260.219Z"
-                  style="fill-opacity: 0.8"
-                />
-                <path
-                  d="M13.594,258.25L17.156,258.25C17.622,258.25 18,257.872 18,257.406L18,254.594C18,254.128 17.622,253.75 17.156,253.75L13.594,253.75C13.128,253.75 12.75,254.128 12.75,254.594L12.75,257.406C12.75,257.872 13.128,258.25 13.594,258.25Z"
-                />
-                <path
-                  d="M13.594,263.875L17.156,263.875C17.622,263.875 18,263.497 18,263.031L18,260.219C18,259.753 17.622,259.375 17.156,259.375L13.594,259.375C13.128,259.375 12.75,259.753 12.75,260.219L12.75,263.031C12.75,263.497 13.128,263.875 13.594,263.875Z"
-                />
-                <path
-                  d="M6.375,260.219L6.375,263.031C6.375,263.497 6.753,263.875 7.219,263.875L10.781,263.875C11.247,263.875 11.625,263.497 11.625,263.031L11.625,260.219C11.625,259.753 11.247,259.375 10.781,259.375L7.219,259.375C6.753,259.375 6.375,259.753 6.375,260.219Z"
-                />
-              </g>
-            </svg>
-
-            <svg v-else width="16" height="18" viewBox="0 0 18 18">
-              <g transform="matrix(1,0,0,1,0,-2)" fill="currentColor">
-                <path
-                  d="M1.294,16.976L18.709,17.063L18.853,0.932C9.155,0.932 1.294,7.279 1.294,16.976Z"
-                />
-              </g>
-            </svg>
+            <material-symbol name="colorize" size="1.25rem" />
           </button>
           <button
-            @click.prevent="incrementPalette"
-            ref="cyclePalette"
-            data-tooltip="Cycle colour map"
+            @click.prevent="trackHighlightMode = !trackHighlightMode"
+            :class="{ selected: trackHighlightMode }"
+            class="d-inline-flex align-items-center justify-content-center"
+            :data-tooltip="
+              trackHighlightMode
+                ? 'Disable highlight'
+                : 'Highlight selected track'
+            "
           >
-            <font-awesome-icon icon="palette" />
+            <material-symbol name="ink_highlighter" size="1.25rem" />
+          </button>
+          <!--          <button-->
+          <!--            class="d-none d-sm-inline-block d-inline-flex align-items-center justify-content-center"-->
+          <!--            @click.prevent="polygonEditMode = !polygonEditMode"-->
+          <!--            :class="{ selected: polygonEditMode }"-->
+          <!--            :data-tooltip="-->
+          <!--              polygonEditMode ? 'Disable polygon edit' : 'Edit polygons'-->
+          <!--            "-->
+          <!--          >-->
+          <!--            <material-symbol name="polyline" size="1.25rem" />-->
+          <!--            &lt;!&ndash;         draw-polygon, bezier-curve, vector-square &ndash;&gt;-->
+          <!--          </button>-->
+          <!--          <button-->
+          <!--            class="d-none d-sm-inline-block d-inline-flex align-items-center justify-content-center"-->
+          <!--            @click.prevent="silhouetteMode = !silhouetteMode"-->
+          <!--            :class="{ selected: silhouetteMode }"-->
+          <!--            :data-tooltip="-->
+          <!--              silhouetteMode ? 'Disable silhouettes' : 'Show silhouettes'-->
+          <!--            "-->
+          <!--          >-->
+          <!--            <material-symbol name="flare" size="1.25rem" />-->
+          <!--          </button>-->
+          <button
+            @click.prevent="motionPathMode = !motionPathMode"
+            :class="{ selected: motionPathMode }"
+            class="d-inline-flex align-items-center justify-content-center"
+            :data-tooltip="
+              motionPathMode ? 'Hide motion paths' : 'Show motion paths'
+            "
+          >
+            <material-symbol name="automation" size="1.25rem" />
           </button>
           <button
-            @click.prevent="requestHeaderInfoDisplay"
-            data-tooltip="Show recording header info"
-            :class="{ selected: displayHeaderInfo }"
-            ref="showHeader"
+            :disabled="!hasBackgroundFrame"
+            ref="showBackgroundFrame"
+            :class="{ selected: isShowingBackgroundFrame }"
+            class="d-inline-flex align-items-center justify-content-center"
+            data-tooltip="Press to show background frame"
+            @click.prevent="toggleBackground"
           >
-            <font-awesome-icon icon="info-circle" />
+            <material-symbol name="image" size="1.25rem" />
           </button>
         </div>
-        <div
-          class="reference-opacity-container"
-          :class="{ open: showingReferencePhoto && hasReferencePhoto }"
-        >
-          <div
-            class="reference-opacity-slider"
-            :class="{ open: showingReferencePhoto, 'has-no-reference': !hasReferencePhoto }"
-          >
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.01"
-              v-model.number="referenceOpacity"
-              @input="updateSavedOpacity"
-              :disabled="!hasReferencePhoto"
-              :style="`background: linear-gradient(to right, yellowgreen 0%, yellowgreen ${referenceOpacity * 100}%, #191e25 ${referenceOpacity * 100}%)`"
-              class="me-2 reference-opacity-slider-el"
-            />
-            <font-awesome-icon icon="eye" />
-          </div>
-        </div>
-        <button
-          :disabled="!hasReferencePhoto"
-          :class="{ selected: showingReferencePhoto }"
-          @click="toggleReferencePhotoComparison"
-          ref="toggleReferencePhoto"
-          class="reference-photo-btn"
-          data-tooltip="Reference photo"
-        >
-          <font-awesome-icon icon="panorama" />
-        </button>
-        <button
-          @click.prevent="incrementSpeed"
-          ref="cyclePlaybackSpeed"
-          class="playback-speed"
-          data-tooltip="Cycle playback speed"
-        >
-          <span>{{ speedMultiplier }}x</span>
-        </button>
       </div>
-    </div>
-    <div v-else-if="hasReferencePhoto" class="playback-nav justify-content-end">
-      <button
-        :class="{ selected: showingReferencePhoto }"
-        @click="toggleReferencePhotoComparison"
-        ref="toggleReferencePhoto"
-        class="reference-photo-btn"
-        data-tooltip="Reference photo"
-      >
-        <font-awesome-icon icon="panorama" />
-      </button>
-    </div>
-    <div v-else class="black-spacer" />
-    <div
-      key="debug-nav"
-      :class="['debug-tools', { open: showDebugTools }]"
-      v-if="currentRecordingType === 'cptv'"
-    >
-      <div class="debug-info">
-        <div ref="frameNumField"></div>
-        <div ref="ffcSecsAgo"></div>
-      </div>
-      <div>
-        <button
-          @click.prevent="stepBackward"
-          data-tooltip="Go back one frame"
-          :disabled="!canStepBackward"
-        >
-          <font-awesome-icon icon="step-backward" />
-        </button>
-        <button
-          @click.prevent="stepForward"
-          data-tooltip="Go forward one frame"
-          :disabled="!canStepForward"
-        >
-          <font-awesome-icon icon="step-forward" />
-        </button>
-        <button
-          class="d-none d-sm-inline-block"
-          @click.prevent="showValueInfo = !showValueInfo"
-          :class="{ selected: showValueInfo }"
-          :data-tooltip="
-            showValueInfo
-              ? 'Disable picker'
-              : 'Show raw pixel values under cursor'
-          "
-        >
-          <font-awesome-icon icon="eye-dropper" />
-        </button>
-        <button
-          @click.prevent="trackHighlightMode = !trackHighlightMode"
-          :class="{ selected: trackHighlightMode }"
-          :data-tooltip="
-            trackHighlightMode
-              ? 'Disable highlight'
-              : 'Highlight selected track'
-          "
-        >
-          <font-awesome-icon icon="highlighter" />
-        </button>
-        <button
-          class="d-none d-sm-inline-block"
-          @click.prevent="polygonEditMode = !polygonEditMode"
-          :class="{ selected: polygonEditMode }"
-          :data-tooltip="
-            polygonEditMode ? 'Disable polygon edit' : 'Edit polygons'
-          "
-        >
-          <font-awesome-icon icon="draw-polygon" />
-          <!--         draw-polygon, bezier-curve, vector-square -->
-        </button>
-        <button
-          class="d-none d-sm-inline-block"
-          @click.prevent="silhouetteMode = !silhouetteMode"
-          :class="{ selected: silhouetteMode }"
-          :data-tooltip="
-            silhouetteMode ? 'Disable silhouettes' : 'Show silhouettes'
-          "
-        >
-          <font-awesome-icon icon="burst" />
-        </button>
-        <button
-          @click.prevent="motionPathMode = !motionPathMode"
-          :class="{ selected: motionPathMode }"
-          :data-tooltip="
-            motionPathMode ? 'Hide motion paths' : 'Show motion paths'
-          "
-        >
-          <font-awesome-icon icon="route" />
-        </button>
-        <button
-          :disabled="!hasBackgroundFrame"
-          ref="showBackgroundFrame"
-          :class="{ selected: isShowingBackgroundFrame }"
-          data-tooltip="Press to show background frame"
-          @click.prevent="toggleBackground"
-        >
-          <font-awesome-icon icon="image" />
-        </button>
-      </div>
-    </div>
-    <div class="tracks-container" v-if="currentRecordingType === 'cptv'">
       <tracks-scrubber
-        class="player-tracks"
+        class="player-tracks tracks-container"
         :tracks="tracksIntermediate"
         :current-track="currentTrack"
         :total-frames="totalPlayableFrames"
@@ -2438,7 +2382,7 @@ const updateSavedOpacity = (val: InputEvent) => {
     </div>
   </div>
   <teleport v-if="displayHeaderInfo" to="#recording-status-modal">
-    <div class="p-3">
+    <div>
       <pre v-if="header">{{ headerInfo }}</pre>
       <div class="d-flex">
         <button
@@ -2452,8 +2396,12 @@ const updateSavedOpacity = (val: InputEvent) => {
     </div>
   </teleport>
   <teleport v-if="exportRequested" to="#recording-status-modal">
-    <div v-if="exportRequested === 'advanced' && !isExporting" class="p-3">
-      <b-form-group label="Include tracks in exported timespan">
+    <div v-if="exportRequested === 'advanced' && !isExporting">
+      <b-form-group
+        label="Include tracks in exported timespan"
+        label-class="fw-medium"
+        class="mb-2"
+      >
         <b-form-checkbox
           v-for="(track, index) in trackExportOptions"
           :key="index"
@@ -2466,7 +2414,11 @@ const updateSavedOpacity = (val: InputEvent) => {
           }})</b-form-checkbox
         >
       </b-form-group>
-      <b-form-group label="Display track boxes in export">
+      <b-form-group
+        label="Display track boxes in export"
+        label-class="fw-medium"
+        class="mb-1"
+      >
         <b-form-checkbox
           v-for="(track, index) in trackExportOptions"
           :key="index"
@@ -2496,13 +2448,17 @@ const updateSavedOpacity = (val: InputEvent) => {
         </button>
       </div>
     </div>
-    <div v-else class="p-3">
-      <span>Exporting...</span>
+    <div v-else-if="exportRequested === 'download'">
+      <p class="mb-1">Downloading...</p>
+      <b-progress striped animated :value="downloadProgress"></b-progress>
+    </div>
+    <div v-else>
+      <p class="mb-1">Exporting...</p>
       <b-progress :value="exportProgress" striped animated></b-progress>
       <div class="d-flex">
         <button
           type="button"
-          class="btn btn-outline-danger mt-2 flex-grow-1"
+          class="btn btn-outline-danger mt-3 flex-grow-1"
           @click="cancelExport"
         >
           Cancel
@@ -2512,19 +2468,25 @@ const updateSavedOpacity = (val: InputEvent) => {
   </teleport>
 </template>
 <style scoped lang="less">
+@import "../../assets/less/breakpoints.less";
+
 .video-container {
-  @media screen and (max-width: 1040px) {
+  @media screen and (max-width: @breakpoint-md-max) {
     max-width: 640px;
   }
-  @media screen and (min-width: 1041px) {
+  @media screen and (min-width: @breakpoint-lg) {
     width: 640px;
   }
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 4/3;
 }
 .cptv-player {
   position: relative;
   user-select: none;
-  background: #202731;
+  background: color-mix(
+    in srgb,
+    var(--cp-player-toolbar-bg),
+    var(--bs-black) 25%
+  );
   .video-canvas {
     width: 100%;
     height: 100%;
@@ -2550,30 +2512,25 @@ const updateSavedOpacity = (val: InputEvent) => {
     padding: 0;
     background: black;
     overflow: hidden;
-    &.image.no-reference {
-      @media screen and (min-width: 1041px) {
-        margin-top: 30px;
-      }
-    }
   }
   .time,
   .temp,
   .value-tooltip {
     position: absolute;
-    right: 7px;
-    bottom: 7px;
-    font-size: 12px;
-    line-height: 12px;
-    color: white;
+    right: var(--cp-spacing-xs);
+    bottom: var(--cp-spacing-xs);
+    font-size: var(--cp-font-size-sm);
+    line-height: var(--cp-line-height-sm);
+    color: var(--bs-white);
     background: rgba(0, 0, 0, 0.3);
-    border-radius: 4px;
-    padding: 3px;
+    border-radius: var(--bs-border-radius-sm);
+    padding: var(--cp-spacing-xxxs) var(--cp-spacing-xxs);
     user-select: none;
     pointer-events: none;
   }
   .temp {
     //top: 7px;
-    left: 7px;
+    left: var(--cp-spacing-xs);
     right: unset;
     //bottom: unset;
   }
@@ -2625,9 +2582,9 @@ const updateSavedOpacity = (val: InputEvent) => {
     right: 0;
     text-align: center;
     display: block;
-    bottom: 50px;
-    color: white;
-    font-size: 20px;
+    bottom: calc(var(--cp-grid-base) * 12); // 48px
+    color: var(--bs-white);
+    font-size: var(--cp-font-size-h2);
     opacity: 0;
     transform-origin: center;
     &.show {
@@ -2639,7 +2596,7 @@ const updateSavedOpacity = (val: InputEvent) => {
   }
 
   .playback-controls {
-    color: white;
+    color: var(--bs-white);
     position: absolute;
     top: 0;
     right: 0;
@@ -2676,24 +2633,21 @@ const updateSavedOpacity = (val: InputEvent) => {
       touch-action: manipulation;
       min-width: 44px;
       min-height: 44px;
+      transition: opacity 0.3s;
+      opacity: 0.5;
       &.hide {
         opacity: 0;
-      }
-      > svg {
-        transition: opacity 0.3s;
-        opacity: 0.5;
       }
       &:hover:not(:disabled),
       &:hover:not(.disabled),
       &:active:not(:disabled),
       &:active:not(.disabled) {
-        > svg {
-          opacity: 0.8;
-        }
+        opacity: 0.8;
       }
       &:disabled,
       &.disabled {
-        > svg {
+        opacity: 0.1;
+        &:hover {
           opacity: 0.1;
         }
       }
@@ -2719,7 +2673,7 @@ const updateSavedOpacity = (val: InputEvent) => {
   .playback-nav,
   .debug-tools {
     min-height: 44px;
-    background: #2b333f;
+    background: var(--cp-player-toolbar-bg);
     color: white;
     display: flex;
     position: relative;
@@ -2729,6 +2683,9 @@ const updateSavedOpacity = (val: InputEvent) => {
       touch-action: manipulation;
       user-select: none;
       min-width: 48px;
+      @media screen and (max-width: 360px) {
+        min-width: 44px;
+      }
       padding: 0;
       min-height: 44px;
       background: transparent;
@@ -2738,7 +2695,7 @@ const updateSavedOpacity = (val: InputEvent) => {
       }
       &:active:not(:disabled),
       &.selected:not(:disabled) {
-        color: yellowgreen;
+        color: var(--cp-color-primary);
       }
       &:disabled {
         color: rgba(255, 255, 255, 0.1);
@@ -2752,6 +2709,9 @@ const updateSavedOpacity = (val: InputEvent) => {
 
     .advanced-controls {
       width: 48px;
+      @media screen and (max-width: 360px) {
+        width: 44px;
+      }
       height: 44px;
       overflow: hidden;
       user-select: none;
@@ -2759,12 +2719,18 @@ const updateSavedOpacity = (val: InputEvent) => {
       display: flex;
       &.open {
         width: 240px;
+        @media screen and (max-width: 360px) {
+          width: 220px;
+        }
         .advanced-controls-btn {
           position: relative;
           &::before {
             position: absolute;
             top: 11px;
             left: 12px;
+            @media screen and (max-width: 360px) {
+              left: 10px;
+            }
             content: "";
             background: rgba(255, 255, 255, 0.1);
             border-radius: 11px;
@@ -2776,7 +2742,11 @@ const updateSavedOpacity = (val: InputEvent) => {
     }
   }
   .debug-tools {
-    background: darken(#2b333f, 2%);
+    background: color-mix(
+      in srgb,
+      var(--cp-player-toolbar-bg),
+      var(--bs-black) 10%
+    );
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     min-height: 0;
     height: 0;
@@ -2835,7 +2805,7 @@ const updateSavedOpacity = (val: InputEvent) => {
       justify-content: space-between;
       border-color: transparent;
       &.dragging {
-        background-color: #2b333f;
+        background-color: var(--cp-player-toolbar-bg);
       }
       &::after {
         position: unset;
@@ -2858,23 +2828,18 @@ const updateSavedOpacity = (val: InputEvent) => {
   margin-top: 20px;
   text-align: center;
 }
-.black-spacer {
-  // TODO for trailcam images, use minimum height possible.
-
-  @media screen and (min-width: 1041px) {
-    min-height: 30px;
-  }
-  background: black;
-}
 // Reference image overlay + slider
 .reference-image {
   position: absolute;
   top: 0;
   left: 0;
+  height: 100%;
   width: 100%;
+  //outline: 1px solid red;
   z-index: 1;
   user-select: none;
-  overflow: hidden; /* ensures we don’t show anything outside the container */
+  //aspect-ratio: 3 / 4;
+  overflow: hidden;
   &.hide {
     display: none;
   }
@@ -2892,7 +2857,7 @@ const updateSavedOpacity = (val: InputEvent) => {
 
   > img {
     display: block; /* removes inline spacing gaps */
-    height: 480px;
+    height: 100%;
     object-fit: cover; /* critical to maintain aspect ratio but cover fully */
     object-position: center; /* center the image as it covers */
     pointer-events: none; /* so the handle can receive pointer events */
@@ -2926,6 +2891,7 @@ const updateSavedOpacity = (val: InputEvent) => {
   &:hover {
     opacity: 1;
   }
+  display: none;
 }
 
 .reference-opacity-container {
@@ -2934,7 +2900,7 @@ const updateSavedOpacity = (val: InputEvent) => {
   overflow: hidden;
   width: 0;
   transition: width 0.3s ease-in-out;
-  background: #2b333f;
+  background: var(--cp-player-toolbar-bg);
   border-radius: 1em 1em 0 0;
   .reference-opacity-toggle {
     width: 48px;
@@ -2972,6 +2938,7 @@ const updateSavedOpacity = (val: InputEvent) => {
   }
 }
 input[type="range"].reference-opacity-slider-el {
+  touch-action: pan-y;
   flex: 1;
   cursor: pointer;
   width: 100px;
@@ -2985,12 +2952,14 @@ input[type="range"].reference-opacity-slider-el {
   -webkit-appearance: none;
   appearance: none;
   box-shadow: inset 0 1px 2px #000;
-  border-radius: 3.5px;
-  height: 9px;
+  border-radius: 4px;
+  height: 8px;
+  pointer-events: auto;
   &::-webkit-slider-thumb {
+    touch-action: manipulation;
     background: lighten(yellowgreen, 20%);
-    width: 15px;
-    height: 15px;
+    width: 14px;
+    height: 14px;
     outline: 0;
     border: 0;
     border-radius: 50%;
@@ -2998,15 +2967,13 @@ input[type="range"].reference-opacity-slider-el {
     -webkit-appearance: none;
     appearance: none;
     &:hover {
-      background: red;
       background: lighten(yellowgreen, 30%);
     }
-
   }
   &::-moz-range-thumb {
     background: lighten(yellowgreen, 10%);
-    width: 15px;
-    height: 15px;
+    width: 14px;
+    height: 14px;
     outline: 0;
     border: 0;
     transition: background-color 0.2s ease-in-out;
@@ -3014,9 +2981,39 @@ input[type="range"].reference-opacity-slider-el {
     -webkit-appearance: none;
     appearance: none;
     &:hover {
-      background: red;
       background: lighten(yellowgreen, 30%);
     }
   }
+}
+.video-footer {
+  top: calc(
+    min(
+        var(--max-player-height),
+        max(
+          var(--min-player-height),
+          calc(var(--max-player-height) - var(--scroll-y-offset))
+        )
+      ) -
+      25px
+  );
+
+  /*  -webkit-text-stroke-width: 1px;
+  -webkit-text-stroke-color: rgba(0, 0, 0, 0.5);*/
+  user-select: none;
+  pointer-events: none;
+  span {
+    font-weight: var(--cp-font-weight-medium);
+    font-size: var(--cp-font-size-sm);
+    // compounding of shadows is intentional, as there's no spread property for text shadow
+    text-shadow:
+      0px 0px 2px rgba(0, 0, 0, 1),
+      0px 0px 2px rgba(0, 0, 0, 1),
+      0px 0px 2px rgba(0, 0, 0, 1),
+      0px 0px 2px rgba(0, 0, 0, 1);
+  }
+  //overlayContext.lineWidth = 4;
+  //overlayContext.strokeStyle = "rgba(0, 0, 0, 0.5)";
+  //overlayContext.lineJoin = "round";
+  //overlayContext.fillStyle = "white";
 }
 </style>

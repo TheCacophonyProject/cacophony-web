@@ -200,18 +200,18 @@
 import { mapState } from "vuex";
 import { toStringTodayYesterdayOrDate } from "@/helpers/datetime";
 import {
-  defineComponent,
-  ref,
-  onMounted,
   computed,
+  defineComponent,
+  onMounted,
+  ref,
   watch,
 } from "@vue/composition-api";
 import DeviceApi from "@/api/Device.api";
 import {
   ApiDeviceHistorySettings,
-  AudioModes,
   WindowsSettings,
 } from "@typedefs/api/device";
+import { AudioRecordingMode } from "@typedefs/api/consts";
 
 export default defineComponent({
   name: "DeviceDetail",
@@ -371,11 +371,14 @@ export default defineComponent({
       stopRecording: "+30m",
     };
     const savingAudioSettings = ref<boolean>(false);
-    const audioMode = computed<AudioModes>({
+    const audioMode = computed<AudioRecordingMode>({
       get: () => {
-        return settings.value?.audioRecording?.audioMode ?? "Disabled";
+        return (
+          settings.value?.audioRecording?.audioMode ??
+          AudioRecordingMode.Disabled
+        );
       },
-      set: async (val: AudioModes) => {
+      set: async (val: AudioRecordingMode) => {
         if (settings.value) {
           settings.value.audioRecording = {
             ...settings.value.audioRecording,
@@ -389,13 +392,12 @@ export default defineComponent({
       },
     });
     const audioModeExplanation = computed<string>(() => {
-      debugger;
       switch (audioMode.value) {
-        case "AudioOnly":
+        case AudioRecordingMode.AudioOnly:
           return "Records audio in a 24-hour window and disables thermal recording.";
-        case "AudioOrThermal":
+        case AudioRecordingMode.AudioOrThermal:
           return "Records audio outside of the thermal recording window.";
-        case "AudioAndThermal":
+        case AudioRecordingMode.AudioAndThermal:
           return "Records audio in a 24-hour window; however, the camera cannot record during the 1 minute of audio recording.";
         default:
           return "";
@@ -403,10 +405,10 @@ export default defineComponent({
     });
     // Audio Mode Options
     const audioModeOptions = [
-      { value: "Disabled", text: "Disabled" },
-      { value: "AudioOnly", text: "Audio Only" },
-      { value: "AudioAndThermal", text: "Audio and Thermal" },
-      { value: "AudioOrThermal", text: "Audio or Thermal" },
+      { value: AudioRecordingMode.Disabled, text: "Disabled" },
+      { value: AudioRecordingMode.AudioOnly, text: "Audio Only" },
+      { value: AudioRecordingMode.AudioAndThermal, text: "Audio and Thermal" },
+      { value: AudioRecordingMode.AudioOrThermal, text: "Audio or Thermal" },
     ];
     const recordingWindowSetting = computed<"default" | "always" | "custom">({
       get: () => {
@@ -465,7 +467,6 @@ export default defineComponent({
               updated: new Date().toISOString(),
             };
           }
-
           await DeviceApi.updateDeviceSettings(props.deviceId, settings.value);
         }
       },

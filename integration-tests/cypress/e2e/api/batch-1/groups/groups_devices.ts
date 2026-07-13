@@ -26,14 +26,16 @@ describe("Groups - get devices for group", () => {
           groupId: getCreds("gdGroup").id,
           active: true,
           admin: true,
-          type: DeviceType.Unknown,
+          type: DeviceType.Thermal,
           isHealthy: false,
         };
       },
     );
 
     //2nd group
-    cy.apiGroupAdd("gdGroupAdmin", "gdGroup2").then(() => {});
+    cy.apiGroupAdd("gdGroupAdmin", "gdGroup2").then(() => {
+      return;
+    });
 
     //2nd device in first group
     cy.apiDeviceAdd("gdCamera1b", "gdGroup").then(() => {
@@ -45,7 +47,7 @@ describe("Groups - get devices for group", () => {
         groupId: getCreds("gdGroup").id,
         active: true,
         admin: true,
-        type: DeviceType.Unknown,
+        type: DeviceType.Thermal,
         isHealthy: false,
       };
     });
@@ -87,7 +89,7 @@ describe("Groups - get devices for group", () => {
     cy.log("Check admin can view group's device");
     cy.apiGroupDevicesCheck(
       "gdGroupAdmin",
-      getCreds("gdGroup").id,
+      String(getCreds("gdGroup").id),
       [expectedDevice, expectedDevice1b],
       [],
       HttpStatusCode.Ok,
@@ -97,7 +99,7 @@ describe("Groups - get devices for group", () => {
     cy.log("Check member can view group's devices");
     cy.apiGroupDevicesCheck(
       "gdGroupMember",
-      getCreds("gdGroup").id,
+      String(getCreds("gdGroup").id),
       [
         { ...expectedDevice, admin: false },
         { ...expectedDevice1b, admin: false },
@@ -124,7 +126,7 @@ describe("Groups - get devices for group", () => {
         groupId: getCreds("gdGroup4").id,
         active: false,
         admin: true,
-        type: DeviceType.Unknown,
+        type: DeviceType.Thermal,
         isHealthy: true,
       };
     });
@@ -132,7 +134,7 @@ describe("Groups - get devices for group", () => {
     cy.log("Reregister the camera, making the old camera inactive");
     cy.apiRecordingAdd(
       "gdCam4a",
-      { type: RecordingType.ThermalRaw },
+      { type: RecordingType.ThermalRaw, location: [-42, 170] },
       "oneframe.cptv",
       "raRecording1",
     );
@@ -145,6 +147,7 @@ describe("Groups - get devices for group", () => {
         groupId: getCreds("gdGroup4").id,
         active: true,
         admin: true,
+        location: { lat: -42, lng: 170 },
         type: DeviceType.Thermal,
         lastConnectionTime: NOT_NULL_STRING,
         isHealthy: true,
@@ -158,6 +161,7 @@ describe("Groups - get devices for group", () => {
         active: true,
         admin: true,
         type: DeviceType.Thermal,
+        location: { lat: -42, lng: 170 },
         lastConnectionTime: NOT_NULL_STRING,
         isHealthy: true,
       };

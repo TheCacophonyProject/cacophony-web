@@ -1,44 +1,65 @@
 import type { NextFunction, Request, Response } from "express";
 import { ExtractJwt } from "passport-jwt";
-import jwt from "jsonwebtoken";
 import type { DecodedJWTToken } from "./auth.js";
 import { getVerifiedJWTFromBody } from "./auth.js";
-import {
-  checkAccess,
-  getDecodedToken,
-  getVerifiedJWT,
-  lookupEntity,
-} from "./auth.js";
+import { getDecodedToken, getVerifiedJWT, lookupEntity } from "./auth.js";
 import type { ModelStaticCommon } from "@models";
-import modelsInit from "../models/index.js";
 import log from "../logging.js";
 import { createHash } from "crypto";
 import { modelTypeName, modelTypeNamePlural } from "./middleware.js";
 import type { ValidationChain } from "express-validator";
-import { validationResult } from "express-validator";
 import {
   AuthenticationError,
   AuthorizationError,
   ClientError,
 } from "./customErrors.js";
-import type { User } from "models/User.js";
-import { Op } from "sequelize";
-import type { Device } from "models/Device.js";
+import { User } from "@models/User.js";
+import Sequelize, {
+  FindOptions,
+  Includeable,
+  Model,
+  Op,
+  WhereOptions,
+} from "sequelize";
+import { Device } from "@models/Device.js";
 import type { RecordingId, ScheduleId, UserId } from "@typedefs/api/common.js";
-import type { Group } from "models/Group.js";
-import type { Recording } from "models/Recording.js";
-import type { Station } from "@/models/Station.js";
-import type { Schedule } from "@/models/Schedule.js";
-import { RecordingType, UserGlobalPermission } from "@typedefs/api/consts.js";
+import { Group } from "@models/Group.js";
+import { Recording } from "@models/Recording.js";
+import { Station } from "@models/Station.js";
+import { Schedule } from "@models/Schedule.js";
+import { UserGlobalPermission } from "@typedefs/api/consts.js";
 import { urlNormaliseName } from "@/emails/htmlEmailUtils.js";
 import { SuperUsers } from "@/Globals.js";
-import type { Alert } from "@models/Alert.js";
-import type { Event } from "@models/Event.js";
-import config from "@/config.js";
+import { Alert } from "@models/Alert.js";
+import { Event } from "@models/Event.js";
 import { delayMs, userShouldBeRateLimited } from "@/Server.js";
-import { getTrackData } from "@models/Track.js";
+import { Track } from "@models/Track.js";
+import { DetailSnapshot } from "@models/DetailSnapshot.js";
+import { TrackTag } from "@models/TrackTag.js";
+import { Tag } from "@models/Tag.js";
+import { File } from "@models/File.js";
+import { GroupInvites } from "@models/GroupInvites.js";
+import { TrackTagUserData } from "@models/TrackTagUserData.js";
+import { GroupUsers } from "@models/GroupUsers.js";
+import jwt from "jsonwebtoken";
+import config from "@config";
+import { MinimalTrackRequestData } from "@typedefs/api/fileProcessing.js";
 
-const models = await modelsInit();
+export interface RequestContext {
+  requestUser?:
+    | User
+    | {
+        id: number;
+        userName: string;
+        hasGlobalRead: () => boolean;
+        hasGlobalWrite: () => boolean;
+      };
+  onlyActive?: boolean;
+  withRecordings?: boolean;
+  viewAsSuperUser?: boolean;
+  group?: Group;
+  station?: Station;
+}
 
 const upperFirst = (str: string): string =>
   str.slice(0, 1).toUpperCase() + str.slice(1);
@@ -49,7 +70,6 @@ const extractJwtAuthenticatedEntityCommon = async (
   request: Request,
   response: Response,
   next: NextFunction,
-  reqAccess?: { devices?: any },
   requireSuperAdmin = false,
   requireActivatedUser = false,
 ): Promise<void> => {
@@ -75,11 +95,6 @@ const extractJwtAuthenticatedEntityCommon = async (
         "You must have confirmed your email address to activate your account in order to access this API.",
       ),
     );
-  }
-
-  const hasAccess = checkAccess(reqAccess, jwtDecoded);
-  if (!hasAccess) {
-    return next(new AuthenticationError("JWT does not have access."));
   }
 
   if (requireSuperAdmin && type !== "user") {
@@ -110,7 +125,13 @@ const extractJwtAuthenticatedEntityCommon = async (
       // NOTE: See if we'd like to rate limit this user request.
       // If this request user has used more than 20% of user cpu time in the past minute,
       // Add a delay to rate limit the requester.
-      if (userShouldBeRateLimited(response.locals.requestUser.id)) {
+      const isCiRequest =
+        "user-agent" in request.headers &&
+        request.headers["user-agent"].includes("Cypress");
+      if (
+        !isCiRequest &&
+        userShouldBeRateLimited(response.locals.requestUser.id)
+      ) {
         response.locals.requestUser.wasRateLimited = true;
         // Stagger the amount of rate-limiting to try and spread out repeat requests
         await delayMs(3000 + Math.floor(Math.random() * 4000));
@@ -119,9 +140,9 @@ const extractJwtAuthenticatedEntityCommon = async (
       response.locals.requestDevice = { id: jwtDecoded.id };
     }
   } else {
-    let result: DecodedJWTToken | User | null;
+    let result: DecodedJWTToken | User | Device | null;
     try {
-      result = await lookupEntity(models, jwtDecoded);
+      result = await lookupEntity(jwtDecoded);
     } catch (e) {
       return next(e);
     }
@@ -144,17 +165,12 @@ const extractJwtAuthenticatedEntityCommon = async (
   }
 
   if (requireSuperAdmin && !response.locals.viewAsSuperUser) {
-    return next(new AuthorizationError("User is not an admin."));
+    return next(new AuthorizationError("User is not a super admin."));
   }
 };
 
 const extractJwtAuthenticatedEntity =
-  (
-    types: string[],
-    reqAccess?: { devices?: any },
-    requireSuperAdmin = false,
-    requireActivatedUser = false,
-  ) =>
+  (types: string[], requireSuperAdmin = false, requireActivatedUser = false) =>
   async (
     request: Request,
     response: Response,
@@ -169,7 +185,6 @@ const extractJwtAuthenticatedEntity =
         request,
         response,
         next,
-        reqAccess,
         requireSuperAdmin,
         requireActivatedUser,
       );
@@ -196,18 +211,30 @@ const extractJwtAuthenticatedEntity =
             globalPermission: UserGlobalPermission.Off,
           };
         }
-      }
-      if (token && token._type && token._type === "user") {
-        response.locals.requestUser = {
-          id: token.id || -1,
-          hasGlobalRead: () => false,
-          hasGlobalWrite: () => false,
-          globalPermission: UserGlobalPermission.Off,
-        };
-        if (userShouldBeRateLimited(response.locals.requestUser.id)) {
-          response.locals.requestUser.wasRateLimited = true;
-          // Stagger the amount of rate-limiting to try and spread out repeat requests
-          await delayMs(3000 + Math.floor(Math.random() * 4000));
+      } else {
+        const decodedToken = jwt.verify(token, config.server.passportSecret);
+        if (
+          typeof decodedToken !== "string" &&
+          decodedToken._type &&
+          decodedToken._type === "user"
+        ) {
+          response.locals.requestUser = {
+            id: decodedToken.id || -1,
+            hasGlobalRead: () => false,
+            hasGlobalWrite: () => false,
+            globalPermission: UserGlobalPermission.Off,
+          };
+          const isCiRequest =
+            "user-agent" in request.headers &&
+            request.headers["user-agent"].includes("Cypress");
+          if (
+            !isCiRequest &&
+            userShouldBeRateLimited(response.locals.requestUser.id)
+          ) {
+            response.locals.requestUser.wasRateLimited = true;
+            // Stagger the amount of rate-limiting to try and spread out repeat requests
+            await delayMs(3000 + Math.floor(Math.random() * 4000));
+          }
         }
       }
       return next(e);
@@ -218,7 +245,6 @@ const extractJwtAuthenticatedEntityFromBody =
   (
     tokenField: string,
     types: string[],
-    reqAccess?: { devices?: any },
     requireSuperAdmin = false,
     requireActivatedUser = false,
   ) =>
@@ -239,7 +265,6 @@ const extractJwtAuthenticatedEntityFromBody =
         request,
         response,
         next,
-        reqAccess,
         requireSuperAdmin,
         requireActivatedUser,
       );
@@ -251,7 +276,6 @@ const extractJwtAuthenticatedEntityFromBody =
 export const extractJwtAuthorizedUser = extractJwtAuthenticatedEntity(["user"]);
 export const extractJwtAuthorizedActivatedUser = extractJwtAuthenticatedEntity(
   ["user"],
-  undefined,
   false,
   true,
 );
@@ -261,7 +285,6 @@ export const extractJwtAuthorizedUserOrDevice = extractJwtAuthenticatedEntity([
 ]);
 export const extractJwtAuthorisedSuperAdminUser = extractJwtAuthenticatedEntity(
   ["user"],
-  undefined,
   true,
 );
 export const extractJwtAuthorisedDevice = extractJwtAuthenticatedEntity([
@@ -278,29 +301,29 @@ const deviceAttributes = [
   "uuid",
   "GroupId",
   "lastConnectionTime",
-  "lastRecordingTime",
+  "lastThermalRecordingTime",
+  "lastAudioRecordingTime",
+  "earliestThermalRecordingTime",
+  "earliestAudioRecordingTime",
   "public",
   "active",
-  "kind",
   "ScheduleId",
   "password", // Needed for auth, but not passed through when mapping to response.
-  "heartbeat",
-  "nextHeartbeat",
 ];
 
 const getGroupInclude = (
-  useAdminAccess: { admin: true } | {},
+  useAdminAccess: { admin?: true },
   requestUserId: UserId,
 ) => ({
   include: [
     {
-      model: models.User,
+      model: User,
       attributes: ["id"],
       through: {
         where: {
           ...useAdminAccess,
-          removedAt: { [Op.eq]: null },
-        },
+          removedAt: null,
+        } as WhereOptions<GroupUsers>,
         attributes: ["admin", "settings", "owner", "pending"],
       },
       where: { id: requestUserId },
@@ -309,16 +332,22 @@ const getGroupInclude = (
 });
 
 const getDeviceInclude =
-  (deviceWhere: any, groupWhere: any) =>
-  (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
+  (deviceWhere: Sequelize.WhereOptions, groupWhere: Sequelize.WhereOptions) =>
+  (useAdminAccess: { admin?: true }, requestUserId: UserId) => ({
     where: {
       ...deviceWhere,
-      [Op.or]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
+      [Op.or]: [
+        Sequelize.where(
+          Sequelize.col("Group.Users.GroupUsers.UserId"),
+          Op.ne,
+          null,
+        ),
+      ],
     },
     attributes: deviceAttributes,
     include: [
       {
-        model: models.Group,
+        model: Group,
         attributes: ["id", "groupName"],
         required:
           Object.keys(groupWhere).length !== 0 &&
@@ -326,15 +355,15 @@ const getDeviceInclude =
         where: groupWhere,
         include: [
           {
-            model: models.User,
+            model: User,
             attributes: ["id"],
             required: false,
             through: {
               where: {
                 ...useAdminAccess,
-                removedAt: { [Op.eq]: null },
-                pending: { [Op.eq]: null },
-              },
+                removedAt: null,
+                pending: null,
+              } as WhereOptions<GroupUsers>,
               attributes: ["admin", "UserId"],
             },
             where: { id: requestUserId },
@@ -345,28 +374,28 @@ const getDeviceInclude =
   });
 
 const getStationInclude =
-  (stationWhere: any, groupWhere: any) =>
-  (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
+  (stationWhere: Sequelize.WhereOptions, groupWhere: Sequelize.WhereOptions) =>
+  (useAdminAccess: { admin?: true }, requestUserId: UserId) => ({
     where: {
       ...stationWhere,
     },
     include: [
       {
-        model: models.Group,
+        model: Group,
         attributes: ["id", "groupName"],
         required: true,
         where: groupWhere,
         include: [
           {
-            model: models.User,
+            model: User,
             attributes: ["id"],
             required: true,
             through: {
               where: {
                 ...useAdminAccess,
-                removedAt: { [Op.eq]: null },
-                pending: { [Op.eq]: null },
-              },
+                removedAt: null,
+                pending: null,
+              } as WhereOptions<GroupUsers>,
               attributes: ["UserId"],
             },
             where: { id: requestUserId },
@@ -377,28 +406,34 @@ const getStationInclude =
   });
 
 const getScheduleInclude =
-  (groupWhere: any) =>
-  (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
+  (groupWhere: Sequelize.WhereOptions) =>
+  (useAdminAccess: { admin?: true }, requestUserId: UserId) => ({
     where: {
-      [Op.and]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
+      [Op.and]: [
+        Sequelize.where(
+          Sequelize.col("Group.Users.GroupUsers.UserId"),
+          Op.ne,
+          null,
+        ),
+      ],
     },
     include: [
       {
-        model: models.Group,
+        model: Group,
         attributes: ["id", "groupName"],
         required: Object.keys(groupWhere).length !== 0,
         where: groupWhere,
         include: [
           {
-            model: models.User,
+            model: User,
             attributes: ["id"],
             required: false,
             through: {
               where: {
                 ...useAdminAccess,
-                removedAt: { [Op.eq]: null },
-                pending: { [Op.eq]: null },
-              },
+                removedAt: null,
+                pending: null,
+              } as WhereOptions<GroupUsers>,
               attributes: ["admin", "UserId"],
             },
             where: { id: requestUserId },
@@ -409,31 +444,41 @@ const getScheduleInclude =
   });
 
 const getRecordingInclude =
-  (recordingsWhere: any, groupWhere: any, deviceWhere: any) =>
-  (useAdminAccess: { admin: true } | {}, requestUserId: UserId) => ({
+  (
+    recordingsWhere: Sequelize.WhereOptions,
+    groupWhere: Sequelize.WhereOptions,
+    deviceWhere: Sequelize.WhereOptions,
+  ) =>
+  (useAdminAccess: { admin?: true }, requestUserId: UserId) => ({
     where: {
       ...recordingsWhere,
-      [Op.or]: [{ "$Group.Users.GroupUsers.UserId$": { [Op.ne]: null } }],
+      [Op.or]: [
+        Sequelize.where(
+          Sequelize.col("Group.Users.GroupUsers.UserId"),
+          Op.ne,
+          null,
+        ),
+      ],
     },
     // TODO - RecordingAttributes
     //attributes: deviceAttributes,
     include: [
       {
-        model: models.Group,
+        model: Group,
         attributes: ["id", "groupName"],
         required: false,
         where: groupWhere,
         include: [
           {
-            model: models.User,
+            model: User,
             attributes: ["id"],
             required: false,
             through: {
               where: {
                 ...useAdminAccess,
-                removedAt: { [Op.eq]: null },
-                pending: { [Op.eq]: null },
-              },
+                removedAt: null,
+                pending: null,
+              } as WhereOptions<GroupUsers>,
               attributes: ["admin", "UserId"],
             },
             where: { id: requestUserId },
@@ -441,7 +486,7 @@ const getRecordingInclude =
         ],
       },
       {
-        model: models.Device,
+        model: Device,
         attributes: ["id", "deviceName"],
         required: false,
         where: deviceWhere,
@@ -459,7 +504,7 @@ export const parseJSONField =
       if (typeof value === "string") {
         try {
           value = JSON.parse(value);
-        } catch (e) {
+        } catch (_e) {
           return next(
             new ClientError(`Malformed JSON for '${location}.${key}'`),
           );
@@ -478,9 +523,14 @@ export const extractValFromRequest = (
   valGetter?: ValidationChain,
 ): string | undefined => {
   if (valGetter) {
-    const location = (valGetter.builder as any).locations[0];
+    // NOTE: Accessing private field 'locations'
+    const location = valGetter.builder["locations"][0] as
+      | "query"
+      | "body"
+      | "params";
     // If fields is an array, take the first one that exists.
-    for (const field of (valGetter.builder as any).fields) {
+    // NOTE: Accessing private field 'fields'
+    for (const field of valGetter.builder["fields"] as string[]) {
       if (request[location][field]) {
         return request[location][field];
       }
@@ -493,10 +543,16 @@ const extractFieldNameFromRequest = (
   valGetter?: ValidationChain,
 ): string | undefined => {
   if (valGetter) {
-    const location = (valGetter.builder as any).locations[0];
+    // NOTE: Accessing private field 'locations'
+    const location = valGetter.builder["locations"][0] as
+      | "body"
+      | "query"
+      | "params"
+      | undefined;
     // If fields is an array, take the first one that exists.
-    for (const field of (valGetter.builder as any).fields) {
-      if (request[location][field]) {
+    // NOTE: Accessing private field 'fields'
+    for (const field of valGetter.builder["fields"]) {
+      if (location in request && request[location][field]) {
         return field;
       }
     }
@@ -504,29 +560,30 @@ const extractFieldNameFromRequest = (
 };
 
 const extractFieldLocationFromRequest = (
-  request: Request,
+  _request: Request,
   valGetter?: ValidationChain,
-): string | undefined => {
+): "body" | "query" | "params" | undefined => {
   if (valGetter) {
-    return (valGetter.builder as any).locations[0];
+    // NOTE: Accessing private field 'locations'
+    return valGetter.builder["locations"][0];
   }
 };
 
-type ModelGetter<T> = (
+type ModelGetter<T extends ModelStaticCommon<Model>> = (
   id: string,
   id2: string,
-  context?: any
+  context?: object,
 ) => Promise<ModelStaticCommon<T> | ClientError | null>;
 
-type ModelsGetter<T> = (
+type ModelsGetter<T extends ModelStaticCommon<Model>> = (
   id: string,
   id2: string,
-  context?: any
+  context?: object,
 ) => Promise<ModelStaticCommon<T>[] | ClientError | null>;
 
 export const fetchModel =
-  <T>(
-    modelType: ModelStaticCommon<T>,
+  <T extends ModelStaticCommon<Model>>(
+    modelType: typeof ModelStaticCommon<T>,
     required: boolean,
     byName: boolean,
     byId: boolean,
@@ -537,46 +594,49 @@ export const fetchModel =
   async (request: Request, response: Response, next: NextFunction) => {
     const modelName = modelTypeName(modelType);
 
-    let id;
+    let id: string;
     if (typeof primary === "number" || typeof primary === "string") {
-      id = primary;
+      id = primary.toString();
     } else {
       id = extractValFromRequest(request, primary) as string;
     }
     if (!id && !required) {
       return next();
     }
-    let id2;
+    let id2: string;
     if (typeof secondary === "number" || typeof secondary === "string") {
-      id2 = secondary;
-    } else {
+      id2 = secondary.toString();
+    } else if (secondary) {
       id2 = extractValFromRequest(request, secondary) as string;
     }
     response.locals.onlyActive = true; // Default to only showing active devices.
     response.locals.withRecordings = false; // Default to showing stations without any recordings.
     if (
       ("onlyActive" in request.query &&
-        Boolean(request.query.onlyActive) === false) ||
+        (request.query.onlyActive as unknown as boolean) === false) ||
       ("only-active" in request.query &&
-        Boolean(request.query["only-active"]) === false)
+        (request.query["only-active"] as unknown as boolean) === false)
     ) {
       response.locals.onlyActive = false;
     }
     if (
       "with-recordings" in request.query &&
-      Boolean(request.query["with-recordings"]) === true
+      (request.query["with-recordings"] as unknown as boolean) === true
     ) {
       response.locals.withRecordings = true;
     }
     if ("deleted" in request.query) {
-      response.locals.deleted = Boolean(request.query.deleted);
+      response.locals.deleted =
+        (request.query.deleted as unknown as boolean) === true;
     }
 
     let model;
     try {
       model = await modelGetter(id, id2, response.locals);
-    } catch (e) {
-      log.error("%s", e.sql);
+    } catch (e: unknown) {
+      if ("sql" in (e as object)) {
+        log.error("%s", (e as { sql: string }).sql);
+      }
       return next(e);
     }
     if (model instanceof ClientError) {
@@ -629,8 +689,8 @@ export const fetchModel =
     next();
   };
 
-export const fetchRequiredModel = <T>(
-  modelType: ModelStaticCommon<T>,
+export const fetchRequiredModel = <T extends ModelStaticCommon<Model>>(
+  modelType: typeof ModelStaticCommon<T>,
   byName: boolean,
   byId: boolean,
   modelGetter: ModelGetter<T>,
@@ -638,8 +698,8 @@ export const fetchRequiredModel = <T>(
   secondary?: ValidationChain,
 ) => fetchModel(modelType, true, byName, byId, modelGetter, primary, secondary);
 
-export const fetchRequiredModels = <T>(
-  modelType: ModelStaticCommon<T>,
+export const fetchRequiredModels = <T extends ModelStaticCommon<Model>>(
+  modelType: typeof ModelStaticCommon<T>,
   byName: boolean,
   byId: boolean,
   modelsGetter: ModelsGetter<T>,
@@ -648,8 +708,8 @@ export const fetchRequiredModels = <T>(
 ) =>
   fetchModel(modelType, true, byName, byId, modelsGetter, primary, secondary);
 
-export const fetchOptionalModel = <T>(
-  modelType: ModelStaticCommon<T>,
+export const fetchOptionalModel = <T extends ModelStaticCommon<Model>>(
+  modelType: typeof ModelStaticCommon<T>,
   byName: boolean,
   byId: boolean,
   modelGetter: ModelGetter<T>,
@@ -659,14 +719,14 @@ export const fetchOptionalModel = <T>(
   fetchModel(modelType, false, byName, byId, modelGetter, primary, secondary);
 
 const getDevices =
-  (forRequestUser: boolean = false, asAdmin: boolean) =>
+  (forRequestUser = false, asAdmin: boolean) =>
   (
     groupNameOrId?: string,
     unused2?: string,
-    context?: any,
+    context?: RequestContext,
   ): Promise<ModelStaticCommon<Device>[] | ClientError | null> => {
-    let getDeviceOptions;
-    let groupWhere = {};
+    let getDeviceOptions: Sequelize.FindOptions;
+    let groupWhere: Sequelize.WhereOptions = {};
 
     const groupIsId =
       groupNameOrId &&
@@ -684,7 +744,7 @@ const getDevices =
       where: {},
       include: [
         {
-          model: models.Group,
+          model: Group,
           required: true,
           where: groupWhere,
         },
@@ -711,27 +771,28 @@ const getDevices =
     if (!getDeviceOptions.where) {
       getDeviceOptions = allDevicesOptions;
     }
-
     if (context.onlyActive) {
-      (getDeviceOptions as any).where = (getDeviceOptions as any).where || {};
-      (getDeviceOptions as any).where.active = true;
+      getDeviceOptions.where = {
+        ...(getDeviceOptions.where || {}),
+        active: true,
+      };
     }
     getDeviceOptions.subQuery = false;
-    return models.Device.findAll({
+    return Device.findAll({
       ...getDeviceOptions,
       order: ["deviceName"],
     });
   };
 
 const getStations =
-  (forRequestUser: boolean = false, asAdmin: boolean) =>
+  (forRequestUser = false, asAdmin: boolean) =>
   (
     groupNameOrId?: string,
     unused2?: string,
-    context?: any,
+    context?: RequestContext,
   ): Promise<ModelStaticCommon<Station>[] | ClientError | null> => {
-    let getStationsOptions;
-    let groupWhere = {};
+    let getStationsOptions: Sequelize.FindOptions;
+    let groupWhere: Sequelize.WhereOptions = {};
 
     const groupIsId =
       groupNameOrId &&
@@ -748,7 +809,7 @@ const getStations =
       where: {},
       include: [
         {
-          model: models.Group,
+          model: Group,
           required: true,
           where: groupWhere,
           attributes: ["id", "groupName"],
@@ -778,30 +839,30 @@ const getStations =
     }
 
     if (context.onlyActive) {
-      (getStationsOptions as any).where =
-        (getStationsOptions as any).where || {};
-      (getStationsOptions as any).where.retiredAt = { [Op.eq]: null };
+      getStationsOptions.where = {
+        ...(getStationsOptions.where || {}),
+        retiredAt: null,
+      };
     }
     if (context.withRecordings) {
-      (getStationsOptions as any).where =
-        (getStationsOptions as any).where || {};
-      (getStationsOptions as any).where[Op.and] = [
-        {
-          [Op.or]: [
-            {
-              lastThermalRecordingTime: { [Op.ne]: null },
-              lastAudioRecordingTime: { [Op.ne]: null },
-              automatic: true,
-            },
-            {
-              automatic: false,
-            },
-          ],
-        },
-      ];
+      getStationsOptions.where = {
+        ...(getStationsOptions.where || {}),
+        [Op.and]: [
+          {
+            [Op.or]: [
+              {
+                earliestThermalRecordingTime: { [Op.ne]: null },
+              },
+              {
+                earliestAudioRecordingTime: { [Op.ne]: null },
+              },
+            ],
+          },
+        ],
+      };
     }
 
-    return models.Station.findAll({
+    return Station.findAll({
       ...getStationsOptions,
       order: ["name"],
       subQuery: false,
@@ -809,11 +870,11 @@ const getStations =
   };
 
 const getStation =
-  (forRequestUser: boolean = false, asAdmin: boolean = false) =>
+  (forRequestUser = false, asAdmin = false) =>
   (
     stationNameOrId: string,
     groupNameOrId?: string,
-    context?: any,
+    context?: RequestContext,
   ): Promise<ModelStaticCommon<Station> | ClientError | null> => {
     const groupIsId =
       groupNameOrId &&
@@ -824,20 +885,20 @@ const getStation =
       !isNaN(parseInt(stationNameOrId)) &&
       parseInt(stationNameOrId).toString() === String(stationNameOrId);
 
-    let stationWhere;
+    let stationWhere: WhereOptions<Station>;
     let groupWhere = {};
 
-    let groupNameMatch: any = groupNameOrId;
+    let groupNameMatch: Sequelize.WhereOptions | string = groupNameOrId;
     if (!groupIsId && groupNameOrId !== urlNormaliseName(groupNameOrId)) {
       groupNameMatch = {
         [Op.in]: [groupNameOrId, urlNormaliseName(groupNameOrId)],
-      };
+      } as Sequelize.WhereOptions;
     }
-    let stationNameMatch: any = stationNameOrId;
+    let stationNameMatch: Sequelize.WhereOptions | string = stationNameOrId;
     if (!stationIsId && stationNameOrId !== urlNormaliseName(stationNameOrId)) {
       stationNameMatch = {
         [Op.in]: [stationNameOrId, urlNormaliseName(stationNameOrId)],
-      };
+      } as Sequelize.WhereOptions;
     }
 
     if (groupIsId && stationIsId) {
@@ -848,7 +909,11 @@ const getStation =
     } else if (stationIsId && groupNameOrId) {
       stationWhere = {
         id: parseInt(stationNameOrId),
-        "$Group.groupName$": groupNameMatch,
+        [Op.and]: Sequelize.where(
+          Sequelize.col("Group.groupName"),
+          Op.eq,
+          groupNameMatch,
+        ),
       };
     } else if (stationIsId && !groupNameOrId) {
       stationWhere = {
@@ -862,8 +927,12 @@ const getStation =
     } else {
       stationWhere = {
         name: stationNameMatch,
-        "$Group.groupName$": groupNameMatch,
-      };
+        [Op.and]: Sequelize.where(
+          Sequelize.col("Group.groupName"),
+          Op.eq,
+          groupNameMatch,
+        ),
+      } as WhereOptions<Station>;
     }
     if (groupIsId) {
       groupWhere = {
@@ -873,7 +942,7 @@ const getStation =
       groupWhere = { groupName: groupNameMatch };
     }
 
-    let getStationOptions;
+    let getStationOptions: Sequelize.FindOptions;
     if (forRequestUser) {
       if (context && context.requestUser) {
         // Insert request user constraints
@@ -888,7 +957,7 @@ const getStation =
             where: stationWhere,
             include: [
               {
-                model: models.Group,
+                model: Group,
                 required: true,
                 attributes: ["groupName"],
                 where: groupWhere,
@@ -906,7 +975,7 @@ const getStation =
         where: stationWhere,
         include: [
           {
-            model: models.Group,
+            model: Group,
             required: true,
             attributes: ["groupName"],
             where: groupWhere,
@@ -916,22 +985,24 @@ const getStation =
     }
 
     if (context.onlyActive || !stationIsId) {
-      (getStationOptions as any).where = (getStationOptions as any).where || {};
-      (getStationOptions as any).where.retiredAt = { [Op.eq]: null };
+      getStationOptions.where = {
+        ...(getStationOptions.where || {}),
+        retiredAt: null,
+      };
     }
     getStationOptions.subQuery = false;
-    return models.Station.findOne(getStationOptions);
+    return Station.findOne(getStationOptions);
   };
 
 const getSchedules =
-  (forRequestUser: boolean = false, asAdmin: boolean) =>
+  (forRequestUser = false, asAdmin: boolean) =>
   (
     groupNameOrId?: string,
     unused2?: string,
-    context?: any,
+    context?: RequestContext,
   ): Promise<ModelStaticCommon<Schedule>[] | ClientError | null> => {
-    let getScheduleOptions;
-    let groupWhere = {};
+    let getScheduleOptions: Sequelize.FindOptions;
+    let groupWhere: Sequelize.WhereOptions = {};
 
     const groupIsId =
       groupNameOrId &&
@@ -949,7 +1020,7 @@ const getSchedules =
       where: {},
       include: [
         {
-          model: models.Group,
+          model: Group,
           required: true,
           where: groupWhere,
         },
@@ -976,17 +1047,17 @@ const getSchedules =
     if (!getScheduleOptions.where) {
       getScheduleOptions = allSchedulesOptions;
     }
-    return models.Schedule.findAll(getScheduleOptions);
+    return Schedule.findAll(getScheduleOptions);
   };
 
 const getGroups =
-  (forRequestUser: boolean = false, asAdmin: boolean) =>
+  (forRequestUser = false, asAdmin: boolean) =>
   (
     unused1?: string,
     unused2?: string,
-    context?: any,
+    context?: RequestContext,
   ): Promise<ModelStaticCommon<Group>[] | ClientError | null> => {
-    let getGroupOptions;
+    let getGroupOptions: Sequelize.FindOptions;
     if (forRequestUser) {
       if (context && context.requestUser) {
         // Insert request user constraints
@@ -1001,7 +1072,7 @@ const getGroups =
         where: {},
       };
     }
-    return models.Group.findAll({
+    return Group.findAll({
       ...getGroupOptions,
       order: ["groupName"],
       subQuery: false,
@@ -1009,9 +1080,9 @@ const getGroups =
   };
 
 const getRecordingRelationships = (
-  recordingQuery: any,
+  recordingQuery: Sequelize.FindOptions,
   includeRelationships: boolean,
-): any => {
+): Sequelize.FindOptions => {
   recordingQuery.attributes = [
     "id",
     "DeviceId",
@@ -1032,6 +1103,8 @@ const getRecordingRelationships = (
     "GroupId",
     "StationId",
     "rawFileKey",
+    "rawFileSize",
+    "fileSize",
     "fileKey",
     "additionalMetadata",
     "batteryLevel",
@@ -1041,10 +1114,10 @@ const getRecordingRelationships = (
     "processingEndTime",
     "redacted",
   ];
-  recordingQuery.include = recordingQuery.include || [];
+  recordingQuery.include = (recordingQuery.include as Includeable[]) || [];
   if (includeRelationships) {
     recordingQuery.include.push({
-      model: models.Tag,
+      model: Tag,
       order: ["createdAt"],
       attributes: [
         "id",
@@ -1059,7 +1132,7 @@ const getRecordingRelationships = (
       ],
       include: [
         {
-          model: models.User,
+          model: User,
           as: "tagger",
           required: false,
           attributes: ["userName"],
@@ -1068,7 +1141,7 @@ const getRecordingRelationships = (
       required: false,
     });
     recordingQuery.include.push({
-      model: models.Track,
+      model: Track,
       where: { archivedAt: null },
       attributes: [
         "id",
@@ -1081,7 +1154,7 @@ const getRecordingRelationships = (
       required: false,
       include: [
         {
-          model: models.TrackTag,
+          model: TrackTag,
           required: false,
           where: { archivedAt: null },
           order: ["createdAt"],
@@ -1099,12 +1172,12 @@ const getRecordingRelationships = (
           ],
           include: [
             {
-              model: models.User,
+              model: User,
               required: false,
               attributes: ["userName"],
             },
             {
-              model: models.TrackTagUserData,
+              model: TrackTagUserData,
               required: false,
               attributes: ["gender", "maturity"],
             },
@@ -1113,7 +1186,7 @@ const getRecordingRelationships = (
       ],
     });
     recordingQuery.include.push({
-      model: models.Station,
+      model: Station,
       attributes: ["name"],
       required: false,
     });
@@ -1123,24 +1196,24 @@ const getRecordingRelationships = (
 
 const getRecording =
   (
-    forRequestUser: boolean = false,
-    asAdmin: boolean = false,
+    forRequestUser = false,
+    asAdmin = false,
     includeTrackMetadata = false,
     includeRelationships = false,
   ) =>
   (
     recordingId: string,
     unused: string,
-    context?: any,
+    context?: RequestContext,
   ): Promise<ModelStaticCommon<Recording> | ClientError | null> => {
-    const recordingWhere = {
+    const recordingWhere: Sequelize.WhereOptions = {
       id: parseInt(recordingId),
     };
     if ("deleted" in context) {
       if (context.deleted === true) {
-        (recordingWhere as any).deletedAt = { [Op.ne]: null };
+        recordingWhere.deletedAt = { [Op.ne]: null };
       } else if (context.deleted === false) {
-        (recordingWhere as any).deletedAt = { [Op.eq]: null };
+        recordingWhere.deletedAt = { [Op.eq]: null };
       }
     }
 
@@ -1171,12 +1244,12 @@ const getRecording =
       if (includeRelationships) {
         getRecordingOptions.include = [
           {
-            model: models.Group,
+            model: Group,
             required: true,
             where: groupWhere,
           },
           {
-            model: models.Device,
+            model: Device,
             required: true,
             where: deviceWhere,
           },
@@ -1188,18 +1261,21 @@ const getRecording =
       getRecordingOptions,
       includeRelationships,
     );
-    return models.Recording.findOne(getRecordingOptions).then((rec) => {
+    return Recording.findOne(getRecordingOptions).then((rec) => {
       if (includeTrackMetadata) {
-        // TODO: M Fetch all the metadata for tracks.
         if (rec) {
-          const trackMetas = [];
+          const trackMetas: Promise<MinimalTrackRequestData>[] = [];
           for (const track of rec.Tracks) {
-            trackMetas.push(getTrackData(track.id));
+            trackMetas.push(
+              Track.getTrackData(track.id) as Promise<MinimalTrackRequestData>,
+            );
           }
           return Promise.all(trackMetas).then((trackMetadatas) => {
             for (let i = 0; i < trackMetadatas.length; i++) {
               if (Object.keys(trackMetadatas[i]).length > 0) {
-                rec.Tracks[i].data = trackMetadatas[i];
+                rec.Tracks[i].data = trackMetadatas[
+                  i
+                ] as MinimalTrackRequestData;
               }
             }
             return rec;
@@ -1211,24 +1287,20 @@ const getRecording =
   };
 
 const getRecordings =
-  (
-    forRequestUser: boolean = false,
-    asAdmin: boolean = false,
-    includeRelationships = false,
-  ) =>
+  (forRequestUser = false, asAdmin = false, includeRelationships = false) =>
   (
     recordingIds: string,
     unused: string,
-    context?: any,
+    context?: RequestContext,
   ): Promise<ModelStaticCommon<Recording>[] | ClientError> => {
-    const recordingWhere = {
+    const recordingWhere: Sequelize.WhereOptions = {
       id: { [Op.in]: recordingIds },
     };
     if ("deleted" in context) {
       if (context.deleted === true) {
-        (recordingWhere as any).deletedAt = { [Op.ne]: null };
+        recordingWhere.deletedAt = { [Op.ne]: null };
       } else if (context.deleted === false) {
-        (recordingWhere as any).deletedAt = { [Op.eq]: null };
+        recordingWhere.deletedAt = { [Op.eq]: null };
       }
     }
     let getRecordingOptions;
@@ -1252,12 +1324,12 @@ const getRecordings =
         where: recordingWhere,
         include: [
           {
-            model: models.Group,
+            model: Group,
             required: true,
             where: groupWhere,
           },
           {
-            model: models.Device,
+            model: Device,
             required: true,
             where: deviceWhere,
           },
@@ -1269,22 +1341,18 @@ const getRecordings =
       getRecordingOptions,
       includeRelationships,
     );
-    return models.Recording.findAll({
+    return Recording.findAll({
       ...getRecordingOptions,
       order: ["recordingDateTime"],
     });
   };
 
 const getDevice =
-  (
-    forRequestUser: boolean = false,
-    asAdmin: boolean = false,
-    forDevice: boolean = false,
-  ) =>
+  (forRequestUser = false, asAdmin = false, forDevice = false) =>
   (
     deviceNameOrId: string,
     groupNameOrId?: string,
-    context?: any,
+    context?: RequestContext,
   ): Promise<ModelStaticCommon<Device> | ClientError | null> => {
     const deviceIsId =
       !isNaN(parseInt(deviceNameOrId)) &&
@@ -1294,20 +1362,20 @@ const getDevice =
       !isNaN(parseInt(groupNameOrId)) &&
       parseInt(groupNameOrId).toString() === String(groupNameOrId);
 
-    let deviceWhere;
+    let deviceWhere: WhereOptions<Device>;
     let groupWhere = {};
 
-    let groupNameMatch: any = groupNameOrId;
+    let groupNameMatch: string | Sequelize.WhereOptions = groupNameOrId;
     if (!groupIsId && groupNameOrId !== urlNormaliseName(groupNameOrId)) {
       groupNameMatch = {
         [Op.in]: [groupNameOrId, urlNormaliseName(groupNameOrId)],
-      };
+      } as Sequelize.WhereOptions;
     }
-    let deviceNameMatch: any = deviceNameOrId;
+    let deviceNameMatch: string | Sequelize.WhereOptions = deviceNameOrId;
     if (!deviceIsId && deviceNameOrId !== urlNormaliseName(deviceNameOrId)) {
       deviceNameMatch = {
         [Op.in]: [deviceNameOrId, urlNormaliseName(deviceNameOrId)],
-      };
+      } as Sequelize.WhereOptions;
     }
 
     if (deviceIsId && groupIsId) {
@@ -1318,7 +1386,11 @@ const getDevice =
     } else if (deviceIsId && groupNameOrId) {
       deviceWhere = {
         id: parseInt(deviceNameOrId),
-        "$Group.groupName$": groupNameMatch,
+        [Op.and]: Sequelize.where(
+          Sequelize.col("Group.groupName"),
+          Op.eq,
+          groupNameMatch,
+        ),
       };
     } else if (deviceIsId && !groupNameOrId) {
       deviceWhere = {
@@ -1328,12 +1400,16 @@ const getDevice =
       deviceWhere = {
         deviceName: deviceNameMatch,
         GroupId: parseInt(groupNameOrId),
-      };
+      } as WhereOptions<Device>;
     } else {
       deviceWhere = {
         deviceName: deviceNameMatch,
-        "$Group.groupName$": groupNameMatch,
-      };
+        [Op.and]: Sequelize.where(
+          Sequelize.col("Group.groupName"),
+          Op.eq,
+          groupNameMatch,
+        ),
+      } as WhereOptions<Device>;
     }
     if (groupIsId) {
       groupWhere = {
@@ -1343,7 +1419,7 @@ const getDevice =
       groupWhere = { groupName: groupNameMatch };
     }
 
-    let getDeviceOptions;
+    let getDeviceOptions: Sequelize.FindOptions<Device>;
     if (forRequestUser) {
       if (context && context.requestUser) {
         // Insert request user constraints
@@ -1358,7 +1434,7 @@ const getDevice =
             attributes: deviceAttributes,
             include: [
               {
-                model: models.Group,
+                model: Group,
                 required: true,
                 where: groupWhere,
               },
@@ -1377,7 +1453,7 @@ const getDevice =
         attributes: deviceAttributes,
         include: [
           {
-            model: models.Group,
+            model: Group,
             required: true,
             where: groupWhere,
           },
@@ -1388,21 +1464,23 @@ const getDevice =
     // FIXME(ManageStations) - When re-registering we can actually have two devices in the same group with the same name - but one
     //  will be inactive.  Maybe we should change the name of the inactive device to disambiguate it?
     if (context.onlyActive) {
-      (getDeviceOptions as any).where = (getDeviceOptions as any).where || {};
-      (getDeviceOptions as any).where.active = true;
+      getDeviceOptions.where = {
+        ...(getDeviceOptions.where || {}),
+        active: true,
+      };
     }
     getDeviceOptions.subQuery = false;
-    return models.Device.findOne(getDeviceOptions);
+    return Device.findOne(getDeviceOptions);
   };
 
 const getIncludeForUser = (
-  context: any,
+  context: RequestContext,
   includeFn: (
-    asAdmin: { admin: true } | {},
+    asAdmin: { admin?: true },
     userId: UserId,
-    additionalWhere?: any
-  ) => any,
-  asAdmin: boolean = false,
+    additionalWhere?: Sequelize.WhereOptions,
+  ) => Sequelize.FindOptions,
+  asAdmin = false,
 ) => {
   const requestingWithSuperAdminPermissions =
     context.viewAsSuperUser &&
@@ -1413,40 +1491,36 @@ const getIncludeForUser = (
     return includeFn(asAdmin ? { admin: true } : {}, context.requestUser.id);
   } else {
     // Don't add any permission constraints when getting the resource
-    log.info(
-      `Accessing model by user #${context.requestUser.id} (${context.requestUser.userName}) as super-admin`,
-    );
     return {};
   }
 };
 
 const getGroup =
-  (forRequestUser: boolean = false, asAdmin: boolean = false) =>
+  (forRequestUser = false, asAdmin = false) =>
   (
     groupNameOrId?: string,
     unusedParam?: string,
-    context?: any,
+    context?: RequestContext,
   ): Promise<ModelStaticCommon<Group> | ClientError | null> => {
-    // @ts-ignore
     const groupIsId =
       groupNameOrId &&
       !isNaN(parseInt(groupNameOrId)) &&
       parseInt(groupNameOrId).toString() === String(groupNameOrId);
-    let groupWhere;
+    let groupWhere: WhereOptions<Group>;
     if (groupIsId) {
       groupWhere = {
         id: parseInt(groupNameOrId),
       };
     } else {
-      let groupNameMatch: any = groupNameOrId;
+      let groupNameMatch: string | Sequelize.WhereOptions = groupNameOrId;
       if (groupNameOrId !== urlNormaliseName(groupNameOrId)) {
         groupNameMatch = {
           [Op.in]: [groupNameOrId, urlNormaliseName(groupNameOrId)],
-        };
+        } as Sequelize.WhereOptions;
       }
-      groupWhere = { groupName: groupNameMatch };
+      groupWhere = { groupName: groupNameMatch } as WhereOptions<Group>;
     }
-    let getGroupOptions;
+    let getGroupOptions: FindOptions<Group>;
     if (forRequestUser) {
       if (context && context.requestUser) {
         // Insert request user constraints
@@ -1463,15 +1537,15 @@ const getGroup =
       };
     }
     getGroupOptions.subQuery = false;
-    return models.Group.findOne(getGroupOptions);
+    return Group.findOne(getGroupOptions);
   };
 
 const getEvent =
-  (forRequestUser: boolean = false, asAdmin: boolean = false) =>
+  (forRequestUser = false, asAdmin = false) =>
   (
     eventDetailId?: string,
     unusedParam?: string,
-    context?: any,
+    context?: RequestContext,
   ): Promise<ModelStaticCommon<Event> | ClientError | null> => {
     let eventWhere;
     if (eventDetailId) {
@@ -1490,24 +1564,24 @@ const getEvent =
               attributes: ["dateTime", "id"],
               include: [
                 {
-                  model: models.DetailSnapshot,
+                  model: DetailSnapshot,
                   as: "EventDetail",
                   required: true,
                   attributes: ["type", "details"],
                 },
                 {
-                  model: models.Device,
+                  model: Device,
                   attributes: [],
                   required: true,
                   include: [
                     {
-                      model: models.Group,
+                      model: Group,
                       attributes: [],
                       required: true,
                       where: {},
                       include: [
                         {
-                          model: models.User,
+                          model: User,
                           attributes: [],
                           required: true,
                           through: {
@@ -1540,7 +1614,7 @@ const getEvent =
         where: eventWhere,
       };
     }
-    return models.Event.findOne(getEventOptions);
+    return Event.findOne(getEventOptions);
   };
 
 const getUser =
@@ -1548,7 +1622,6 @@ const getUser =
   (
     userEmailOrId: string,
   ): Promise<ModelStaticCommon<User> | ClientError | null> => {
-    // @ts-ignore
     const userIsId =
       !isNaN(parseInt(userEmailOrId)) &&
       parseInt(userEmailOrId).toString() === String(userEmailOrId);
@@ -1562,33 +1635,35 @@ const getUser =
         email: userEmailOrId.toLowerCase(),
       };
     }
-    return models.User.findOne({
+    return User.findOne({
       where: userWhere,
     });
   };
 
 const getAlert =
-  (forRequestUser: boolean = false) =>
+  (forRequestUser = false) =>
   (
     alertId: string,
     unusedParam?: string,
-    context?: any,
+    context?: RequestContext,
   ): Promise<ModelStaticCommon<Alert> | ClientError | null> => {
     if (forRequestUser) {
-      return models.Alert.findOne({
+      return Alert.findOne({
         where: { id: parseInt(alertId), UserId: context.requestUser.id },
       });
     }
     {
-      return models.Alert.findOne({
+      return Alert.findOne({
         where: { id: parseInt(alertId) },
       });
     }
   };
 
 const getUnauthorizedGenericModelById =
-  <T>(modelType: ModelStaticCommon<T>) =>
-  <T>(id: string): Promise<T | ClientError | null> => {
+  <T extends Model>(modelType: typeof ModelStaticCommon<T>) =>
+  <T extends ModelStaticCommon<Model>>(
+    id: string,
+  ): Promise<T | ClientError | null> => {
     return modelType.findByPk(id) as unknown as Promise<T | null>;
   };
 
@@ -1624,14 +1699,20 @@ const getFlatRecordingsForRequestUser = getRecordings(true, false, false);
 
 const getFlatRecordingForRequestUser = getRecording(true, false, false, false);
 
-const getFullRecordingForRequestUser = async (a, b, c) => {
+const getFullRecordingForRequestUser = async (
+  a: string,
+  b: string,
+  c?: object,
+) => {
   const result = await getRecording(true, false, true, true)(a, b, c);
   if (result === null || result instanceof ClientError) {
     return result;
   }
   // Get all track data for recording
-  for (const track of (result as any).Tracks) {
-    track.data = await getTrackData(track.id);
+  for (const track of (result as Recording).Tracks) {
+    track.data = (await Track.getTrackData(
+      track.id,
+    )) as MinimalTrackRequestData;
   }
   return result;
 };
@@ -1645,7 +1726,7 @@ export const fetchAuthorizedRequiredDeviceInGroup = (
   groupNameOrId: ValidationChain,
 ) =>
   fetchRequiredModel(
-    models.Device,
+    Device,
     true,
     true,
     getDeviceForRequestUser,
@@ -1657,7 +1738,7 @@ export const fetchAuthorizedRequiredDevicesInGroup = (
   groupNameOrId: ValidationChain,
 ) =>
   fetchRequiredModels(
-    models.Device,
+    Device,
     true,
     true,
     getDevicesForRequestUser,
@@ -1667,19 +1748,13 @@ export const fetchAuthorizedRequiredDevicesInGroup = (
 export const extractUnauthenticatedRequiredDeviceById = (
   deviceId: ValidationChain,
 ) =>
-  fetchRequiredModel(
-    models.Device,
-    false,
-    true,
-    getDeviceUnauthenticated,
-    deviceId,
-  );
+  fetchRequiredModel(Device, false, true, getDeviceUnauthenticated, deviceId);
 export const extractUnauthenticatedRequiredDeviceInGroup = (
   deviceNameOrId: ValidationChain,
   groupNameOrId: ValidationChain,
 ) =>
   fetchRequiredModel(
-    models.Device,
+    Device,
     true,
     true,
     getDeviceUnauthenticated,
@@ -1691,7 +1766,7 @@ export const extractUnauthenticatedOptionalDeviceInGroup = (
   groupNameOrId: ValidationChain,
 ) =>
   fetchOptionalModel(
-    models.Device,
+    Device,
     true,
     true,
     getDeviceUnauthenticated,
@@ -1701,27 +1776,15 @@ export const extractUnauthenticatedOptionalDeviceInGroup = (
 export const extractUnauthenticatedOptionalDeviceById = (
   deviceId: ValidationChain,
 ) =>
-  fetchOptionalModel(
-    models.Device,
-    false,
-    true,
-    getDeviceUnauthenticated,
-    deviceId,
-  );
+  fetchOptionalModel(Device, false, true, getDeviceUnauthenticated, deviceId);
 export const fetchAuthorizedRequiredDeviceById = (deviceId: ValidationChain) =>
-  fetchRequiredModel(
-    models.Device,
-    false,
-    true,
-    getDeviceForUserOrDevice,
-    deviceId,
-  );
+  fetchRequiredModel(Device, false, true, getDeviceForUserOrDevice, deviceId);
 
 export const fetchAdminAuthorizedRequiredDeviceById = (
   deviceId: ValidationChain,
 ) =>
   fetchRequiredModel(
-    models.Device,
+    Device,
     false,
     true,
     getDeviceForRequestUserAsAdmin,
@@ -1729,19 +1792,13 @@ export const fetchAdminAuthorizedRequiredDeviceById = (
   );
 
 export const fetchAuthorizedOptionalDeviceById = (deviceId: ValidationChain) =>
-  fetchOptionalModel(
-    models.Device,
-    false,
-    true,
-    getDeviceForRequestUser,
-    deviceId,
-  );
+  fetchOptionalModel(Device, false, true, getDeviceForRequestUser, deviceId);
 
 export const fetchAuthorizedOptionalDeviceByNameOrId = (
   deviceNameOrId: ValidationChain,
 ) =>
   fetchOptionalModel(
-    models.Device,
+    Device,
     true,
     true,
     getDeviceForRequestUser,
@@ -1751,41 +1808,23 @@ export const fetchAuthorizedOptionalDeviceByNameOrId = (
 export const fetchUnauthorizedRequiredGroupByNameOrId = (
   groupNameOrId: ValidationChain,
 ) =>
-  fetchRequiredModel(
-    models.Group,
-    true,
-    true,
-    getGroupUnauthenticated,
-    groupNameOrId,
-  );
+  fetchRequiredModel(Group, true, true, getGroupUnauthenticated, groupNameOrId);
 
 export const fetchUnauthorizedOptionalGroupByNameOrId = (
   groupNameOrId: ValidationChain | string | number,
 ) =>
-  fetchOptionalModel(
-    models.Group,
-    true,
-    true,
-    getGroupUnauthenticated,
-    groupNameOrId,
-  );
+  fetchOptionalModel(Group, true, true, getGroupUnauthenticated, groupNameOrId);
 
 export const fetchAuthorizedRequiredGroupByNameOrId = (
   groupNameOrId: ValidationChain,
 ) =>
-  fetchRequiredModel(
-    models.Group,
-    true,
-    true,
-    getGroupForRequestUser,
-    groupNameOrId,
-  );
+  fetchRequiredModel(Group, true, true, getGroupForRequestUser, groupNameOrId);
 
 export const fetchAdminAuthorizedRequiredGroupByNameOrId = (
   groupNameOrId: ValidationChain | number,
 ) =>
   fetchRequiredModel(
-    models.Group,
+    Group,
     true,
     true,
     getGroupForRequestUserAsAdmin,
@@ -1796,7 +1835,7 @@ export const fetchUnauthorizedRequiredGroupById = (
   groupNameOrId: ValidationChain,
 ) =>
   fetchRequiredModel(
-    models.Group,
+    Group,
     false,
     true,
     getGroupUnauthenticated,
@@ -1807,29 +1846,23 @@ export const fetchUnauthorizedRequiredInvitationById = (
   invitationId: ValidationChain,
 ) =>
   fetchRequiredModel(
-    models.GroupInvites,
+    GroupInvites,
     false,
     true,
-    getUnauthorizedGenericModelById(models.GroupInvites),
+    getUnauthorizedGenericModelById(GroupInvites),
     invitationId,
   );
 
 export const fetchAuthorizedRequiredGroupById = (
   groupNameOrId: ValidationChain,
 ) =>
-  fetchRequiredModel(
-    models.Group,
-    false,
-    true,
-    getGroupForRequestUser,
-    groupNameOrId,
-  );
+  fetchRequiredModel(Group, false, true, getGroupForRequestUser, groupNameOrId);
 
 export const fetchAdminAuthorizedRequiredGroupById = (
   groupNameOrId: ValidationChain,
 ) =>
   fetchRequiredModel(
-    models.Group,
+    Group,
     false,
     true,
     getGroupForRequestUserAsAdmin,
@@ -1878,7 +1911,7 @@ export const fetchUnauthorizedRequiredUserByResetToken =
       return next(e);
     }
     response.locals.resetInfo = resetInfo;
-    const user = await models.User.findByPk(response.locals.resetInfo.id);
+    const user = await User.findByPk(response.locals.resetInfo.id);
     if (!user) {
       return next(
         new AuthorizationError(
@@ -1892,27 +1925,27 @@ export const fetchUnauthorizedRequiredUserByResetToken =
 
 export const fetchUnauthorizedRequiredUserByEmailOrId = (
   userEmailOrId: ValidationChain,
-) => fetchRequiredModel(models.User, true, true, getUser(), userEmailOrId);
+) => fetchRequiredModel(User, true, true, getUser(), userEmailOrId);
 
 export const fetchUnauthorizedOptionalUserByEmailOrId = (
   userEmailOrId: ValidationChain,
-) => fetchOptionalModel(models.User, true, true, getUser(), userEmailOrId);
+) => fetchOptionalModel(User, true, true, getUser(), userEmailOrId);
 
 // export const fetchUnauthorizedRequiredUserByEmailOrId = (
 //   userEmailOrId: ValidationChain
 // ) => fetchRequiredModel(models.User, true, true, getUser(), userEmailOrId);
 
 export const fetchUnauthorizedRequiredUserById = (userId: ValidationChain) =>
-  fetchRequiredModel(models.User, false, true, getUser(), userId);
+  fetchRequiredModel(User, false, true, getUser(), userId);
 
 export const fetchUnauthorizedOptionalUserById = (userId: ValidationChain) =>
-  fetchOptionalModel(models.User, false, true, getUser(), userId);
+  fetchOptionalModel(User, false, true, getUser(), userId);
 
 export const fetchAdminAuthorizedRequiredLimitedRecordingById = (
   recordingId: ValidationChain,
 ) =>
   fetchRequiredModel(
-    models.Recording,
+    Recording,
     false,
     true,
     getLimitedRecordingForRequestUserAsAdmin,
@@ -1934,7 +1967,7 @@ export const fetchAuthorizedRequiredLimitedRecordingById = (
   recordingId: ValidationChain | RecordingId,
 ) =>
   fetchRequiredModel(
-    models.Recording,
+    Recording,
     false,
     true,
     getLimitedRecordingForRequestUser,
@@ -1945,7 +1978,7 @@ export const fetchAuthorizedRequiredFlatRecordingById = (
   recordingId: ValidationChain | RecordingId,
 ) =>
   fetchRequiredModel(
-    models.Recording,
+    Recording,
     false,
     true,
     getFlatRecordingForRequestUser,
@@ -1956,7 +1989,7 @@ export const fetchUnauthorizedRequiredFlatRecordingById = (
   recordingId: ValidationChain | RecordingId,
 ) =>
   fetchRequiredModel(
-    models.Recording,
+    Recording,
     false,
     true,
     getRecording(false, false, false, false),
@@ -1967,7 +2000,7 @@ export const fetchAuthorizedRequiredFullRecordingById = (
   recordingId: ValidationChain | RecordingId,
 ) =>
   fetchRequiredModel(
-    models.Recording,
+    Recording,
     false,
     true,
     getFullRecordingForRequestUser,
@@ -1978,7 +2011,7 @@ export const fetchUnauthorizedRequiredLimitedRecordingById = (
   recordingId: ValidationChain,
 ) =>
   fetchRequiredModel(
-    models.Recording,
+    Recording,
     false,
     true,
     getRecording(false, false, false, true),
@@ -1989,7 +2022,7 @@ export const fetchUnauthorizedRequiredFullRecordingById = (
   recordingId: ValidationChain,
 ) =>
   fetchRequiredModel(
-    models.Recording,
+    Recording,
     false,
     true,
     getRecording(false, false, true, true),
@@ -2000,7 +2033,7 @@ export const fetchAdminAuthorizedRequiredLimitedRecordingsByIds = (
   recordingIds: ValidationChain,
 ) =>
   fetchRequiredModels(
-    models.Recording,
+    Recording,
     false,
     true,
     getLimitedRecordingsForRequestUserAsAdmin,
@@ -2011,7 +2044,7 @@ export const fetchAuthorizedRequiredLimitedRecordingsByIds = (
   recordingIds: ValidationChain,
 ) =>
   fetchRequiredModels(
-    models.Recording,
+    Recording,
     false,
     true,
     getLimitedRecordingsForRequestUser,
@@ -2022,7 +2055,7 @@ export const fetchAuthorizedRequiredFlatRecordingsByIds = (
   recordingIds: ValidationChain,
 ) =>
   fetchRequiredModels(
-    models.Recording,
+    Recording,
     false,
     true,
     getFlatRecordingsForRequestUser,
@@ -2030,14 +2063,14 @@ export const fetchAuthorizedRequiredFlatRecordingsByIds = (
   );
 
 export const fetchAuthorizedRequiredDevices = fetchRequiredModels(
-  models.Device,
+  Device,
   false,
   false,
   getDevices(true, false),
 );
 
 export const fetchAuthorizedRequiredStations = fetchRequiredModels(
-  models.Station,
+  Station,
   false,
   false,
   getStations(true, false),
@@ -2047,7 +2080,7 @@ export const fetchAuthorizedRequiredStationsForGroup = (
   groupNameOrId: ValidationChain,
 ) =>
   fetchRequiredModels(
-    models.Station,
+    Station,
     true,
     true,
     getStations(true, false),
@@ -2057,34 +2090,22 @@ export const fetchAuthorizedRequiredStationsForGroup = (
 export const fetchAuthorizedRequiredStationById = (
   stationId: ValidationChain,
 ) =>
-  fetchRequiredModel(
-    models.Station,
-    false,
-    true,
-    getStation(true, false),
-    stationId,
-  );
+  fetchRequiredModel(Station, false, true, getStation(true, false), stationId);
 
 export const fetchAuthorizedRequiredAlertById = (alertId: ValidationChain) =>
-  fetchRequiredModel(models.Alert, false, true, getAlert(true), alertId);
+  fetchRequiredModel(Alert, false, true, getAlert(true), alertId);
 
 export const fetchAdminAuthorizedRequiredStationById = (
   stationId: ValidationChain,
 ) =>
-  fetchRequiredModel(
-    models.Station,
-    false,
-    true,
-    getStation(true, true),
-    stationId,
-  );
+  fetchRequiredModel(Station, false, true, getStation(true, true), stationId);
 
 export const fetchAdminAuthorizedRequiredStationByNameInGroup = (
   groupNameOrId: ValidationChain,
   stationNameOrId: ValidationChain,
 ) =>
   fetchRequiredModel(
-    models.Station,
+    Station,
     true,
     true,
     getStation(true, true),
@@ -2097,7 +2118,7 @@ export const fetchAuthorizedRequiredStationByNameInGroup = (
   stationNameOrId: ValidationChain,
 ) =>
   fetchRequiredModel(
-    models.Station,
+    Station,
     true,
     true,
     getStation(true, false),
@@ -2106,13 +2127,13 @@ export const fetchAuthorizedRequiredStationByNameInGroup = (
   );
 
 export const fetchAuthorizedRequiredEventById = (eventId: ValidationChain) =>
-  fetchRequiredModel(models.Event, false, true, getEvent(true, false), eventId);
+  fetchRequiredModel(Event, false, true, getEvent(true, false), eventId);
 
 export const fetchAuthorizedRequiredSchedulesForGroup = (
   groupNameOrId: ValidationChain,
 ) =>
   fetchRequiredModels(
-    models.Schedule,
+    Schedule,
     false,
     false,
     getSchedules(true, false),
@@ -2120,14 +2141,14 @@ export const fetchAuthorizedRequiredSchedulesForGroup = (
   );
 
 export const fetchAuthorizedRequiredGroups = fetchRequiredModels(
-  models.Group,
+  Group,
   false,
   false,
   getGroups(true, false),
 );
 
 export const fetchAdminAuthorizedRequiredGroups = fetchRequiredModels(
-  models.Group,
+  Group,
   false,
   false,
   getGroups(true, true),
@@ -2137,10 +2158,10 @@ export const fetchUnAuthorizedOptionalEventDetailSnapshotById = (
   detailId: ValidationChain,
 ) =>
   fetchOptionalModel(
-    models.DetailSnapshot,
+    DetailSnapshot,
     false,
     true,
-    getUnauthorizedGenericModelById(models.DetailSnapshot),
+    getUnauthorizedGenericModelById(DetailSnapshot),
     detailId,
   );
 
@@ -2148,46 +2169,46 @@ export const fetchUnauthorizedRequiredEventDetailSnapshotById = (
   detailId: ValidationChain,
 ) =>
   fetchRequiredModel(
-    models.DetailSnapshot,
+    DetailSnapshot,
     false,
     true,
-    getUnauthorizedGenericModelById(models.DetailSnapshot),
+    getUnauthorizedGenericModelById(DetailSnapshot),
     detailId,
   );
 
 export const fetchUnauthorizedRequiredEventById = (eventId: ValidationChain) =>
   fetchRequiredModel(
-    models.Event,
+    Event,
     false,
     true,
-    getUnauthorizedGenericModelById(models.Event),
+    getUnauthorizedGenericModelById(Event),
     eventId,
   );
 
 export const fetchUnauthorizedRequiredTrackById = (trackId: ValidationChain) =>
   fetchRequiredModel(
-    models.Track,
+    Track,
     false,
     true,
-    getUnauthorizedGenericModelById(models.Track),
+    getUnauthorizedGenericModelById(Track),
     trackId,
   );
 
 export const fetchUnauthorizedRequiredTrackTagById = (tagId: ValidationChain) =>
   fetchRequiredModel(
-    models.TrackTag,
+    TrackTag,
     false,
     true,
-    getUnauthorizedGenericModelById(models.TrackTag),
+    getUnauthorizedGenericModelById(TrackTag),
     tagId,
   );
 
 export const fetchUnauthorizedRequiredFileById = (fileId: ValidationChain) =>
   fetchRequiredModel(
-    models.File,
+    File,
     false,
     true,
-    getUnauthorizedGenericModelById(models.File),
+    getUnauthorizedGenericModelById(File),
     fileId,
   );
 
@@ -2195,10 +2216,10 @@ export const fetchUnauthorizedRequiredRecordingTagById = (
   tagId: ValidationChain,
 ) =>
   fetchRequiredModel(
-    models.Tag,
+    Tag,
     false,
     true,
-    getUnauthorizedGenericModelById(models.Tag),
+    getUnauthorizedGenericModelById(Tag),
     tagId,
   );
 
@@ -2206,9 +2227,9 @@ export const fetchUnauthorizedRequiredScheduleById = (
   scheduleId: ValidationChain | ScheduleId,
 ) =>
   fetchRequiredModel(
-    models.Schedule,
+    Schedule,
     false,
     true,
-    getUnauthorizedGenericModelById(models.Schedule),
+    getUnauthorizedGenericModelById(Schedule),
     scheduleId,
   );

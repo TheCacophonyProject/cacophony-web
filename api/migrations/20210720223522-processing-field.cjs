@@ -1,4 +1,3 @@
-
 module.exports = {
   up: async function (queryInterface, Sequelize) {
     await Promise.all([
@@ -6,7 +5,7 @@ module.exports = {
       queryInterface.addColumn(
         "Recordings",
         "processingEndTime",
-        Sequelize.DATE
+        Sequelize.DATE,
       ),
     ]);
   },

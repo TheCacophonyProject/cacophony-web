@@ -17,7 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { validateFields } from "../middleware.js";
-import modelsInit from "@models/index.js";
 import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction, Request, Response } from "express";
@@ -39,15 +38,18 @@ import {
   fetchUnauthorizedRequiredUserByEmailOrId,
   fetchUnauthorizedRequiredUserById,
   parseJSONField,
+  RequestContext,
 } from "../extract-middleware.js";
 import { jsonSchemaOf } from "../schema-validation.js";
-import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json" assert { type: "json" };
-import ApiGroupSettingsSchema from "@schemas/api/group/ApiGroupSettings.schema.json" assert { type: "json" };
-import ApiGroupUserSettingsSchema from "@schemas/api/group/ApiGroupUserSettings.schema.json" assert { type: "json" };
+import ApiCreateStationDataSchema from "@schemas/api/station/ApiCreateStationData.schema.json" with { type: "json" };
+import ApiGroupSettingsSchema from "@schemas/api/group/ApiGroupSettings.schema.json" with { type: "json" };
+import ApiGroupUserSettingsSchema from "@schemas/api/group/ApiGroupUserSettings.schema.json" with { type: "json" };
 import {
-  anyOf,
+  atMostOneOf,
   booleanOf,
   deprecatedField,
+  emailOf,
+  exactlyOneOf,
   idOf,
   nameOf,
   nameOrIdOf,
@@ -59,7 +61,6 @@ import {
   UnprocessableError,
 } from "../customErrors.js";
 import { mapDevicesResponse } from "./Device.js";
-import type { Group } from "@/models/Group.js";
 import type {
   ApiGroupResponse,
   ApiGroupSettings,
@@ -76,7 +77,7 @@ import { mapSchedule } from "@api/V1/Schedule.js";
 import { mapStation, mapStations } from "./Station.js";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 import { urlNormaliseName } from "@/emails/htmlEmailUtils.js";
-import { Op } from "sequelize";
+import { HasManyAddAssociationMixinOptions, Op } from "sequelize";
 import {
   sendAddedToGroupNotificationEmail,
   sendGroupInviteExistingMemberEmail,
@@ -95,15 +96,17 @@ import type {
   GroupInvitationId,
   UserId,
 } from "@typedefs/api/common.js";
-import type { GroupInvites } from "@models/GroupInvites.js";
 import config from "@config";
 import {
   latLngApproxDistance,
   MIN_STATION_SEPARATION_METERS,
 } from "@models/util/locationUtils.js";
-
-const models = await modelsInit();
-
+import { Group } from "@models/Group.js";
+import { GroupInvites } from "@models/GroupInvites.js";
+import { GroupUsers } from "@models/GroupUsers.js";
+import { User } from "@models/User.js";
+import { Station } from "@models/Station.js";
+import logging from "@log";
 const mapGroup = (
   group: Group,
   viewAsSuperAdmin: boolean,
@@ -111,18 +114,14 @@ const mapGroup = (
   const groupData: ApiGroupResponse = {
     id: group.id,
     groupName: group.groupName,
-    admin: viewAsSuperAdmin || (group as any).Users[0].GroupUsers.admin,
-    owner: viewAsSuperAdmin || (group as any).Users[0].GroupUsers.owner,
+    admin: viewAsSuperAdmin || group.Users[0].GroupUsers.admin,
+    owner: viewAsSuperAdmin || group.Users[0].GroupUsers.owner,
   };
   if (group.settings) {
     groupData.settings = group.settings;
   }
-  if (
-    (group as any).Users &&
-    (group as any).Users.length &&
-    (group as any).Users[0].GroupUsers.settings
-  ) {
-    groupData.userSettings = (group as any).Users[0].GroupUsers.settings;
+  if (group.Users && group.Users.length && group.Users[0].GroupUsers.settings) {
+    groupData.userSettings = group.Users[0].GroupUsers.settings;
   }
   if (group.lastThermalRecordingTime) {
     groupData.lastThermalRecordingTime =
@@ -132,13 +131,22 @@ const mapGroup = (
     groupData.lastAudioRecordingTime =
       group.lastAudioRecordingTime.toISOString();
   }
-  const pending =
-    !viewAsSuperAdmin && (group as any).Users[0].GroupUsers.pending;
+  if (group.earliestThermalRecordingTime) {
+    groupData.earliestThermalRecordingTime =
+      group.earliestThermalRecordingTime.toISOString();
+  }
+  if (group.earliestAudioRecordingTime) {
+    groupData.earliestAudioRecordingTime =
+      group.earliestAudioRecordingTime.toISOString();
+  }
+  const pending = !viewAsSuperAdmin && group.Users[0].GroupUsers.pending;
   if (pending) {
     groupData.pending = pending;
     // If the user is only pending, they shouldn't see these fields.
     delete groupData.lastAudioRecordingTime;
     delete groupData.lastThermalRecordingTime;
+    delete groupData.earliestAudioRecordingTime;
+    delete groupData.earliestThermalRecordingTime;
     delete groupData.userSettings;
     delete groupData.settings;
   }
@@ -158,53 +166,43 @@ const mapGroups = (
 ): ApiGroupResponse[] =>
   groups.map((group) => mapGroup(group, viewAsSuperAdmin));
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiGroupsResponseSuccess {
+export interface ApiGroupsResponseSuccess {
   groups: ApiGroupResponse[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiGroupResponseSuccess {
+export interface ApiGroupResponseSuccess {
   group: ApiGroupResponse;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiGroupUsersResponseSuccess {
+export interface ApiGroupUsersResponseSuccess {
   users: ApiGroupUserResponse[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiGroupDevicesResponseSuccess {
+export interface ApiGroupDevicesResponseSuccess {
   devices: ApiDeviceResponse[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiCreateStationDataBody {
+export interface ApiCreateStationDataBody {
   stations: ApiCreateStationData[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiCreateSingleStationDataBody {
+export interface ApiCreateSingleStationDataBody {
   station: ApiCreateStationData;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiStationResponseSuccess {
+export interface ApiStationResponseSuccess {
   stations: ApiStationResponse[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiScheduleConfigs {
+export interface ApiScheduleConfigs {
   schedules: ScheduleConfig[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiGroupSettingsBody {
+export interface ApiGroupSettingsBody {
   settings: ApiGroupSettings;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiGroupUserSettingsBody {
+export interface ApiGroupUserSettingsBody {
   settings: ApiGroupUserSettings;
 }
 
@@ -218,7 +216,7 @@ const RESERVED_GROUP_NAMES = [
   "end-user-agreement",
   "forgot-password",
   "reset-password",
-  "confirm-group-membership-request",
+  "confirm-project-membership-request",
   "accept-invite",
   "confirm-account-email",
   "setup",
@@ -246,19 +244,20 @@ export default function (app: Application, baseUrl: string) {
     apiUrl,
     extractJwtAuthorizedUser,
     validateFields([
-      anyOf(validNameOf(body("groupname")), validNameOf(body("groupName"))),
+      exactlyOneOf(
+        validNameOf(body("groupname")),
+        validNameOf(body("groupName")),
+      ),
     ]),
     fetchUnauthorizedOptionalGroupByNameOrId(body(["groupname", "groupName"])),
     async (request: Request, response: Response, next: NextFunction) => {
       if (!response.locals.group) {
-        // Check for urlNormalised versions of group name.
         const groupName = extractValFromRequest(
           request,
           body(["groupname", "groupName"]),
         );
 
         const urlNormalisedGroupName = urlNormaliseName(groupName);
-
         if (RESERVED_GROUP_NAMES.includes(urlNormalisedGroupName)) {
           return next(
             new ClientError(
@@ -267,32 +266,44 @@ export default function (app: Application, baseUrl: string) {
             ),
           );
         }
-
-        await fetchUnauthorizedOptionalGroupByNameOrId(urlNormalisedGroupName)(
-          request,
-          response,
-          next,
+        // Check for urlNormalised versions of group name against url normalised versions of *all* other group names.
+        const allGroups = await Group.findAll({
+          attributes: ["groupName"],
+        });
+        const urlNormalisedExistingGroups = allGroups.map((group) =>
+          urlNormaliseName(group.groupName),
         );
+        if (urlNormalisedExistingGroups.includes(urlNormalisedGroupName)) {
+          return next(
+            new ClientError("Group name in use", HttpStatusCode.Unprocessable),
+          );
+        }
       } else {
-        next();
-      }
-    },
-    async (request: Request, response: Response, next: NextFunction) => {
-      if (response.locals.group) {
         return next(
           new ClientError("Group name in use", HttpStatusCode.Unprocessable),
         );
       }
-      next();
+      return next();
     },
     async (request: Request, response: Response) => {
-      const newGroup = await models.Group.create({
-        groupName: request.body.groupname || request.body.groupName,
-      });
+      const groupName = (
+        request.body.groupname || request.body.groupName
+      ).trim();
+      const newGroup = await Group.create({ groupName });
+      if (!config.productionEnv) {
+        for (const secretName of config.groupNamesWithRedactedThermalRecordings ||
+          []) {
+          if (groupName.includes(secretName)) {
+            // NOTE: in CI testing, this group name is used to add a group to the
+            // secret thermal-redacted list.
+            config.groupIdsWithRedactedThermalRecordings.push(newGroup.id);
+          }
+        }
+      }
       await newGroup.addUser(response.locals.requestUser.id, {
         // Creating user is set as the group owner by default.
         through: { admin: true, owner: true },
-      });
+      } as HasManyAddAssociationMixinOptions);
       return successResponse(response, "Created new group.", {
         groupId: newGroup.id,
       });
@@ -334,21 +345,19 @@ export default function (app: Application, baseUrl: string) {
         // Sidekick UA
         groups = mapLegacyGroupsResponse(groups);
       } else {
-        const oneWeekAgo = new Date(
-          new Date().setDate(new Date().getDate() - 7),
+        const oneYearAgo = new Date(
+          new Date().setDate(new Date().getDate() - 365),
         );
-        const actualUser = await models.User.findByPk(
-          response.locals.requestUser.id,
-        );
+        const actualUser = await User.findByPk(response.locals.requestUser.id);
         if (!actualUser) {
           return next(new AuthorizationError("User not found"));
         }
-        if (actualUser.createdAt > oneWeekAgo) {
+        if (actualUser.createdAt > oneYearAgo) {
           // Check invites that haven't expired
-          const invites = await models.GroupInvites.findAll({
+          const invites = await GroupInvites.findAll({
             where: { email: actualUser.email },
             include: {
-              model: models.Group,
+              model: Group,
               attributes: ["groupName"],
             },
           });
@@ -361,13 +370,12 @@ export default function (app: Application, baseUrl: string) {
                   owner: invite.owner,
                   id: invite.GroupId,
                   pending: "invited",
-                } as ApiGroupResponse),
+                }) as ApiGroupResponse,
             );
             groups = [...groups, ...invitesMapped];
           }
         }
       }
-      // FIXME - handle deprecated field.
       return successResponse(response, { groups });
     },
   );
@@ -401,7 +409,7 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
     ]),
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, {
         group: mapGroup(response.locals.group, response.locals.viewAsSuperUser),
       });
@@ -429,14 +437,14 @@ export default function (app: Application, baseUrl: string) {
     validateFields([
       query("view-mode").optional().equals("user"),
       nameOrIdOf(param("groupIdOrName")),
-      anyOf(
-        query("onlyActive").optional().isBoolean().toBoolean(),
+      atMostOneOf(
+        deprecatedField(query("onlyActive").optional().isBoolean().toBoolean()),
         query("only-active").optional().isBoolean().toBoolean(),
       ),
     ]),
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     fetchAuthorizedRequiredDevicesInGroup(param("groupIdOrName")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, "Got devices for group", {
         devices: mapDevicesResponse(
           response.locals.devices,
@@ -469,8 +477,8 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
     ]),
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
-    async (request: Request, response: Response) => {
-      const users = await response.locals.group.getUsers({
+    async (_request: Request, response: Response) => {
+      const users: User[] = await response.locals.group.getUsers({
         attributes: ["id", "userName"],
         through: { where: { removedAt: { [Op.eq]: null } } },
       });
@@ -488,7 +496,7 @@ export default function (app: Application, baseUrl: string) {
           return user;
         },
       );
-      const invitedUsers = await models.GroupInvites.findAll({
+      const invitedUsers = await GroupInvites.findAll({
         where: {
           GroupId: response.locals.group.id,
         },
@@ -525,7 +533,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([idOf(param("groupIdOrName"))]),
     fetchAuthorizedRequiredSchedulesForGroup(param("groupIdOrName")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, "Got schedules for group", {
         schedules: response.locals.schedules.map(mapSchedule),
       });
@@ -547,7 +555,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiBody {String} email Email address of the user to add to the group.
    * @apiBody {Boolean} admin If the user should be an admin for the group.
    * @apiBody {Boolean} [owner] If the user should be marked as a group owner.
-   *
+   *a
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
@@ -555,8 +563,8 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/users`,
     extractJwtAuthorizedUser,
     validateFields([
-      anyOf(nameOf(body("group")), idOf(body("groupId"))),
-      anyOf(body("email").isEmail(), idOf(body("userId"))),
+      exactlyOneOf(nameOf(body("group")), idOf(body("groupId"))),
+      exactlyOneOf(emailOf(body("email")), idOf(body("userId"))),
       booleanOf(body("admin")).optional().default(false),
       booleanOf(body("owner")).optional().default(false),
     ]),
@@ -586,7 +594,7 @@ export default function (app: Application, baseUrl: string) {
       if (!user) {
         // We can update permissions on invited users, so check for any invited users
         // matching the email address.
-        const invitation = await models.GroupInvites.findOne({
+        const invitation = await GroupInvites.findOne({
           where: {
             GroupId: response.locals.group.id,
             email: request.body.email,
@@ -625,37 +633,30 @@ export default function (app: Application, baseUrl: string) {
       const asAdmin = request.body.admin;
       const asOwner = request.body.owner;
       const { action, permissionChanges, added } =
-        await models.Group.addOrUpdateGroupUser(
-          group,
-          user,
-          asAdmin,
-          asOwner,
-          null,
-        );
+        await Group.addOrUpdateGroupUser(group, user, asAdmin, asOwner, null);
 
       if (user.id !== requestUser.id && user.emailConfirmed) {
         // NOTE: Appropriate transactional email
-        const permissions = {};
+        const permissions: { owner?: boolean; admin?: boolean } = {};
         if (permissionChanges.newAdmin && !permissionChanges.oldAdmin) {
           // User was made admin.
-          (permissions as any).admin = true;
+          permissions.admin = true;
         } else if (permissionChanges.oldAdmin && !permissionChanges.newAdmin) {
           // User had admin permissions removed.
-          (permissions as any).admin = false;
+          permissions.admin = false;
         }
         if (permissionChanges.newOwner && !permissionChanges.oldOwner) {
           // User had ownership bestowed.
-          (permissions as any).owner = true;
+          permissions.owner = true;
         } else if (permissionChanges.oldOwner && !permissionChanges.newOwner) {
           // User had ownership removed.
-          (permissions as any).owner = false;
+          permissions.owner = false;
         }
 
         if (added) {
           // User was added.
           if (user.emailConfirmed) {
             await sendAddedToGroupNotificationEmail(
-              request.headers.host,
               user.email,
               group.groupName,
               permissions,
@@ -665,7 +666,6 @@ export default function (app: Application, baseUrl: string) {
           // User was updated.
           if (user.emailConfirmed) {
             await sendUpdatedGroupPermissionsNotificationEmail(
-              request.headers.host,
               user.email,
               group.groupName,
               permissions,
@@ -698,8 +698,8 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/users`,
     extractJwtAuthorizedUser,
     validateFields([
-      anyOf(nameOf(body("group")), idOf(body("groupId"))),
-      anyOf(body("email").isEmail(), idOf(body("userId"))),
+      exactlyOneOf(nameOf(body("group")), idOf(body("groupId"))),
+      exactlyOneOf(emailOf(body("email")), idOf(body("userId"))),
     ]),
     // Extract required resources to check permissions
     fetchAdminAuthorizedRequiredGroupByNameOrId(body(["group", "groupId"])),
@@ -724,7 +724,7 @@ export default function (app: Application, baseUrl: string) {
       let removed = false;
       let wasPending = false;
       if (response.locals.user) {
-        const success = await models.Group.removeUserFromGroup(
+        const success = await Group.removeUserFromGroup(
           response.locals.group,
           response.locals.user,
         );
@@ -734,7 +734,7 @@ export default function (app: Application, baseUrl: string) {
       if (!removed && request.body.email) {
         // Check to see if the user was just invited, but not added, in which case we can
         // just revoke the invitation.
-        const invitation = await models.GroupInvites.findOne({
+        const invitation = await GroupInvites.findOne({
           where: {
             GroupId: response.locals.group.id,
             email: request.body.email,
@@ -744,7 +744,6 @@ export default function (app: Application, baseUrl: string) {
           await invitation.destroy();
           // This user can't have confirmed their email yet, so just send
           await sendRemovedFromInvitedGroupNotificationEmail(
-            request.headers.host,
             invitation.email,
             response.locals.group.groupName,
           );
@@ -770,7 +769,6 @@ export default function (app: Application, baseUrl: string) {
         ) {
           if (response.locals.user.emailConfirmed) {
             await sendRemovedFromGroupNotificationEmail(
-              request.headers.host,
               response.locals.user.email,
               response.locals.group.groupName,
             );
@@ -780,7 +778,6 @@ export default function (app: Application, baseUrl: string) {
       } else if (removed && wasPending) {
         if (response.locals.user.emailConfirmed) {
           await sendRemovedFromInvitedGroupNotificationEmail(
-            request.headers.host,
             response.locals.user.email,
             response.locals.group.groupName,
           );
@@ -810,9 +807,10 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     async (request: Request, response: Response, next: NextFunction) => {
-      const group = response.locals.group;
-      const user = response.locals.requestUser;
-      const groupUsers = await models.GroupUsers.findAll({
+      const requestContext = response.locals as RequestContext;
+      const group = requestContext.group as Group;
+      const user = requestContext.requestUser;
+      const groupUsers = await GroupUsers.findAll({
         where: {
           GroupId: group.id,
           removedAt: { [Op.eq]: null },
@@ -834,10 +832,9 @@ export default function (app: Application, baseUrl: string) {
 
       const thisGroupUser = groupUsers.find(({ UserId }) => UserId === user.id);
 
-      const actualUser = await models.User.findByPk(user.id);
+      const actualUser = await User.findByPk(user.id);
       if (actualUser.emailConfirmed) {
         await sendLeftGroupNotificationEmail(
-          request.headers.host,
           actualUser.email,
           response.locals.group.groupName,
         );
@@ -891,7 +888,7 @@ export default function (app: Application, baseUrl: string) {
       const proximityWarnings = [];
 
       const activeStationsInTimeWindow =
-        await models.Station.activeInGroupDuringTimeRange(
+        await Station.activeInGroupDuringTimeRange(
           groupId,
           fromTime,
           untilTime,
@@ -902,7 +899,7 @@ export default function (app: Application, baseUrl: string) {
           MIN_STATION_SEPARATION_METERS
         ) {
           proximityWarnings.push(
-            `New station is too close to ${existingStation.name} (#${existingStation.id}) - recordings may be incorrectly matched`,
+            `New location is too close to ${existingStation.name} (#${existingStation.id}) - recordings may be incorrectly matched`,
           );
         }
       }
@@ -913,7 +910,7 @@ export default function (app: Application, baseUrl: string) {
       if (nameCollision) {
         return next(
           new ClientError(
-            `An active station with that name already exists in the time window ${fromTime.toISOString()} - ${
+            `An active location with that name already exists in the time window ${fromTime.toISOString()} - ${
               (untilTime && untilTime.toISOString()) || "now"
             }.`,
           ),
@@ -923,7 +920,7 @@ export default function (app: Application, baseUrl: string) {
         // await nameCollision.update({ name: `${nameCollision.name}_moved` });
       }
 
-      const station = await models.Station.create({
+      const station = await Station.create({
         name,
         location,
         activeAt: fromTime,
@@ -966,7 +963,7 @@ export default function (app: Application, baseUrl: string) {
       param("groupIdOrName"),
       param("stationName"),
     ),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, "Got station", {
         station: mapStation(response.locals.station),
       });
@@ -1016,7 +1013,7 @@ export default function (app: Application, baseUrl: string) {
     // NOTE: Need this to get a "user not in group" error, otherwise would just get a "no such station" error
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     fetchAuthorizedRequiredStationsForGroup(param("groupIdOrName")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       const stations = await response.locals.stations;
       return successResponse(response, "Got stations for group", {
         stations: mapStations(stations),
@@ -1049,8 +1046,8 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     parseJSONField(body("settings")),
-    async (request: Request, response: Response) => {
-      const groupUser = await models.GroupUsers.findOne({
+    async (_request: Request, response: Response) => {
+      const groupUser = await GroupUsers.findOne({
         where: {
           GroupId: response.locals.group.id,
           UserId: response.locals.requestUser.id,
@@ -1094,7 +1091,7 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     parseJSONField(body("settings")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       const existingSettings = response.locals.group.settings || {};
       await response.locals.group.update({
         settings: { ...existingSettings, ...response.locals.settings },
@@ -1129,7 +1126,7 @@ export default function (app: Application, baseUrl: string) {
       }
     },
     fetchUnauthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
-    async (request, response, next) => {
+    async (_request, response, next) => {
       if (response.locals.tokenInfo) {
         if (
           (response.locals.tokenInfo._type &&
@@ -1182,9 +1179,7 @@ export default function (app: Application, baseUrl: string) {
       //   return next(new UnprocessableError("Group no longer exists"));
       // }
 
-      const actualUser = await models.User.findByPk(
-        response.locals.requestUser.id,
-      );
+      const actualUser = await User.findByPk(response.locals.requestUser.id);
 
       const tokenInfo = response.locals.tokenInfo as {
         _type: "invite-new-user" | "invite-existing-user";
@@ -1193,9 +1188,9 @@ export default function (app: Application, baseUrl: string) {
       };
 
       // Check if we're calling this as a user without token
-      let invitation;
+      let invitation: GroupInvites;
       if (!tokenInfo) {
-        invitation = await models.GroupInvites.findOne({
+        invitation = await GroupInvites.findOne({
           where: {
             GroupId: response.locals.group.id,
             email: actualUser.email,
@@ -1217,7 +1212,7 @@ export default function (app: Application, baseUrl: string) {
         }
       }
       if (invitation) {
-        const { added } = await models.Group.addOrUpdateGroupUser(
+        const { added } = await Group.addOrUpdateGroupUser(
           response.locals.group,
           actualUser,
           invitation.admin,
@@ -1225,15 +1220,14 @@ export default function (app: Application, baseUrl: string) {
           null,
         );
         if (added && actualUser.emailConfirmed) {
-          const permissions = {};
+          const permissions: { owner?: boolean; admin?: boolean } = {};
           if (invitation.admin) {
-            (permissions as any).admin = true;
+            permissions.admin = true;
           }
           if (invitation.owner) {
-            (permissions as any).owner = true;
+            permissions.owner = true;
           }
           await sendAddedToGroupNotificationEmail(
-            request.headers.host,
             actualUser.email,
             response.locals.group.groupName,
             permissions,
@@ -1241,7 +1235,7 @@ export default function (app: Application, baseUrl: string) {
         }
         await invitation.destroy();
       } else {
-        const pendingUser = await models.GroupUsers.findOne({
+        const pendingUser = await GroupUsers.findOne({
           where: {
             UserId: response.locals.requestUser.id,
             GroupId: response.locals.group.id,
@@ -1254,15 +1248,14 @@ export default function (app: Application, baseUrl: string) {
         }
         await pendingUser.update({ pending: null });
         if (actualUser.emailConfirmed) {
-          const permissions = {};
+          const permissions: { owner?: boolean; admin?: boolean } = {};
           if (pendingUser.admin) {
-            (permissions as any).admin = true;
+            permissions.admin = true;
           }
           if (pendingUser.owner) {
-            (permissions as any).owner = true;
+            permissions.owner = true;
           }
           await sendAddedToGroupNotificationEmail(
-            request.headers.host,
             actualUser.email,
             response.locals.group.groupName,
             permissions,
@@ -1281,14 +1274,14 @@ export default function (app: Application, baseUrl: string) {
       extractJwtAuthorizedUser,
       validateFields([
         nameOrIdOf(param("groupIdOrName")),
-        body("email").exists(),
+        emailOf(body("email")).exists(),
         booleanOf(body("admin")).default(false),
         booleanOf(body("owner")).default(false),
       ]),
       fetchAdminAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
       fetchUnauthorizedOptionalUserByEmailOrId(body("email")),
       async (request: Request, response: Response, next: NextFunction) => {
-        let token;
+        let token: string;
         const group = response.locals.group;
         const user = response.locals.user;
         const _makeAdmin = request.body.admin;
@@ -1298,16 +1291,16 @@ export default function (app: Application, baseUrl: string) {
         if (!user) {
           // If the user isn't a member, there should be an invitation created,
           // and we want to get the token for that invitation.
-          const existingInvite = await models.GroupInvites.findOne({
+          const existingInvite = await GroupInvites.findOne({
             where: { email },
           });
           if (!existingInvite) {
             return next(new AuthorizationError("Invite doesn't exist"));
           }
-          token = getInviteToGroupToken(existingInvite.id, group.id);
+          token = getInviteToGroupToken(existingInvite.id, group.id, email);
           // Should we be able to revoke email invites?
         } else {
-          const existingGroupUser = await models.GroupUsers.findOne({
+          const existingGroupUser = await GroupUsers.findOne({
             where: {
               UserId: user.id,
               GroupId: group.id,
@@ -1334,7 +1327,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       nameOrIdOf(param("groupIdOrName")),
-      body("email").exists(),
+      emailOf(body("email")).exists(),
       booleanOf(body("admin")).default(false),
       booleanOf(body("owner")).default(false),
     ]),
@@ -1351,17 +1344,16 @@ export default function (app: Application, baseUrl: string) {
       if (!user) {
         // If the user isn't a member, email them and invite them to create an account, with a special link to
         // accept which will then add them to the group when the account is created.
-        const invitation = await models.GroupInvites.create({
+        const invitation = await GroupInvites.create({
           email,
           invitedBy: requestUser.id,
           GroupId: group.id,
           admin: makeAdmin,
           owner: makeOwner,
         });
-        const token = getInviteToGroupToken(invitation.id, group.id);
-        const actualRequestUser = await models.User.findByPk(requestUser.id);
+        const token = getInviteToGroupToken(invitation.id, group.id, email);
+        const actualRequestUser = await User.findByPk(requestUser.id);
         const sendSuccess = await sendGroupInviteNewMemberEmail(
-          request.headers.host,
           token,
           actualRequestUser.email,
           group.groupName,
@@ -1374,7 +1366,7 @@ export default function (app: Application, baseUrl: string) {
         }
         // Should we be able to revoke email invites?
       } else {
-        const existingGroupUser = await models.GroupUsers.findOne({
+        const existingGroupUser = await GroupUsers.findOne({
           where: {
             UserId: user.id,
             GroupId: group.id,
@@ -1386,11 +1378,12 @@ export default function (app: Application, baseUrl: string) {
             new UnprocessableError("User is already a member of group"),
           );
         }
+        logging.warning(`HERE, invite ${existingGroupUser}`);
         if (
           existingGroupUser === null ||
           (existingGroupUser && existingGroupUser.pending !== null)
         ) {
-          await models.Group.addOrUpdateGroupUser(
+          await Group.addOrUpdateGroupUser(
             group,
             user,
             makeAdmin,
@@ -1398,11 +1391,10 @@ export default function (app: Application, baseUrl: string) {
             "invited",
           );
           const token = getInviteToGroupTokenExistingUser(user.id, group.id);
-          const actualRequestUser = await models.User.findByPk(requestUser.id);
-          let sendSuccess;
+          const actualRequestUser = await User.findByPk(requestUser.id);
+          let sendSuccess: boolean;
           if (actualRequestUser.emailConfirmed) {
             sendSuccess = await sendGroupInviteExistingMemberEmail(
-              request.headers.host,
               token,
               actualRequestUser.email,
               group.groupName,
@@ -1412,7 +1404,6 @@ export default function (app: Application, baseUrl: string) {
           } else {
             // Still send the user an email, but send it as if they are not a current member.
             sendSuccess = await sendGroupInviteNewMemberEmail(
-              request.headers.host,
               token,
               actualRequestUser.email,
               group.groupName,
@@ -1421,7 +1412,7 @@ export default function (app: Application, baseUrl: string) {
             );
           }
           if (!sendSuccess) {
-            await models.Group.removeUserFromGroup(group, user);
+            await Group.removeUserFromGroup(group, user);
             return next(new ClientError("Failed to send group invitation"));
           }
         }

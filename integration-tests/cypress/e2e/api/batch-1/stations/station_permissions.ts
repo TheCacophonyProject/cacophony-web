@@ -8,7 +8,7 @@ import {
   TestGetLocation,
 } from "@commands/api/station";
 import { ApiStationData } from "@commands/types";
-import { HttpStatusCode } from "@typedefs/api/consts";
+import { HttpStatusCode, RecordingProcessingState } from "@typedefs/api/consts";
 
 describe("Stations: permissions", () => {
   const superuser = getCreds("superuser")["email"];
@@ -66,7 +66,12 @@ describe("Stations: permissions", () => {
       const recordingTime = new Date();
       cy.testUploadRecording(
         "saCamera1",
-        { ...thisLocation, time: recordingTime, noTracks: true },
+        {
+          ...thisLocation,
+          time: recordingTime,
+          noTracks: true,
+          processingState: RecordingProcessingState.TrackAndAnalyse,
+        },
         "saRecording1",
       )
         .thenCheckStationNameIs("saAdmin", getTestName("saStation1"))
@@ -409,6 +414,8 @@ describe("Stations: permissions", () => {
       });
     });
   } else {
-    it.skip("Super-user as user should see only their recordings", () => {});
+    it.skip("Super-user as user should see only their recordings", () => {
+      return;
+    });
   }
 });

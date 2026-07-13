@@ -1,5 +1,3 @@
-
-
 module.exports = {
   up: async function (queryInterface, Sequelize) {
     return await queryInterface.addColumn("Tags", "automatic", {

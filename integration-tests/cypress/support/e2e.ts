@@ -14,10 +14,6 @@ import "../commands/api/recording-tests";
 import "../commands/api/station";
 import "../commands/api/monitoring";
 import "../commands/api/track";
-import "../commands/api/visits";
-import "../commands/browsegui/user";
-import "../commands/browsegui/groups";
-import "../commands/browsegui/general";
 
 beforeEach(function () {
   // This runs before each test file, eg once per file.

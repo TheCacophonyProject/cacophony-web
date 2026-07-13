@@ -1,6 +1,6 @@
 {
   "label": "all",
-  "version": "ad6febdf-ccdc-49e8-a2c1-8b56174b431a",
+  "version": "a06febdf-cfdc-49e8-a2c1-8b99174b431a",
   "children": [
     {
       "label": "mammal",
@@ -133,6 +133,7 @@
             }
           ]
         },
+        {"label":"agouti"},
         {
           "label": "rodent",
           "children": [
@@ -140,7 +141,11 @@
               "label": "mouse"
             },
             {
-              "label": "rat"
+              "label": "rat",
+              "children": [
+                { "label": "ship rat" },
+                { "label": "norway rat" }
+              ]
             },
             {
               "label": "rakali",
@@ -179,9 +184,6 @@
         {
           "label": "false-positive",
           "display": "false trigger"
-        },
-        {
-          "label": "bunyip"
         },
         {
           "label": "noise"
@@ -237,9 +239,6 @@
         {
           "label": "unidentified",
           "display": "not identifiable"
-        },
-        {
-          "label": "drop bear"
         },
         {
           "label": "vehicle"

@@ -1,6 +1,4 @@
-
-
-const util =  require("./util/util.cjs");
+const util = require("./util/util.cjs");
 module.exports = {
   up: async function (queryInterface, Sequelize) {
     await queryInterface.addColumn("Recordings", "uploader", {
@@ -19,7 +17,7 @@ module.exports = {
   down: async function (queryInterface) {
     await queryInterface.removeColumn("Recordings", "uploader");
     await queryInterface.sequelize.query(
-      'drop type "enum_Recordings_uploader"'
+      'drop type "enum_Recordings_uploader"',
     );
     await queryInterface.removeColumn("Recordings", "uploaderId");
     await util.migrationRemoveBelongsTo(queryInterface, "Alerts", "Stations");

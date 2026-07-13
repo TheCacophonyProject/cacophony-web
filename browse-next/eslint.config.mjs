@@ -1,9 +1,10 @@
 import globals from "globals";
-
-import jsLint from "@eslint/js";
+import esLint from "@eslint/js";
+import { defineConfig, globalIgnores } from "eslint/config";
 import tsLint from "typescript-eslint";
 import vueLint from "eslint-plugin-vue";
 import stylistic from "@stylistic/eslint-plugin";
+import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
 import { includeIgnoreFile } from "@eslint/compat";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -36,9 +37,10 @@ export default [
     },
   },
   // syntax rules
-  jsLint.configs.recommended,
+  esLint.configs.recommended,
   ...tsLint.configs.recommended,
   ...vueLint.configs["flat/essential"],
+  eslintPluginPrettierRecommended,
   {
     plugins: { "@stylistic": stylistic },
     rules: {

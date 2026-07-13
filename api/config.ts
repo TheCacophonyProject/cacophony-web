@@ -6,16 +6,19 @@ const server = {
   loggerLevel: "info",
 };
 import { fileURLToPath } from "url";
+import type { ServerConfig } from "@typedefs/api/serverConfig.js";
+import LoadedServerConfigSchema from "@schemas/api/serverConfig/LoadedServerConfig.schema.json" with { type: "json" };
+import { Ajv } from "ajv";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const timeZone = "Pacific/Auckland";
 
-function loadConfigFromArgs(strict: boolean = false) {
+function loadConfigFromArgs(strict = false): Promise<ServerConfig> {
   return loadConfig(getConfigPathFromArgs(strict));
 }
 
-function getConfigPathFromArgs(strict: boolean = false): string {
+function getConfigPathFromArgs(strict = false): string {
   let configPath = "./config/app.js";
   for (let i = 2; i < process.argv.length; i++) {
     const val = process.argv[i];
@@ -33,15 +36,35 @@ function getConfigPathFromArgs(strict: boolean = false): string {
   return configPath;
 }
 
-async function loadConfig(configPath) {
+export async function loadConfig(configPath: string): Promise<ServerConfig> {
   configPath = path.resolve(__dirname, configPath);
+  const parts = configPath.split(".");
+  parts.pop();
+  // Try different file extensions until we find one that exists
+  const possibleExtensions = ["mjs", "js"];
+  const configBase = parts.join(".");
+  for (const ext of possibleExtensions) {
+    configPath = `${configBase}.${ext}`;
+    if (fs.existsSync(configPath)) {
+      break;
+    }
+  }
   checkConfigFileExists(configPath);
   const config = (await import(configPath)).default;
-  checkDatabaseConfigAvailable(config);
-  return config;
+  // Validate server config against json schema:
+  const ajv = new Ajv({
+    allErrors: true,
+  });
+  const validate = ajv.compile(LoadedServerConfigSchema);
+  const isValidConfig = validate(config);
+  if (!isValidConfig) {
+    console.log(validate.errors);
+    throw new Error("Server config file validation failed");
+  }
+  return config as ServerConfig;
 }
 
-function checkConfigFileExists(configPath) {
+function checkConfigFileExists(configPath: string) {
   if (!fs.existsSync(configPath)) {
     throw (
       "Config file " +
@@ -52,21 +75,12 @@ function checkConfigFileExists(configPath) {
   }
 }
 
-function checkDatabaseConfigAvailable(config) {
-  if (!("database" in config)) {
-    throw "Could not find database configuration. database.js has been merged into app.js";
-  }
-}
-
 const loadedConfig = await loadConfigFromArgs();
 
 export default {
-  getConfigPathFromArgs,
-  loadConfigFromArgs,
-  loadConfig,
   timeZone,
   server,
   euaVersion: 3,
   ...loadedConfig,
   productionEnv: !loadedConfig.server.isLocalDev,
-};
+} as ServerConfig;

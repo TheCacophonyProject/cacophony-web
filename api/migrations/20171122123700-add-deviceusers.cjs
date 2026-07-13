@@ -13,7 +13,7 @@ module.exports = {
       queryInterface,
       "DeviceUsers",
       "Devices",
-      "Users"
+      "Users",
     );
   },
 

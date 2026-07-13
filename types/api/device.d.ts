@@ -1,4 +1,4 @@
-import {
+import type {
   DeviceId,
   GroupId,
   IsoFormattedDateString,
@@ -6,9 +6,9 @@ import {
   SaltId,
   ScheduleId,
   StationId,
-} from "./common";
-import { DeviceType } from "./consts.js";
-import { ApiGroupUserResponse } from "./group";
+} from "./common.ts";
+import { AudioRecordingMode, type DeviceType } from "./consts.ts";
+import { type ApiGroupUserResponse } from "./group.ts";
 
 export type DeviceBatteryChargeState =
   | "NOT_CHARGING"
@@ -29,7 +29,10 @@ export interface ApiDeviceResponse {
   isHealthy?: boolean;
   public?: boolean; // Assumed to be private unless otherwise specified.
   lastConnectionTime?: IsoFormattedDateString;
-  lastRecordingTime?: IsoFormattedDateString;
+  earliestThermalRecordingTime?: IsoFormattedDateString;
+  lastThermalRecordingTime?: IsoFormattedDateString;
+  earliestAudioRecordingTime?: IsoFormattedDateString;
+  lastAudioRecordingTime?: IsoFormattedDateString;
   location?: LatLng;
   scheduleId?: ScheduleId;
   users?: ApiGroupUserResponse[];
@@ -51,22 +54,16 @@ export interface ApiDeviceLocationFixup {
   location?: LatLng; // Supply a location to map to the station
 }
 
-type SettingsBase = {
+interface SettingsBase {
   updated: IsoFormattedDateString;
-};
+}
 
 export type ThermalRecordingSettings = {
   useLowPowerMode: boolean;
 } & SettingsBase;
 
-export type AudioModes =
-  | "Disabled"
-  | "AudioOnly"
-  | "AudioAndThermal"
-  | "AudioOrThermal";
-
 export type AudioRecordingSettings = {
-  audioMode?: AudioModes;
+  audioMode?: AudioRecordingMode;
   audioSeed?: number;
 } & SettingsBase;
 
@@ -86,7 +83,7 @@ export type ImageMimeTypes =
   | "image/png"
   | "image/webp"
   | "image/gif";
-export interface ApiDeviceHistorySettings {
+export interface ApiDeviceHistorySettings extends Record<string, unknown> {
   referenceImagePOV?: string; // S3 Key for a device reference image
   referenceImagePOVFileSize?: number;
   referenceImagePOVMimeType?: ImageMimeTypes;
@@ -101,11 +98,35 @@ export interface ApiDeviceHistorySettings {
     bottomLeft: [number, number];
     bottomRight: [number, number];
   };
-  maskRegions?: MaskRegions;
-  ratThresh?: any;
+  maskRegions?: MaskRegions; // FIXME: Should also have settings base?
+  ratThresh?: { version?: number; gridSize?: number; thresholds?: unknown[][] };
   thermalRecording?: ThermalRecordingSettings;
   audioRecording?: AudioRecordingSettings;
   windows?: WindowsSettings;
   battery?: BatterySettings;
+
+  location?: LatLng;
+
   synced?: boolean;
+}
+
+export type DeviceHistorySetBy =
+  | "automatic"
+  | "user"
+  | "config"
+  | "register"
+  | "re-register";
+
+// Only seen in a test environment
+export interface ApiDeviceHistory {
+  location: LatLng | null;
+  fromDateTime: IsoFormattedDateString;
+  setBy: DeviceHistorySetBy;
+  deviceName: string;
+  saltId: SaltId;
+  stationId: StationId | null;
+  uuid: number;
+  settings: ApiDeviceHistorySettings | null;
+  DeviceId: DeviceId;
+  GroupId: GroupId;
 }

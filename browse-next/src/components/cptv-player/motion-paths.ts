@@ -1,4 +1,9 @@
 import type { ApiTrackPosition, ApiTrackResponse } from "@typedefs/api/track";
+import type {
+  FrameNum,
+  IntermediateTrack,
+  Rectangle,
+} from "@/components/cptv-player/cptv-player-types";
 
 interface Point {
   x: number;
@@ -431,10 +436,10 @@ export const smoothLine = (points: Point[]): Point[] => {
   return points;
 };
 
-export const pointsForTrack = ({ positions }: ApiTrackResponse): Point[] => {
-  return (positions as ApiTrackPosition[]).map((pos) => {
-    const x = pos.x + pos.width / 2;
-    const y = pos.y + pos.height / 2;
+export const pointsForTrack = ({ positions }: IntermediateTrack): Point[] => {
+  return (positions as [FrameNum, Rectangle][]).map(([_, [x0, y0, x1, y1]]) => {
+    const x = x0 + (x1 - x0) / 2;
+    const y = y0 + (y1 - y0) / 2;
     return { x, y };
   });
 };
@@ -455,7 +460,7 @@ export const pointsForTrack = ({ positions }: ApiTrackResponse): Point[] => {
 // };
 
 export const motionPathForTrack = (
-  track: ApiTrackResponse,
+  track: IntermediateTrack,
   scale: number,
 ): MotionPath | null => {
   const pointsForThisTrack = pointsForTrack(track);

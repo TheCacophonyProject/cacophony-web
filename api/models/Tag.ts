@@ -17,30 +17,85 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import _ from "lodash";
-import type { ModelCommon, ModelStaticCommon } from "./index.js";
-import type Sequelize from "sequelize";
-import type {
-  ApiRecordingTagRequest,
-  ApiRecordingTagResponse,
-} from "@typedefs/api/tag.js";
+import { ModelStaticCommon } from "./index.js";
+import Sequelize, {
+  BelongsTo,
+  CreationOptional,
+  DataTypes,
+  ForeignKey,
+  NonAttribute,
+} from "sequelize";
+import type { ApiRecordingTagRequest } from "@typedefs/api/tag.js";
 import { AcceptableTag } from "@typedefs/api/consts.js";
+import { RecordingId, TagId, UserId } from "@typedefs/api/common.js";
+import { User } from "@models/User.js";
+import { Recording } from "@models/Recording.js";
+export const AcceptableTags = new Set(Object.values(AcceptableTag));
+export class Tag extends ModelStaticCommon<Tag> {
+  declare id: CreationOptional<TagId>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare startTime: CreationOptional<number>;
+  declare duration: CreationOptional<number>;
+  declare confidence: CreationOptional<number>;
+  declare taggerId: ForeignKey<UserId>;
+  declare RecordingId: ForeignKey<RecordingId>;
+  declare detail: CreationOptional<string>;
+  declare automatic: CreationOptional<boolean>;
+  declare version: CreationOptional<number>;
+  declare comment: CreationOptional<string>;
 
-export interface Tag
-  extends ApiRecordingTagResponse,
-    Sequelize.Model,
-    ModelCommon<Tag> {}
+  declare tagger?: NonAttribute<User>;
+  declare Recording?: NonAttribute<Recording>;
 
-export interface TagStatic extends ModelStaticCommon<Tag> {
-  buildSafely: (fields: ApiRecordingTagRequest) => Tag;
-  userGetAttributes: readonly string[];
-  acceptableTags: Set<AcceptableTag>;
+  declare static associations: {
+    tagger: BelongsTo<User>;
+    Recording: BelongsTo<Recording>;
+  };
+
+  static acceptableTags = AcceptableTags;
+  static apiSettableFields = Object.freeze([
+    "detail",
+    "confidence",
+    "startTime",
+    "duration",
+    "automatic",
+    "version",
+    "comment",
+  ]);
+  static userGetAttributes = [
+    "id",
+    "detail",
+    "confidence",
+    "startTime",
+    "duration",
+    "automatic",
+    "version",
+    "createdAt",
+    "taggerId",
+    "comment",
+  ];
+
+  static addAssociations() {
+    this.belongsTo(User, { as: "tagger" });
+    this.belongsTo(Recording);
+  }
+
+  static buildSafely(fields: ApiRecordingTagRequest) {
+    return this.build(_.pick(fields, this.apiSettableFields));
+  }
 }
 
-export const AcceptableTags = new Set(Object.values(AcceptableTag));
-
-export default function (sequelize, DataTypes): TagStatic {
-  const name = "Tag";
+export const init = (sequelizeInstance: Sequelize.Sequelize) => {
   const attributes = {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE,
+
     detail: {
       type: DataTypes.STRING,
     },
@@ -72,46 +127,13 @@ export default function (sequelize, DataTypes): TagStatic {
       defaultValue: 0x0100,
     },
   };
-
-  const Tag = sequelize.define(name, attributes);
-
-  //---------------
-  // CLASS METHODS
-  //---------------
-
-  Tag.buildSafely = function (fields: ApiRecordingTagRequest) {
-    return Tag.build(_.pick(fields, Tag.apiSettableFields));
-  };
-
-  Tag.addAssociations = function (models) {
-    models.Tag.belongsTo(models.User, { as: "tagger" });
-    models.Tag.belongsTo(models.Recording);
-  };
-
-  Tag.acceptableTags = AcceptableTags;
-
-  Tag.userGetAttributes = Object.freeze([
-    "id",
-    "detail",
-    "confidence",
-    "startTime",
-    "duration",
-    "automatic",
-    "version",
-    "createdAt",
-    "taggerId",
-    "comment",
-  ]);
-
-  Tag.apiSettableFields = Object.freeze([
-    "detail",
-    "confidence",
-    "startTime",
-    "duration",
-    "automatic",
-    "version",
-    "comment",
-  ]);
-
+  Tag.init(attributes, {
+    sequelize: sequelizeInstance,
+    tableName: "Tags",
+    name: {
+      plural: "Tags",
+      singular: "Tag",
+    },
+  });
   return Tag;
-}
+};

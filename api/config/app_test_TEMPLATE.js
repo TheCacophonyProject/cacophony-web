@@ -40,11 +40,10 @@ export const database = {
 };
 
 export const smtpDetails = {
-  service: "gmail",
-  auth: {
-    user: "noinfo@cacophony.org.nz",
-    pass: "thesecretpassword",
-  },
+  host: "localhost",
+  port: 7777, //default for service is 25. 7777 used for smtp-tester
+  tls: false, //default is true.  False used for smtp-tester
+  fromName: "Cacophony Reporting",
   platformUsageEmail: "usage@example.com",
   serviceErrorsEmail: "service-errors@example.com",
 };
@@ -55,6 +54,27 @@ export const deviceErrorIgnoreList = [];
 export const cacophonyUserIds = [];
 // List of Cacophony groups to ignore in platform usage report
 export const cacophonyGroupIds = [];
+
+// Any user IDs in this array are considered processing users, and have access to
+// processing-only APIs.
+export const processingUserIds = [];
+
+// For group IDs in this array, only direct users of that group will be able to view or download
+// thermal recordings made by the group devices.  All super user accounts (excluding the one used
+// by AI processing) will be served a dummy thermal recording when accessing any thermal recording
+// from this group account.
+export const groupIdsWithRedactedThermalRecordings = [];
+
+// When testing, we don't know what ID a group will be assigned, so we use the group name
+// to determine if a groups' thermal recordings should not be available even to non-processing
+// super-users.
+export const groupNamesWithRedactedThermalRecordings = [
+  "super-secret-squirrels",
+];
+
+// When testing, we don't know what ID a user will be assigned, so we use the user name
+// to determine if a user' thermal recordings should be available to a processing user.
+export const processingSuperUserNames = ["processing-super-user"];
 
 // This is needed because Sequelize looks for development by default
 // when using db:migrate
@@ -69,4 +89,7 @@ export default {
   deviceErrorIgnoreList,
   cacophonyUserIds,
   cacophonyGroupIds,
+  processingUserIds,
+  groupNamesWithRedactedThermalRecordings,
+  groupIdsWithRedactedThermalRecordings,
 };

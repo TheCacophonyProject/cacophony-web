@@ -4,8 +4,14 @@ import type { SelectedProject } from "@models/LoggedInUser";
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
 import { computed, ref } from "vue";
-import { BFormCheckboxGroup } from "bootstrap-vue-next";
-import { inviteSomeoneToProject } from "@api/Project";
+import {
+  BForm,
+  BFormCheckboxGroup,
+  BFormInput,
+  BFormInvalidFeedback,
+  BModal,
+} from "bootstrap-vue-next";
+import { ClientApi } from "@/api";
 
 const emit = defineEmits<{
   (e: "invited"): void;
@@ -33,7 +39,7 @@ const resetFormValues = () => {
 
 const invitePendingUser = async () => {
   submittingInvite.value = true;
-  const inviteResponse = await inviteSomeoneToProject(
+  const inviteResponse = await ClientApi.Projects.inviteSomeoneToProject(
     (currentSelectedProject.value as SelectedProject).id,
     inviteeEmailAddress.value,
     permissions.value.includes("admin"),
@@ -84,7 +90,7 @@ const permissions = ref<string[]>([]);
           @blur="inviteeEmailAddress.touched = true"
           :state="needsValidationAndIsValidEmailAddress"
           aria-label="email address"
-          placeholder="email address"
+          placeholder="Email address"
           :disabled="submittingInvite"
           data-cy="invitee email address"
           required

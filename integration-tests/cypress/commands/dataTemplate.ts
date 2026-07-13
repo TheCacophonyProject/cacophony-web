@@ -3,7 +3,6 @@ import { NOT_NULL, NOT_NULL_STRING } from "@commands/constants";
 
 import {
   ApiRecordingSet,
-  ApiTrackSet,
   ApiRecordingForProcessing,
   ApiRecordingNeedsTagReturned,
 } from "@commands/types";
@@ -11,7 +10,8 @@ import {
   ApiAudioRecordingResponse,
   ApiThermalRecordingResponse,
 } from "@typedefs/api/recording";
-import { ApiTrackResponse } from "@typedefs/api/track";
+import { ApiTrackDataRequest, ApiTrackResponse } from "@typedefs/api/track";
+import { RawTrack } from "@shared/api/fileProcessing";
 
 //AUDIO RECORDINGS
 export const TEMPLATE_AUDIO_RECORDING: ApiRecordingSet = {
@@ -85,7 +85,6 @@ export const TEMPLATE_AUDIO_RECORDING_PROCESSING: ApiRecordingForProcessing = {
   recordingDateTime: "2021-01-01T01:01:01.018Z",
   duration: 60,
   location: null,
-  hasAlert: false,
   processingStartTime: NOT_NULL_STRING,
   processingEndTime: null,
   processing: true,
@@ -172,7 +171,7 @@ export const TEMPLATE_AUDIO_RECORDING_RESPONSE_TC2: ApiAudioRecordingResponse =
 
 //THERMAL RECORDINGS
 
-export const TEMPLATE_AUDIO_TRACK: ApiTrackSet = {
+export const TEMPLATE_AUDIO_TRACK: ApiTrackDataRequest = {
   start_s: 0,
   end_s: 3,
   minFreq: 10,
@@ -219,7 +218,47 @@ export const TEMPLATE_EXPECTED_AUDIO_TRACK: ApiTrackResponse = {
   ],
 };
 
-export const TEMPLATE_TRACK: ApiTrackSet = {
+export const TEMPLATE_TRACK: ApiTrackDataRequest = {
+  tracker_version: 10,
+  start_s: 4.89,
+  end_s: 8.67,
+  positions: [
+    {
+      x: 111,
+      y: 17,
+      width: 48,
+      height: 75,
+      mass: 1972,
+      frame_number: 44,
+      pixel_variance: 5213.85009765625,
+      blank: false,
+    },
+  ],
+  predictions: [
+    {
+      tag: "cat",
+      confident: true,
+      confidence: 97,
+      clarity: 95,
+      all_class_confidences: {
+        bird: 0.0,
+        cat: 0.97,
+        "false-positive": 0.02500000037252903,
+        hedgehog: 0.0,
+        human: 0.01,
+        leporidae: 0.0,
+        mustelid: 0.0,
+        possum: 0.3,
+        rodent: 0.0,
+        vehicle: 0.0,
+        wallaby: 0.0,
+      },
+      model_id: 1,
+    },
+  ],
+};
+
+export const TEMPLATE_RAW_TRACK: RawTrack = {
   id: 2,
   tracker_version: 10,
   start_s: 4.89,
@@ -241,10 +280,10 @@ export const TEMPLATE_TRACK: ApiTrackSet = {
   ],
   predictions: [
     {
-      label: "cat",
-      confident_tag: "cat",
-      confidence: 0.97,
-      clarity: 0.949,
+      tag: "cat",
+      confident: true,
+      confidence: 97,
+      clarity: 95,
       all_class_confidences: {
         bird: 0.0,
         cat: 0.97,
@@ -258,8 +297,6 @@ export const TEMPLATE_TRACK: ApiTrackSet = {
         vehicle: 0.0,
         wallaby: 0.0,
       },
-      prediction_frames: [[55], [65], [75]],
-      predictions: [[0, 0, 1716, 0, 65763, 0, 0, 0, 0, 0, 0]],
       model_id: 1,
     },
   ],
@@ -285,7 +322,7 @@ export const TEMPLATE_EXPECTED_TRACK: ApiTrackResponse = {
     {
       what: "cat",
       automatic: true,
-      confidence: 0.97,
+      confidence: 97,
       model: "Master",
       trackId: NOT_NULL,
       id: NOT_NULL,
@@ -368,7 +405,6 @@ export const TEMPLATE_THERMAL_RECORDING_PROCESSING: ApiRecordingForProcessing =
     recordingDateTime: "2021-01-01T01:01:01.018Z",
     duration: 16.6666666666667,
     location: null,
-    hasAlert: false,
     processingStartTime: NOT_NULL_STRING,
     processingEndTime: null,
     processing: true,

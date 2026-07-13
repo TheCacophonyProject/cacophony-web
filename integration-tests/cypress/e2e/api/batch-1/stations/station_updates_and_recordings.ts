@@ -14,9 +14,19 @@ import { TestNameAndId } from "@commands/types";
 import { getTestName } from "@commands/names";
 import { HttpStatusCode } from "@typedefs/api/consts";
 
-const dayOne = new Date(new Date().setDate(new Date().getDate() + 1));
-const dayTwo = new Date(new Date().setDate(new Date().getDate() + 2));
-const dayThree = new Date(new Date().setDate(new Date().getDate() + 3));
+const beforeRecordings = new Date(
+  new Date().setDate(new Date().getDate() - 10),
+);
+const dayOne = new Date(
+  new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 1),
+);
+const dayTwo = new Date(
+  new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 2),
+);
+const dayThree = new Date(
+  new Date(beforeRecordings).setDate(beforeRecordings.getDate() + 3),
+);
+
 const firstName = "recording 1";
 const secondName = "recording 2";
 

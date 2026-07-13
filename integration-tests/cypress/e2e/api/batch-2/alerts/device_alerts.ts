@@ -29,7 +29,7 @@ describe("Devices alerts", () => {
       usera.camera,
       null,
       HttpStatusCode.Forbidden,
-    ).then((response: any) => {
+    ).then((response: Cypress.Response<unknown>) => {
       checkResponse(response, HttpStatusCode.Forbidden);
     });
   });
@@ -49,7 +49,7 @@ describe("Devices alerts", () => {
       usera.camera,
       null,
       HttpStatusCode.Unprocessable,
-    ).then((response: any) => {
+    ).then((response: Cypress.Response<unknown>) => {
       checkResponse(response, HttpStatusCode.Unprocessable);
     });
   });
@@ -97,12 +97,14 @@ describe("Devices alerts", () => {
       HttpStatusCode.Ok,
     );
 
-    //upload a recording tagged as possum and  build an expected event using the returned recording details
+    // upload a recording tagged as possum and build an expected event using the returned recording details
     cy.testUploadRecording(
       usera.camera,
       {
         processingState: RecordingProcessingState.Finished,
         tags: ["possum"],
+        lat: -42,
+        lng: 170,
         time: oneHourAgo,
       },
       "recording1",
@@ -151,6 +153,8 @@ describe("Devices alerts", () => {
       {
         processingState: RecordingProcessingState.Finished,
         tags: ["rat"],
+        lat: -42,
+        lng: 170,
         time: oneHourAgo,
       },
       "recording1b",
@@ -187,6 +191,8 @@ describe("Devices alerts", () => {
       {
         processingState: RecordingProcessingState.Finished,
         tags: ["possum"],
+        lat: -42,
+        lng: 170,
         time: oneHourAgo,
       },
       "recording1c",
@@ -222,6 +228,8 @@ describe("Devices alerts", () => {
       {
         processingState: RecordingProcessingState.Finished,
         tags: ["rat", "possum", "possum", "possum", "rat"],
+        lat: -42,
+        lng: 170,
         time: oneHourAgo,
       },
       "recording1d",
@@ -270,6 +278,8 @@ describe("Devices alerts", () => {
       {
         processingState: RecordingProcessingState.Finished,
         tags: ["rat", "rat", "possum", "possum", "rat"],
+        lat: -42,
+        lng: 170,
         time: oneHourAgo,
       },
       "recording1d",
@@ -310,6 +320,8 @@ describe("Devices alerts", () => {
         model: "different",
         processingState: RecordingProcessingState.Finished,
         tags: ["possum"],
+        lat: -42,
+        lng: 170,
         time: oneHourAgo,
       },
       "recording2",
@@ -352,6 +364,8 @@ describe("Devices alerts", () => {
       {
         processingState: RecordingProcessingState.Finished,
         tags: ["possum"],
+        lat: -42,
+        lng: 170,
         time: oneHourAgo,
       },
       "recording3",
@@ -399,6 +413,8 @@ describe("Devices alerts", () => {
       {
         processingState: RecordingProcessingState.Finished,
         tags: ["possum"],
+        lat: -42,
+        lng: 170,
         time: oneHourAgo,
       },
       "recording4",
@@ -438,6 +454,8 @@ describe("Devices alerts", () => {
       {
         processingState: RecordingProcessingState.Finished,
         tags: ["possum"],
+        lat: -42,
+        lng: 170,
         time: oneHourAgo,
       },
       "recording1",
@@ -471,6 +489,8 @@ describe("Devices alerts", () => {
         {
           processingState: RecordingProcessingState.Finished,
           tags: ["possum"],
+          lat: -42,
+          lng: 170,
           time: oneHourAgo,
         },
         "recording2",
@@ -504,6 +524,8 @@ describe("Devices alerts", () => {
           {
             processingState: RecordingProcessingState.Finished,
             tags: ["possum"],
+            lat: -42,
+            lng: 170,
             time: oneHourAgo,
           },
           "recording3",

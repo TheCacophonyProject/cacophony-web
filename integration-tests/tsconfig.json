@@ -1,25 +1,26 @@
 {
     "compilerOptions": {
-        "target": "es2018",
-        "lib": ["es2021", "dom"],
+        "target": "es2020",
+        "lib": ["ESNext", "dom", "dom.iterable"],
         "types": ["cypress"],
-        "moduleResolution": "node",
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
         "allowSyntheticDefaultImports": true,
         "baseUrl": ".",
-        "typeRoots": ["./cypress/support", "./cypress/commands"],
         "paths": {
+            "@shared/*":  ["../types/*"],
             "@typedefs/*":  ["../types/*"],
             "@commands/*": ["./cypress/commands/*"],
-            "@api/*": ["../api/*"],
             "@/*": ["./cypress/*"],
         }
     },
-    "references": [
-        { "path": "./support/" }
-    ],
     "include": [
         "**/*.ts",
         "**/*.d.ts",
-        "../types/**/*.ts"
-    ]
+        "../types/**/*.ts",
+        "./cypress/support/index.d.ts"
+    ],
+    "exclude": [
+        "./node_modules/**/*",
+    ],
 }

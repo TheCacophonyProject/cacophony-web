@@ -4,8 +4,8 @@ import passport from "passport";
 import process from "process";
 import http from "http";
 import config from "./config.js";
-import modelsInit from "@models/index.js";
-import log, { consoleTransport } from "@log";
+import { initSequelize } from "@models/index.js";
+import log, { consoleTransport, colourForStatusCode } from "@log";
 import customErrors from "./api/customErrors.js";
 import { openS3 } from "./models/util/util.js";
 import initialiseApi from "./api/V1/index.js";
@@ -13,18 +13,29 @@ import expressWinston from "express-winston";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { v4 as uuidv4 } from "uuid";
+import qs from "qs";
 import { Op } from "sequelize";
+import { DecodedJWTToken } from "@api/auth.js";
 import {
   asyncLocalStorage,
   CACOPHONY_WEB_VERSION,
+  DeviceGroupNamesByDeviceId,
+  DeviceNamesById,
   RequesterStore,
   RouteStore,
+  SessionTimingInfo,
   SuperUsers,
+  UserGroupNamesById,
+  UserNamesById,
 } from "./Globals.js";
 import path from "path";
 import { fileURLToPath } from "url";
-import type { UserId } from "@typedefs/api/common.js";
+import type { DeviceId, UserId } from "@typedefs/api/common.js";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
+import { User } from "@models/User.js";
+import os from "os";
+import { Device } from "@models/Device.js";
+import { Group } from "@models/Group.js";
 
 const asyncExec = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
@@ -50,14 +61,27 @@ const loadCacophonyWebVersion = async (): Promise<void> => {
   }
 };
 
-const openHttpServer = (app): Promise<void> => {
+const openHttpServer = (app: Application): Promise<void> => {
   return new Promise((resolve, reject) => {
     if (!config.server.http.active) {
       resolve();
     }
     try {
       log.notice("Starting http server on %d", config.server.http.port);
-      http.createServer(app).listen(config.server.http.port);
+      const server = http.createServer(app).listen(config.server.http.port);
+      server.on("error", (err: Error) => {
+        log.warning("Server error: %s", err);
+      });
+      server.on("timeout", (socket) => {
+        if (socket.request && socket.request.destroy) {
+          socket.request.destroy();
+        }
+        socket.destroy();
+      });
+      server.on("dropRequest", (socket) => {
+        log.warning("Connection dropped for stream socket");
+        socket.destroy();
+      });
       resolve();
     } catch (err) {
       reject(err);
@@ -69,6 +93,9 @@ export const delayMs = async (delayMs: number) =>
   new Promise((resolve) => setTimeout(resolve, delayMs));
 
 export const userShouldBeRateLimited = (requesterId: UserId): boolean => {
+  if (!config.rateLimitingEnabled) {
+    return false;
+  }
   // NOTE: Check how much user time this user has used in the last minute in RequesterStore,
   //  If it's over 20% (20 seconds) rate limit this user.
   //  Also, if there are no other users currently using the platform in the last minute, don't rate limit.
@@ -83,12 +110,14 @@ export const userShouldBeRateLimited = (requesterId: UserId): boolean => {
   );
   const numRequesters = RequesterStore.size;
   if (numUserRequesters > 2 || numRequesters > 10) {
-    const userTimings = RequesterStore.get(`u${requesterId}`);
+    const userTimings = RequesterStore.get(
+      `u${requesterId}`,
+    ) as SessionTimingInfo[];
     if (userTimings) {
       let userTimeInLastMinute = 0;
       for (const timing of userTimings) {
-        const elapsed = process.hrtime(timing.time);
-        const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
+        const elapsed = process.hrtime.bigint() - timing.time;
+        const elapsedMs = Number(elapsed / 1000000n);
         if (elapsedMs <= 1000 * 60) {
           userTimeInLastMinute += timing.user;
         }
@@ -130,7 +159,7 @@ const grafanaLabelRestart = async () => {
         body: JSON.stringify({
           time: Date.now(),
           tags: ["cacophony-web-restart"],
-          text: CACOPHONY_WEB_VERSION.version,
+          text: `${os.hostname()} ${CACOPHONY_WEB_VERSION.version}`,
         }),
       });
       if (response && response.status !== HttpStatusCode.Ok) {
@@ -147,8 +176,6 @@ const grafanaLabelRestart = async () => {
 
 (async () => {
   log.notice("Starting Full Noise.");
-  await config.loadConfigFromArgs(true);
-
   await loadCacophonyWebVersion();
   // Check if any of the Cacophony type definitions have changed, and need recompiling?
   if (config.server.loggerLevel === "debug") {
@@ -160,15 +187,16 @@ const grafanaLabelRestart = async () => {
   }
 
   const app: Application = express();
-
+  app.set("trust proxy", true);
   app.use((request: Request, _response: Response, next: NextFunction) => {
     // Add a unique request ID to each API request, for logging purposes.
     asyncLocalStorage.enterWith(new Map());
-    const store = asyncLocalStorage.getStore() as Map<string, any>;
+    const store = asyncLocalStorage.getStore();
     store.set("requestId", uuidv4());
-    const startUsage = process.cpuUsage();
-    store.set("cpuUsage", startUsage);
-    log.info("UA: %s", request.headers["user-agent"]);
+    if (config.rateLimitingEnabled) {
+      const startUsage = process.cpuUsage();
+      store.set("cpuUsage", startUsage);
+    }
     next();
   });
   app.use(
@@ -177,99 +205,208 @@ const grafanaLabelRestart = async () => {
       meta: false,
       metaField: null,
       msg: (request: Request, response: Response): string => {
-        const store = asyncLocalStorage.getStore() as Map<string, any>;
+        const store = asyncLocalStorage.getStore();
         const dbQueryCount = store?.get("queryCount");
         const dbQueryTime = store?.get("queryTime");
-        const cpuUsage = store?.get("cpuUsage");
-        const requestCpuUsage = process.cpuUsage(cpuUsage);
-        const userTimeMs = requestCpuUsage.user / 1000;
-        const systemTimeMs = requestCpuUsage.system / 1000;
-        const requesterType =
-          response.locals.requestUser !== undefined
-            ? "user"
-            : response.locals.deviceUser !== undefined
-            ? "device"
-            : "unknown";
-        let requester = `u9999`;
-        if (requesterType === "user") {
-          requester = `u${response.locals.requestUser?.id}`;
-        } else if (requesterType === "device") {
-          requester = `d${response.locals.deviceUser?.id}`;
-        }
-        const wasRateLimited =
-          response.locals.requestUser?.wasRateLimited || false;
+        let wasRateLimited = false;
+        if (config.rateLimitingEnabled) {
+          const cpuUsage = store?.get("cpuUsage");
+          const requestCpuUsage = process.cpuUsage(cpuUsage as NodeJS.CpuUsage);
+          const userTimeMs = requestCpuUsage.user / 1000;
+          const systemTimeMs = requestCpuUsage.system / 1000;
+          const requesterType =
+            response.locals.requestUser !== undefined
+              ? "user"
+              : response.locals.deviceUser !== undefined
+                ? "device"
+                : "unknown";
+          let requester = `u9999`;
+          if (requesterType === "user") {
+            requester = `u${response.locals.requestUser?.id}`;
+          } else if (requesterType === "device") {
+            requester = `d${response.locals.deviceUser?.id}`;
+          }
+          wasRateLimited = response.locals.requestUser?.wasRateLimited || false;
 
-        const storeUser = RequesterStore.get(requester);
-        if (!storeUser) {
-          RequesterStore.set(requester, []);
-        }
-        {
-          const timings = RequesterStore.get(requester);
-          // Remove items for this user older than 5 minutes.
-          while (timings.length > 0) {
-            const elapsed = process.hrtime(timings[0].time);
-            const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
-            if (elapsedMs > 60000 * 5) {
-              timings.shift();
-            } else {
-              break;
+          const storeUser = RequesterStore.get(requester);
+          if (!storeUser) {
+            RequesterStore.set(requester, []);
+          }
+          {
+            const timings = RequesterStore.get(requester);
+            // Remove items for this user older than 5 minutes.
+            while (timings.length > 0) {
+              const elapsed = process.hrtime.bigint() - timings[0].time;
+              const elapsedMs = Number(elapsed / 1000000n);
+              if (elapsedMs > 60000 * 5) {
+                timings.shift();
+              } else {
+                break;
+              }
             }
           }
-        }
-        RequesterStore.get(requester).push({
-          time: process.hrtime(),
-          user: userTimeMs,
-          system: systemTimeMs,
-        });
+          RequesterStore.get(requester).push({
+            time: process.hrtime.bigint(),
+            user: userTimeMs,
+            system: systemTimeMs,
+          });
 
-        const routeParts = [];
-        for (const part of (request.method + request.url.split("?")[0]).split(
-          "/",
-        )) {
-          if (Number(part).toString() === part) {
-            routeParts.push("XXX");
+          const routeParts = [];
+          for (const part of (request.method + request.url.split("?")[0]).split(
+            "/",
+          )) {
+            if (Number(part).toString() === part) {
+              routeParts.push("XXX");
+            } else {
+              routeParts.push(part);
+            }
+          }
+          const routeKeyNormalised = routeParts.join("/");
+          const routeTimings = RouteStore.get(routeKeyNormalised);
+          if (!routeTimings) {
+            RouteStore.set(routeKeyNormalised, []);
+          }
+          {
+            const timings = RouteStore.get(routeKeyNormalised);
+            // Remove items for this user older than 5 minutes.
+            while (timings.length > 0) {
+              const elapsed = process.hrtime.bigint() - timings[0].time;
+              const elapsedMs = Number(elapsed / 1000000n);
+              if (elapsedMs > 60000 * 5) {
+                timings.shift();
+              } else {
+                break;
+              }
+            }
+          }
+          RouteStore.get(routeKeyNormalised).push({
+            time: process.hrtime.bigint(),
+            user: userTimeMs,
+            system: systemTimeMs,
+          });
+        }
+
+        // NOTE: We need to sanitize request.url here to prevent
+        // some kind of mustache template injection.
+        let userAgentString = "unknown";
+        if (request.headers["user-agent"]) {
+          // Make sure user agent doesn't trigger mustache template parsing.
+          const safeUserAgent = request.headers["user-agent"]
+            .replaceAll("{", "%7B")
+            .replaceAll("}", "%7D");
+          // if (safeUserAgent === "Go-http-client/1.1") {
+          //   const token = ExtractJwt.fromAuthHeaderWithScheme("jwt")(request);
+          //   let deviceId = "unknown";
+          //   if (token) {
+          //     const decodedToken = jwt.decode(token) as JwtPayload | null;
+          //     if (decodedToken) {
+          //       deviceId = decodedToken.id;
+          //     }
+          //   }
+          //   const safeUrl = request.url
+          //     .replaceAll("{", "%7B")
+          //     .replaceAll("}", "%7D");
+          //   const logMessage = format("%s %s", request.method, safeUrl);
+          //   userAgentString = `${safeUserAgent}, (${request.ip}) #${deviceId}\n${logMessage}`;
+          // } else {
+          //   userAgentString = safeUserAgent;
+          // }
+
+          if (safeUserAgent.startsWith("Go-http-client")) {
+            userAgentString = "Thermal camera";
+          } else if (
+            safeUserAgent.startsWith("Ktor") ||
+            safeUserAgent.startsWith("Dalvik")
+          ) {
+            userAgentString = "Sidekick";
+          } else if (safeUserAgent.startsWith("Mozilla")) {
+            // Check for mobile browser or web browser
+            if (safeUserAgent.includes("iPhone")) {
+              userAgentString = "Browser (iPhone)";
+            } else if (safeUserAgent.includes("Android")) {
+              userAgentString = "Browser (Android)";
+            } else {
+              userAgentString = "Browser";
+            }
+          } else if (safeUserAgent.startsWith("python")) {
+            userAgentString = "Cacophony processing / python";
           } else {
-            routeParts.push(part);
+            userAgentString = safeUserAgent;
           }
         }
-        const routeKeyNormalised = routeParts.join("/");
-        const routeTimings = RouteStore.get(routeKeyNormalised);
-        if (!routeTimings) {
-          RouteStore.set(routeKeyNormalised, []);
-        }
-        {
-          const timings = RouteStore.get(routeKeyNormalised);
-          // Remove items for this user older than 5 minutes.
-          while (timings.length > 0) {
-            const elapsed = process.hrtime(timings[0].time);
-            const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
-            if (elapsedMs > 60000 * 5) {
-              timings.shift();
-            } else {
-              break;
-            }
-          }
-        }
-        RouteStore.get(routeKeyNormalised).push({
-          time: process.hrtime(),
-          user: userTimeMs,
-          system: systemTimeMs,
-        });
 
-        return `${request.method} ${request.url}\n\t\t Status(${
-          response.statusCode
-        })\n\t\t ${
+        let requesterInfo = "";
+        {
+          const requester =
+            response.locals.token &&
+            (response.locals.token as DecodedJWTToken)._type;
+          let requestId: UserId | DeviceId | string;
+          if (requester === "user") {
+            requestId =
+              (response.locals.requestUser && response.locals.requestUser.id) ||
+              (response.locals.user && response.locals.user.id) ||
+              (requester && (response.locals.token as DecodedJWTToken).id) ||
+              "unknown";
+          } else if (requester === "device") {
+            requestId =
+              (response.locals.device && response.locals.device.id) ||
+              (requester && (response.locals.token as DecodedJWTToken).id) ||
+              "unknown";
+          }
+          if (requester) {
+            const userOrDevice = requester || "unauthenticated";
+            const asSuperUser = response.locals.viewAsSuperUser
+              ? " - as Super User"
+              : "";
+            let requesterName = "unknown";
+            let groupName = "";
+            if (requester === "device") {
+              requesterName =
+                DeviceNamesById.get(requestId as DeviceId) ||
+                (response.locals.device && response.locals.device.deviceName) ||
+                "unknown";
+              groupName = `, ${DeviceGroupNamesByDeviceId.get(requestId as DeviceId) || "unknown project"}`;
+            } else if (requester === "user") {
+              requesterName =
+                UserNamesById.get(requestId as UserId) ||
+                (response.locals.user && response.locals.user.userName) ||
+                "unknown";
+              groupName = `, ${UserGroupNamesById.get(requestId as UserId) || "unknown project"}`;
+            }
+            const requestIdWithUserName = requestId
+              ? `#${requestId}${asSuperUser} (${requesterName}${groupName})`
+              : "";
+            requesterInfo = `Requester: ${userOrDevice} ${requestIdWithUserName}\n`;
+          }
+        }
+
+        let safeUrl = request.url.replaceAll("{", "%7B").replaceAll("}", "%7D");
+        const signedUrlStart = "/api/v1/signedUrl?jwt=";
+        if (safeUrl.startsWith(signedUrlStart)) {
+          safeUrl = `${signedUrlStart}<omitted>`;
+        }
+        return `${request.method}(${colourForStatusCode(response.statusCode)}) ${safeUrl}\nUA: ${userAgentString}\n${requesterInfo}${
           dbQueryCount
-            ? `${dbQueryCount} DB queries taking ${dbQueryTime}ms `
+            ? `\x1b[2;37m${dbQueryCount} DB queries taking ${dbQueryTime}ms, \x1b[0m`
             : ""
-        }[${
-          (response as any).responseTime
-        }ms total response time, ${userTimeMs}ms user, ${systemTimeMs}ms system${
+        }\x1b[2;37m${(response as { responseTime?: number }).responseTime || 0}ms total response time${
           wasRateLimited ? ", was rate limited" : ""
-        }]`;
+        }\x1b[0m`;
       },
     }),
   );
+  // NOTE: Express 4 used `qs` to parse query strings, express 5 broke &foo[0]=bar syntax for parsing arrays in urls.
+  // This syntax doesn't actually seem to be standard compared with &foo=bar&foo=baz, but we use it in tests,
+  // so opt into using `qs` again for now.
+  app.set("query parser", qs.parse);
+  app.use((request, response, next) => {
+    Object.defineProperty(request, "query", {
+      ...Object.getOwnPropertyDescriptor(request, "query"),
+      value: request.query,
+      writable: true,
+    });
+    next();
+  });
   app.use(
     express.raw({
       inflate: true,
@@ -277,7 +414,7 @@ const grafanaLabelRestart = async () => {
       type: "application/octet-stream",
     }),
   );
-  app.use(express.urlencoded({ extended: false, limit: "50Mb" }));
+  app.use(express.urlencoded({ extended: true, limit: "50Mb" }));
   app.use(express.json({ limit: "50Mb" }));
   app.use(passport.initialize());
   // Adding API documentation
@@ -286,25 +423,22 @@ const grafanaLabelRestart = async () => {
   // Adding headers to allow cross-origin HTTP request.
   // This is so the web interface running on a different port/domain can access the API.
   // This could cause security issues with Cookies but JWTs are used instead of Cookies.
-  app.all("*", (request: Request, response: Response, next: NextFunction) => {
-    response.header("Access-Control-Allow-Origin", request.headers.origin);
-    response.header(
-      "Access-Control-Allow-Methods",
-      "PUT, GET, POST, DELETE, OPTIONS, PATCH",
-    );
-    response.header(
-      "Access-Control-Allow-Headers",
-      "where, offset, limit, Authorization, Origin, X-Requested-With, Content-Type, Accept, Viewport, if-none-match, cache-control",
-    );
-    response.header("Cross-Origin-Resource-Policy", "cross-origin");
-
-    // NOTE: We've seen an instance where the HOST request header is rewritten by the client, which would otherwise break
-    //  some things.  If the host is unknown, default to browse-next.
-    if (!request.headers.host.includes("cacophony.org.nz")) {
-      request.headers.host = "https://browse-next.cacophony.org.nz";
-    }
-    next();
-  });
+  app.all(
+    "/*catchall",
+    (request: Request, response: Response, next: NextFunction) => {
+      response.header("Access-Control-Allow-Origin", request.headers.origin);
+      response.header(
+        "Access-Control-Allow-Methods",
+        "PUT, GET, POST, DELETE, OPTIONS, PATCH",
+      );
+      response.header(
+        "Access-Control-Allow-Headers",
+        "where, offset, limit, Authorization, Origin, X-Requested-With, Content-Type, Accept, Viewport, if-none-match, cache-control",
+      );
+      response.header("Cross-Origin-Resource-Policy", "cross-origin");
+      next();
+    },
+  );
 
   app.get("/api/v1/timings", (request: Request, response: Response) => {
     const userTimings = [];
@@ -314,8 +448,8 @@ const grafanaLabelRestart = async () => {
     for (const [userId, timings] of RequesterStore) {
       // Remove timings older than 5 mins
       while (timings.length > 0) {
-        const elapsed = process.hrtime(timings[0].time);
-        const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
+        const elapsed = process.hrtime.bigint() - timings[0].time;
+        const elapsedMs = Number(elapsed / 1000000n);
         if (elapsedMs > 60000 * 5) {
           timings.shift();
         } else {
@@ -349,8 +483,8 @@ const grafanaLabelRestart = async () => {
     for (const [route, timings] of RouteStore) {
       // Remove timings older than 5 mins
       while (timings.length > 0) {
-        const elapsed = process.hrtime(timings[0].time);
-        const elapsedMs = elapsed[0] * 1000 + elapsed[1] / 1000000;
+        const elapsed = process.hrtime.bigint() - timings[0].time;
+        const elapsedMs = Number(elapsed / 1000000n);
         if (elapsedMs > 60000 * 5) {
           timings.shift();
         } else {
@@ -398,11 +532,11 @@ const grafanaLabelRestart = async () => {
   // });
 
   log.notice("Initialising Sequelize models");
-  const models = await modelsInit();
+  const sequelize = await initSequelize();
 
   log.notice("Connecting to database.....");
   try {
-    await models.sequelize.authenticate();
+    await sequelize.authenticate();
     log.info("Connected to database.");
 
     {
@@ -416,9 +550,40 @@ const grafanaLabelRestart = async () => {
       log.notice(
         "If super-user permissions are changed, manually restart API server.",
       );
-      const superUsers = await models.User.findAll({
+      const superUsers = await User.findAll({
         where: { globalPermission: { [Op.ne]: "off" } },
       });
+      const users = await User.findAll({
+        where: {},
+        attributes: ["id", "userName"],
+        include: [
+          {
+            model: Group,
+            attributes: ["groupName"],
+            through: { attributes: [] },
+          },
+        ],
+      });
+      const devices = await Device.findAll({
+        where: {},
+        attributes: ["id", "deviceName"],
+        include: [{ model: Group, attributes: ["groupName"] }],
+      });
+      for (const device of devices) {
+        DeviceNamesById.set(device.id, device.deviceName);
+        DeviceGroupNamesByDeviceId.set(device.id, device.Group.groupName);
+      }
+      for (const user of users) {
+        if (user.Groups.length === 1) {
+          UserGroupNamesById.set(user.id, user.Groups[0].groupName);
+        } else if (user.Groups.length === 2) {
+          UserGroupNamesById.set(
+            user.id,
+            user.Groups.map((g) => g.groupName).join(", "),
+          );
+        }
+        UserNamesById.set(user.id, user.userName);
+      }
       for (const superUser of superUsers) {
         SuperUsers.set(superUser.id, {
           userName: superUser.userName,
@@ -426,7 +591,7 @@ const grafanaLabelRestart = async () => {
         });
       }
     }
-
+    //
     await checkS3Connection();
     await openHttpServer(app);
     await grafanaLabelRestart();

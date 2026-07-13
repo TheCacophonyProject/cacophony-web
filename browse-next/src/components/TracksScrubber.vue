@@ -2,7 +2,7 @@
 import ScrubberWrapper from "@/components/ScrubberWrapper.vue";
 import { computed, onMounted, ref, watch } from "vue";
 import { TagColours } from "@/consts";
-import { useDevicePixelRatio } from "@vueuse/core";
+import { useDevicePixelRatio, useWindowSize } from "@vueuse/core";
 import type { IntermediateTrack } from "@/components/cptv-player/cptv-player-types";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 const { pixelRatio } = useDevicePixelRatio();
@@ -30,32 +30,18 @@ const emit = defineEmits<{
 }>();
 
 const playhead = ref<HTMLCanvasElement | null>(null);
-
 const trackDimensions = ref<TrackDimensions[]>([]);
 const numUniqueYSlots = ref(0);
-const trackHeight = 12;
-const minScrubberHeight = 44;
 const scrubberWidth = ref(0);
 
-const heightForTracks = computed((): number => {
-  if (props.tracks.length === 0) {
-    return minScrubberHeight;
-  }
-  const paddingY = 10;
-  let h = trackHeight * numUniqueYSlots.value; // + props.tracks.length - 1;
-  h = Math.max(44, h + paddingY * 2);
-  return h;
-});
-
-const getOffsetYForTrack = (
+const getSlotYForTrack = (
   trackIndex: number,
-  tracks: IntermediateTrack[],
   trackDimensions: TrackDimensions[],
   thisLeft: number,
   thisRight: number,
 ): number => {
   // See if there are any gaps to move this up to.
-  let topOffset = minScrubberHeight / 2 - trackHeight / 2;
+  let topOffset = 0;
   if (trackIndex !== 0) {
     // Put each track in a slot with the height offset.
     // Then for each new track, go backwards to try and find the earliest slot without a collision.
@@ -72,7 +58,7 @@ const getOffsetYForTrack = (
     const orderedSlots = Object.entries(slots)
       .sort(([a, _a], [b, _b]) => Number(a) - Number(b))
       .reverse();
-    let bestSlot = Number(orderedSlots[0][0]) + trackHeight + 1;
+    let bestSlot = Number(orderedSlots[0][0]) + 1;
     for (let i = 0; i < orderedSlots.length; i++) {
       const slot = orderedSlots[i];
       const noOverlaps = slot[1].every(
@@ -99,13 +85,7 @@ const initTrackDimensions = (tracks: IntermediateTrack[]): void => {
         const thisRight =
           tracks[i].positions[tracks[i].positions.length - 1][0] /
           props.totalFrames;
-        const yOffset = getOffsetYForTrack(
-          i,
-          tracks,
-          dimensions,
-          thisLeft,
-          thisRight,
-        );
+        const yOffset = getSlotYForTrack(i, dimensions, thisLeft, thisRight);
         dimensions.push({
           top: yOffset,
           right: thisRight,
@@ -116,7 +96,12 @@ const initTrackDimensions = (tracks: IntermediateTrack[]): void => {
     }
     trackDimensions.value = dimensions;
   }
-  numUniqueYSlots.value = Object.keys(uniqueYSlots).length;
+  const ySlots = Object.keys(uniqueYSlots).length;
+  numUniqueYSlots.value = ySlots;
+  document.documentElement.style.setProperty(
+    "--num-unique-y-slots",
+    ySlots.toString(),
+  );
 };
 
 onMounted(() => {
@@ -246,12 +231,7 @@ const currentTrackIndex = computed<number>(() => {
     @scrub-end="() => emit('end-scrub')"
     v-slot="{ width }"
   >
-    <div
-      class="track-scrubber"
-      :style="{
-        height: `${heightForTracks}px`,
-      }"
-    >
+    <div class="track-scrubber">
       <div
         v-for="index in Math.min(tracks.length, trackDimensions.length)"
         :key="index - 1"
@@ -265,10 +245,9 @@ const currentTrackIndex = computed<number>(() => {
           left: `calc(${sidePadding}px + ${
             trackDimensions[index - 1].left * fullWidthMinusPadding
           }%`,
-          top: `${
-            trackDimensions[index - 1].top -
-            (numUniqueYSlots === 1 ? 0 : trackHeight / 2)
-          }px`,
+          top: `calc(${
+            ((trackDimensions[index - 1].top + 1) / (numUniqueYSlots + 1)) * 100
+          }% - calc(var(--track-height) / 2))`,
         }"
         class="scrub-track"
       />
@@ -278,26 +257,18 @@ const currentTrackIndex = computed<number>(() => {
       class="playhead"
       :width="width * pixelRatio"
       height="1"
-      :style="{ height: `${heightForTracks}px` }"
     ></canvas>
     <div class="playhead"></div>
   </scrubber-wrapper>
 </template>
-<style scoped lang="less">
+<style lang="css">
 .track-scrubber {
-  background: #2b333f;
-  min-height: 0;
-  transition: height 0.3s;
+  background: var(--cp-player-toolbar-bg);
   /* Above the motion paths canvas if it exists */
   box-shadow: 0 1px 5px #000 inset;
   cursor: col-resize;
   position: relative;
-}
-.scrub-track {
-  transition: opacity 0.3s linear;
-  height: 12px;
-  border-radius: 5px;
-  position: absolute;
+  height: calc(var(--height-for-tracks));
 }
 .playhead {
   position: absolute;
@@ -306,7 +277,14 @@ const currentTrackIndex = computed<number>(() => {
   right: 0;
   bottom: 0;
   width: 100%;
-  min-height: 44px;
   pointer-events: none;
+  height: calc(var(--height-for-tracks));
+}
+
+.scrub-track {
+  transition: opacity 0.3s linear;
+  border-radius: 5px;
+  position: absolute;
+  height: calc(var(--track-height));
 }
 </style>

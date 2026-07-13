@@ -1,0 +1,21 @@
+/*
+  Spacing variables. Some of these match the bootstrap spacing:
+  https://getbootstrap.com/docs/5.3/utilities/spacing/
+  but there are a few in-between sizes that are handy and are not defined.
+  Use the bootstrap classes first and variables (if available)
+*/
+
+:root {
+  --cp-grid-base: 4px; // Use as a base for setting widths and heights, as a multiplier
+
+  --cp-spacing-base: 1rem;
+  --cp-spacing-xxxs: calc(var(--cp-spacing-base) * 0.125); // avoid using unless really needed, equivalent to 2px
+  --cp-spacing-xxs: calc(var(--cp-spacing-base) * 0.25); // equivalent to spacer 1 in bootstrap, 4px
+  --cp-spacing-xs: calc(var(--cp-spacing-base) * 0.5); // equivalent to spacer 2 in bootstrap, 8px
+  --cp-spacing-sm: calc(var(--cp-spacing-base) * 0.75);  // 12px
+  --cp-spacing-md: var(--cp-spacing-base); // equivalent to spacer 3 in bootstrap, 16px
+  --cp-spacing-lg: calc(var(--cp-spacing-base) * 1.25); // 20px
+  --cp-spacing-xl: calc(var(--cp-spacing-base) * 1.5); // equivalent to spacer 4 in bootstrap // 24px
+  --cp-spacing-xxl: calc(var(--cp-spacing-base) * 2); // 32px
+  --cp-spacing-xxxl: calc(var(--cp-spacing-base) * 3); // equivalent to spacer 5 in bootstrap // 48px
+}

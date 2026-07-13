@@ -1,6 +1,4 @@
-
-
-const util =  require("./util/util.cjs");
+const util = require("./util/util.cjs");
 module.exports = {
   up: async function (queryInterface) {
     const { sequelize } = queryInterface;
@@ -9,7 +7,7 @@ module.exports = {
       `select *
          from "DeviceUsers"
          inner join "Devices" on "DeviceId" = "Devices".id
-         `
+         `,
     );
     const transaction = await sequelize.transaction();
     try {
@@ -18,7 +16,7 @@ module.exports = {
         await sequelize.query(
           `insert into "GroupUsers" ("GroupId", "UserId", "createdAt", "updatedAt")
                                values (${GroupId}, ${UserId}, NOW(), NOW())`,
-          { transaction }
+          { transaction },
         );
       }
       await queryInterface.dropTable("DeviceUsers", { transaction });

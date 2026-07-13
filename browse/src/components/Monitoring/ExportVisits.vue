@@ -1,6 +1,6 @@
 <template>
   <div class="export-visits">
-    <b-modal v-model="isExportingCSV" title="Export Visits CSV" hide-footer>
+    <b-modal v-model="isExportingCSV" title="Export Visits CSV" no-footer>
       <div v-if="!exportInProgress">
         <label :for="'export-from-date'">Export from</label>
         <b-form-datepicker

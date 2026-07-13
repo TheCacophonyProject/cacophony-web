@@ -1,8 +1,6 @@
 export enum RecordingType {
   ThermalRaw = "thermalRaw",
   Audio = "audio",
-  TrailCamImage = "trailcam-image",
-  TrailCamVideo = "trailcam-video",
   InfraredVideo = "irRaw",
 }
 
@@ -11,6 +9,13 @@ export enum RecordingPermission {
   TAG = "tag",
   VIEW = "view",
   UPDATE = "update",
+}
+
+export enum AudioRecordingMode {
+  AudioOrThermal = "AudioOrThermal",
+  AudioAndThermal = "AudioAndThermal",
+  AudioOnly = "AudioOnly",
+  Disabled = "Disabled",
 }
 
 export enum TagMode {
@@ -34,11 +39,13 @@ export enum RecordingProcessingState {
   AnalyseThermal = "analyse",
   Finished = "FINISHED",
   FinishedFailed = "FINISHED.failed",
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
   Analyse = "analyse",
   Reprocess = "reprocess",
   ReTrackFailed = "retrack.failed",
   TrackingFailed = "tracking.failed",
   AnalyseThermalFailed = "analyse.failed",
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
   AnalyseFailed = "analyse.failed",
   ReprocessFailed = "reprocess.failed",
 
@@ -63,7 +70,6 @@ export enum AcceptableTag {
 export enum DeviceType {
   Audio = "audio",
   Thermal = "thermal",
-  TrailCam = "trailcam",
 
   TrapIrCam = "trapcam",
 
@@ -110,3 +116,10 @@ export const DeviceEventTypes = [
 ] as const;
 
 export type DeviceEventType = (typeof DeviceEventTypes)[number];
+
+export enum EventEnv {
+  Tc2Dev = "tc2-dev",
+  Tc2Test = "tc2-test",
+  Tc2Prod = "tc2-prod",
+  Unknown = "unknown",
+}

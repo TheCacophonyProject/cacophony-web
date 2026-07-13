@@ -1,6 +1,4 @@
-
-
-const util =  require("./util/util.cjs");
+const util = require("./util/util.cjs");
 
 const tableName = "DeviceHistory";
 

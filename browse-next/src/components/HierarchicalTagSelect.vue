@@ -1,22 +1,22 @@
 <template>
   <layered-dropdown
     :options="options"
-    :disabled="disabled"
+    :disabled="disabled || false"
     :disabled-tags="disabledTags"
-    :can-be-pinned="canBePinned"
-    :pinned-items="pinnedItems"
-    :placeholder="placeholder"
-    :multiselect="multiselect"
-    :with-audio-context="withAudioContext"
-    :selected-items="modelValue"
+    :can-be-pinned="canBePinned || false"
+    :pinned-items="pinnedItems || []"
+    :placeholder="placeholder || 'Search tags'"
+    :multiselect="multiselect || false"
+    :with-audio-context="withAudioContext || false"
+    :selected-items="modelValue || []"
     :open-on-mount="openOnMount"
     @change="updateModel"
-    @deselected="(deselected) => emit('deselected')"
+    @deselected="() => emit('deselected')"
     ref="layeredDropdown"
   />
 </template>
 <script setup lang="ts">
-import { getClassifications } from "@api/Classifications";
+import { getClassifications } from "@api/classificationsUtils.ts";
 import LayeredDropdown from "./LayeredDropdown.vue";
 import { onMounted, ref } from "vue";
 import type { Classification } from "@typedefs/api/trackTag";
@@ -37,7 +37,7 @@ const props = withDefaults(
   {
     disabled: false,
     exclude: () => [],
-    placeholder: "Search Tags...",
+    placeholder: "Search tags",
     multiselect: false,
     withAudioContext: false,
     canBePinned: false,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Datepicker from "@vuepic/vue-datepicker";
+import { VueDatePicker } from "@vuepic/vue-datepicker";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import Multiselect from "@vueform/multiselect";
 import {
@@ -19,7 +19,7 @@ import {
   userProjects,
 } from "@models/provides.ts";
 import type { SelectedProject } from "@models/LoggedInUser.ts";
-import type { LoadedResource } from "@api/types.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { timezoneForLatLng } from "@models/visitsUtils.ts";
@@ -28,6 +28,7 @@ import { TagMode } from "@typedefs/api/consts.ts";
 import {
   ActivitySearchDisplayMode,
   ActivitySearchRecordingMode,
+  getEarliestDateForLocationInRecordingMode,
   getLatestDateForLocationInRecordingMode,
   queryValueIsDate,
 } from "@/components/activitySearchUtils.ts";
@@ -39,6 +40,8 @@ import {
   CurrentProjectAudioLabels,
   CurrentProjectCameraLabels,
 } from "@/helpers/Project.ts";
+import { BButton, BFormCheckbox, BPopover } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const props = defineProps<{
   locations: Ref<LoadedResource<ApiLocationResponse[]>>;
@@ -121,7 +124,7 @@ const oneMonthAgo = new Date(new Date().setMonth(now.getMonth() - 1));
 const threeMonthsAgo = new Date(new Date().setMonth(now.getMonth() - 3));
 const oneYearAgo = new Date(new Date().setFullYear(now.getFullYear() - 1));
 const lastTwentyFourHours: [Date, Date] = [oneDayAgo, now];
-const dateRangePicker = ref<typeof Datepicker>();
+const dateRangePicker = ref<typeof VueDatePicker>();
 
 // Initialise this to a zero range
 interface DateRangeOption {
@@ -173,15 +176,24 @@ const combinedDateRange = computed<[Date, Date]>(() => {
   }
 });
 
+const locationsWithRecordings = computed<ApiLocationResponse[]>(() => {
+  return (props.locations.value || []).filter(
+    (location) =>
+      !!location.earliestAudioRecordingTime ||
+      !!location.earliestThermalRecordingTime,
+  );
+});
+
 const minDateForProject = computed<Date>(() => {
   // Earliest active location
   let earliest = new Date();
-  if (props.locations.value) {
-    for (const location of props.locations.value) {
-      const activeAt = new Date(location.activeAt);
-      if (activeAt < earliest) {
-        earliest = activeAt;
-      }
+  for (const location of locationsWithRecordings.value) {
+    const earliestDateForLocation = getEarliestDateForLocationInRecordingMode(
+      location,
+      props.params.recordingMode,
+    );
+    if (earliestDateForLocation && earliestDateForLocation < earliest) {
+      earliest = earliestDateForLocation;
     }
   }
   return earliest;
@@ -237,17 +249,17 @@ const maxDateForProject = computed<Date>(() => {
   // Latest active location
   let latest = new Date();
   latest.setFullYear(2010);
-  if (props.locations.value) {
-    for (const location of props.locations.value) {
-      const latestDateForLocation = getLatestDateForLocationInRecordingMode(
-        location,
-        props.params.recordingMode,
-      );
-      if (latestDateForLocation && latestDateForLocation > latest) {
-        latest = latestDateForLocation;
-      }
+
+  for (const location of locationsWithRecordings.value) {
+    const latestDateForLocation = getLatestDateForLocationInRecordingMode(
+      location,
+      props.params.recordingMode,
+    );
+    if (latestDateForLocation && latestDateForLocation > latest) {
+      latest = latestDateForLocation;
     }
   }
+
   return latest;
 });
 
@@ -327,19 +339,28 @@ watch(
       combinedDateRange.value[1] > maxDateForProject.value
     ) {
       console.warn("Should adjust range");
-      selectedDateRange.value = commonDateRanges.value[0];
+      let from = commonDateRanges.value.find(
+        (v) => v.urlLabel === "3-days-ago",
+      );
+      if (!from) {
+        from = commonDateRanges.value.find(
+          (v) => v.urlLabel === "24-hours-ago",
+        );
+      }
+      if (!from) {
+        from = commonDateRanges.value.find((v) => v.urlLabel === "any");
+      }
+      selectedDateRange.value = from as DateRangeOption;
       customDateRange.value = null;
     }
   },
 );
 
-const commonDateRanges = computed<
-  { value: [Date, Date] | "custom"; label: string; urlLabel: string }[]
->(() => {
+const commonDateRanges = computed<DateRangeOption[]>(() => {
   const earliest = minDateForProject.value;
   const latest = maxDateForProject.value;
   const ranges = [];
-  if (earliest < oneDayAgo && latest > oneDayAgo) {
+  if (latest > oneDayAgo) {
     ranges.push({
       label: "Last 24 hours",
       urlLabel: "24-hours-ago",
@@ -410,12 +431,30 @@ const format = (dates: Date[]) => {
     .join(" - ");
 };
 
+const formatStr = "dd/MM/yyyy";
+
 const includeSubSpeciesTags = ref<boolean>(true);
 const selectedTags = ref<string[]>([]);
 const selectedLabels = ref<string[]>([]);
 const starredLabel = ref<boolean>(false);
 const flaggedLabel = ref<boolean>(false);
-const showFilteredFalsePositivesAndNones = ref<boolean>(false);
+
+const defaultFalseTriggerMode = () => {
+  const userPreference = window.localStorage.getItem(
+    "activity-search-false-triggers",
+  );
+  if (userPreference) {
+    try {
+      return JSON.parse(userPreference);
+    } catch (e) {
+      //
+    }
+    return false;
+  }
+};
+const showFilteredFalsePositivesAndNones = ref<boolean>(
+  defaultFalseTriggerMode(),
+);
 const showUntaggedOnly = ref<boolean>(false);
 const showUntaggedByHumanOnly = ref<boolean>(false);
 const FLAG = "requires review";
@@ -435,25 +474,22 @@ const selectedLabelGetterSetter = (label: string) => ({
 const selectedFlaggedLabel = computed<boolean>(selectedLabelGetterSetter(FLAG));
 const selectedCoolLabel = computed<boolean>(selectedLabelGetterSetter(COOL));
 const locationsInSelectedTimespan = computed<ApiLocationResponse[]>(() => {
-  if (props.locations.value) {
-    return (props.locations.value as ApiLocationResponse[]).filter(
-      (location) => {
-        if (location.location.lat === 0 && location.location.lng === 0) {
-          return false;
-        }
-        const latestDateForLocation = getLatestDateForLocationInRecordingMode(
-          location,
-          props.params.recordingMode,
-        );
-        return (
-          latestDateForLocation &&
-          latestDateForLocation >= combinedDateRange.value[0] &&
-          new Date(location.activeAt) <= combinedDateRange.value[1]
-        );
-      },
+  return locationsWithRecordings.value.filter((location) => {
+    if (location.location.lat === 0 && location.location.lng === 0) {
+      return false;
+    }
+    const latestDateForLocation = getLatestDateForLocationInRecordingMode(
+      location,
+      props.params.recordingMode,
     );
-  }
-  return [];
+
+    // FIXME: Is using activeAt correct here?
+    return (
+      latestDateForLocation &&
+      latestDateForLocation >= combinedDateRange.value[0] &&
+      new Date(location.activeAt) <= combinedDateRange.value[1]
+    );
+  });
 });
 
 const locationsInSelectedTimespanOptions = computed<
@@ -520,12 +556,60 @@ const remapLocationOptions = (nextOptions: LocationOption[]) => {
 };
 watch(locationsInSelectedTimespanOptions, remapLocationOptions);
 
-const recordingMode = ref<ActivitySearchRecordingMode>(
-  ActivitySearchRecordingMode.Cameras,
-);
-const displayMode = ref<ActivitySearchDisplayMode>(
-  ActivitySearchDisplayMode.Visits,
-);
+const savedRecordingMode =
+  (window.localStorage.getItem(
+    "activity-recording-mode",
+  ) as ActivitySearchRecordingMode) || ActivitySearchRecordingMode.Cameras;
+const savedDisplayMode =
+  (window.localStorage.getItem(
+    "activity-display-mode",
+  ) as ActivitySearchDisplayMode) || ActivitySearchDisplayMode.Visits;
+
+const persistAudioMode = () => {
+  window.localStorage.setItem(
+    "activity-recording-mode",
+    ActivitySearchRecordingMode.Audio,
+  );
+  window.localStorage.setItem(
+    "activity-display-mode",
+    ActivitySearchDisplayMode.Recordings,
+  );
+};
+
+const persistFalseTriggerMode = () => {
+  const waitForChange = watch(showFilteredFalsePositivesAndNones, (next) => {
+    window.localStorage.setItem(
+      "activity-search-false-triggers",
+      JSON.stringify(next),
+    );
+    waitForChange();
+  });
+};
+
+const persistCameraMode = () => {
+  window.localStorage.setItem(
+    "activity-recording-mode",
+    ActivitySearchRecordingMode.Cameras,
+  );
+};
+
+const persistVisitsDisplayMode = () => {
+  window.localStorage.setItem(
+    "activity-display-mode",
+    ActivitySearchDisplayMode.Visits,
+  );
+};
+
+const persistRecordingsDisplayMode = () => {
+  window.localStorage.setItem(
+    "activity-display-mode",
+    ActivitySearchDisplayMode.Recordings,
+  );
+  showFilteredFalsePositivesAndNones.value = defaultFalseTriggerMode();
+};
+
+const recordingMode = ref<ActivitySearchRecordingMode>(savedRecordingMode);
+const displayMode = ref<ActivitySearchDisplayMode>(savedDisplayMode);
 
 const computedDisplayMode = computed<ActivitySearchDisplayMode>({
   get: () => {
@@ -559,7 +643,6 @@ const getCurrentQuery = (): LocationQuery => {
       )
         .map(({ id }) => id)
         .join(",");
-  console.log("Tag mode", tagMode.value);
   const query: LocationQuery = {
     ...route.query,
     "display-mode": displayMode.value,
@@ -570,7 +653,10 @@ const getCurrentQuery = (): LocationQuery => {
     "no-false-positives":
       (!showFilteredFalsePositivesAndNones.value).toString(),
   };
-  if ([TagMode.Tagged, TagMode.NoHuman].includes(tagMode.value) && !selectedTags.value.includes("any")) {
+  if (
+    [TagMode.Tagged, TagMode.NoHuman].includes(tagMode.value) &&
+    !selectedTags.value.includes("any")
+  ) {
     query["tagged-with"] = selectedTags.value.join(",");
   } else {
     if (tagMode.value === TagMode.Tagged) {
@@ -683,7 +769,11 @@ const arrayContentsAreTheSame = (
   return true;
 };
 
-const updateTagsRoute = async (next: string[], prev: string[] | undefined, force: boolean = false) => {
+const updateTagsRoute = async (
+  next: string[],
+  prev: string[] | undefined,
+  force: boolean = false,
+) => {
   if (force || !arrayContentsAreTheSame(prev || [], next)) {
     const query = getCurrentQuery();
     await router.replace({
@@ -738,7 +828,6 @@ const syncParams = (
   displayMode.value = next.displayMode;
   recordingMode.value = next.recordingMode;
   tagMode.value = next.tagMode;
-  console.log("Tag mode", tagMode.value);
   if (tagMode.value === TagMode.Tagged || tagMode.value === TagMode.NoHuman) {
     selectedTags.value = next.taggedWith;
   } else {
@@ -775,7 +864,16 @@ const syncParams = (
     selectedDateRange.value = foundRange;
   } else if (next.from && !next.until) {
     // Try to match to the common date ranges and pick an option.
-    selectedDateRange.value = commonDateRanges.value[0];
+    let from = commonDateRanges.value.find((v) => v.urlLabel === "3-days-ago");
+    if (!from) {
+      from = commonDateRanges.value.find((v) => v.urlLabel === "24-hours-ago");
+    }
+    if (!from) {
+      from = commonDateRanges.value.find((v) => v.urlLabel === "any");
+    }
+    if (from) {
+      selectedDateRange.value = from;
+    }
     updateDateRouteComponent(combinedDateRange.value, [now, now]);
   } else if (next.from && next.until) {
     selectedDateRange.value =
@@ -804,7 +902,20 @@ const syncParams = (
         updateDateRouteComponent(combinedDateRange.value, [now, now]);
       }
     } else {
-      selectedDateRange.value = commonDateRanges.value[0];
+      let from = commonDateRanges.value.find(
+        (v) => v.urlLabel === "3-days-ago",
+      );
+      if (!from) {
+        from = commonDateRanges.value.find(
+          (v) => v.urlLabel === "24-hours-ago",
+        );
+      }
+      if (!from) {
+        from = commonDateRanges.value.find((v) => v.urlLabel === "any");
+      }
+      if (from) {
+        selectedDateRange.value = from;
+      }
     }
   }
 };
@@ -833,7 +944,7 @@ const hasAdvancedFiltersSet = computed<boolean>(() => {
   );
 });
 
-onBeforeMount(() => {
+onBeforeMount(async () => {
   watchProps.value = watch(props.params, syncParams, {
     deep: true,
     immediate: false,
@@ -865,13 +976,16 @@ onBeforeMount(() => {
     }
   });
 
-  watchUntaggedByHumanOnly.value = watch(showUntaggedByHumanOnly, (next: boolean) => {
-    if (next) {
-      tagMode.value = TagMode.NoHuman;
-    } else {
-      tagMode.value = TagMode.Any;
-    }
-  });
+  watchUntaggedByHumanOnly.value = watch(
+    showUntaggedByHumanOnly,
+    (next: boolean) => {
+      if (next) {
+        tagMode.value = TagMode.NoHuman;
+      } else {
+        tagMode.value = TagMode.Any;
+      }
+    },
+  );
 
   watchSelectedTags.value = watch(
     selectedTags,
@@ -907,7 +1021,7 @@ onBeforeMount(() => {
   watchFlagged.value = watch(flaggedLabel, updateRoute);
   watchSelectedLabels.value = watch(selectedLabels, updateLabelsRoute);
   showAdvanced.value = hasAdvancedFiltersSet.value;
-  emit("search-requested");
+  //emit("search-requested");
 });
 onBeforeUnmount(() => {
   watchProps.value && watchProps.value();
@@ -938,7 +1052,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
 <template>
   <div ref="searchParamsContainer">
     <div
-      class="btn-group btn-group-sm d-flex mb-2"
+      class="btn-group btn-group-md d-flex"
       role="group"
       aria-label="Toggle between camera and bird monitor results"
       v-if="projectHasAudioAndThermal"
@@ -950,11 +1064,16 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         id="recording-mode-cameras"
         autocomplete="off"
         v-model="recordingMode"
+        @click="persistCameraMode"
         value="cameras"
       />
-      <label class="btn btn-outline-secondary w-50" for="recording-mode-cameras"
-        >Cameras</label
+      <label
+        class="btn btn-radio-group btn-md w-50 d-flex align-items-center justify-content-center pt-2 pb-2"
+        for="recording-mode-cameras"
       >
+        <material-symbol name="videocam" class="me-2" size="1.25rem" />
+        Thermal
+      </label>
       <input
         type="radio"
         class="btn-check"
@@ -962,15 +1081,23 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         id="recording-mode-audio"
         autocomplete="off"
         v-model="recordingMode"
+        @click="persistAudioMode"
         value="audio"
       />
-      <label class="btn btn-outline-secondary w-50" for="recording-mode-audio"
-        >Bird Monitors</label
+      <label
+        class="btn btn-radio-group btn-md w-50 d-flex align-items-center justify-content-center pt-2 pb-2"
+        for="recording-mode-audio"
       >
+        <material-symbol name="music_note" class="me-2" size="1.25rem" />
+        Audio
+      </label>
     </div>
     <div
-      class="btn-group d-flex"
-      :class="{ 'btn-group-sm': scrolledToStickyPosition }"
+      class="btn-group btn-group-md d-flex"
+      :class="{
+        'btn-group-sm': scrolledToStickyPosition,
+        'mt-4': projectHasAudioAndThermal,
+      }"
       role="group"
       aria-label="Toggle between results groups as visits or as recordings"
       v-if="recordingMode === ActivitySearchRecordingMode.Cameras"
@@ -982,9 +1109,10 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         id="display-mode-visits"
         autocomplete="off"
         v-model="computedDisplayMode"
+        @click="persistVisitsDisplayMode"
         :value="'visits'"
       />
-      <label class="btn btn-outline-secondary w-50" for="display-mode-visits"
+      <label class="btn btn-radio-group btn-sm w-50" for="display-mode-visits"
         >Visits</label
       >
       <input
@@ -994,22 +1122,24 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         id="display-mode-recordings"
         autocomplete="off"
         v-model="computedDisplayMode"
+        @click="persistRecordingsDisplayMode"
         :value="'recordings'"
       />
       <label
-        class="btn btn-outline-secondary w-50"
+        class="btn btn-radio-group btn-sm w-50"
         for="display-mode-recordings"
         >Recordings</label
       >
     </div>
   </div>
-  <div class="mt-2">
-    <label class="fs-7">Date range</label>
+  <div class="mt-3">
+    <label for="date-range" class="mb-1">Date range</label>
     <multiselect
       v-model="selectedDateRange"
       :options="commonDateRanges"
       value-prop="label"
       label="label"
+      id="date-range"
       :object="true"
       :searchable="false"
       :can-clear="false"
@@ -1018,11 +1148,14 @@ const scrolledToStickyPosition = computed<boolean>(() => {
       @change="maybeSelectDatePicker"
     />
     <!--  TODO: Should this be using min/maxDateForSelectedLocations?    -->
-    <datepicker
+    <vue-date-picker
       v-if="selectedDateRange.value === 'custom'"
       ref="dateRangePicker"
       class="mt-2"
-      range
+      :range="{
+        partialRange: false,
+      }"
+      :teleport="true"
       :timezone="timezoneForProject"
       v-model="customDateRange"
       :min-date="minDateForProject"
@@ -1032,50 +1165,61 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         minDateForProject.getFullYear(),
         maxDateForProject.getFullYear(),
       ]"
-      :text-input-options="{ format }"
-      :preview-format="format"
-      :enable-time-picker="false"
-      :format="format"
+      :formats="{
+        preview: format,
+        input: format,
+      }"
+      :time-config="{
+        enableTimePicker: false,
+      }"
       prevent-min-max-navigation
       auto-apply
     />
   </div>
-  <div class="mt-2">
-    <label class="fs-7">Locations</label>
+  <div class="mt-3">
+    <label for="locations" class="mb-1">Locations</label>
     <multiselect
       mode="tags"
       ref="selectedLocationsSelect"
       v-model="selectedLocations"
       :options="locationsInSelectedTimespanOptions"
       :can-clear="false"
+      id="locations"
       class="ms-bootstrap"
       @change="onChangeLocationsSelect"
       searchable
     />
   </div>
-  <div class="mt-3" v-if="displayMode === ActivitySearchDisplayMode.Recordings">
-    <!--    <label class="fs-7">Filtering</label>-->
-    <div class="d-flex justify-content-between">
+  <div class="mt-2" v-if="displayMode === ActivitySearchDisplayMode.Recordings">
+    <div class="d-flex align-items-center">
       <b-form-checkbox
         v-model="showFilteredFalsePositivesAndNones"
+        @click="persistFalseTriggerMode"
         switch
         :disabled="showUntaggedOnly"
-        >Include
-        <span v-if="recordingMode === ActivitySearchRecordingMode.Cameras"
-          >false triggers</span
-        ><span v-if="recordingMode === ActivitySearchRecordingMode.Audio"
-          >redacted audio</span
-        ></b-form-checkbox
+        size="lg"
       >
-      <span class="help-toggle" ref="falsePositiveInfoParent"
-        ><font-awesome-icon icon="question"
-      /></span>
+        <span class="d-flex justify-content-center">
+          <span
+            >Include
+            <span v-if="recordingMode === ActivitySearchRecordingMode.Cameras">
+              false triggers
+            </span>
+            <span v-if="recordingMode === ActivitySearchRecordingMode.Audio">
+              redacted audio
+            </span>
+          </span>
+        </span>
+      </b-form-checkbox>
+      <span
+        ref="falsePositiveInfoParent"
+        class="text-secondary d-flex align-items-baseline"
+      >
+        <material-symbol name="help" size="1.25rem" />
+      </span>
     </div>
     <b-popover
-      click
-      variant="secondary"
       v-model="toggleFalsePositiveFilterHelp"
-      tooltip
       custom-class="tag-info-popover"
       placement="right-start"
       teleport-to="body"
@@ -1091,20 +1235,23 @@ const scrolledToStickyPosition = computed<boolean>(() => {
       >
     </b-popover>
   </div>
-  <button
-    type="button"
+  <b-button
+    variant="link-secondary"
     v-if="params.displayMode === ActivitySearchDisplayMode.Recordings"
-    class="btn mt-2 fs-7 px-0 advanced-filtering-btn d-flex align-items-center w-100"
+    class="btn mt-2 d-flex align-items-center justify-content-center w-100"
     @click="showAdvanced = !showAdvanced"
   >
-    Advanced search
-    <font-awesome-icon
-      icon="chevron-right"
-      :rotation="!showAdvanced ? 90 : 270"
-      size="sm"
-      class="ms-2"
+    <span>
+      <span v-if="!showAdvanced">Show </span>
+      <span v-else>Hide </span>
+      advanced search
+    </span>
+    <material-symbol
+      :name="!showAdvanced ? 'keyboard_arrow_down' : 'keyboard_arrow_up'"
+      size="1.25rem"
+      class="ms-1"
     />
-  </button>
+  </b-button>
 
   <div
     class="advanced-search"
@@ -1113,14 +1260,24 @@ const scrolledToStickyPosition = computed<boolean>(() => {
       params.displayMode === ActivitySearchDisplayMode.Recordings
     "
   >
-    <div class="mt-2">
-      <b-form-checkbox v-model="showUntaggedOnly" switch :disabled="showUntaggedByHumanOnly"
-        >Untagged only</b-form-checkbox
+    <div class="mt-3">
+      <span class="d-block mb-2">Show only recordings</span>
+      <b-form-checkbox
+        v-model="showUntaggedOnly"
+        switch
+        :disabled="showUntaggedByHumanOnly"
+        ><span class="text-muted">Not tagged</span></b-form-checkbox
       >
-      <b-form-checkbox v-model="showUntaggedByHumanOnly" switch :disabled="showUntaggedOnly"
-      >Untagged <em>by humans</em> only</b-form-checkbox
+      <b-form-checkbox
+        v-model="showUntaggedByHumanOnly"
+        switch
+        :disabled="showUntaggedOnly"
+        ><span class="text-muted">Not tagged by humans</span></b-form-checkbox
       >
-      <div class="mt-2">
+    </div>
+    <div class="mt-4">
+      <div>
+        <span class="d-block mb-1">Track tags</span>
         <hierarchical-tag-select
           :disabled="showUntaggedOnly"
           class="flex-grow-1"
@@ -1131,60 +1288,67 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         />
       </div>
       <div class="mt-2">
-        <div class="d-flex justify-content-between">
+        <div class="d-flex align-items-center">
           <b-form-checkbox
-            switch
             v-model="includeSubSpeciesTags"
             :disabled="selectedTags.length === 0 || showUntaggedOnly"
             >Include sub-species tags
           </b-form-checkbox>
-          <span ref="tagInfoParent" class="help-toggle"
-            ><font-awesome-icon icon="question"
-          /></span>
+          <span
+            ref="tagInfoParent"
+            class="text-secondary d-flex align-items-baseline ms-3"
+          >
+            <material-symbol name="help" size="1.25rem" />
+          </span>
         </div>
         <b-popover
-          click
           teleport-to="body"
-          variant="secondary"
           v-model="toggleSubspeciesHelp"
-          tooltip
           custom-class="tag-info-popover"
           placement="right-start"
           :target="tagInfoParent"
         >
-          If you select the tag 'mammal', having this option selected means
-          we'll search for all tags with 'mammal' as an ancestor. Having the
-          option disabled means we'll only search for recordings with the
-          explicit 'mammal' tag.
+          <p class="mb-1">
+            If you select the tag 'mammal', having this option selected means
+            we'll search for all tags with 'mammal' as an ancestor.
+          </p>
+          <p class="mb-0">
+            Having the option disabled means we'll only search for recordings
+            with the explicit 'mammal' tag.
+          </p>
         </b-popover>
       </div>
     </div>
-    <div class="mt-2">
-      <div class="d-flex justify-content-between">
+    <div class="mt-4 mb-3">
+      <span class="d-block mb-2">Recording labels</span>
+      <div class="d-flex justify-content-between gap-2 mb-2">
         <b-button
           @click.prevent="starredLabel = !starredLabel"
-          variant="light"
-          size="sm"
+          variant="outline-secondary"
+          class="w-100 d-flex flex-wrap align-items-center justify-content-center gap-2"
         >
-          <font-awesome-icon
-            :icon="starredLabel ? ['fas', 'star'] : ['far', 'star']"
-            :color="starredLabel ? 'goldenrod' : '#666'"
+          <material-symbol
+            name="star"
+            size="1.25rem"
+            :style="starredLabel ? `color:goldenrod` : ''"
+            :filled="starredLabel"
           />
-          <span class="ms-2">Starred</span>
+          <span>Starred</span>
         </b-button>
         <b-button
           @click.prevent="flaggedLabel = !flaggedLabel"
-          variant="light"
-          size="sm"
+          variant="outline-secondary"
+          class="w-100 d-flex flex-wrap align-items-center justify-content-center gap-2"
         >
-          <font-awesome-icon
-            :icon="flaggedLabel ? ['fas', 'flag'] : ['far', 'flag']"
-            :color="flaggedLabel ? '#ad0707' : '#666'"
+          <material-symbol
+            name="flag"
+            size="1.25rem"
+            :style="flaggedLabel ? `color:#ad0707` : ''"
+            :filled="flaggedLabel"
           />
-          <span class="ms-2">Flagged</span>
+          <span>Flagged</span>
         </b-button>
       </div>
-      <label class="fs-7">Labelled with</label>
       <multiselect
         v-model="selectedLabels"
         :options="availableLabels"
@@ -1192,6 +1356,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         :can-clear="false"
         class="ms-bootstrap"
         searchable
+        placeholder="Select labels"
       />
     </div>
   </div>
@@ -1206,73 +1371,27 @@ const scrolledToStickyPosition = computed<boolean>(() => {
   <!--    Search-->
   <!--  </b-button>-->
   <b-button
-    variant="link"
+    variant="outline-secondary"
     :size="scrolledToStickyPosition ? 'sm' : 'md'"
-    class="w-100 mt-2 grey-link"
+    class="w-100 mt-2 mt-3 mb-3"
     :disabled="!searchIsValid"
     @click="emit('export-requested')"
   >
     Export search results
   </b-button>
 </template>
-
-<style lang="less" scoped>
-.advanced-filtering-btn,
-.advanced-filtering-btn:hover {
-  color: #007086;
-}
-.grey-link {
-  color: #666;
-}
-.help-toggle {
-  background: var(--bs-light-bg-subtle);
-  color: var(--bs-secondary);
-  border: 1px solid var(--bs-secondary-bg);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 25px;
-  height: 25px;
-}
-.ms-bootstrap {
-  // Match focus colours to bootstrap?
-  --ms-ring-width: 0.25rem;
-  --ms-ring-color: rgb(13 110 253 / 25%);
-  --ms-border-color-active: #86b7fe;
-}
-.dp__theme_light {
-  --dp-border-color-hover: #86b7fe;
-  --dp-border-radius: 0.375rem;
-  //&:focus {
-  //  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-  //}
-  border-radius: 0.375rem;
-}
-//.dp__input {
-//  border-radius: 0.375rem;
-//}
-.dp__input_focus {
-  //border-radius: 0.375rem;
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-}
-</style>
 <style lang="less">
+// TODO: should this be scoped?
 .multiselect-tag {
   white-space: unset !important;
 }
 
+// TODO: do we still need this?
 .tag-info-popover {
   z-index: 200001;
-}
-.form-check-input:checked {
-  background-color: var(--bs-secondary);
-  border-color: var(--bs-secondary);
 }
 </style>
 <style lang="css">
 @import url("@vueform/multiselect/themes/default.css");
-</style>
-<style lang="css">
 @import url("@vuepic/vue-datepicker/dist/main.css");
 </style>

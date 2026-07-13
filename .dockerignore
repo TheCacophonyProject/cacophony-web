@@ -2,8 +2,9 @@ _release
 .git
 .run
 .idea
+.github
 api/docker-base
-api/node_modules
+api/node_modules/
 types/node_modules
 browse
 browse-next

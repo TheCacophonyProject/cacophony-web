@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { computed, ref } from "vue";
+import { computed, inject, type Ref, ref } from "vue";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { CardTableRows } from "@/components/CardTableTypes";
-import { BModal } from "bootstrap-vue-next";
-import { addRecordingLabel, removeRecordingLabel } from "@api/Recording";
 import {
-  CurrentUser,
+  BAlert,
+  BButton,
+  BFormRadio,
+  BModal,
+  BSpinner,
+} from "bootstrap-vue-next";
+import { ClientApi } from "@/api";
+import {
+  type LoggedInUser,
   userIsAdminForCurrentSelectedProject,
 } from "@models/LoggedInUser";
 import type { TagId } from "@typedefs/api/common";
@@ -18,7 +24,9 @@ import {
   CurrentProjectAudioLabels,
   CurrentProjectCameraLabels,
 } from "@/helpers/Project.ts";
-
+import { currentUser } from "@models/provides.ts";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+const CurrentUser = inject(currentUser) as Ref<LoggedInUser | null>;
 const props = withDefaults(
   defineProps<{
     recording?: ApiRecordingResponse | null;
@@ -71,7 +79,7 @@ const audioLabels = computed<RecordingLabel[]>(() => {
           text: text,
           description,
           value: (value || text).toLowerCase(),
-        } as RecordingLabel),
+        }) as RecordingLabel,
     )
     .filter((tag) => tag.value !== "note");
 });
@@ -118,7 +126,7 @@ const addLabel = () => {
 const removeLabel = async (id: TagId) => {
   if (props.recording) {
     removingLabelInProgress.value = true;
-    const removeLabelResponse = await removeRecordingLabel(
+    const removeLabelResponse = await ClientApi.Recordings.removeRecordingLabel(
       props.recording.id,
       id,
     );
@@ -132,7 +140,7 @@ const removeLabel = async (id: TagId) => {
 const doAddLabel = async () => {
   if (props.recording && selectedLabel.value) {
     addingLabelInProgress.value = true;
-    const addLabelResponse = await addRecordingLabel(
+    const addLabelResponse = await ClientApi.Recordings.addRecordingLabel(
       props.recording.id,
       selectedLabel.value,
     );
@@ -154,27 +162,23 @@ const doAddLabel = async () => {
 };
 </script>
 <template>
-  <div v-if="recording" class="recording-labels d-flex flex-column">
-    <div class="d-flex align-items-center">
-    <h2 class="recording-labels-title fs-6">Recording labels</h2>
-      <div class="d-flex justify-content-end flex-grow-1 d-md-none">
-        <button
-          type="button"
-          class="btn btn-outline-secondary align-self-end add-label-btn d-flex align-items-center"
-          @click="addLabel"
-        >
-          <font-awesome-icon icon="plus" /><span> Add label</span>
-        </button>
-      </div>
-    </div>
-    <card-table :items="tableItems" compact>
+  <div
+    v-if="recording"
+    class="recording-labels position-relative flex-fill d-flex flex-column p-2 p-md-3"
+  >
+    <card-table
+      :items="tableItems"
+      compact
+      class="flex-fill flex-grow-1"
+      :class="{ 'p-1 p-md-0 mb-3': tableItems.length }"
+    >
       <template #_deleteAction="{ cell }">
         <button
-          class="btn text-secondary"
+          class="btn btn-icon"
           v-if="cell.value.id !== -1"
           @click.prevent="() => removeLabel(cell.value.id)"
         >
-          <font-awesome-icon icon="trash-can" />
+          <material-symbol name="delete" size="1.25rem" />
         </button>
         <span v-else></span>
       </template>
@@ -191,59 +195,81 @@ const doAddLabel = async () => {
             v-if="
               card._deleteAction.value && card._deleteAction.value.id !== -1
             "
-            class="btn text-secondary"
+            class="btn btn-icon"
             @click.prevent="() => removeLabel(card._deleteAction.value.id)"
           >
-            <font-awesome-icon icon="trash-can" />
+            <material-symbol name="delete" size="1.25rem" />
           </button>
         </div>
       </template>
     </card-table>
-    <div class="d-none d-md-flex justify-content-end flex-grow-1 my-2">
-      <button
-        type="button"
-        class="btn btn-outline-secondary align-self-end add-label-btn d-flex align-items-center"
-        @click="addLabel"
+    <button
+      type="button"
+      class="add-label-btn btn btn-outline-secondary position-sticky align-self-end d-flex align-items-center"
+      @click="addLabel"
+    >
+      <material-symbol name="add" size="1.125rem" class="me-2" /><span>
+        Add label</span
       >
-        <font-awesome-icon icon="plus" /><span> Add label</span>
-      </button>
-    </div>
+    </button>
     <b-modal
       v-model="addingLabel"
       centered
-      title="Label this recording"
-      ok-title="Add label"
-      :ok-disabled="labelToAdd === null"
-      @cancel="reset"
-      @close="reset"
-      @esc="reset"
-      @ok="doAddLabel"
+      title="Label recording"
+      @hide="reset"
     >
-      <div
-        :key="index"
-        class="text-nowrap mb-2 me-2 d-inline-block"
-        v-for="(label, index) in unusedLabels"
+      <div class="d-flex flex-wrap gap-2">
+        <div
+          :key="index"
+          class="text-nowrap"
+          v-for="(label, index) in unusedLabels"
+        >
+          <b-form-radio
+            v-model="selectedLabel"
+            :value="label.value"
+            name="add-label-radios"
+            button
+            button-variant="outline-secondary"
+            >{{ label.text }}</b-form-radio
+          >
+        </div>
+      </div>
+      <b-alert
+        :model-value="labelToAdd !== null"
+        variant="light"
+        class="mt-3 mb-0"
       >
-        <b-form-radio
-          v-model="selectedLabel"
-          :value="label.value"
-          name="add-label-radios"
-          button
-          button-variant="outline-secondary"
-          >{{ label.text }}</b-form-radio
+        <div class="description d-flex">
+          <material-symbol name="info" class="me-2" size="1.25rem" />
+          <span v-if="labelToAdd && labelToAdd.description">
+            {{ labelToAdd.description }}</span
+          >
+          <span v-else class="text-secondary">No description provided</span>
+        </div>
+      </b-alert>
+      <template #footer>
+        <b-button
+          v-if="userIsAdminForCurrentSelectedProject"
+          variant="link-primary"
+          class="me-auto px-0"
         >
-      </div>
-
-      <div v-if="labelToAdd" class="alert alert-info mt-2 mb-0">
-        {{ labelToAdd.description }}
-      </div>
-      <div v-if="userIsAdminForCurrentSelectedProject" class="mt-4">
-        <router-link
-          :to="{ name: 'project-label-settings' }"
-          class="text-decoration-none"
-          >Label descriptions/customisations</router-link
+          <router-link
+            :to="{ name: 'project-label-settings' }"
+            class="text-decoration-none"
+            >Manage labels</router-link
+          >
+        </b-button>
+        <b-button variant="secondary" @click="addingLabel = false">
+          Cancel
+        </b-button>
+        <b-button
+          variant="primary"
+          @click="doAddLabel"
+          :disabled="labelToAdd === null"
         >
-      </div>
+          Add label
+        </b-button>
+      </template>
     </b-modal>
   </div>
   <div
@@ -254,37 +280,18 @@ const doAddLabel = async () => {
   </div>
 </template>
 <style lang="less" scoped>
-.recording-labels {
-  height: 100%;
-  @media screen and (min-width: 1041px) {
-    padding: 0 0.5rem;
-  }
-}
-.recording-labels-title {
-  display: none;
-  @media screen and (max-width: 1040px) {
-    display: inline;
-  }
-}
-.recording-label {
-  background: white;
-}
-.delete-action {
-  color: #bbb;
-}
+@import "../assets/less/breakpoints.less";
+
 .add-label-btn {
-  > span {
-    transition: width 0.2s ease-in-out;
-    width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    display: inline-block;
-    text-indent: 10px;
+  @media (max-width: @breakpoint-sm-max) {
+    bottom: var(--cp-spacing-sm);
   }
-  &:hover {
-    > span {
-      width: 80px;
-    }
+  @media (min-width: @breakpoint-md) {
+    bottom: var(--cp-spacing-md);
   }
+}
+
+.recording-labels {
+  min-height: 100%;
 }
 </style>

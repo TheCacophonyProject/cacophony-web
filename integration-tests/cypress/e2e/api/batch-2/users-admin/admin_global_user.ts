@@ -2,8 +2,12 @@ import { TestCreateExpectedUser } from "@commands/api/user";
 
 import { getTestEmail, getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
+import {
+  DeviceType,
+  HttpStatusCode,
+  UserGlobalPermission,
+} from "@typedefs/api/consts";
 import ApiDeviceResponse = Cypress.ApiDeviceResponse;
-import { DeviceType, HttpStatusCode } from "@typedefs/api/consts";
 
 describe("User: manage global access permissions", () => {
   const superuser = getCreds("superuser")["email"];
@@ -21,7 +25,7 @@ describe("User: manage global access permissions", () => {
           deviceName: getTestName("gapCamera2"),
           groupName: getTestName("gapGroup2"),
           groupId: getCreds("gapGroup2").id,
-          type: DeviceType.Unknown,
+          type: DeviceType.Thermal,
           admin: true,
           active: true,
           isHealthy: false,
@@ -41,7 +45,7 @@ describe("User: manage global access permissions", () => {
     it("Super-user can set global read access", () => {
       cy.apiAdminUpdate(superuser, "gapUser1", "read").then(() => {
         const expectedUser = TestCreateExpectedUser("gapUser1", {
-          globalPermission: "read",
+          globalPermission: UserGlobalPermission.Read,
         });
 
         cy.log("Check correct permissions reported");
@@ -99,7 +103,7 @@ describe("User: manage global access permissions", () => {
     it("Super-user can set global write access", () => {
       cy.apiAdminUpdate(superuser, "gapUser1", "write").then(() => {
         const expectedUser = TestCreateExpectedUser("gapUser1", {
-          globalPermission: "write",
+          globalPermission: UserGlobalPermission.Write,
         });
 
         cy.log("Check correct permissions reported");
@@ -181,7 +185,10 @@ describe("User: manage global access permissions", () => {
         "gapUser1",
         "badPermission",
         HttpStatusCode.Unprocessable,
-        { message: "body.permission: Invalid value" },
+        {
+          message: "Invalid value",
+          errors: [{ location: "body", path: "permission" }],
+        },
       );
     });
   } else {
@@ -204,7 +211,10 @@ describe("User: manage global access permissions", () => {
         "gapUser1",
         "badPermission",
         HttpStatusCode.Unprocessable,
-        { message: "body.permission: Invalid value" },
+        {
+          message: "Invalid value",
+          errors: [{ location: "body", path: "permission" }],
+        },
       );
     });
   } else {
@@ -219,7 +229,7 @@ describe("User: manage global access permissions", () => {
       "read",
       HttpStatusCode.Forbidden,
       {
-        message: "User is not an admin",
+        message: "User is not a super admin",
       },
     );
 
@@ -230,7 +240,7 @@ describe("User: manage global access permissions", () => {
       "gapGroup2",
       null,
       undefined,
-      null,
+      {},
       HttpStatusCode.Forbidden,
     );
   });

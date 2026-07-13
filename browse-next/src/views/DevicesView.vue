@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
-import { computed, inject, onBeforeMount, onMounted, ref, watch } from "vue";
-import type { Ref, ComputedRef } from "vue";
+import type { ComputedRef, Ref } from "vue";
+import { computed, inject, onBeforeMount, ref, watch } from "vue";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
-import { getDevicesForProject } from "@api/Project";
+import { ClientApi } from "@/api";
 import {
   DevicesForCurrentProject,
+  projectDevicesLoaded,
   type SelectedProject,
-  urlNormalisedCurrentProjectName,
 } from "@models/LoggedInUser";
 import type {
   CardTableItem,
-  CardTableRow,
   CardTableRows,
+  GenericCardTableValue,
 } from "@/components/CardTableTypes";
 import { DateTime } from "luxon";
 import MapWithPoints from "@/components/MapWithPoints.vue";
@@ -21,31 +21,37 @@ import type { DeviceId, LatLng } from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
 import { DeviceType } from "@typedefs/api/consts.ts";
 import DeviceName from "@/components/DeviceName.vue";
-import CreateProxyDeviceModal from "@/components/CreateProxyDeviceModal.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import {
-  deleteDevice,
-  getDeviceConfig,
-  getDeviceLocationAtTime,
-  getLastKnownDeviceBatteryLevel,
-  setDeviceActive,
-} from "@api/Device";
-import { type RouteLocationRaw, useRoute, useRouter } from "vue-router";
+  type RouteLocationAsPathGeneric,
+  type RouteLocationRaw,
+  useRoute,
+  useRouter,
+} from "vue-router";
 import { urlNormaliseName } from "@/utils";
 import {
+  allHistoricLocations,
   currentSelectedProject,
   selectedProjectDevices,
   userIsProjectAdmin,
 } from "@models/provides";
-import { projectDevicesLoaded } from "@models/LoggedInUser";
 import {
   deviceScheduledPowerOffTime,
   deviceScheduledPowerOnTime,
 } from "@/components/DeviceUtils";
 import type { ApiStationResponse } from "@typedefs/api/station";
-import type { LoadedResource } from "@api/types.ts";
-import { latestRecordingTimeForDeviceAtLocation } from "@/helpers/Location.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
+import {
+  latLngApproxDistance,
+  MAX_DISTANCE_FROM_STATION_FOR_RECORDING,
+} from "@/helpers/Location.ts";
 import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
+import LocationName from "@/components/LocationName.vue";
+import { BBadge, BButton, BFormCheckbox, BSpinner } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import { useMediaQuery } from "@vueuse/core";
+import type { IconsProp } from "@dbetka/vue-material-symbols/dist/jscache/icons-names";
+import { ActivitySearchRecordingMode } from "@/components/activitySearchUtils.ts";
 
 const activeProjectDevices = inject(selectedProjectDevices) as Ref<
   LoadedResource<ApiDeviceResponse[]>
@@ -53,8 +59,12 @@ const activeProjectDevices = inject(selectedProjectDevices) as Ref<
 const allProjectDevices = ref<LoadedResource<ApiDeviceResponse[]>>(null);
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
+const allLocations = inject(allHistoricLocations) as Ref<
+  LoadedResource<ApiStationResponse[]>
+>;
 const route = useRoute();
 const router = useRouter();
+
 const devices = computed<ApiDeviceResponse[]>(() => {
   if (allProjectDevices.value !== null) {
     if (showInactiveDevices.value || route.name !== "devices") {
@@ -124,7 +134,7 @@ watch(route, async (next) => {
 });
 
 const reloadAllDevices = async () => {
-  const devicesResponse = await getDevicesForProject(
+  const devicesResponse = await ClientApi.Projects.getDevicesForProject(
     (selectedProject.value as SelectedProject).id,
     true,
   );
@@ -134,7 +144,6 @@ const reloadAllDevices = async () => {
       (device) => device.active,
     );
   }
-  showCreateProxyDevicePrompt.value = false;
   const _ = findProbablyOnlineDevices();
 };
 
@@ -146,7 +155,7 @@ const findProbablyOnlineDevices = async () => {
       activeProjectDevices.value.filter((device) => device.isHealthy) || [];
     const configPromises = [];
     for (const device of healthyDevices) {
-      configPromises.push(getDeviceConfig(device.id));
+      configPromises.push(ClientApi.Devices.getDeviceConfig(device.id));
     }
     Promise.all(configPromises).then((configs) => {
       const now = new Date();
@@ -180,6 +189,18 @@ onBeforeMount(async () => {
       await reloadAllDevices();
     } else {
       await projectDevicesLoaded();
+      if (
+        !!activeProjectDevices.value &&
+        activeProjectDevices.value.length === 0
+      ) {
+        await router.replace({
+          ...route,
+          params: {
+            ...(route.params || {}),
+            all: "all",
+          },
+        } as RouteLocationAsPathGeneric);
+      }
     }
     const _ = findProbablyOnlineDevices();
   } else if (selectedDevice.value) {
@@ -205,9 +226,7 @@ const statusForDevice = (device: ApiDeviceResponse): DeviceStatus => {
   const isPoweredOn = currentlyPoweredOnDevices.value.some(
     (poweredDevice) => poweredDevice.id === device.id,
   );
-  return device.hasOwnProperty("isHealthy") &&
-    device.active &&
-    device.type !== DeviceType.TrailCam
+  return device.hasOwnProperty("isHealthy") && device.active
     ? device.isHealthy
       ? isPoweredOn
         ? "online"
@@ -216,32 +235,46 @@ const statusForDevice = (device: ApiDeviceResponse): DeviceStatus => {
     : "-";
 };
 
-const batteryLevelForDevice = async (
-  device: ApiDeviceResponse,
-): Promise<"unknown" | number> => {
-  const status = statusForDevice(device);
-  if (status === "online" || status == "standby") {
-    const response = await getLastKnownDeviceBatteryLevel(device.id);
-    if (response) {
-      if (response.battery === null) {
-        return "unknown";
-      }
-      return response.battery;
+const locationNameForDevice = (device: ApiDeviceResponse): string => {
+  if (device.location) {
+    const stationDistances = [];
+    for (const station of allLocations.value || []) {
+      // See if any stations match: Looking at the location distance between this recording and the stations.
+      const distanceToStation = latLngApproxDistance(
+        station.location,
+        device.location,
+      );
+      stationDistances.push({ distanceToStation, station });
+    }
+    const validStationDistances = stationDistances.filter(
+      ({ distanceToStation }) =>
+        distanceToStation <= MAX_DISTANCE_FROM_STATION_FOR_RECORDING,
+    );
+
+    // There shouldn't really ever be more than one station within our threshold distance,
+    // since we check that stations aren't too close together when we add them.  However, on the off
+    // chance we *do* get two or more valid stations for a recording, take the closest one.
+    validStationDistances.sort((a, b) => {
+      return b.distanceToStation - a.distanceToStation;
+    });
+    const closest = validStationDistances.pop();
+    if (closest) {
+      return closest.station.name;
     }
   }
-  return "unknown";
+  return "";
 };
 
 const colorForStatus = (status: DeviceStatus): string => {
   switch (status) {
     case "-":
-      return "#666";
+      return "#6c757d";
     case "standby":
-      return "#e7bc0b";
+      return "#5a872f";
     case "stopped or offline":
       return "#be0000";
     case "online":
-      return "#6dbd4b";
+      return "#579e02";
   }
 };
 
@@ -250,7 +283,8 @@ interface DeviceTableItem {
   __type: DeviceType;
   lastSeen: string;
   __active: boolean;
-  status: string | boolean;
+  status: DeviceStatus;
+  location: string;
   batteryLevel: ApiDeviceResponse;
 
   __id: string;
@@ -261,7 +295,35 @@ interface DeviceTableItem {
 }
 
 //type DeviceTableItem = CardTableRow<string | boolean | (Date | null) | ApiDeviceResponse>;
-
+const lastRecordingTimeForDevice = (
+  device: ApiDeviceResponse,
+): Date | undefined => {
+  if (device.lastAudioRecordingTime && device.lastThermalRecordingTime) {
+    if (
+      new Date(device.lastThermalRecordingTime) >
+      new Date(device.lastAudioRecordingTime)
+    ) {
+      return new Date(device.lastThermalRecordingTime);
+    }
+    return new Date(device.lastAudioRecordingTime);
+  } else if (device.lastThermalRecordingTime) {
+    return new Date(device.lastThermalRecordingTime);
+  } else if (device.lastAudioRecordingTime) {
+    return new Date(device.lastAudioRecordingTime);
+  }
+  return;
+};
+const lastRecordingTimeForDeviceHumanReadable = (
+  device: ApiDeviceResponse,
+): string => {
+  const lastRecordingTime = lastRecordingTimeForDevice(device);
+  if (lastRecordingTime) {
+    return DateTime.fromJSDate(
+      new Date(lastRecordingTime),
+    ).toRelative() as string;
+  }
+  return "never";
+};
 const tableItems = computed<
   CardTableRows<string | boolean | (Date | null) | ApiDeviceResponse>
 >(() => {
@@ -275,9 +337,10 @@ const tableItems = computed<
             ? (DateTime.fromJSDate(
                 new Date(device.lastConnectionTime),
               ).toRelative() as string)
-            : "never (offline device)",
+            : `${lastRecordingTimeForDeviceHumanReadable(device)} (offline device)`,
         ),
         status: statusForDevice(device),
+        location: locationNameForDevice(device),
         batteryLevel: device,
         _deleteAction: {
           value: device,
@@ -288,44 +351,42 @@ const tableItems = computed<
         __id: device.id.toString(),
         __lastConnectionTime:
           (device.lastConnectionTime && new Date(device.lastConnectionTime)) ||
+          lastRecordingTimeForDevice(device) ||
           null,
       };
     });
 });
 
-const deviceLocations = computed<NamedPoint[]>(() => {
-  return devices.value
-    .filter((device) => device.location !== undefined)
-    .filter(
-      (device) => device.location?.lat !== 0 && device.location?.lng !== 0,
-    )
-    .map((device) => {
-      const { deviceName, location, groupName, id } = device;
-      return {
-        name: deviceName,
-        project: groupName,
-        location: location as LatLng,
-        id,
-        color: colorForStatus(statusForDevice(device)),
-        type: "device",
-      };
-    });
+const cacophonyHq = { lat: -43.5339514, lng: 172.6467213 };
+const locIsInCacophonyHq = (location: LatLng): boolean => {
+  return latLngApproxDistance(cacophonyHq, location) < 2000;
+};
+
+const projectIsAroundCacophonyHq = computed<boolean>(() => {
+  // All locations are around cacophony hq
+  if (validDeviceLocations.value) {
+    return validDeviceLocations.value.every(
+      ({ location }) =>
+        latLngApproxDistance(cacophonyHq, location as LatLng) < 50000,
+    );
+  }
+  return false;
 });
 
-//provide("deviceLocations", deviceLocations);
-
-const devicesSeenInThePast24Hours = computed<NamedPoint[]>(() => {
-  const oneDayAgo = new Date();
-  oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+const validDeviceLocations = computed(() => {
   return devices.value
-    .filter(
-      (device) =>
-        device.lastConnectionTime &&
-        new Date(device.lastConnectionTime) > oneDayAgo,
-    )
     .filter((device) => device.location !== undefined)
     .filter(
       (device) => device.location?.lat !== 0 && device.location?.lng !== 0,
+    );
+});
+
+const deviceLocations = computed<NamedPoint[]>(() => {
+  return validDeviceLocations.value
+    .filter(({ location }) =>
+      projectIsAroundCacophonyHq.value
+        ? true
+        : !locIsInCacophonyHq(location as LatLng),
     )
     .map((device) => {
       const { deviceName, location, groupName, id } = device;
@@ -333,6 +394,7 @@ const devicesSeenInThePast24Hours = computed<NamedPoint[]>(() => {
         name: deviceName,
         project: groupName,
         location: location as LatLng,
+        locationName: locationNameForDevice(device),
         id,
         color: colorForStatus(statusForDevice(device)),
         type: "device",
@@ -364,40 +426,40 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
       Number((highlightedDeviceInternal.value as DeviceTableItem).__id) === id,
   );
   if (device && device.location) {
-    const point = {
+    return {
       name: device.deviceName,
       project: device.groupName,
       location: device.location,
+      locationName: locationNameForDevice(device),
       id: device.id,
     };
-    return point;
   }
   return null;
 });
 
-const highlightedDevice = computed<CardTableRow<string> | null>(() => {
+const highlightedDevice = computed<DeviceTableItem | null>(() => {
   if (route.name !== "devices" && route.params.deviceId) {
-    const device = tableItems.value.find(
+    const device = (tableItems.value as unknown as DeviceTableItem[]).find(
       ({ __id: id }) => Number(route.params.deviceId) === Number(id),
     );
-    return (device && (device as CardTableRow<string>)) || null;
+    return device || null;
   } else if (highlightedPointInternal.value) {
-    const device = tableItems.value.find(
+    const device = (tableItems.value as unknown as DeviceTableItem[]).find(
       ({ __id: id }) =>
         highlightedPointInternal.value &&
         highlightedPointInternal.value.id === Number(id),
     );
-    return (device && (device as CardTableRow<string>)) || null;
+    return device || null;
   } else {
-    return highlightedDeviceInternal.value as CardTableRow<string> | null;
+    return highlightedDeviceInternal.value;
   }
 });
 
-const enteredTableItem = (item: DeviceTableItem | null) => {
-  highlightedDeviceInternal.value = item;
+const enteredTableItem = (item: GenericCardTableValue<unknown>) => {
+  highlightedDeviceInternal.value = item as DeviceTableItem;
 };
 
-const leftTableItem = (_item: DeviceTableItem | null) => {
+const leftTableItem = (_item: GenericCardTableValue<unknown>) => {
   highlightedDeviceInternal.value = null;
 };
 
@@ -417,8 +479,6 @@ const sortDimensions = {
   deviceName: true,
 };
 
-const showCreateProxyDevicePrompt = ref<boolean>(false);
-
 const someDevicesHaveKnownLocations = computed<boolean>(() =>
   devices.value.some(
     (device) =>
@@ -427,29 +487,33 @@ const someDevicesHaveKnownLocations = computed<boolean>(() =>
 );
 
 const deleteOrArchiveDevice = async (deviceId: DeviceId) => {
-  await deleteDevice(selectedProject.value.id, deviceId);
+  await ClientApi.Devices.deleteDevice(selectedProject.value.id, deviceId);
   await reloadAllDevices();
 };
 
 const unarchiveDevice = async (deviceId: DeviceId) => {
-  await setDeviceActive(selectedProject.value.id, deviceId);
+  await ClientApi.Devices.setDeviceActive(selectedProject.value.id, deviceId);
   await reloadAllDevices();
 };
 
 const deleteConfirmationLabelForDevice = (
   device: ApiDeviceResponse,
 ): string => {
-  if (!!device.lastConnectionTime && !!device.lastRecordingTime) {
-    return `Set <strong><em>${device.deviceName}</em></strong> inactive`;
+  if (
+    !!device.lastConnectionTime &&
+    !!device.lastAudioRecordingTime &&
+    !!device.lastThermalRecordingTime
+  ) {
+    return `Set <strong>${device.deviceName}</strong> inactive`;
   } else {
-    return `Delete <strong><em>${device.deviceName}</em></strong>`;
+    return `Delete <strong>${device.deviceName}</strong>`;
   }
 };
 
 const unarchiveConfirmationLabelForDevice = (
   device: ApiDeviceResponse,
 ): string => {
-  return `Set <strong><em>${device.deviceName}</em></strong> active`;
+  return `Set <strong>${device.deviceName}</strong> active`;
 };
 
 const selectedDevice = computed<ApiDeviceResponse | null>(() => {
@@ -464,7 +528,7 @@ const selectedDevice = computed<ApiDeviceResponse | null>(() => {
 const deviceLocation = ref<LoadedResource<ApiStationResponse>>(null);
 const getSelectedDeviceLocation = async () => {
   if (selectedDevice.value?.location) {
-    deviceLocation.value = await getDeviceLocationAtTime(
+    deviceLocation.value = await ClientApi.Devices.getDeviceLocationAtTime(
       selectedDevice.value.id,
       true,
     );
@@ -477,10 +541,13 @@ watch(selectedDevice, async (next) => {
   }
 });
 
-const selectTableDevice = async ({ __id: deviceId }: { __id: DeviceId }) => {
-  const device = devices.value.find(({ id }) => id === Number(deviceId));
-  if (device) {
-    await openSelectedDevice(device);
+const selectTableDevice = async (val: GenericCardTableValue<unknown>) => {
+  if (typeof val === "object" && val !== null && "__id" in val) {
+    const deviceId = val.__id;
+    const device = devices.value.find(({ id }) => id === Number(deviceId));
+    if (device) {
+      await openSelectedDevice(device);
+    }
   }
 };
 
@@ -496,27 +563,64 @@ const openSelectedDevice = async (device: ApiDeviceResponse) => {
 };
 
 const selectedDeviceLatestRecordingDateTime = computed<Date | null>(() => {
-  if (selectedDevice.value && deviceLocation.value) {
-    return latestRecordingTimeForDeviceAtLocation(
-      selectedDevice.value,
-      deviceLocation.value,
-    );
+  if (selectedDevice.value && deviceRecordingMode.value) {
+    if (
+      deviceRecordingMode.value === ActivitySearchRecordingMode.Cameras &&
+      selectedDevice.value.lastThermalRecordingTime
+    ) {
+      return new Date(selectedDevice.value.lastThermalRecordingTime);
+    } else if (
+      deviceRecordingMode.value === ActivitySearchRecordingMode.Audio &&
+      selectedDevice.value.lastAudioRecordingTime
+    ) {
+      return new Date(selectedDevice.value.lastAudioRecordingTime);
+    }
   }
   return null;
 });
 
 const selectedDeviceActiveFrom = computed<Date | null>(() => {
-  if (selectedDevice.value && deviceLocation.value) {
-    return new Date(deviceLocation.value.activeAt);
+  if (selectedDevice.value && deviceRecordingMode.value) {
+    if (
+      deviceRecordingMode.value === ActivitySearchRecordingMode.Cameras &&
+      selectedDevice.value.earliestThermalRecordingTime
+    ) {
+      return new Date(selectedDevice.value.earliestThermalRecordingTime);
+    } else if (
+      deviceRecordingMode.value === ActivitySearchRecordingMode.Audio &&
+      selectedDevice.value.earliestAudioRecordingTime
+    ) {
+      return new Date(selectedDevice.value.earliestAudioRecordingTime);
+    }
   }
   return null;
 });
 
-const deviceRecordingMode = computed<"cameras" | "audio">(() => {
-  if (selectedDevice.value && selectedDevice.value.type === DeviceType.Audio) {
-    return "audio";
+const deviceRecordingMode = computed<ActivitySearchRecordingMode>(() => {
+  const savedRecordingMode = window.localStorage.getItem(
+    "activity-recording-mode",
+  ) as ActivitySearchRecordingMode;
+  if (savedRecordingMode) {
+    if (
+      savedRecordingMode === ActivitySearchRecordingMode.Cameras &&
+      selectedDevice.value &&
+      selectedDevice.value.earliestThermalRecordingTime
+    ) {
+      return savedRecordingMode;
+    } else if (
+      savedRecordingMode === ActivitySearchRecordingMode.Audio &&
+      selectedDevice.value &&
+      selectedDevice.value.earliestAudioRecordingTime
+    ) {
+      return savedRecordingMode;
+    }
   }
-  return "cameras";
+  if (!savedRecordingMode && selectedDevice.value) {
+    if (selectedDevice.value.earliestThermalRecordingTime) {
+      return ActivitySearchRecordingMode.Cameras;
+    }
+  }
+  return ActivitySearchRecordingMode.Audio;
 });
 
 const cacophonyEpoch = new Date();
@@ -526,62 +630,27 @@ cacophonyEpoch.setHours(0, 0, 0);
 const isDevicesRoot = computed(() => {
   return route.name === "devices";
 });
+
+const isMobileView = useMediaQuery("(max-width: 575px)");
+
+const iconForPowerStatus = (powerStatus: DeviceStatus): IconsProp => {
+  switch (powerStatus) {
+    case "online":
+      return "power_settings_new";
+    case "standby":
+      return "mode_standby";
+    case "stopped or offline":
+      return "hide_source";
+    case "-":
+    default:
+      return "check_indeterminate_small";
+  }
+};
 </script>
 <template>
   <section-header class="justify-content-between align-items-center">
-    <div
-      v-if="selectedDevice"
-      class="d-flex justify-content-between align-items-center flex-grow-1"
-    >
-      <b-button
-        class="ps-0 py-0 d-none d-md-flex"
-        variant="link"
-        :to="{
-          name: 'devices',
-          params: {
-            projectName: urlNormalisedCurrentProjectName,
-          },
-        }"
-      >
-        <font-awesome-icon icon="arrow-left" size="lg" color="#333" />
-      </b-button>
-      <div
-        class="d-flex flex-grow-1 justify-content-between align-items-center"
-      >
-        <device-name
-          :name="(selectedDevice as ApiDeviceResponse).deviceName"
-          :type="(selectedDevice as ApiDeviceResponse).type"
-        >
-          <b-button
-            class="ms-4 align-items-center d-none d-md-flex"
-            variant="outline-secondary"
-            :to="{
-              name: 'activity',
-              query: {
-                devices: [selectedDevice.id],
-                //locations: [deviceLocation.id],
-                until: (
-                  (selectedDeviceLatestRecordingDateTime || new Date()) as Date
-                ).toISOString(),
-                from: (
-                  (selectedDeviceActiveFrom || cacophonyEpoch) as Date
-                ).toISOString(),
-                'display-mode': 'recordings',
-                'recording-mode': deviceRecordingMode,
-              },
-            }"
-            ><span class="d-sm-block d-none me-sm-2">View Recordings</span>
-            <font-awesome-icon
-              icon="arrow-turn-down"
-              :rotation="270"
-              size="xs"
-              class="ps-1"
-            />
-          </b-button>
-        </device-name>
-      </div>
-    </div>
-    <span v-else>Devices</span>
+    <span v-if="selectedDevice && isMobileView">Device</span>
+    <span v-if="!selectedDevice">Devices</span>
   </section-header>
   <!--  <h6>Things that need to appear here:</h6>-->
   <!--  <ul>-->
@@ -594,246 +663,347 @@ const isDevicesRoot = computed(() => {
   <!--    <li>Per device, could show include/exclude polygon</li>-->
   <!--    <li>Per device, could show current reference photo image</li>-->
   <!--  </ul>-->
-
-  <div v-if="isDevicesRoot">
-    <b-spinner v-if="loadingDevices" />
-    <div v-else>
-      <div v-if="devices.length">
-        <!-- active-points was devicesSeenInThePast24Hours -->
-        <map-with-points
-          v-if="someDevicesHaveKnownLocations"
-          class="device-map"
-          :points="deviceLocations"
-          :highlighted-point="highlightedPoint"
-          :active-points="deviceLocations"
-          :show-station-radius="false"
-          :show-only-active-points="false"
-          :markers-are-interactive="true"
-          :radius="30"
-          :is-interactive="true"
-          :zoom="false"
-          @hover-point="highlightPoint"
-          @leave-point="highlightPoint"
-          @select-point="selectPoint"
-          :can-change-base-map="false"
-        />
-        <div class="d-flex align-items-center justify-content-end my-2">
-          <!--          <button-->
-          <!--            type="button"-->
-          <!--            class="btn btn-outline-secondary"-->
-          <!--            @click="showCreateProxyDevicePrompt = true"-->
-          <!--          >-->
-          <!--            Register a trailcam-->
-          <!--          </button>-->
-          <b-form-checkbox
-            v-model="showInactiveDevicesInternalCheck"
-            switch
-            @change="toggleActiveAndInactive"
-            >Show inactive devices</b-form-checkbox
-          >
-        </div>
-        <card-table
-          :items="tableItems"
-          @entered-item="enteredTableItem"
-          @left-item="leftTableItem"
-          @select-item="selectTableDevice"
-          :highlighted-item="highlightedDevice"
-          :sort-dimensions="sortDimensions"
-          :default-sort="'lastSeen'"
-          compact
-          :break-point="0"
+  <div
+    v-if="selectedDevice"
+    class="device-name d-flex justify-content-between align-items-center"
+  >
+    <h1
+      class="h1 m-0 ms-1 mb-sm-2 mb-4 ms-sm-0 d-flex flex-row flex-fill justify-content-between"
+    >
+      <device-name
+        :name="(selectedDevice as ApiDeviceResponse).deviceName"
+        :type="(selectedDevice as ApiDeviceResponse).type"
+        :no-margin="true"
+        nameClass="ms-1"
+      >
+        <b-button
+          class="ms-4 align-items-center"
+          variant="outline-secondary"
+          :to="{
+            name: 'activity',
+            query: {
+              devices: [selectedDevice.id],
+              until: (
+                (selectedDeviceLatestRecordingDateTime || new Date()) as Date
+              ).toISOString(),
+              from: (
+                (selectedDeviceActiveFrom || cacophonyEpoch) as Date
+              ).toISOString(),
+              locations: 'any',
+              'display-mode': 'recordings',
+              'recording-mode': deviceRecordingMode,
+            },
+          }"
+          ><span>View Recordings</span>
+        </b-button>
+      </device-name>
+    </h1>
+  </div>
+  <div
+    v-if="isDevicesRoot"
+    class="d-flex flex-fill justify-content-center align-items-center"
+  >
+    <b-spinner v-if="loadingDevices" variant="secondary" />
+    <div v-if="devices.length" class="w-100 align-self-start">
+      <!-- active-points was devicesSeenInThePast24Hours -->
+      <map-with-points
+        v-if="someDevicesHaveKnownLocations"
+        class="device-map"
+        :points="deviceLocations"
+        :highlighted-point="highlightedPoint"
+        :active-points="deviceLocations"
+        :show-station-radius="false"
+        :show-only-active-points="false"
+        :markers-are-interactive="true"
+        :radius="30"
+        :is-interactive="true"
+        :zoom="false"
+        @hover-point="highlightPoint"
+        @leave-point="highlightPoint"
+        @select-point="selectPoint"
+        :can-change-base-map="true"
+      />
+      <div class="d-flex align-items-center justify-content-end my-2">
+        <b-form-checkbox
+          v-model="showInactiveDevicesInternalCheck"
+          switch
+          @change="toggleActiveAndInactive"
+          >Show inactive devices</b-form-checkbox
         >
-          <template #deviceName="{ cell, row }">
-            <div class="d-flex align-items-center">
-              <device-name :name="cell" :type="row['__type']" /><b-badge
-                class="ms-2"
-                v-if="!row['__active']"
-                >inactive</b-badge
-              >
+      </div>
+      <card-table
+        :items="tableItems"
+        @entered-item="enteredTableItem"
+        @left-item="leftTableItem"
+        @select-item="selectTableDevice"
+        :highlighted-item="highlightedDevice"
+        :sort-dimensions="sortDimensions"
+        :default-sort="'lastSeen'"
+        compact
+        standalone
+        :max-card-width="768"
+        class="mb-3"
+      >
+        <template #deviceName="{ cell, row }">
+          <div class="d-flex align-items-center" :data-cy="`device ${cell}`">
+            <device-name
+              :name="cell"
+              :type="row['__type']"
+              :name-class="'text-nowrap'"
+            /><b-badge class="ms-2" v-if="!row['__active']">Inactive</b-badge>
+          </div>
+        </template>
+        <template #status="{ cell }">
+          <div class="d-flex align-items-center">
+            <span
+              class="d-flex power-status-icon align-items-center justify-content-center"
+              :class="[cell]"
+            >
+              <material-symbol
+                :name="iconForPowerStatus(cell)"
+                size="1.25rem"
+                v-if="cell !== '-'"
+              />
+            </span>
+            <span class="ms-2 text-nowrap" v-if="cell !== '-'">{{ cell }}</span>
+          </div>
+        </template>
+        <template #batteryLevel="{ cell }">
+          <device-battery-level :device="cell" />
+        </template>
+        <template #location="{ cell }">
+          <location-name :name="cell" />
+        </template>
+        <template #_deleteAction="{ cell }">
+          <div
+            v-if="isProjectAdmin && cell.value.active"
+            class="d-flex align-items-center"
+          >
+            <b-badge
+              v-if="
+                !cell.value.lastThermalRecordingTime &&
+                !cell.value.lastAudioRecordingTime
+              "
+              variant="light"
+              class="ms-2"
+            >
+              No recordings
+            </b-badge>
+            <two-step-action-button
+              :action="() => deleteOrArchiveDevice(cell.value.id)"
+              :icon="
+                cell.value.lastThermalRecordingTime ||
+                cell.value.lastAudioRecordingTime
+                  ? 'do_not_disturb_on'
+                  : 'delete'
+              "
+              :confirmation-label="deleteConfirmationLabelForDevice(cell.value)"
+              :tooltip-label="
+                cell.value.lastThermalRecordingTime ||
+                cell.value.lastAudioRecordingTime
+                  ? 'Set as inactive'
+                  : 'Delete'
+              "
+              :boundary-padding="false"
+            />
+          </div>
+          <div v-else-if="isProjectAdmin && !cell.value.active">
+            <two-step-action-button
+              :action="() => unarchiveDevice(cell.value.id)"
+              icon="add_circle"
+              :confirmation-label="
+                unarchiveConfirmationLabelForDevice(cell.value)
+              "
+              :tooltip-label="`Set as active`"
+            />
+          </div>
+          <span v-else></span>
+        </template>
+        <template #card="{ card }: { card: DeviceTableItem }">
+          <div class="d-flex flex-row">
+            <div class="overflow-hidden flex-grow-1">
+              <div class="d-flex align-items-center">
+                <device-name
+                  :name="card.deviceName"
+                  :type="card.__type"
+                  :no-margin="true"
+                  name-class="fw-semibold text-break"
+                />
+                <device-battery-level
+                  :device="card.batteryLevel"
+                  class="ms-3"
+                />
+              </div>
+              <div></div>
+              <location-name
+                @click.stop.prevent="
+                  () => {
+                    highlightedDeviceInternal = card;
+                  }
+                "
+                v-if="card.location !== ''"
+                :name="card.location"
+                class="mt-2"
+              />
+              <div class="mt-2 d-flex align-items-center">
+                <material-symbol name="history" size="1.125rem" class="me-1" />
+                <span class="me-1">Last seen:</span>
+                <span v-html="card.lastSeen"></span>
+              </div>
             </div>
-          </template>
-          <template #status="{ cell }">
+            <div class="d-flex align-items-center" v-if="isProjectAdmin">
+              <two-step-action-button
+                v-if="card.__active"
+                :action="
+                  () => deleteOrArchiveDevice(card._deleteAction.value.id)
+                "
+                :icon="
+                  card._deleteAction.value.lastThermalRecordingTime ||
+                  card._deleteAction.value.lastAudioRecordingTime
+                    ? 'do_not_disturb_on'
+                    : 'delete'
+                "
+                :confirmation-label="
+                  deleteConfirmationLabelForDevice(card._deleteAction.value)
+                "
+                :tooltip-label="
+                  card._deleteAction.value.lastAudioRecordingTime ||
+                  card._deleteAction.value.lastThermalRecordingTime
+                    ? 'Set as inactive'
+                    : 'Delete'
+                "
+              />
+              <two-step-action-button
+                v-else
+                :action="() => unarchiveDevice(card._deleteAction.value.id)"
+                icon="add_circle"
+                :confirmation-label="
+                  unarchiveConfirmationLabelForDevice(card._deleteAction.value)
+                "
+                :tooltip-label="`Set as active`"
+              />
+            </div>
+          </div>
+          <hr />
+          <div class="d-flex align-items-center justify-content-between mt-2">
             <div class="d-flex align-items-center">
               <span
                 class="d-flex power-status-icon align-items-center justify-content-center"
-                :class="[cell]"
+                :class="[card.status]"
               >
-                <font-awesome-icon icon="power-off" v-if="cell !== '-'" />
-              </span>
-              <span class="ms-2" v-if="cell !== '-'">{{ cell }}</span>
-            </div>
-          </template>
-          <template #batteryLevel="{ cell }">
-            <device-battery-level :device="cell" />
-          </template>
-          <template #_deleteAction="{ cell }">
-            <div
-              v-if="isProjectAdmin && cell.value.active"
-              class="d-flex align-items-center"
-            >
-              <div v-if="!cell.value.lastRecordingTime">No recordings</div>
-              <two-step-action-button
-                class="text-end"
-                variant="outline-secondary"
-                :action="() => deleteOrArchiveDevice(cell.value.id)"
-                :icon="
-                  cell.value.lastConnectionTime && cell.value.lastRecordingTime
-                    ? 'circle-minus'
-                    : 'trash-can'
-                "
-                :confirmation-label="
-                  deleteConfirmationLabelForDevice(cell.value)
-                "
-                :classes="[
-                  'd-flex',
-                  'align-items-center',
-                  'fs-7',
-                  'text-nowrap',
-                  'ms-2',
-                ]"
-                alignment="right"
-              />
-            </div>
-            <div v-else-if="isProjectAdmin && !cell.value.active">
-              <two-step-action-button
-                class="text-end"
-                variant="outline-secondary"
-                :action="() => unarchiveDevice(cell.value.id)"
-                :icon="'circle-plus'"
-                :confirmation-label="
-                  unarchiveConfirmationLabelForDevice(cell.value)
-                "
-                :classes="[
-                  'd-flex',
-                  'align-items-center',
-                  'fs-7',
-                  'text-nowrap',
-                  'ms-2',
-                ]"
-                alignment="right"
-              />
-            </div>
-            <span v-else></span>
-          </template>
-          <template #card="{ card }: { card: DeviceTableItem }">
-            <div class="d-flex flex-row">
-              <div class="flex-grow-1">
-                <div class="d-flex align-items-center">
-                  <device-name
-                    :name="card.deviceName"
-                    :type="card.__type"
-                  /><b-badge class="ms-2" v-if="!card.__active"
-                    >inactive</b-badge
-                  >
-                  <device-battery-level
-                    :device="card.batteryLevel"
-                    class="ms-3"
-                  />
-                </div>
-                <div>Last seen <span v-html="card.lastSeen"></span></div>
-
-                <div class="d-flex align-items-center">
-                  <span
-                    class="d-flex power-status-icon align-items-center justify-content-center"
-                    :class="[card.status]"
-                  >
-                    <font-awesome-icon
-                      icon="power-off"
-                      v-if="card.status !== '-'"
-                    />
-                  </span>
-                  <span class="ms-2" v-if="card.status !== '-'">{{
-                    card.status
-                  }}</span>
-                </div>
-              </div>
-              <div class="d-flex align-items-end justify-content-end">
-                <div v-if="!card._deleteAction.value.lastRecordingTime">
-                  No recordings
-                </div>
-                <two-step-action-button
-                  v-if="card.__active"
-                  class="text-end"
-                  variant="outline-secondary"
-                  :action="
-                    () => deleteOrArchiveDevice(card._deleteAction.value.id)
-                  "
-                  :icon="
-                    card._deleteAction.value.lastConnectionTime &&
-                    card._deleteAction.value.lastRecordingTime
-                      ? 'circle-minus'
-                      : 'trash-can'
-                  "
-                  :confirmation-label="
-                    deleteConfirmationLabelForDevice(card._deleteAction.value)
-                  "
-                  :classes="[
-                    'd-flex',
-                    'align-items-center',
-                    'fs-7',
-                    'text-nowrap',
-                    'ms-2',
-                  ]"
-                  alignment="right"
+                <material-symbol
+                  :name="iconForPowerStatus(card.status)"
+                  size="1.25rem"
+                  v-if="card.status !== '-'"
                 />
-              </div>
+              </span>
+              <span class="ms-2" v-if="card.status !== '-'">{{
+                card.status
+              }}</span>
             </div>
-          </template>
-        </card-table>
-      </div>
-      <p v-else>
-        There are currently no active thermal cameras or bird monitors
-        registered with this project.<br /><br />
-        Thermal cameras or bird monitors can be either directly connected to the
-        Cacophony platform via internet connection, or may be offline or out of
-        coverage, and managed via the sidekick companion app.
-        <a href="#TODO"
-          >Find out how to register a thermal camera or a bird monitor.</a
-        >
-        <!--        <br /><br />-->
-        <!--        You can also register a trailcam. This represents a third-party trailcam-->
-        <!--        device that you plan to manually upload data for via this web-->
-        <!--        interface.<br />-->
-        <!--        <button-->
-        <!--          type="button"-->
-        <!--          class="mt-3 btn btn-outline-secondary"-->
-        <!--          @click="showCreateProxyDevicePrompt = true"-->
-        <!--        >-->
-        <!--          Register a trailcam-->
-        <!--        </button>-->
-      </p>
+
+            <div class="d-flex flex-row">
+              <b-badge
+                v-if="
+                  !card._deleteAction.value.lastThermalRecordingTime &&
+                  !card._deleteAction.value.lastAudioRecordingTime
+                "
+                variant="light"
+                class="ms-2"
+              >
+                No recordings
+              </b-badge>
+              <b-badge class="ms-2" v-if="!card.__active">Inactive</b-badge>
+            </div>
+          </div>
+        </template>
+      </card-table>
     </div>
-    <create-proxy-device-modal
-      v-model="showCreateProxyDevicePrompt"
-      id="create-proxy-device-modal"
-      @proxy-device-created="reloadAllDevices"
-    />
+    <div
+      v-else
+      class="no-results text-body-tertiary d-flex flex-column text-center col col-12 col-md-8 col-lg-6 mx-auto"
+    >
+      <material-symbol
+        name="developer_board_off"
+        size="2.4rem"
+        grade="thin"
+        class="mb-2"
+      />
+      <h4 class="h5 mb-2">This project has no registered devices</h4>
+      <p>
+        Devices need to connect to the Monitoring Platform to register. Online
+        devices will connect directly if they have an internet connection
+        configured. Offline or out of coverage devices need to be managed via
+        the Sidekick mobile app.
+      </p>
+      <b-button
+        variant="outline-secondary"
+        href="https://docs.google.com/document/d/1wL1A6eJyq7Y5LnVIoKcW3J_3XOWysTedJVKaLEbSK9Q/edit?tab=t.0#heading=h.jmao8urwekj7"
+        target="_blank"
+        rel="nofollow"
+        class="mx-auto"
+        >Connect device to Monitoring Platform</b-button
+      >
+    </div>
   </div>
   <router-view v-else></router-view>
 </template>
 <style lang="less" scoped>
-.device-map {
-  @media screen and (max-width: 1040px) {
-    width: 100%;
-    height: 400px;
-  }
+@import "../assets/less/breakpoints";
+@import "../assets/less/elevation";
 
-  height: 400px;
-  min-width: 120px;
+.device-name {
+  @media screen and (max-width: @breakpoint-xs-max) {
+    position: sticky;
+    top: var(--cp-mobile-header-height);
+    background: color-mix(in srgb, var(--app-bg-color), transparent 15%);
+    backdrop-filter: blur(8px);
+    margin-top: calc(var(--cp-spacing-xl) * -1);
+    padding-top: var(--cp-spacing-sm);
+    padding-bottom: var(--cp-spacing-sm);
+    z-index: 1001;
+    margin-left: -4px;
+    margin-right: -4px;
+    padding-left: 4px;
+    padding-right: 4px;
+    h1 {
+      margin-bottom: 0 !important;
+      font-size: var(--cp-font-size-h4);
+    }
+  }
+}
+
+.device-map {
+  width: 100%;
+  height: 40vh;
+  max-height: calc(var(--cp-grid-base) * 100); // 400px
+  @media screen and (max-width: @breakpoint-md-max) {
+    border-radius: var(--bs-border-radius);
+  }
+  @media screen and (min-width: @breakpoint-lg) {
+    border-radius: var(--bs-border-radius-lg);
+  }
+  .standard-shadow-inset();
+  border: 1px solid var(--border-color-light);
 }
 .power-status-icon {
   border-radius: 50%;
-  width: 21px;
-  height: 21px;
-  color: white;
+  min-width: 24px;
+  width: 24px;
+  height: 24px;
+  color: var(--bs-white);
   &.stopped {
-    background-color: darkred;
+    background-color: #be0000;
   }
   &.standby {
-    background-color: #6dbd4b;
+    background-color: color-mix(
+      in oklch,
+      var(--cp-color-green-600),
+      var(--bs-gray-700) 30%
+    );
   }
   &.online {
-    background-color: #6dbd4b;
+    background-color: var(--cp-color-green-600);
     animation-name: pulse-color;
     animation-duration: 2s;
     animation-iteration-count: infinite;
@@ -841,13 +1011,13 @@ const isDevicesRoot = computed(() => {
 }
 @keyframes pulse-color {
   0% {
-    background-color: #6dbd4b;
+    background-color: var(--cp-color-green-600);
   }
   50% {
-    background-color: #4ada10;
+    background-color: var(--cp-color-green-400);
   }
   100% {
-    background-color: #6dbd4b;
+    background-color: var(--cp-color-green-600);
   }
 }
 </style>

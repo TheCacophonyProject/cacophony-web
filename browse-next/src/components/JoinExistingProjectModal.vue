@@ -7,10 +7,20 @@ import {
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
 import { computed, onMounted, ref } from "vue";
-import { getProjectsForProjectAdminByEmail } from "@api/User";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
-import { requestToJoinGroup } from "@api/User";
-import type { LoadedResource } from "@api/types.ts";
+import { ClientApi } from "@/api";
+import type { LoadedResource } from "@apiClient/types.ts";
+import {
+  BAlert,
+  BForm,
+  BFormInput,
+  BFormInvalidFeedback,
+  BFormRadioGroup,
+  BModal,
+  type ButtonVariant,
+  BvTriggerableEvent,
+} from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const projectAdminEmailAddress = formFieldInputText();
 const submittingJoinRequest = ref(false);
@@ -27,7 +37,7 @@ const emailIsTooShort = computed<boolean>(
 );
 
 const joinableProjectsLoaded = computed<boolean>(
-  () => !!joinableProjects.value,
+  () => joinableProjects.value !== null,
 );
 
 const joinableProjectsCheckboxOptions = computed<
@@ -66,13 +76,15 @@ const resetFormValues = () => {
 
 const joinExistingGroup = async () => {
   submittingJoinRequest.value = true;
-  const joinRequestResponse = await requestToJoinGroup(
+  const joinRequestResponse = await ClientApi.Users.requestToJoinProject(
     projectAdminEmailAddress.value.trim(),
     Number(projectChosen.value),
   );
   if (joinRequestResponse.success) {
     // Groups changed, reload groups.
     await refreshUserProjects();
+
+    // FIXME: We should display some text saying "A request has been sent to the project admin".
 
     // TODO Yay
   } else {
@@ -83,9 +95,10 @@ const joinExistingGroup = async () => {
 
 const getGroupsForAdmin = async () => {
   submittingJoinRequest.value = true;
-  const projectsResponse = await getProjectsForProjectAdminByEmail(
-    projectAdminEmailAddress.value.trim(),
-  );
+  const projectsResponse =
+    await ClientApi.Users.getProjectsForProjectAdminByEmail(
+      projectAdminEmailAddress.value.trim(),
+    );
   if (projectsResponse.success) {
     // Filter out any groups we're already a member of.
     const groups = projectsResponse.result.groups.filter(
@@ -107,24 +120,59 @@ const getGroupsForAdmin = async () => {
   submittingJoinRequest.value = false;
   //joiningNewGroup.visible = false;
 };
+
+const okayButtonText = computed(() => {
+  if (!joinableProjectsLoaded.value) {
+    return "Next";
+  } else {
+    return "Send join request";
+  }
+});
+const okayButtonAction = async (event: BvTriggerableEvent) => {
+  if (!joinableProjectsLoaded.value) {
+    event.preventDefault();
+    await getGroupsForAdmin();
+  } else {
+    await joinExistingGroup();
+  }
+};
+const okayButtonVariant = computed<ButtonVariant>(() => {
+  if (!joinableProjectsLoaded.value) {
+    return "secondary";
+  } else {
+    return "primary";
+  }
+});
+const disabledState = computed<boolean>(() => {
+  if (!joinableProjectsLoaded.value) {
+    return !isValidEmailAddress.value || submittingJoinRequest.value;
+  } else {
+    return (
+      !isValidEmailAddress.value ||
+      !projectChosen.value ||
+      submittingJoinRequest.value
+    );
+  }
+});
 </script>
 <template>
   <b-modal
     v-model="joiningNewProject.visible"
-    title="Join a group"
-    ok-title="Send join request"
-    @ok="joinExistingGroup"
-    :ok-disabled="
-      !isValidEmailAddress || !projectChosen || submittingJoinRequest
-    "
+    title="Join a project"
+    :ok-title="okayButtonText"
+    :ok-class="'list-joinable-projects-button'"
+    @ok="okayButtonAction"
+    :ok-variant="okayButtonVariant"
+    :ok-disabled="disabledState"
+    cancel-variant="outline-secondary"
     :cancel-disabled="submittingJoinRequest"
     centered
     @hidden="resetFormValues"
   >
-    <b-form data-cy="join existing group form">
+    <b-form data-cy="join existing project form">
       <p>
-        To join an existing project, you need to know the email address of the
-        project administrator.
+        You need to know the email address of the project administrator to join
+        an existing project.
       </p>
       <div class="input-group mb-3">
         <b-form-input
@@ -133,36 +181,28 @@ const getGroupsForAdmin = async () => {
           @blur="projectAdminEmailAddress.touched = true"
           :state="needsValidationAndIsValidEmailAddress"
           aria-label="project admin email address"
-          placeholder="project admin email address"
+          placeholder="Project administrator email address"
           data-cy="project admin email address"
           :disabled="submittingJoinRequest"
           @input="joinableProjects = null"
           required
         />
         <b-form-invalid-feedback :state="needsValidationAndIsValidEmailAddress">
-          <span>Enter a valid email address</span>
+          <span>Enter a valid email address.</span>
         </b-form-invalid-feedback>
       </div>
-      <div
-        class="input-group justify-content-end d-flex"
-        v-if="!joinableProjectsLoaded"
-      >
-        <button
-          class="btn btn-primary"
-          data-cy="list joinable projects button"
-          :disabled="!isValidEmailAddress || submittingJoinRequest"
-          @click.stop.prevent="getGroupsForAdmin"
-        >
-          Next
-        </button>
-      </div>
-      <div v-else-if="!hasJoinableProjects">
-        <p>
-          This user is not the administrator of any projects that you can join.
-        </p>
+      <div v-if="joinableProjectsLoaded && !hasJoinableProjects">
+        <b-alert :model-value="true" variant="light" class="mb-0">
+          <div class="description d-flex">
+            <material-symbol name="info" class="me-2" size="1.25rem" />
+            <p class="mb-0">
+              This user doesn't manage any projects that you can join.
+            </p>
+          </div>
+        </b-alert>
       </div>
       <div v-else-if="hasMultipleJoinableProjects">
-        <p>Select the project you'd like to join.</p>
+        <p>Select the project you'd like to join:</p>
         <div>
           <b-form-radio-group
             stacked

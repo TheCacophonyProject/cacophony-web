@@ -1,4 +1,5 @@
 import { defineConfig } from "cypress";
+import registerPlugins from "./cypress/plugins";
 
 export default defineConfig({
   projectId: "dyez6t",
@@ -21,18 +22,16 @@ export default defineConfig({
   screenshotOnRunFailure: false,
 
   e2e: {
-    // We've imported your old cypress plugins here.
-    // You may want to clean this up later by importing these.
     setupNodeEvents(on, config) {
-      return require("./cypress/plugins/index.js")(on, config);
+      return registerPlugins(on, config);
     },
     specPattern: "cypress/e2e/api/batch-1/**/*.{js,jsx,ts,tsx}",
   },
 
   component: {
     devServer: {
-      framework: "vue-cli",
-      bundler: "webpack",
+      framework: "vue",
+      bundler: "vite",
     },
   },
 });

@@ -8,8 +8,63 @@ import { logTestDescription } from "../descriptions";
 import { getTestName } from "../names";
 import { testRunOnApi } from "../server";
 import { ApiAlert } from "../types";
-import { ApiAlertCondition } from "@typedefs/api/alerts";
-import { StationId } from "@typedefs/api/common";
+import { ApiAlertCondition, ApiAlertResponse } from "@typedefs/api/alerts";
+import { AlertId, StationId } from "@typedefs/api/common";
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Cypress {
+    interface Chainable {
+      /**
+       * Create an alert for a device. Optionally expect to fail with code: failCode
+       */
+      apiDeviceAlertAdd(
+        userName: string,
+        alertName: string,
+        tag: ApiAlertCondition[],
+        deviceName: string,
+        frequency?: number,
+        statusCode?: number,
+      ): Cypress.Chainable<Cypress.Response<unknown>>;
+
+      /**
+       * Create an alert for a station. Optionally expect to fail with code: failCode
+       */
+      apiStationAlertAdd(
+        userName: string,
+        alertName: string,
+        conditions: ApiAlertCondition[],
+        stationId: number,
+        frequency?: number,
+        statusCode?: number,
+      ): Cypress.Chainable<Cypress.Response<unknown>>;
+
+      /**
+       * Read alerts for a device
+       * Optionally expect to fail with statusCode!=200
+       * expectedAlert can be null if non-200 statusCode is supplied
+       */
+      apiDeviceAlertCheck(
+        userName: string,
+        deviceName: string,
+        expectedAlert: ApiAlert,
+        statusCode?: number,
+      ): Cypress.Chainable<ApiAlertResponse[]>;
+
+      /**
+       * Read alerts for a station
+       * Optionally expect to fail with statusCode!=200
+       * expectedAlert can be null if non-200 statusCode is supplied
+       */
+      apiStationAlertCheck(
+        userName: string,
+        stationId: StationId,
+        expectedAlert: ApiAlert,
+        statusCode?: number,
+      ): Cypress.Chainable<ApiAlertResponse>;
+    }
+  }
+}
 
 Cypress.Commands.add(
   "apiDeviceAlertAdd",
@@ -19,7 +74,7 @@ Cypress.Commands.add(
     conditions: ApiAlertCondition[],
     deviceName: string,
     frequency: number | null = null,
-    statusCode: number = 200,
+    statusCode = 200,
   ) => {
     logTestDescription(
       `Create alert ${getTestName(alertName)} for ${deviceName} `,
@@ -50,7 +105,7 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ id: AlertId }>) => {
       if (statusCode === null || statusCode == 200) {
         saveIdOnly(alertName, response.body.id);
         cy.wrap(response.body.id);
@@ -67,7 +122,7 @@ Cypress.Commands.add(
     conditions: ApiAlertCondition[],
     stationId: number,
     frequency: number | null = null,
-    statusCode: number = 200,
+    statusCode = 200,
   ) => {
     logTestDescription(
       `Create alert ${getTestName(alertName)} for station ${stationId} `,
@@ -97,7 +152,7 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ id: AlertId }>) => {
       if (statusCode === null || statusCode == 200) {
         saveIdOnly(alertName, response.body.id);
         cy.wrap(response.body.id);
@@ -111,19 +166,22 @@ Cypress.Commands.add(
   (
     userName: string,
     deviceName: string,
-    expectedAlert: any,
-    statusCode: number = 200,
+    expectedAlert: ApiAlert,
+    statusCode = 200,
   ) => {
     logTestDescription(`Check for expected alert for ${deviceName} `, {
       userName,
       deviceName,
     });
 
-    apiDeviceAlertsGet(userName, deviceName, statusCode).then((response) => {
-      if (statusCode == 200) {
-        checkExpectedAlerts(response, expectedAlert);
-      }
-    });
+    apiDeviceAlertsGet(userName, deviceName, statusCode).then(
+      (response: Cypress.Response<{ alerts: ApiAlertResponse[] }>) => {
+        if (statusCode == 200) {
+          checkExpectedAlerts(response, expectedAlert);
+          cy.wrap(response.body.alerts);
+        }
+      },
+    );
   },
 );
 
@@ -132,20 +190,22 @@ Cypress.Commands.add(
   (
     userName: string,
     stationId: StationId,
-    expectedAlert: any,
-    statusCode: number = 200,
+    expectedAlert: ApiAlert,
+    statusCode = 200,
   ) => {
     logTestDescription(`Check for expected alert for stationId ${stationId} `, {
       userName,
       stationId,
     });
 
-    apiStationAlertsGet(userName, stationId, statusCode).then((response) => {
-      if (statusCode == 200) {
-        checkExpectedAlerts(response, expectedAlert);
-        cy.wrap(response.body.alerts[0]);
-      }
-    });
+    apiStationAlertsGet(userName, stationId, statusCode).then(
+      (response: Cypress.Response<{ alerts: ApiAlertResponse[] }>) => {
+        if (statusCode == 200) {
+          checkExpectedAlerts(response, expectedAlert);
+          cy.wrap(response.body.alerts[0]);
+        }
+      },
+    );
   },
 );
 
@@ -154,7 +214,7 @@ export function createExpectedAlert(
   frequencySeconds: number,
   conditions: ApiAlertCondition[],
   hasLastAlert: boolean,
-): any {
+): ApiAlert {
   //alertId will have been saved when we created the alert
   const alertId = getCreds(alertName).id;
   return {
@@ -197,8 +257,8 @@ function apiStationAlertsGet(
 }
 
 function checkExpectedAlerts(
-  response: Cypress.Response<any>,
-  expectedAlert: any,
+  response: Cypress.Response<{ alerts: ApiAlertResponse[] }>,
+  expectedAlert: ApiAlert,
 ) {
   expect(response.body.alerts.length, `Expected 1 alert`).to.eq(1);
   const thealert = response.body.alerts[0];
@@ -236,17 +296,17 @@ export function runReportStoppedDevicesScript(callback) {
   if (Cypress.env("running_in_a_dev_environment") == true) {
     cy.log("runReportStoppedDevicesScript");
     testRunOnApi(
-      "\"cp /app/api/config/app_test_default.js /app/api/config/app.js\"",
+      '"cp /app/api/config/app_test_default.js /app/api/config/app.js"',
       null,
       testRunOnApi(
-        "\"cd api && node --no-warnings=ExperimentalWarnings --loader esm-module-alias/loader /app/api/scripts/report-stopped-devices.js > log.log\"",
+        '"cd api && node --no-warnings --disable-warning=ExperimentalWarning --loader esm-module-alias/loader /app/api/scripts/report-stopped-devices.js > log.log"',
         null,
         callback,
       ),
     );
   } else {
     testRunOnApi(
-      "\"node --no-warnings=ExperimentalWarnings --loader /srv/cacophony/api/node_modules/esm-module-alias/loader /srv/cacophony/api/scripts/report-stopped-devices.js > log.log\"",
+      '"node --no-warnings --disable-warning=ExperimentalWarning --loader /srv/cacophony/api/node_modules/esm-module-alias/loader /srv/cacophony/api/scripts/report-stopped-devices.js > log.log"',
       null,
       callback,
     );

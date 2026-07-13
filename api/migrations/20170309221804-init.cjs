@@ -133,32 +133,32 @@ module.exports = {
             util.migrationAddBelongsTo(
               queryInterface,
               "AudioRecordings",
-              "Groups"
+              "Groups",
             ),
             util.migrationAddBelongsTo(
               queryInterface,
               "IrVideoRecordings",
-              "Groups"
+              "Groups",
             ),
             util.migrationAddBelongsTo(
               queryInterface,
               "ThermalVideoRecordings",
-              "Groups"
+              "Groups",
             ),
             util.migrationAddBelongsTo(
               queryInterface,
               "AudioRecordings",
-              "Devices"
+              "Devices",
             ),
             util.migrationAddBelongsTo(
               queryInterface,
               "IrVideoRecordings",
-              "Devices"
+              "Devices",
             ),
             util.migrationAddBelongsTo(
               queryInterface,
               "ThermalVideoRecordings",
-              "Devices"
+              "Devices",
             ),
             util.migrationAddBelongsTo(queryInterface, "Devices", "Groups"),
             util.migrationAddBelongsTo(queryInterface, "Devices", "Users"),

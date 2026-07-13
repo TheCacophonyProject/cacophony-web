@@ -1,87 +1,81 @@
-<!--
-boundary="window"
-    :offset="offset"-->
-<template>
-  <b-dropdown
-    no-flip
-    dropup
-    auto-close
-    no-caret
-    :offset="offset"
-    :variant="variant"
-    :end="alignment === 'right'"
-    :center="alignment === 'centered'"
-    :menu-class="['dropdown-indicator', alignment]"
-    :toggle-class="[...classes]"
-    :disabled="disabled"
-  >
-    <template #button-content>
-      <font-awesome-icon
-        :icon="icon"
-        v-if="icon"
-        :color="color || 'inherit'"
-        :rotation="rotate || null"
-      />
-      <span v-if="computedLabel" class="ps-2" v-html="computedLabel" />
-    </template>
-
-    <b-dropdown-group class="px-2" header-class="d-none">
-      <button
-        @click="() => action()"
-        class="btn btn-outline-danger text-nowrap w-100"
-      >
-        <font-awesome-icon icon="exclamation-triangle" />
-        <span class="ms-2" v-html="computedConfirmationLabel" />
-      </button>
-    </b-dropdown-group>
-  </b-dropdown>
-</template>
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import {
+  BButton,
+  BPopover,
+  BTooltip,
+  type PopoverPlacement,
+} from "bootstrap-vue-next";
+import { MaterialSymbol, type SymbolsProp } from "@dbetka/vue-material-symbols";
+
+const popover = ref<typeof BPopover>();
+const actionBtn = ref<typeof BButton | null>(null);
+const popoverIsShowing = ref(false);
+
+const hasBoundaryPadding = computed(() => {
+  return shouldHideInternal.value || props.boundaryPadding;
+});
+
+const shouldHideInternal = ref(false);
+
+const didHide = () => {
+  shouldHideInternal.value = false;
+};
+
+const hide = () => {
+  setTimeout(() => {
+    popover.value && popover.value.toggle();
+  }, 100);
+};
 
 const props = withDefaults(
   defineProps<{
     action: () => void;
     label?: string | (() => string);
+    confirmationExtra?: string | (() => string);
+    tooltipLabel?: string | (() => string);
     confirmationLabel?: string | (() => string);
     disabled?: boolean;
+    btnVariantClass?: string;
+    confirmationBtnVariantClass?: string;
     classes?: string[];
-    icon?: string;
+    icon?: SymbolsProp | null;
     color?: string;
-    alignment?: "right" | "centered" | "left";
     rotate?: 90 | 180 | 270 | null;
-    variant?: string;
+    placement?: PopoverPlacement;
+    boundaryPadding?: boolean;
   }>(),
   {
     label: "",
     confirmationLabel: "",
+    tooltipLabel: "",
     disabled: false,
-    alignment: "centered",
+    btnVariantClass: "btn-icon",
+    confirmationBtnVariantClass: "btn-outline-danger",
     classes: () => [],
-    icon: "trash-can",
+    icon: "delete",
     color: "inherit",
     rotate: null,
-    variant: "link",
+    placement: "left",
+    boundaryPadding: true,
   },
 );
-// Ideally we want to center the button and the triangle, but if we're too close to the edge of the viewport,
-// we want to move it to one side.
-const offset = computed<
-  string | { alignmentAxis: number; crossAxis: number; mainAxis: number }
->(() => {
-  if (props.alignment === "right") {
-    return { alignmentAxis: -5, crossAxis: 0, mainAxis: 7 };
-  } else if (props.alignment === "centered") {
-    return { alignmentAxis: -5, crossAxis: 0, mainAxis: 14 };
-  }
-  return { alignmentAxis: 50, crossAxis: 60, mainAxis: 7 };
-});
 
+// :delay="{ show: 0, hide: 0 }"
+// :boundary-padding="{ top: 17, bottom: 17 }"
+// close-on-hide
 const computedLabel = computed<string>(() => {
   if (typeof props.label === "string") {
     return props.label;
   }
   return props.label();
+});
+
+const computedTooltipLabel = computed<string>(() => {
+  if (typeof props.tooltipLabel === "string") {
+    return props.tooltipLabel;
+  }
+  return props.tooltipLabel();
 });
 
 const computedConfirmationLabel = computed<string>(() => {
@@ -91,51 +85,83 @@ const computedConfirmationLabel = computed<string>(() => {
   return props.confirmationLabel();
 });
 </script>
+<template>
+  <div>
+    <b-popover
+      click
+      :placement="placement"
+      no-fade
+      :strategy="'absolute'"
+      :delay="{ show: 0, hide: 0 }"
+      :boundary-padding="{ top: 16, bottom: 16 }"
+      :close-on-hide="hasBoundaryPadding"
+      ref="popover"
+      @hidden="didHide"
+      @show="popoverIsShowing = true"
+      @hide="popoverIsShowing = false"
+    >
+      <template #target>
+        <button
+          class="btn d-flex justify-content-center"
+          :class="[...(classes || []), btnVariantClass]"
+          @click.stop.prevent="() => {}"
+          ref="actionBtn"
+          :aria-label="computedTooltipLabel"
+          :disabled="disabled"
+        >
+          <material-symbol
+            :name="icon"
+            size="1.25rem"
+            v-if="icon"
+            :color="color || 'inherit'"
+            :rotation="rotate || null"
+          />
+          <span
+            v-if="computedLabel"
+            :class="{ 'ps-2': icon }"
+            v-html="computedLabel"
+          />
+        </button>
+        <b-tooltip
+          v-if="actionBtn && computedTooltipLabel !== '' && !popoverIsShowing"
+          :target="actionBtn as unknown as HTMLElement"
+          :placement="placement"
+        >
+          <span v-html="computedTooltipLabel"></span>
+        </b-tooltip>
+      </template>
+      <div
+        v-if="confirmationExtra"
+        v-html="confirmationExtra"
+        class="mb-2"
+      ></div>
+      <button
+        data-cy="confirm action"
+        @click.stop.prevent="
+          () => {
+            action();
+            shouldHideInternal = true;
+            hide();
+          }
+        "
+        class="btn d-flex align-items-center justify-content-center text-nowrap w-100"
+        :class="[confirmationBtnVariantClass]"
+      >
+        <material-symbol
+          v-if="confirmationBtnVariantClass === 'btn-outline-danger'"
+          name="warning"
+          size="1.25rem"
+          class="me-2"
+        />
+        <span v-html="computedConfirmationLabel" />
+      </button>
+    </b-popover>
+  </div>
+</template>
 <style lang="less">
-.dropdown-indicator {
-  overflow: visible !important;
-  position: relative;
-  &::after {
-    content: "";
-    position: absolute;
-    width: 0;
-    height: 0;
-    display: block;
-    bottom: -9px;
-    border-left: 10px solid transparent;
-    border-right: 10px solid transparent;
-    border-top: 10px solid white;
-    left: calc(50% - 10px);
-  }
-  &::before {
-    content: "";
-    position: absolute;
-    width: 0;
-    height: 0;
-    display: block;
-    bottom: -10.5px;
-    border-left: 10.5px solid transparent;
-    border-right: 10.5px solid transparent;
-    border-top: 10.5px solid var(--bs-dropdown-border-color);
-    left: calc(50% - 10.25px);
-  }
-  &.right {
-    &::after {
-      left: unset;
-      right: 15px;
-    }
-    &::before {
-      left: unset;
-      right: 15.25px;
-    }
-  }
-  &.left {
-    &::after {
-      left: 15px;
-    }
-    &::before {
-      left: 15.25px;
-    }
-  }
+@import "../assets/less/spacing";
+.popover {
+  --bs-popover-body-padding-x: var(--cp-spacing-xs);
+  --bs-popover-body-padding-y: var(--cp-spacing-xs);
 }
 </style>

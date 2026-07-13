@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { addNewProject } from "@api/Project";
+import { ClientApi } from "@/api";
 import {
   UserProjects,
   switchCurrentProject,
@@ -7,8 +7,14 @@ import {
   urlNormalisedCurrentProjectName,
 } from "@models/LoggedInUser";
 import { computed, onMounted, ref } from "vue";
-import type { ErrorResult } from "@api/types";
-import { BModal } from "bootstrap-vue-next";
+import type { ErrorResult } from "@apiClient/types";
+import {
+  BButton,
+  BForm,
+  BFormInput,
+  BFormInvalidFeedback,
+  BModal,
+} from "bootstrap-vue-next";
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
 import { useRouter } from "vue-router";
@@ -37,7 +43,8 @@ const createNewProjectError = ref<ErrorResult | null>(null);
 const createNewProject = async () => {
   submittingCreateRequest.value = true;
   const projectName = newProjectName.value.trim();
-  const createProjectResponse = await addNewProject(projectName);
+  const createProjectResponse =
+    await ClientApi.Projects.addNewProject(projectName);
   if (createProjectResponse.success) {
     if (Array.isArray(UserProjects.value)) {
       const newProjectId = createProjectResponse.result.groupId;
@@ -76,7 +83,7 @@ const createNewProject = async () => {
     <b-form @submit.stop.prevent="createNewProject">
       <b-form-input
         type="text"
-        placeholder="project name"
+        placeholder="Project name"
         data-cy="new project name"
         v-model="newProjectName.value"
         @blur="newProjectName.touched = true"
@@ -86,14 +93,20 @@ const createNewProject = async () => {
       />
       <b-form-invalid-feedback :state="needsValidationAndIsValidProjectName">
         <span v-if="newProjectName.value.trim().length === 0">
-          Project name cannot be blank
+          Project name can't be blank.
         </span>
         <span v-else-if="newProjectName.value.trim().length < 3">
-          Project name must be at least 3 characters
+          Project name must be at least 3 characters long.
         </span>
       </b-form-invalid-feedback>
     </b-form>
     <template #footer>
+      <b-button
+        variant="outline-secondary"
+        @click="creatingNewProject.visible = false"
+      >
+        Cancel
+      </b-button>
       <button
         class="btn btn-primary"
         type="submit"

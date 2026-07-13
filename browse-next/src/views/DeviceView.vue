@@ -11,24 +11,13 @@ import {
   projectDevicesLoaded,
   userProjectsLoaded,
 } from "@models/LoggedInUser";
-import type {
-  DeviceId,
-  LatLng,
-  StationId as LocationId,
-} from "@typedefs/api/common";
+import type { DeviceId } from "@typedefs/api/common";
 import { selectedProjectDevices } from "@models/provides";
 import { DeviceType } from "@typedefs/api/consts.ts";
 import OverflowingTabList from "@/components/OverflowingTabList.vue";
-import type { LoadedResource } from "@api/types.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import {
-  getDeviceById,
-  getLatestStatusRecordingForDevice,
-  getMaskRegionsForDevice,
-  getReferenceImageForDeviceAtCurrentLocation,
-} from "@api/Device.ts";
-import type { ApiVisitResponse } from "@typedefs/api/monitoring";
-import type { DateTime } from "luxon";
+import { ClientApi } from "@/api";
 
 const route = useRoute();
 const emit = defineEmits(["close", "start-blocking-work", "end-blocking-work"]);
@@ -57,9 +46,12 @@ const loadDevice = async (deviceId: DeviceId) => {
       device.value = targetDevice;
     } else {
       // Device could be inactive, so try loading it by id
-      const deviceResponse = await getDeviceById(deviceId, true);
-      if (deviceResponse.success) {
-        device.value = deviceResponse.result.device;
+      const deviceResponse = await ClientApi.Devices.getDeviceById(
+        deviceId,
+        true,
+      );
+      if (deviceResponse) {
+        device.value = deviceResponse;
       }
     }
   }
@@ -73,7 +65,7 @@ const loadDevice = async (deviceId: DeviceId) => {
 
 const loadReferenceImage = (deviceId: DeviceId) => {
   latestReferenceImageURL.value = null;
-  getReferenceImageForDeviceAtCurrentLocation(deviceId).then(
+  ClientApi.Devices.getReferenceImageForDeviceAtCurrentLocation(deviceId).then(
     ({ result, success }) => {
       if (success) {
         latestReferenceImageURL.value = URL.createObjectURL(result);
@@ -93,12 +85,12 @@ onBeforeMount(async () => {
   ) {
     //  TODO: Latest status recording should match current location.
     //  TODO: Use meta/status to get low power 2s recordings
-    getLatestStatusRecordingForDevice(
+    ClientApi.Devices.getLatestStatusRecordingForDevice(
       device.value.id,
       device.value.groupId,
     ).then((result) => (latestStatusRecording.value = result));
     loadReferenceImage(device.value.id);
-    getMaskRegionsForDevice(device.value.id, true).then(
+    ClientApi.Devices.getMaskRegionsForDevice(device.value.id, true).then(
       ({ success, result }) => {
         if (success) {
           latestMaskRegions.value = {
@@ -115,7 +107,7 @@ onBeforeMount(async () => {
 const activeTabPath = computed(() => {
   return route.matched.map((item) => item.name);
 });
-const navLinkClasses = ["nav-item", "nav-link", "border-0"];
+const navLinkClasses = ["nav-item", "nav-link"];
 
 const _deviceType = computed<string>(() => {
   if (device.value) {
@@ -126,8 +118,6 @@ const _deviceType = computed<string>(() => {
         return "Thermal camera + Bird monitor";
       case DeviceType.Audio:
         return "Bird monitor";
-      case DeviceType.TrailCam:
-        return "Trail camera";
       case DeviceType.TrapIrCam:
         return "Trap IR camera";
     }
@@ -136,7 +126,7 @@ const _deviceType = computed<string>(() => {
 });
 </script>
 <template>
-  <div class="device-view d-flex flex-column">
+  <div class="device-view d-flex flex-column flex-fill">
     <overflowing-tab-list v-if="!deviceLoading">
       <!--      <router-link-->
       <!--        v-if="currentUserIsSuperAdminAndNotViewingAsNonSuperAdmin && [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"-->
@@ -166,8 +156,9 @@ const _deviceType = computed<string>(() => {
         :to="{
           name: 'device-events',
         }"
-        >Events</router-link
       >
+        <span class="text">Events</span>
+      </router-link>
       <router-link
         v-if="
           device?.active &&
@@ -177,14 +168,15 @@ const _deviceType = computed<string>(() => {
         "
         :class="[
           ...navLinkClasses,
-          { active: activeTabPath.includes('device-diagnostics') },
+          { active: activeTabPath.includes('device-status') },
         ]"
-        title="Diagnostics"
+        title="Status"
         :to="{
-          name: 'device-diagnostics',
+          name: 'device-status',
         }"
-        >Diagnostics</router-link
       >
+        <span class="text">Status</span>
+      </router-link>
       <router-link
         v-if="
           device?.active &&
@@ -195,14 +187,18 @@ const _deviceType = computed<string>(() => {
         "
         :class="[
           ...navLinkClasses,
-          { active: activeTabPath.includes('device-setup') },
+          { active: activeTabPath.includes('device-configuration') },
         ]"
-        title="Setup"
+        title="Configuration"
+        data-cy="device configuration"
         :to="{
-          name: 'device-setup',
+          name: 'device-configuration',
         }"
-        >Setup</router-link
       >
+        <span class="text">
+          Config<span class="d-none d-sm-inline">uration</span>
+        </span>
+      </router-link>
       <router-link
         v-if="
           device?.active &&
@@ -219,38 +215,14 @@ const _deviceType = computed<string>(() => {
         :to="{
           name: 'device-insights',
         }"
-        >Insights</router-link
-      >
-      <!--      <router-link-->
-      <!--        v-if="[DeviceType.Audio, DeviceType.Hybrid].includes((device as ApiDeviceResponse).type)"-->
-      <!--        :class="[-->
-      <!--          ...navLinkClasses,-->
-      <!--          { active: activeTabPath.includes('device-schedules') },-->
-      <!--        ]"-->
-      <!--        title="Schedules"-->
-      <!--        :to="{-->
-      <!--          name: 'device-schedules',-->
-      <!--        }"-->
-      <!--        >Schedules</router-link-->
-      <!--      >-->
-      <!-- TODO: Specialise this for manual uploads of CPTV and audio files -->
-      <router-link
-        v-if="(device as ApiDeviceResponse).type === DeviceType.TrailCam"
-        :class="[
-          ...navLinkClasses,
-          { active: activeTabPath.includes('device-uploads') },
-        ]"
-        title="Manual uploads"
-        :to="{
-          name: 'device-uploads',
-        }"
-        >Manual Uploads</router-link
+        ><span class="text">Insights</span></router-link
       >
     </overflowing-tab-list>
     <router-view
+      class="d-flex flex-fill"
       @start-blocking-work="() => emit('start-blocking-work')"
       @end-blocking-work="() => emit('end-blocking-work')"
-      @updated-regions="(e) => (latestMaskRegions = e)"
+      @updated-regions="(e: ApiMaskRegionsData) => (latestMaskRegions = e)"
       @updated-reference-image="
         () => {
           if (device) loadReferenceImage(device.id);
@@ -261,21 +233,15 @@ const _deviceType = computed<string>(() => {
 </template>
 
 <style scoped lang="less">
-@import "../assets/font-sizes.less";
-@import "../assets/mixins.less";
+@import "../assets/less/typography.less";
+@import "../assets/less/elevation.less";
 
 .device-view-header {
   border-bottom: 2px solid #e1e1e1;
-  .device-header-type {
-    .fs-8();
-  }
   .device-header-details {
     line-height: 1;
   }
   @media screen and (min-width: 576px) {
-    .device-header-type {
-      .fs-8();
-    }
     .device-header-details {
       line-height: unset;
     }

@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import CardTable from "@/components/CardTable.vue";
-import { lastActiveLocationTime, locationHasAudioRecordings, locationHasThermalRecordings } from "@/utils";
+import {
+  lastActiveLocationTime,
+  locationHasAudioRecordings,
+  locationHasThermalRecordings,
+} from "@/utils";
 import { DateTime, type ToRelativeOptions } from "luxon";
 import { ref } from "vue";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import RenameableLocationName from "@/components/RenameableLocationName.vue";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import type { GenericCardTableValue } from "@/components/CardTableTypes.ts";
+import { BButton } from "bootstrap-vue-next";
 
 const oneMinute = 1000 * 60;
 const oneHour = oneMinute * 60;
@@ -84,9 +91,10 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
   <card-table
     compact
     :items="locations"
-    @entered-item="enteredTableItem"
-    @left-item="leftTableItem"
+    @entered-item="enteredTableItem as GenericCardTableValue<unknown>"
+    @left-item="leftTableItem as GenericCardTableValue<unknown>"
     :max-card-width="2000"
+    standalone
   >
     <template #card="{ card: location }: { card: ApiLocationResponse }">
       <div>
@@ -96,85 +104,117 @@ const changedLocationName = (payload: { newName: string; id: LocationId }) => {
           @show-rename-hint="showRenameHint"
           @changed-location-name="changedLocationName"
         />
-        <div v-html="activeBetween(location)" />
+        <p v-html="activeBetween(location)" />
       </div>
-      <div class="d-flex mt-2 mb-1">
-        <b-button
+      <div class="location-buttons d-flex align-items-center">
+        <span
+          class="py-1 py-sm-2"
           v-if="locationHasThermalRecordings(location)"
-          class="align-items-center justify-content-between d-flex"
-          variant="light"
-          :to="{
-            name: 'activity',
-            query: {
-              locations: [location.id],
-              'display-mode': 'visits',
-              from: new Date(location.activeAt).toISOString(),
-              until: (
-                lastActiveLocationTime(location) || new Date()
-              ).toISOString(),
-            },
-          }"
-          ><span class="me-2">Visits</span>
-          <font-awesome-icon
-            icon="arrow-turn-down"
-            :rotation="270"
-            size="xs"
-            class="ps-1"
-          />
-        </b-button>
-        <b-button
-          class="align-items-center justify-content-between d-flex"
-          :class="{'ms-2': locationHasThermalRecordings(location)}"
+        >
+          <b-button
+            class="align-items-center justify-content-between d-flex btn-icon"
+            variant="light"
+            :to="{
+              name: 'activity',
+              query: {
+                locations: [location.id],
+                'display-mode': 'visits',
+                from: new Date(location.activeAt).toISOString(),
+                until: (
+                  lastActiveLocationTime(location) || new Date()
+                ).toISOString(),
+              },
+            }"
+          >
+            <material-symbol name="video_library" size="1.25rem" />
+            <span class="ms-2">Visits</span>
+          </b-button>
+        </span>
+        <div v-if="locationHasThermalRecordings(location)" class="vr"></div>
+        <span
+          class="py-1 py-sm-2"
           v-if="locationHasThermalRecordings(location)"
-          variant="light"
-          :to="{
-            name: 'activity',
-            query: {
-              locations: [location.id],
-              'display-mode': 'recordings',
-              'recording-mode': 'cameras',
-              from: new Date(location.activeAt).toISOString(),
-              until: (
-                lastActiveLocationTime(location) || new Date()
-              ).toISOString(),
-            },
-          }"
-          ><span class="me-2">Thermal recordings</span>
-          <font-awesome-icon
-            icon="arrow-turn-down"
-            :rotation="270"
-            size="xs"
-            class="ps-1"
-          />
-        </b-button>
-        <b-button
-          class="align-items-center justify-content-between d-flex"
-          :class="{'ms-2': locationHasThermalRecordings(location)}"
-          v-if="locationHasAudioRecordings(location)"
-          variant="light"
-          :to="{
-            name: 'activity',
-            query: {
-              locations: [location.id],
-              'display-mode': 'recordings',
-              'recording-mode': 'audio',
-              from: new Date(location.activeAt).toISOString(),
-              until: (
-                lastActiveLocationTime(location) || new Date()
-              ).toISOString(),
-            },
-          }"
-        ><span class="me-2">Bird recordings</span>
-          <font-awesome-icon
-            icon="arrow-turn-down"
-            :rotation="270"
-            size="xs"
-            class="ps-1"
-          />
-        </b-button>
+        >
+          <b-button
+            class="align-items-center justify-content-between d-flex btn-icon"
+            variant="light"
+            :to="{
+              name: 'activity',
+              query: {
+                locations: [location.id],
+                'display-mode': 'recordings',
+                'recording-mode': 'cameras',
+                from: new Date(location.activeAt).toISOString(),
+                until: (
+                  lastActiveLocationTime(location) || new Date()
+                ).toISOString(),
+              },
+            }"
+          >
+            <material-symbol name="videocam" size="1.25rem" />
+            <span class="ms-2"
+              >Thermal
+              <span class="d-none d-sm-inline-block">recordings</span></span
+            >
+          </b-button>
+        </span>
+        <div
+          v-if="
+            locationHasAudioRecordings(location) &&
+            locationHasThermalRecordings(location)
+          "
+          class="vr"
+        ></div>
+        <span class="py-1 py-sm-2" v-if="locationHasAudioRecordings(location)">
+          <b-button
+            class="align-items-center justify-content-between d-flex btn-icon"
+            variant="light"
+            :to="{
+              name: 'activity',
+              query: {
+                locations: [location.id],
+                'display-mode': 'recordings',
+                'recording-mode': 'audio',
+                from: new Date(location.activeAt).toISOString(),
+                until: (
+                  lastActiveLocationTime(location) || new Date()
+                ).toISOString(),
+              },
+            }"
+          >
+            <material-symbol name="music_note" size="1.25rem" />
+            <span class="ms-2"
+              >Audio
+              <span class="d-none d-sm-inline-block">recordings</span></span
+            >
+          </b-button>
+        </span>
       </div>
     </template>
   </card-table>
 </template>
 
-<style scoped lang="less"></style>
+<style scoped lang="less">
+@import "../assets/less/breakpoints";
+.location-buttons {
+  border-top: 1px solid var(--border-color-light);
+  @media screen and (min-width: @breakpoint-xs) and (max-width: @breakpoint-sm-max) {
+    padding: 0 var(--cp-spacing-xs);
+    margin-left: calc(var(--cp-spacing-md) * -1);
+    margin-right: calc(var(--cp-spacing-md) * -1);
+    margin-bottom: calc(var(--cp-spacing-md) * -1);
+    gap: var(--cp-spacing-xxs);
+  }
+  @media screen and (min-width: @breakpoint-md) {
+    margin-left: calc(var(--cp-spacing-xl) * -1);
+    margin-right: calc(var(--cp-spacing-xl) * -1);
+    margin-bottom: calc(var(--cp-spacing-xl) * -1);
+    padding: 0 var(--cp-spacing-md);
+    gap: var(--cp-spacing-xs);
+  }
+  .vr {
+    background-color: var(--border-color-light);
+    opacity: 1;
+  }
+}
+</style>

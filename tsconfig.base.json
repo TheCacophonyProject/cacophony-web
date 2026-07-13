@@ -4,10 +4,16 @@
         "composite": true,
         "declaration": true,
         "declarationMap": true,
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
         "paths": {
             "types": ["types"],
             "@/*": ["browse/src/*"],
             "api": ["api"]
         }
-    }
+    },
+    "exclude": [
+        "node_modules",
+        "integration-tests"
+    ]
 }

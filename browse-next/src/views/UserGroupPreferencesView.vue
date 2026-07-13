@@ -11,13 +11,8 @@ import {
 } from "vue";
 import SectionHeader from "@/components/SectionHeader.vue";
 import type { ApiAlertResponse } from "@typedefs/api/alerts";
-import {
-  createAlertForScope,
-  getAlertsForCurrentUser,
-  removeAlert,
-} from "@api/Alert";
+import { ClientApi } from "@/api";
 import LeaveProjectModal from "@/components/LeaveProjectModal.vue";
-import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import DeviceName from "@/components/DeviceName.vue";
 import CardTable from "@/components/CardTable.vue";
 import { DateTime } from "luxon";
@@ -41,8 +36,22 @@ import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import Multiselect from "@vueform/multiselect";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
-import type { LoadedResource } from "@api/types.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
+import SectionCard from "@/components/SectionCard.vue";
+import {
+  BBadge,
+  BButton,
+  BFormCheckbox,
+  BFormInput,
+  BFormRadio,
+  BFormRadioGroup,
+  BModal,
+  BSpinner,
+} from "bootstrap-vue-next";
+import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import LocationName from "@/components/LocationName.vue";
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
@@ -176,7 +185,7 @@ const alertBelongsToCurrentProject = (alert: ApiAlertResponse): boolean => {
 
 const loadAlerts = async () => {
   loadingAlerts.value = true;
-  const response = await getAlertsForCurrentUser();
+  const response = await ClientApi.Alerts.getAlertsForCurrentUser();
   if (response.success) {
     alerts.value = response.result.alerts.filter(alertBelongsToCurrentProject);
   }
@@ -188,7 +197,7 @@ onBeforeMount(async () => {
 });
 
 const deleteAlert = async (alertId: AlertId) => {
-  await removeAlert(alertId);
+  await ClientApi.Alerts.removeAlert(alertId);
   await loadAlerts();
 };
 const resetFormFields = () => {
@@ -201,7 +210,7 @@ const resetFormFields = () => {
 
 const saveAlert = async () => {
   creatingAlert.value = true;
-  await createAlertForScope(
+  await ClientApi.Alerts.createAlertForScope(
     alertScope.value,
     scopeId.value as number,
     alertOnTags.value,
@@ -263,194 +272,209 @@ const alertItems = computed<AlertItem[]>(() => {
         minimumTimeBetweenTriggers: `${alert.frequencySeconds / 60} mins`,
         __scope: alert.scope,
         _deleteAction: alert.id,
-      } as AlertItem),
+      }) as AlertItem,
   );
 });
 </script>
 <template>
   <section-header>My project preferences</section-header>
-  <h6>Email alert settings</h6>
-  <p>
-    Email alerts are sent whenever the Cacophony AI recognises something that
-    you're interested in for a newly processed recording.
-  </p>
-  <div v-if="loadingAlerts" class="d-flex justify-content-center pb-3">
-    <b-spinner variant="secondary" />
-  </div>
-  <card-table v-else :items="alertItems" compact :break-point="0">
-    <template #alertOn="{ cell }">
-      <b-badge
-        v-for="(tag, index) in cell"
-        :key="index"
-        class="me-1 fs-8 my-1"
-        variant="secondary"
-        >{{ tag }}</b-badge
-      >
-    </template>
-    <template
-      #alertScope="{
-        cell,
-        row,
-      }: {
-        row: AlertItem;
-        cell: string | ApiDeviceResponse | ApiLocationResponse;
-      }"
-    >
-      <div v-if="row.__scope === 'project'">{{ cell }}</div>
-      <div
-        v-else-if="row.__scope === 'location' && cell"
-        class="station-name text-truncate d-inline-flex align-content-center align-items-center"
-      >
-        <font-awesome-icon
-          icon="map-marker-alt"
-          class="me-2"
-          color="rgba(0, 0, 0, 0.7)"
-        />
-        <span class="text-truncate" ref="stationNameSpan">
-          {{ (cell as ApiLocationResponse).name }}
-        </span>
-      </div>
-      <div v-else-if="row.__scope === 'device' && cell">
-        <device-name
-          :name="(cell as ApiDeviceResponse).deviceName"
-          :type="(cell as ApiDeviceResponse).type"
-        />
-      </div>
-    </template>
-    <template #_deleteAction="{ cell }">
-      <div class="d-flex align-items-center justify-content-end">
-        <two-step-action-button
-          class="text-end"
-          variant="outline-secondary"
-          :action="() => deleteAlert(cell)"
-          icon="trash-can"
-          confirmation-label="Remove alert"
-          :classes="[
-            'd-flex',
-            'align-items-center',
-            'fs-7',
-            'text-nowrap',
-            'ms-2',
-          ]"
-          alignment="right"
-        />
-      </div>
-    </template>
-    <template #card="{ card }: { card: AlertItem }">
-      <div class="d-flex flex-row">
-        <div class="flex-grow-1">
-          <div class="d-flex align-items-center">
-            <span class="me-2">Trigger on: </span>
+
+  <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
+    <div class="col-lg-3">
+      <h3 class="section-card-heading">Email alert settings</h3>
+      <p class="text-secondary pb-1">
+        Send an email when the Cacophony AI recognises something that you're
+        interested in for a newly processed recording.
+      </p>
+    </div>
+    <div class="col-lg-9">
+      <section-card>
+        <template #header-title> Email alerts </template>
+        <template #header-action>
+          <b-button
+            variant="outline-secondary"
+            @click="selectedAddEmailAlert = true"
+            class="d-flex align-items-center"
+          >
+            <material-symbol name="add" size="1.25rem" class="me-2" />
+            Create email alert
+          </b-button>
+        </template>
+        <div v-if="loadingAlerts" class="d-flex justify-content-center my-4">
+          <b-spinner variant="secondary" small />
+        </div>
+        <card-table
+          v-else-if="alertItems && alertItems.length"
+          :items="alertItems"
+          compact
+          :max-card-width="768"
+        >
+          <template #alertOn="{ cell }">
             <b-badge
-              v-for="(tag, index) in card.alertOn"
+              v-for="(tag, index) in cell"
               :key="index"
-              class="me-1 fs-8"
+              class="me-1 my-1"
               variant="secondary"
               >{{ tag }}</b-badge
             >
-          </div>
-          <div class="mt-2">
-            <span>Alert scope: </span>
-            <span v-if="card.__scope === 'project'">{{ card.alertScope }}</span>
-            <span
-              v-else-if="card.__scope === 'location' && card.alertScope"
-              class="station-name text-truncate d-inline-flex align-content-center align-items-center"
-            >
-              <font-awesome-icon
-                icon="map-marker-alt"
-                class="me-2"
-                color="rgba(0, 0, 0, 0.7)"
+          </template>
+          <template
+            #alertScope="{
+              cell,
+              row,
+            }: {
+              row: AlertItem;
+              cell: string | ApiDeviceResponse | ApiLocationResponse;
+            }"
+          >
+            <span v-if="row.__scope === 'project'">{{ cell }}</span>
+            <location-name
+              v-else-if="row.__scope === 'location' && cell"
+              :name="(cell as ApiLocationResponse).name"
+            />
+            <device-name
+              v-else-if="row.__scope === 'device' && cell"
+              :name="(cell as ApiDeviceResponse).deviceName"
+              :type="(cell as ApiDeviceResponse).type"
+              :no-margin="true"
+            />
+          </template>
+          <template #_deleteAction="{ cell }">
+            <div class="d-flex align-items-center justify-content-end">
+              <two-step-action-button
+                :action="() => deleteAlert(cell)"
+                icon="delete"
+                confirmation-label="Remove alert"
+                tooltip-label="Remove"
               />
-              <span class="text-truncate" ref="stationNameSpan">
-                {{ (card.alertScope as ApiLocationResponse).name }}
-              </span>
-            </span>
-            <span v-else-if="card.__scope === 'device'">
-              <device-name
-                :name="(card.alertScope as ApiDeviceResponse).deviceName"
-                :type="(card.alertScope as ApiDeviceResponse).type"
-              />
-            </span>
-          </div>
-          <div class="mt-2">
-            Last triggered: <strong v-html="card.lastTriggered"></strong>
-          </div>
-          <div class="mt-2">
-            <span>Minimum time between triggers: </span>
-            {{ card.minimumTimeBetweenTriggers }}
-          </div>
+            </div>
+          </template>
+          <template #card="{ card }: { card: AlertItem }">
+            <div class="d-flex flex-row">
+              <div class="flex-grow-1">
+                <div class="d-flex align-items-center">
+                  <span class="me-2 flex-shrink-0 text-muted"
+                    >Trigger on:
+                  </span>
+                  <div class="d-flex flex-wrap gap-1">
+                    <b-badge
+                      v-for="(tag, index) in card.alertOn"
+                      :key="index"
+                      variant="secondary"
+                      >{{ tag }}</b-badge
+                    >
+                  </div>
+                </div>
+                <div class="mt-2 d-flex align-items-center gap-1">
+                  <span class="flex-shrink-0 text-muted">Alert scope: </span>
+                  <span v-if="card.__scope === 'project'">{{
+                    card.alertScope
+                  }}</span>
+                  <location-name
+                    v-else-if="card.__scope === 'location' && card.alertScope"
+                    :name="(card.alertScope as ApiLocationResponse).name"
+                  />
+                  <device-name
+                    v-else-if="card.__scope === 'device'"
+                    :name="(card.alertScope as ApiDeviceResponse).deviceName"
+                    :type="(card.alertScope as ApiDeviceResponse).type"
+                    :no-margin="true"
+                  />
+                </div>
+                <div class="mt-2">
+                  <span class="text-muted">Last triggered: </span>
+                  <strong v-html="card.lastTriggered"></strong>
+                </div>
+                <div class="mt-2">
+                  <span class="text-muted"
+                    >Minimum time between triggers:
+                  </span>
+                  {{ card.minimumTimeBetweenTriggers }}
+                </div>
+              </div>
+              <div class="d-flex align-items-center justify-content-center">
+                <two-step-action-button
+                  :action="() => deleteAlert(card._deleteAction)"
+                  icon="delete"
+                  confirmation-label="Remove alert"
+                  tooltip-label="Remove"
+                />
+              </div>
+            </div>
+          </template>
+        </card-table>
+        <div v-else>
+          <p class="my-3 text-body-tertiary text-center">
+            No email alerts configured.
+          </p>
         </div>
-        <div class="d-flex align-items-end justify-content-end">
-          <two-step-action-button
-            class="text-end"
-            variant="outline-secondary"
-            :action="() => deleteAlert(card._deleteAction)"
-            icon="trash-can"
-            confirmation-label="Remove alert"
-            :classes="[
-              'd-flex',
-              'align-items-center',
-              'fs-7',
-              'text-nowrap',
-              'ms-2',
-            ]"
-            alignment="right"
-          />
-        </div>
-      </div>
-    </template>
-  </card-table>
-  <div class="d-flex justify-content-end mt-3">
-    <b-button @click="selectedAddEmailAlert = true">
-      <font-awesome-icon icon="plus" /> Create an email alert
-    </b-button>
+      </section-card>
+    </div>
   </div>
-  <hr />
 
-  <h6>Project activity digest email preferences</h6>
-  <p>
-    Get daily or weekly break-downs of activity in your project &ndash; direct
-    to your inbox.
-  </p>
-  <b-form-checkbox switch v-model="dailyDigestEmails"
-    >I want to receive a daily activity digest<b-spinner
-      class="ms-1"
-      v-if="savingDailyDigestSettings"
-      variant="secondary"
-      small
-  /></b-form-checkbox>
-  <b-form-checkbox switch v-model="weeklyDigestEmails"
-    >I want to receive a weekly activity digest<b-spinner
-      class="ms-1"
-      v-if="savingWeeklyDigestSettings"
-      variant="secondary"
-      small
-  /></b-form-checkbox>
-  <hr />
-  <h6>Stopped device notifications</h6>
-  <p>
-    Get notified about possible flat batteries when a device hasn't connected to
-    the Cacophony Monitoring platform in the last 24 hours
-  </p>
-  <b-form-checkbox switch v-model="stoppedDeviceEmails"
-    >I want to receive emails about devices that might have stopped<b-spinner
-      class="ms-1"
-      v-if="savingStoppedDeviceSettings"
-      variant="secondary"
-      small
-  /></b-form-checkbox>
+  <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
+    <div class="col-lg-3">
+      <h3 class="section-card-heading">Activity summary</h3>
+      <p class="text-secondary pb-1">
+        Get daily or weekly break-downs of activity in your project &ndash;
+        direct to your inbox.
+      </p>
+    </div>
+    <div class="col-lg-9">
+      <section-card>
+        <template #header-title> Project activity email preferences </template>
+        <b-form-checkbox switch v-model="dailyDigestEmails"
+          >I want to receive a daily activity digest<b-spinner
+            class="ms-1"
+            v-if="savingDailyDigestSettings"
+            variant="secondary"
+            small
+        /></b-form-checkbox>
+        <b-form-checkbox switch v-model="weeklyDigestEmails"
+          >I want to receive a weekly activity digest<b-spinner
+            class="ms-1"
+            v-if="savingWeeklyDigestSettings"
+            variant="secondary"
+            small
+        /></b-form-checkbox>
+      </section-card>
+    </div>
+  </div>
+
+  <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
+    <div class="col-lg-3">
+      <h3 class="section-card-heading">Stopped device email settings</h3>
+      <p class="text-secondary pb-1">
+        Get notified about possible flat batteries when a device hasn't
+        connected to the Cacophony Monitoring platform in the last 24 hours.
+      </p>
+    </div>
+    <div class="col-lg-9">
+      <section-card>
+        <template #header-title> Stopped device notifications </template>
+        <b-form-checkbox switch v-model="stoppedDeviceEmails"
+          >I want to receive emails about devices that might have
+          stopped<b-spinner
+            class="ms-1"
+            v-if="savingStoppedDeviceSettings"
+            variant="secondary"
+            small
+        /></b-form-checkbox>
+      </section-card>
+    </div>
+  </div>
 
   <b-modal
     v-model="selectedAddEmailAlert"
     @ok="saveAlert"
-    title="Add an email alert"
+    title="Create email alert"
     ok-title="Save alert"
     :ok-disabled="!formIsValid"
     @cancel="resetFormFields"
   >
     <div>
-      <label class="fs-7">Alert scope:</label>
-      <b-form-radio-group v-model="alertScope">
+      <label class="mb-2">Alert scope:</label>
+      <b-form-radio-group v-model="alertScope" class="mb-2">
         <b-form-radio value="project">This project</b-form-radio>
         <b-form-radio value="location">A specific location</b-form-radio>
         <b-form-radio value="device">A specific device</b-form-radio>
@@ -465,6 +489,7 @@ const alertItems = computed<AlertItem[]>(() => {
         :can-clear="false"
         class="ms-bootstrap"
         searchable
+        placeholder="Select location"
       />
       <multiselect
         v-else-if="alertScope === 'device'"
@@ -476,22 +501,24 @@ const alertItems = computed<AlertItem[]>(() => {
         :can-clear="false"
         class="ms-bootstrap"
         searchable
+        placeholder="Select device"
       />
     </div>
-    <div class="mt-1">
-      <label class="fs-7">Alert on:</label>
+    <div class="mt-3">
+      <label class="mb-1">Alert on:</label>
       <hierarchical-tag-select v-model="alertOnTags" multiselect />
     </div>
-    <div class="mt-1">
-      <label class="fs-7"
-        >Alert no more than once every
-        <strong>{{ maxAlertFrequencyMins }}</strong> minutes</label
-      >
+    <div class="mt-3">
+      <label class="mb-1">Alert frequency (in minutes):</label>
       <b-form-input
         v-model="maxAlertFrequencyMins"
         type="number"
         min="1"
       ></b-form-input>
+      <small class="text-body-secondary form-text"
+        >Alert no more than once every
+        <strong>{{ maxAlertFrequencyMins }}</strong> minutes</small
+      >
     </div>
   </b-modal>
   <div v-if="false && isNotOnlyProjectOwnerOrAdmin">

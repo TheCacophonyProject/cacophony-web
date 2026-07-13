@@ -8,8 +8,7 @@ export const server = {
     active: true,
     port: 80,
   },
-  recording_url_base: "http://localhost:8080/recording",
-  browse_url: "http://localhost:8080",
+  browseUrl: "http://localhost:5050",
   adminEmails: [],
   isLocalDev: true,
 };
@@ -47,12 +46,6 @@ export const smtpDetails = {
   fromName: "Cacophony Reporting",
   platformUsageEmail: "usage@example.com",
   serviceErrorsEmail: "service-errors@example.com",
-  //
-  // service: "gmail",
-  // auth: {
-  //   user: "noinfo@cacophony.org.nz",
-  //   pass: "thesecretpassword"
-  // }
 };
 
 export const influx = {
@@ -66,6 +59,23 @@ export const grafana = {
   host: "",
   apiKey: "",
 };
+
+// Any user IDs in this array are considered processing users, and have access to
+// processing-only APIs.
+export const processingUserIds = [];
+
+// For group IDs in this array, only direct users of that group will be able to view or download
+// thermal recordings made by the group devices.  All super user accounts (excluding the one used
+// by AI processing) will be served a dummy thermal recording when accessing any thermal recording
+// from this group account.
+export const groupIdsWithRedactedThermalRecordings = [];
+
+// When testing, we don't know what ID a group will be assigned, so we use the group name
+// to determine if a groups' thermal recordings should not be available even to non-processing
+// super-users.
+export const groupNamesWithRedactedThermalRecordings = [
+  "super-secret-squirrels",
+];
 
 // List of devices to ignore when making the service error report.
 export const deviceErrorIgnoreList = [];
@@ -88,4 +98,7 @@ export default {
   deviceErrorIgnoreList,
   cacophonyUserIds,
   cacophonyGroupIds,
+  processingUserIds,
+  groupIdsWithRedactedThermalRecordings,
+  groupNamesWithRedactedThermalRecordings
 };

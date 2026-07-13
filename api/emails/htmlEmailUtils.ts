@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 
 const SEPARATOR_LINE = "-----------";
 
-const depthFirstTraversal = (emailRootElement) => {
+const depthFirstTraversal = (emailRootElement: HTMLElement) => {
   let rawText = "";
   const nodesToVisit = [];
   const visitedNodes = [];
@@ -25,7 +25,7 @@ const depthFirstTraversal = (emailRootElement) => {
       rawText += currentNode.textContent;
     }
     if (currentNode.parentNode.nodeName === "A") {
-      rawText += ` (${currentNode.parentNode.href})`;
+      rawText += ` (${(currentNode.parentNode as HTMLAnchorElement).href})`;
     }
     [].slice
       .call(currentNode.childNodes)
@@ -85,7 +85,7 @@ const scrapePlainTextFromHtml = (html: string): string => {
 
 export const createEmailWithTemplate = async (
   templateFilename: string,
-  interpolants: Record<string, string | number | string[] | boolean | any>,
+  interpolants: Record<string, string | number | string[] | boolean | object>,
 ) => {
   const baseTemplate = (
     await fs.readFile(`${__dirname}/templates/base-template.html`)
@@ -113,7 +113,7 @@ export const embedImage = async (
   cid: string,
   imageAttachments: EmailImageAttachment[],
   src: string,
-  errorOnMissing: boolean = true,
+  errorOnMissing = true,
 ) => {
   const filePath = `${__dirname}/templates/image-attachments/${src}`;
   let imageBuffer: Buffer;
@@ -136,7 +136,7 @@ export const embedImage = async (
         })
         .toBuffer();
     }
-  } catch (e) {
+  } catch (_e) {
     // File doesn't exist, check if it's an svg string
     if (src.trim().startsWith("<svg")) {
       imageBuffer = await sharp(Buffer.from(src), sharpOptions)

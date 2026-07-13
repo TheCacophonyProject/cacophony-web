@@ -7,9 +7,18 @@ const { Client } = pkg;
 import { sendPlatformUsageEmail } from "@/emails/transactionalEmails.js";
 import type { EmailImageAttachment } from "@/scripts/emailUtil.js";
 import { embedImage } from "@/emails/htmlEmailUtils.js";
+import os from "os";
 
 const CACOPHONY_GROUPS = config.cacophonyGroupIds || [];
 const CACOPHONY_USERS = config.cacophonyUserIds || [];
+if (CACOPHONY_GROUPS.length === 0) {
+  // Put a dummy id in so queries don't break
+  CACOPHONY_GROUPS.push(99999999);
+}
+if (CACOPHONY_USERS.length === 0) {
+  // Put a dummy id in so queries don't break
+  CACOPHONY_USERS.push(99999999);
+}
 
 const weeksAgo = (
   numWeeksAgo: number,
@@ -43,31 +52,44 @@ const totalRegisteredCamerasForWeekEnding = (
   now: Date,
   nWeeksAgo: number,
 ): string => {
-  return `select count(*) from (select distinct on (uuid) "DeviceHistory"."fromDateTime", "DeviceHistory".uuid from "DeviceHistory" inner join "Devices" on "Devices".uuid = "DeviceHistory".uuid where "Devices".kind = 'thermal'  and "DeviceHistory"."GroupId" not in (${CACOPHONY_GROUPS.join(
-    ", ",
-  )}) and "fromDateTime" < timestamp '${now.toISOString()}' - interval '${nWeeksAgo} week' order by uuid, "fromDateTime" desc) as a;`;
+  return `select count(*) from (
+    select distinct on (uuid) "DeviceHistory"."fromDateTime", "DeviceHistory".uuid
+      from "DeviceHistory" 
+      inner join "Devices" on "Devices".uuid = "DeviceHistory".uuid 
+      where 
+        "Devices"."lastThermalRecordingTime" is not null
+        and "DeviceHistory"."GroupId" not in (${CACOPHONY_GROUPS.join(", ")}) 
+        and "fromDateTime" < timestamp '${now.toISOString()}' - interval '${nWeeksAgo} week' 
+      order by uuid, "fromDateTime" desc
+    ) as a;`;
 };
 
 const birdMonitorsActiveForWeekEnding = (
   now: Date,
   nWeeksAgo: number,
 ): string => {
-  return `select count(distinct uuid) from "Devices" inner join "Recordings" on "Recordings"."DeviceId" = "Devices".id where "Recordings"."GroupId" not in (${CACOPHONY_GROUPS.join(
-    ", ",
-  )}) and "Recordings"."type" = 'audio' ${weeksAgo(
-    nWeeksAgo,
-    "recordingDateTime",
-    now,
-  )};`;
+  return `select count(distinct uuid) 
+    from "Devices" inner join "Recordings" 
+      on "Recordings"."DeviceId" = "Devices".id 
+    where "Recordings"."GroupId" not in (${CACOPHONY_GROUPS.join(", ")}) 
+      and "Recordings"."type" = 'audio' ${weeksAgo(nWeeksAgo, "recordingDateTime", now)};`;
 };
 
 const totalRegisteredBirdMonitorsForWeekEnding = (
   now: Date,
   nWeeksAgo: number,
 ): string => {
-  return `select count(*) from (select distinct on (uuid) "DeviceHistory"."fromDateTime", "DeviceHistory".uuid from "DeviceHistory" inner join "Devices" on "Devices".uuid = "DeviceHistory".uuid where "Devices".kind = 'audio'  and "DeviceHistory"."GroupId" not in (${CACOPHONY_GROUPS.join(
-    ", ",
-  )}) and "fromDateTime" < timestamp '${now.toISOString()}' - interval '${nWeeksAgo} week' order by uuid, "fromDateTime" desc) as a;`;
+  return `select count(*) from (
+    select distinct on (uuid) "DeviceHistory"."fromDateTime", "DeviceHistory".uuid 
+      from "DeviceHistory" 
+      inner join "Devices" on "Devices".uuid = "DeviceHistory".uuid 
+      where
+        "Devices"."lastAudioRecordingTime" is not null
+        and "Devices"."lastThermalRecordingTime" is null
+        and "DeviceHistory"."GroupId" not in (${CACOPHONY_GROUPS.join(", ")}) 
+        and "fromDateTime" < timestamp '${now.toISOString()}' - interval '${nWeeksAgo} week' 
+      order by uuid, "fromDateTime" desc
+  ) as a;`;
 };
 
 const activeUserSessions = (now: Date, nWeeksAgo: number): string => {
@@ -130,7 +152,7 @@ const recordingsForWeekEnding = (
     now,
   )} and "GroupId" not in (${CACOPHONY_GROUPS.join(
     ", ",
-  )}) and "deletedAt" is null;`;
+  )}) and "deletedAt" is null and "recordingDateTime" is not null;`;
 };
 const queryPrevXWeeks = async (
   fn: (n: Date, i: number) => string,
@@ -451,8 +473,8 @@ const stackedGraph = (
   height = 50,
 ): [string, string] => {
   const colours = [];
-  for (let i = 0; i < allSeries.length; i++) {
-    colours.push(allSeries[i][2]);
+  for (const [_a, _b, colour] of allSeries) {
+    colours.push(colour);
   }
   let max = 0;
   for (const [_, series] of allSeries) {
@@ -508,8 +530,9 @@ const stackedGraph = (
   ];
 };
 async function main() {
-  if (config.server.browse_url !== "https://browse.cacophony.org.nz") {
-    log.info("Platform usage report only runs on production");
+  const args = process.argv.slice(2); // Remove the first two default paths
+  const forceRun = args.length !== 0 && args[0] === "--force";
+  if (config.cronScriptProcessingHostname !== os.hostname() && !forceRun) {
     return;
   }
   if (!config.smtpDetails) {
@@ -728,8 +751,8 @@ async function main() {
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
           newUserSignups,
         )}</span> new user sign-up${maybePlural(
-    last(newUserSignups),
-  )}</p>        
+          last(newUserSignups),
+        )}</p>        
         <img alt="Signups per week: ${newUserSignups.join(
           ", ",
         )}" src='${signupsPerWeekGraph}' width='100%' height='auto' />
@@ -746,12 +769,12 @@ async function main() {
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
           camerasActive,
         )}</span> camera${maybePlural(
-    last(camerasActive),
-  )} recording, out of <strong>${last(
-    totalCamerasRegistered,
-  )}</strong> total registered camera${maybePlural(
-    last(totalCamerasRegistered),
-  )}</p>
+          last(camerasActive),
+        )} recording, out of <strong>${last(
+          totalCamerasRegistered,
+        )}</strong> total registered camera${maybePlural(
+          last(totalCamerasRegistered),
+        )}</p>
         <img alt="Weekly active cameras: ${camerasActive.join(
           ", ",
         )}" src='${activeCamerasGraph}' width='100%' height='auto' />
@@ -769,12 +792,12 @@ async function main() {
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
           birdMonitorsActive,
         )}</span> bird monitor${maybePlural(
-    last(birdMonitorsActive),
-  )} recording, out of <strong>${last(
-    totalBirdMonitorsRegistered,
-  )}</strong> total registered bird monitor${maybePlural(
-    last(totalBirdMonitorsRegistered),
-  )}</p>
+          last(birdMonitorsActive),
+        )} recording, out of <strong>${last(
+          totalBirdMonitorsRegistered,
+        )}</strong> total registered bird monitor${maybePlural(
+          last(totalBirdMonitorsRegistered),
+        )}</p>
         <img alt="Weekly active bird monitors: ${birdMonitorsActive.join(
           ", ",
         )}" src='${activeBirdMonitorsGraph}' width='100%' height='auto' />
@@ -800,8 +823,8 @@ async function main() {
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
           trackTagsAdded,
         )}</span> user classification${maybePlural(
-    last(trackTagsAdded),
-  )} added</p>
+          last(trackTagsAdded),
+        )} added</p>
         <img alt="Added tags per week: ${trackTagsAdded.join(
           ", ",
         )}" src='${addedTagsGraph}' width='100%' height='auto' />
@@ -810,8 +833,8 @@ async function main() {
         <p style="font-size: 16px; margin-bottom: 28px;"><span style="font-size: 20px; font-weight: bold;">${last(
           animalAlertEmails,
         )}</span> alert notification${maybePlural(
-    last(animalAlertEmails),
-  )} sent</p>
+          last(animalAlertEmails),
+        )} sent</p>
         <img alt="Alerts per week: ${animalAlertEmails.join(
           ", ",
         )}" src='${emailAlertsGraph}' width='100%' height='auto' />
@@ -827,7 +850,6 @@ async function main() {
     </div>
 `;
   await sendPlatformUsageEmail(
-    config.server.browse_url.replace("https://", ""),
     config.smtpDetails.platformUsageEmail,
     weekEndDate,
     emailHtml,

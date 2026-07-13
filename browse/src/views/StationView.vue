@@ -120,7 +120,7 @@
     </div>
 
     <b-modal
-      hide-footer
+      no-footer
       title="Rename station"
       ok-title="Rename"
       v-if="station"

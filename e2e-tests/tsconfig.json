@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "types": ["node", "@playwright/test"],
+    "paths": {
+      "@typedefs/*": ["../types/*"],
+      "@shared/*": ["../types/*"],
+      "@/*": ["./*"]
+    }
+  }
+}

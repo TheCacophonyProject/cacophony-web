@@ -22,7 +22,7 @@ import {
   getEmailConfirmationToken,
   getJoinGroupRequestToken,
 } from "../auth.js";
-import modelsInit from "@models/index.js";
+import { initSequelize } from "@models/index.js";
 import { successResponse } from "./responseUtil.js";
 import { body, matchedData, param, query } from "express-validator";
 import {
@@ -34,10 +34,14 @@ import {
 } from "../customErrors.js";
 import type { Application, NextFunction, Request, Response } from "express";
 import config from "@config";
-import type { User } from "@models/User.js";
+import { User } from "@models/User.js";
 import {
-  anyOf,
+  atLeastOneOf,
+  atMostOneOf,
   booleanOf,
+  deprecatedField,
+  emailOf,
+  exactlyOneOf,
   idOf,
   integerOf,
   validNameOf,
@@ -58,7 +62,7 @@ import {
 } from "../extract-middleware.js";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
-import ApiUserSettingsSchema from "@schemas/api/user/ApiUserSettings.schema.json" assert { type: "json" };
+import ApiUserSettingsSchema from "@schemas/api/user/ApiUserSettings.schema.json" with { type: "json" };
 import type { ApiGroupResponse } from "@typedefs/api/group.js";
 import {
   sendAddedToGroupNotificationEmail,
@@ -70,16 +74,18 @@ import {
 import { CACOPHONY_WEB_VERSION } from "@/Globals.js";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 import { Op } from "sequelize";
-import type { Group } from "@models/Group.js"; // Added import
-import type { Device } from "@/models/Device.js";
+import { Group } from "@models/Group.js"; // Added import
+import { Device } from "@/models/Device.js";
+import { GroupInvites } from "@models/GroupInvites.js";
+import { GroupUsers } from "@models/GroupUsers.js";
 
-const models = await modelsInit();
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiLoggedInUsersResponseSuccess {
+const sequelize = await initSequelize();
+
+export interface ApiLoggedInUsersResponseSuccess {
   usersList: ApiLoggedInUserResponse[];
 }
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiLoggedInUserResponseSuccess {
+
+export interface ApiLoggedInUserResponseSuccess {
   userData: ApiLoggedInUserResponse;
 }
 export const mapUser = (
@@ -103,8 +109,7 @@ export const mapUser = (
 export const mapUsers = (users: User[], omitSettings = false) =>
   users.map((user) => mapUser(user, omitSettings));
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiChangePasswordRequestBody {
+export interface ApiChangePasswordRequestBody {
   password: string; // Password for the user account
   token: string; // Valid password reset token
 }
@@ -114,9 +119,8 @@ export default function (app: Application, baseUrl: string) {
 
   const listUsersOptions = [
     extractJwtAuthorisedSuperAdminUser,
-    async (request, response) => {
-      const users = await models.User.getAll(
-        {},
+    async (_request: Request, response: Response) => {
+      const users = await User.getAll(
         response.locals.requestUser.hasGlobalWrite(),
       );
 
@@ -162,8 +166,11 @@ export default function (app: Application, baseUrl: string) {
   app.post(
     apiUrl,
     validateFields([
-      anyOf(validNameOf(body("username")), validNameOf(body("userName"))),
-      body("email").isEmail(),
+      exactlyOneOf(
+        deprecatedField(validNameOf(body("username"))),
+        validNameOf(body("userName")),
+      ),
+      emailOf(body("email")),
       validPasswordOf(body("password")),
       body("endUserAgreement").isInt().optional(),
       body("inviteTokenJWT").optional(),
@@ -173,117 +180,121 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.user) {
         return next(
-          new ValidationError([
-            { msg: "Email address in use", location: "body", param: "email" },
-          ]),
+          new ValidationError({
+            type: "field",
+            message: "Email address in use",
+            value: request.body.email,
+            meta: {
+              req: request,
+              path: "email",
+              location: "body",
+              pathValues: [],
+            },
+          }),
         );
       } else {
         next();
       }
     },
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (request: Request, _response: Response, next: NextFunction) => {
       if (
         request.body.endUserAgreement &&
         Number(request.body.endUserAgreement) !== config.euaVersion
       ) {
         return next(
-          new ValidationError([
-            {
-              msg: "Out of date end user agreement version specified",
+          new ValidationError({
+            type: "field",
+            message: "Out of date end user agreement version specified",
+            value: request.body.endUserAgreement,
+            meta: {
+              req: request,
               location: "body",
-              param: "endUserAgreement",
+              path: "endUserAgreement",
+              pathValues: [],
             },
-          ]),
+          }),
         );
       } else {
         next();
       }
     },
     async (request: Request, response: Response, next: NextFunction) => {
-      const now = new Date().toISOString();
-      const user: User = await models.User.create({
+      const now = new Date();
+      const user: User = await User.create({
         userName: request.body.username || request.body.userName,
         password: request.body.password,
         email: request.body.email.toLowerCase().trim(),
         endUserAgreement: request.body.endUserAgreement,
         lastActiveAt: now,
       });
-      // For now, we don't want to send welcome emails on browse, just browse-next
-      if (
-        !request.headers.host.includes("browse.cacophony.org.nz") &&
-        !request.headers.host.includes("browse-test.cacophony.org.nz")
-      ) {
-        // If the user is signing up from an email invitation, and the email
-        // address matches the invite email address, we can mark the user's email as confirmed
-        // and add them to any pending invited groups.
-        let sendEmailSuccess;
-        const token = response.locals.tokenInfo;
-        const isSigningUpFromEmailInvitation =
-          token &&
-          token.exp * 1000 > new Date().getTime() &&
-          token._type === "invite-new-user";
-        const addedToGroups = [];
-        if (isSigningUpFromEmailInvitation) {
-          const oneWeekAgo = new Date(
-            new Date().setDate(new Date().getDate() - 7),
-          );
-          // NOTE: Check if there are any pending non-expired group invites for this email address:
-          const pendingInvites = await models.GroupInvites.findAll({
-            where: {
-              email: user.email,
-              createdAt: { [Op.gt]: oneWeekAgo },
-            },
-          });
-          for (const invitation of pendingInvites) {
-            const group = await models.Group.findByPk(invitation.GroupId);
-            if (group) {
-              const { added } = await models.Group.addOrUpdateGroupUser(
-                group,
-                user,
-                invitation.admin,
-                invitation.owner,
-                null,
-              );
-              if (added) {
-                addedToGroups.push(group);
-              }
-            }
-            await invitation.destroy();
-          }
-        }
-        if (addedToGroups.length) {
-          // NOTE: We can now confirm the users' email address, since they signed up via an email.
-          await user.update({ emailConfirmed: true });
-          sendEmailSuccess = await sendWelcomeEmailWithGroupsAdded(
-            request.headers.host,
-            user.email,
-            addedToGroups.map(({ groupName }) => groupName),
-          );
-        } else {
-          // NOTE Send a welcome email, with a requirement to validate the email address.
-          //  We won't send transactional emails until the address has been validated.
-          //  While the account is unvalidated, show a banner in the site, which allows to resend the validation email.
-          //  User alerts and group invitations would not be activated until the user has confirmed their email address.
-          sendEmailSuccess = await sendWelcomeEmailConfirmationEmail(
-            request.headers.host,
-            getEmailConfirmationToken(user.id, user.email),
-            user.email,
-          );
-        }
+      // If the user is signing up from an email invitation, and the email
+      // address matches the invite email address, we can mark the user's email as confirmed
+      // and add them to any pending invited groups.
 
-        // NOTE: Only destroy users in a production env  if emailing fails, since
-        //  otherwise we'd slow down tests too much by having to process emails for all
-        //  created users.
-        if (!sendEmailSuccess && config.productionEnv) {
-          // In this case, we don't want to create the user.
-          await user.destroy();
-          return next(
-            new FatalError("Failed to send welcome/email confirmation email."),
-          );
+      // If they're signing up from an email invitation but using a different address to register,
+      // we can still add them to the group, we just won't automatically confirm their email address.
+      let sendEmailSuccess: boolean;
+      const token = response.locals.tokenInfo;
+      const isSigningUpFromEmailInvitation =
+        token &&
+        token.exp * 1000 > new Date().getTime() &&
+        token._type === "invite-new-user";
+      const addedToGroups = [];
+      if (isSigningUpFromEmailInvitation) {
+        const oneYearAgo = new Date(
+          new Date().setDate(new Date().getDate() - 365),
+        );
+        // NOTE: Check if there are any pending non-expired group invites for this email address:
+        const invitation = await GroupInvites.findOne({
+          where: {
+            id: token.id,
+            createdAt: { [Op.gt]: oneYearAgo },
+          },
+        });
+        if (invitation) {
+          const group = await Group.findByPk(invitation.GroupId);
+          if (group) {
+            const { added } = await Group.addOrUpdateGroupUser(
+              group,
+              user,
+              invitation.admin,
+              invitation.owner,
+              null,
+            );
+            if (added) {
+              addedToGroups.push(group);
+            }
+          }
+          await invitation.destroy();
         }
       }
+      if (addedToGroups.length && token.email === user.email) {
+        // NOTE: We can now confirm the users' email address, since they signed up via an email invite.
+        await user.update({ emailConfirmed: true });
+        sendEmailSuccess = await sendWelcomeEmailWithGroupsAdded(
+          user.email,
+          addedToGroups.map(({ groupName }) => groupName),
+        );
+      } else {
+        // NOTE Send a welcome email, with a requirement to validate the email address.
+        //  We won't send transactional emails until the address has been validated.
+        //  While the account is unvalidated, show a banner in the site, which allows to resend the validation email.
+        //  User alerts and group invitations would not be activated until the user has confirmed their email address.
+        sendEmailSuccess = await sendWelcomeEmailConfirmationEmail(
+          getEmailConfirmationToken(user.id, user.email),
+          user.email,
+        );
+      }
+      if (!sendEmailSuccess && config.productionEnv) {
+        // In this case, we don't want to create the user.
+        await user.destroy();
+        return next(
+          new FatalError("Failed to send welcome/email confirmation email."),
+        );
+      }
+
       const { refreshToken, apiToken } = await generateAuthTokensForUser(
-        models,
+        sequelize,
         user,
         request.headers["viewport"] as string,
         request.headers["user-agent"],
@@ -295,20 +306,6 @@ export default function (app: Application, baseUrl: string) {
       });
     },
   );
-
-  if (config.server.loggerLevel === "debug") {
-    app.post(
-      `${apiUrl}/get-email-confirmation-token`,
-      extractJwtAuthorizedUser,
-      async (request: Request, response: Response) => {
-        const user = await models.User.findByPk(response.locals.requestUser.id);
-        const token = getEmailConfirmationToken(user.id, user.email);
-        return successResponse(response, "Got email confirmation token.", {
-          token,
-        });
-      },
-    );
-  }
 
   /**
    * @api {patch} /api/v1/users Updates the authenticated user's details
@@ -329,25 +326,31 @@ export default function (app: Application, baseUrl: string) {
     apiUrl,
     extractJwtAuthorizedUser,
     validateFields([
-      // FIXME - When passing unknown parameters here, the error returned isn't very useful.
-      anyOf(
-        validNameOf(body("username")),
-        validNameOf(body("userName")),
-        body("email").isEmail(),
+      atLeastOneOf(
+        atMostOneOf(
+          deprecatedField(validNameOf(body("username"))),
+          validNameOf(body("userName")),
+        ),
+        emailOf(body("email")),
         validPasswordOf(body("password")),
         integerOf(body("endUserAgreement")),
         body("settings").custom(jsonSchemaOf(ApiUserSettingsSchema)),
       ),
     ]),
-    async (request: Request, Response: Response, next: NextFunction) => {
-      if (
-        request.body.email &&
-        !(await models.User.freeEmail(request.body.email))
-      ) {
+    async (request: Request, _response: Response, next: NextFunction) => {
+      if (request.body.email && !(await User.freeEmail(request.body.email))) {
         return next(
-          new ValidationError([
-            { msg: "Email address in use", location: "body", param: "email" },
-          ]),
+          new ValidationError({
+            message: "Email address in use",
+            value: request.body.email,
+            type: "field",
+            meta: {
+              location: "body",
+              path: "email",
+              req: request,
+              pathValues: [],
+            },
+          }),
         );
       } else {
         next();
@@ -356,31 +359,25 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       // map matchedData to db fields.
       const dataToUpdate = matchedData(request);
-      const requestUser = await models.User.findByPk(
-        response.locals.requestUser.id,
-      );
-      if (dataToUpdate.email) {
+      const requestUser = await User.findByPk(response.locals.requestUser.id);
+      if (dataToUpdate.email && dataToUpdate.email !== requestUser.email) {
         // If the user has changed their email, we'll need to send
         // another confirmation email.
         dataToUpdate.emailConfirmed = false;
-        if (
-          !request.headers.host.includes("browse.cacophony.org.nz") &&
-          !request.headers.host.includes("browse-test.cacophony.org.nz")
-        ) {
-          const token = getEmailConfirmationToken(
-            requestUser.id,
-            dataToUpdate.email,
+        const token = getEmailConfirmationToken(
+          requestUser.id,
+          dataToUpdate.email,
+        );
+        const emailSuccess = await sendChangedEmailConfirmationEmail(
+          token,
+          dataToUpdate.email,
+        );
+        if (!emailSuccess && config.productionEnv) {
+          return next(
+            new FatalError(
+              "Failed to send email confirmation email, user details not updated.",
+            ),
           );
-          const emailSuccess = await sendChangedEmailConfirmationEmail(
-            request.headers.host,
-            token,
-            dataToUpdate.email,
-          );
-          if (!emailSuccess && config.productionEnv) {
-            return next(
-              new FatalError("Failed to send email confirmation email."),
-            );
-          }
         }
       }
       await requestUser.update(dataToUpdate);
@@ -405,10 +402,13 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       query("view-mode").optional().equals("user"),
-      anyOf(param("userEmailOrId").isEmail(), idOf(param("userEmailOrId"))),
+      exactlyOneOf(
+        emailOf(param("userEmailOrId")),
+        idOf(param("userEmailOrId")),
+      ),
     ]),
     fetchUnauthorizedRequiredUserByEmailOrId(param("userEmailOrId")),
-    (request: Request, response: Response, next: NextFunction) => {
+    (_request: Request, response: Response, next: NextFunction) => {
       if (
         (response.locals.requestUser.hasGlobalRead() &&
           response.locals.viewAsSuperUser) ||
@@ -424,7 +424,7 @@ export default function (app: Application, baseUrl: string) {
         );
       }
     },
-    async (request, response) => {
+    async (_request, response) => {
       return successResponse(response, {
         userData: mapUser(response.locals.user),
       });
@@ -450,7 +450,7 @@ export default function (app: Application, baseUrl: string) {
   app.get(`${baseUrl}/listUsers`, ...listUsersOptions);
 
   const endUserAgreementOptions = [
-    async (request, response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, { euaVersion: config.euaVersion });
     },
   ];
@@ -484,7 +484,7 @@ export default function (app: Application, baseUrl: string) {
     // TODO(docs) - This is just for test/debug purposes to increment the EUA version and test that the UI prompts.
     app.post(
       `${baseUrl}/end-user-agreement/debug-increment`,
-      async (request: Request, response: Response) => {
+      async (_request: Request, response: Response) => {
         config.euaVersion++;
         return successResponse(response, "Incremented EUA version", {
           euaVersion: config.euaVersion,
@@ -495,7 +495,7 @@ export default function (app: Application, baseUrl: string) {
     // TODO(docs) - This is just for test/debug purposes to increment the CW version and test that the UI prompts to refresh.
     app.post(
       `${baseUrl}/cacophony-web/debug-increment`,
-      async (request: Request, response: Response) => {
+      async (_request: Request, response: Response) => {
         CACOPHONY_WEB_VERSION.version += ".1";
         return successResponse(response, "Incremented Cacophony web version");
       },
@@ -506,15 +506,15 @@ export default function (app: Application, baseUrl: string) {
     validateFields([body("token").exists(), validPasswordOf(body("password"))]),
     fetchUnauthorizedRequiredUserByResetToken(body("token")),
     async (request: Request, response: Response, next: NextFunction) => {
-      if (
-        response.locals.user.password !== response.locals.resetInfo.password
-      ) {
+      const user = response.locals.user as User;
+      if (user.password !== response.locals.resetInfo.password) {
         return next(
           new UnprocessableError("Your password has already been changed"),
         );
       }
-      const newPasswordIsTheSameAsOld =
-        await response.locals.user.comparePassword(request.body.password);
+      const newPasswordIsTheSameAsOld = await user.comparePassword(
+        request.body.password,
+      );
       if (newPasswordIsTheSameAsOld) {
         return next(
           new UnprocessableError(
@@ -522,7 +522,7 @@ export default function (app: Application, baseUrl: string) {
           ),
         );
       }
-      const result = await response.locals.user.update({
+      const result = await user.update({
         password: request.body.password,
       });
       if (!result) {
@@ -531,15 +531,15 @@ export default function (app: Application, baseUrl: string) {
         );
       }
       const { refreshToken, apiToken } = await generateAuthTokensForUser(
-        models,
-        response.locals.user,
+        sequelize,
+        user,
         request.headers["viewport"] as string,
         request.headers["user-agent"],
       );
       return successResponse(response, {
         token: apiToken,
         refreshToken,
-        userData: mapUser(response.locals.user),
+        userData: mapUser(user),
       });
     },
   ];
@@ -573,7 +573,7 @@ export default function (app: Application, baseUrl: string) {
     validateFields([body("inviteToken").exists()]),
     extractJWTInfo(body("inviteToken")),
     // Get a token with user, and group id to add to.
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (_request: Request, response: Response, next: NextFunction) => {
       const {
         id,
         groupId,
@@ -581,9 +581,9 @@ export default function (app: Application, baseUrl: string) {
         inviterId,
       } = response.locals.tokenInfo;
       const [user, group, inviter] = await Promise.all([
-        models.User.findByPk(id),
-        models.Group.findByPk(groupId),
-        models.User.findByPk(inviterId),
+        User.findByPk(id),
+        Group.findByPk(groupId),
+        User.findByPk(inviterId),
       ]);
       if (!inviter) {
         return next(new UnprocessableError("Inviting user no longer exists"));
@@ -605,18 +605,26 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/groups-for-admin-user/:emailAddress`,
     extractJwtAuthorizedUser,
-    validateFields([param("emailAddress").isEmail()]),
+    validateFields([emailOf(param("emailAddress"))]),
     fetchUnauthorizedRequiredUserByEmailOrId(param("emailAddress")),
-    (request: Request, response: Response, next: NextFunction) => {
+    (_request: Request, response: Response, next: NextFunction) => {
       // This is a little bit hacky, but is safe in this context.
       response.locals.requestUser = response.locals.user;
       return next();
     },
     fetchAdminAuthorizedRequiredGroups,
-    async (request: Request, response: Response) => {
-      const groups: ApiGroupResponse[] = response.locals.groups
-        .map(({ id, groupName }) => ({ id, groupName, admin: false }))
-        .filter(({ pending }) => pending === undefined);
+    async (_request: Request, response: Response) => {
+      const groups: ApiGroupResponse[] = (
+        response.locals.groups as Group[]
+      ).map(({ id, groupName }) => ({
+        id,
+        groupName,
+        admin: false,
+        owner: false,
+      }));
+      // FIXME: Did we mean to actually filter out pending users etc?  If so, then we need to type `response.locals.groups`
+      //  properly
+      //.filter(({ pending }) => pending === undefined);
       return successResponse(response, "Got groups for admin user", {
         groups,
       });
@@ -626,18 +634,26 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/groups-for-user/:emailAddress`,
     extractJwtAuthorisedSuperAdminUser,
-    validateFields([param("emailAddress").isEmail()]),
+    validateFields([emailOf(param("emailAddress"))]),
     fetchUnauthorizedRequiredUserByEmailOrId(param("emailAddress")),
-    (request: Request, response: Response, next: NextFunction) => {
+    (_request: Request, response: Response, next: NextFunction) => {
       // This is a little bit hacky, but is safe in this context.
       response.locals.requestUser = response.locals.user;
       return next();
     },
     fetchAuthorizedRequiredGroups,
-    async (request: Request, response: Response) => {
-      const groups: ApiGroupResponse[] = response.locals.groups
-        .map(({ id, groupName }) => ({ id, groupName, admin: false }))
-        .filter(({ pending }) => pending === undefined);
+    async (_request: Request, response: Response) => {
+      const groups: ApiGroupResponse[] = (
+        response.locals.groups as Group[]
+      ).map(({ id, groupName }) => ({
+        id,
+        groupName,
+        admin: false,
+        owner: false,
+      }));
+      // FIXME: Did we mean to actually filter out pending users etc?  If so, then we need to type `response.locals.groups`
+      //  properly
+      //.filter(({ pending }) => pending === undefined);
       return successResponse(response, "Got groups for user", {
         groups,
       });
@@ -645,22 +661,35 @@ export default function (app: Application, baseUrl: string) {
   );
 
   // Shared middleware to determine email recipient (admin or owner)
-  const determineEmailRecipient = async (request: Request, response: Response, next: NextFunction) => {
+  const determineEmailRecipient = async (
+    request: Request,
+    response: Response,
+    next: NextFunction,
+  ) => {
     if (!request.body.groupAdminEmail) {
       const group = response.locals.group as Group;
       if (!group) {
-        return next(new ClientError("Group not found", HttpStatusCode.NotFound));
+        return next(
+          new ClientError("Group not found", HttpStatusCode.NotFound),
+        );
       }
       // Find the owner of the group
-      const groupUserOwner = await models.GroupUsers.findOne({
+      const groupUserOwner = await GroupUsers.findOne({
         where: { GroupId: group.id, owner: true, removedAt: { [Op.eq]: null } },
       });
       if (!groupUserOwner) {
-        return next(new ClientError("Group owner not found", HttpStatusCode.NotFound));
+        return next(
+          new ClientError("Group owner not found", HttpStatusCode.NotFound),
+        );
       }
-      const owner = await models.User.findByPk(groupUserOwner.UserId);
+      const owner = await User.findByPk(groupUserOwner.UserId);
       if (!owner) {
-        return next(new ClientError("Group owner user record not found", HttpStatusCode.NotFound));
+        return next(
+          new ClientError(
+            "Group owner user record not found",
+            HttpStatusCode.NotFound,
+          ),
+        );
       }
       response.locals.requestedOfUser = owner;
     } else {
@@ -671,62 +700,81 @@ export default function (app: Application, baseUrl: string) {
   };
 
   // Shared middleware to send group membership request
-  const sendGroupMembershipRequest = (contextMessage: string) => async (request: Request, response: Response, next: NextFunction) => {
-    const requestingUserPartial = response.locals.requestUser;
-    const emailRecipientUser = response.locals.requestedOfUser as User;
-    const group = response.locals.group as Group;
+  const sendGroupMembershipRequest =
+    (contextMessage: string) =>
+    async (request: Request, response: Response, next: NextFunction) => {
+      const requestingUserPartial = response.locals.requestUser;
+      const emailRecipientUser = response.locals.requestedOfUser as User;
+      const group = response.locals.group as Group;
 
-    if (!emailRecipientUser) {
-      return next(new ClientError("Target recipient for the email could not be determined.", HttpStatusCode.Unprocessable));
-    }
-    if (!requestingUserPartial) {
-      return next(new ClientError("Requesting user could not be determined.", HttpStatusCode.Unprocessable));
-    }
+      if (!emailRecipientUser) {
+        return next(
+          new ClientError(
+            "Target recipient for the email could not be determined.",
+            HttpStatusCode.Unprocessable,
+          ),
+        );
+      }
+      if (!requestingUserPartial) {
+        return next(
+          new ClientError(
+            "Requesting user could not be determined.",
+            HttpStatusCode.Unprocessable,
+          ),
+        );
+      }
 
-    // Fetch the full User object from the database
-    const requestingUser = await models.User.findByPk(requestingUserPartial.id);
-    if (!requestingUser) {
-      return next(new ClientError("Requesting user not found in database.", HttpStatusCode.Unprocessable));
-    }
+      // Fetch the full User object from the database
+      const requestingUser = await User.findByPk(requestingUserPartial.id);
+      if (!requestingUser) {
+        return next(
+          new ClientError(
+            "Requesting user not found in database.",
+            HttpStatusCode.Unprocessable,
+          ),
+        );
+      }
 
-    if (!emailRecipientUser.emailConfirmed || !requestingUser.emailConfirmed) {
-      return next(
-        new ClientError(
-          "Email recipient and/or requesting user has not activated their account",
-        ),
+      if (
+        !emailRecipientUser.emailConfirmed ||
+        !requestingUser.emailConfirmed
+      ) {
+        return next(
+          new ClientError(
+            "Email recipient and/or requesting user has not activated their account",
+          ),
+        );
+      }
+
+      await Group.addOrUpdateGroupUser(
+        group,
+        requestingUser,
+        false,
+        false,
+        "requested",
       );
-    }
 
-    await models.Group.addOrUpdateGroupUser(
-      group,
-      requestingUser,
-      false,
-      false,
-      "requested",
-    );
-
-    const acceptToGroupRequestToken = getJoinGroupRequestToken(
-      requestingUser.id,
-      group.id,
-    );
-
-    const sendSuccess = await sendGroupMembershipRequestEmail(
-      request.headers.host,
-      acceptToGroupRequestToken,
-      requestingUser.email,
-      requestingUser.userName,
-      group.groupName,
-      emailRecipientUser.email,
-    );
-
-    if (sendSuccess) {
-      return successResponse(response, contextMessage);
-    } else {
-      return next(
-        new FatalError("Failed sending membership request email to user"),
+      const acceptToGroupRequestToken = getJoinGroupRequestToken(
+        requestingUser.id,
+        group.id,
       );
-    }
-  };
+
+      const sendSuccess = await sendGroupMembershipRequestEmail(
+        acceptToGroupRequestToken,
+        requestingUser.email,
+        requestingUser.userName,
+        group.groupName,
+        emailRecipientUser.email,
+      );
+
+      if (sendSuccess) {
+        return successResponse(response, contextMessage);
+      } else {
+        return next(
+          new FatalError("Failed sending membership request email to user"),
+        );
+      }
+    };
 
   /**
    * @api {post} /api/v1/users/request-group-membership Request access to a group
@@ -751,7 +799,9 @@ export default function (app: Application, baseUrl: string) {
     ]),
     async (request: Request, response: Response, next: NextFunction) => {
       if (request.body.groupAdminEmail) {
-        return fetchUnauthorizedRequiredUserByEmailOrId(body("groupAdminEmail"))(request, response, next);
+        return fetchUnauthorizedRequiredUserByEmailOrId(
+          body("groupAdminEmail"),
+        )(request, response, next);
       } else {
         return next();
       }
@@ -790,52 +840,79 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       // Validate that either deviceId or (deviceName + groupName) is provided
       const hasDeviceId = request.body.deviceId;
-      const hasDeviceNameAndGroup = request.body.deviceName && request.body.groupName;
+      const hasDeviceNameAndGroup =
+        request.body.deviceName && request.body.groupName;
 
       if (!hasDeviceId && !hasDeviceNameAndGroup) {
-        return next(new ClientError("Either deviceId OR both deviceName and groupName must be provided", HttpStatusCode.BadRequest));
+        return next(
+          new ClientError(
+            "Either deviceId OR both deviceName and groupName must be provided",
+            HttpStatusCode.BadRequest,
+          ),
+        );
       }
 
       if (hasDeviceId && hasDeviceNameAndGroup) {
-        return next(new ClientError("Provide either deviceId OR deviceName+groupName, not both", HttpStatusCode.BadRequest));
+        return next(
+          new ClientError(
+            "Provide either deviceId OR deviceName+groupName, not both",
+            HttpStatusCode.BadRequest,
+          ),
+        );
       }
 
-      let device;
+      let device: Device;
 
       if (hasDeviceId) {
         // Fetch device by ID
-        device = await models.Device.findByPk(request.body.deviceId, {
-          include: [{ model: models.Group }],
+        device = await Device.findByPk(request.body.deviceId, {
+          include: [{ model: Group }],
         });
 
         if (!device) {
-          return next(new ClientError(`Device with ID '${request.body.deviceId}' not found`, HttpStatusCode.NotFound));
+          return next(
+            new ClientError(
+              `Device with ID '${request.body.deviceId}' not found`,
+              HttpStatusCode.NotFound,
+            ),
+          );
         }
       } else {
         // Fetch device by name and group name
-        device = await models.Device.findOne({
+        device = await Device.findOne({
           where: { deviceName: request.body.deviceName },
-          include: [{
-            model: models.Group,
-            where: { groupName: request.body.groupName },
-            required: true,
-          }],
+          include: [
+            {
+              model: Group,
+              where: { groupName: request.body.groupName },
+              required: true,
+            },
+          ],
         });
 
         if (!device) {
-          return next(new ClientError(`Device '${request.body.deviceName}' not found in group '${request.body.groupName}'`, HttpStatusCode.NotFound));
+          return next(
+            new ClientError(
+              `Device '${request.body.deviceName}' not found in group '${request.body.groupName}'`,
+              HttpStatusCode.NotFound,
+            ),
+          );
         }
       }
 
       if (!device.Group) {
-        return next(new ClientError("Device group not found", HttpStatusCode.NotFound));
+        return next(
+          new ClientError("Device group not found", HttpStatusCode.NotFound),
+        );
       }
 
       response.locals.device = device;
       response.locals.group = device.Group;
 
       if (request.body.groupAdminEmail) {
-        return fetchUnauthorizedRequiredUserByEmailOrId(body("groupAdminEmail"))(request, response, next);
+        return fetchUnauthorizedRequiredUserByEmailOrId(
+          body("groupAdminEmail"),
+        )(request, response, next);
       } else {
         return next();
       }
@@ -843,7 +920,9 @@ export default function (app: Application, baseUrl: string) {
     determineEmailRecipient,
     async (request: Request, response: Response, next: NextFunction) => {
       const device = response.locals.device as Device;
-      return sendGroupMembershipRequest(`Sent device access request for device '${device.deviceName}' to user`)(request, response, next);
+      return sendGroupMembershipRequest(
+        `Sent device access request for device '${device.deviceName}' to user`,
+      )(request, response, next);
     },
   );
 
@@ -866,7 +945,7 @@ export default function (app: Application, baseUrl: string) {
       if (_type !== "join-group") {
         return next(new AuthorizationError("Invalid token type"));
       }
-      const existingUserOfGroup = await models.GroupUsers.findOne({
+      const existingUserOfGroup = await GroupUsers.findOne({
         where: {
           UserId: id,
           GroupId: response.locals.group.id,
@@ -877,20 +956,20 @@ export default function (app: Application, baseUrl: string) {
       if (existingUserOfGroup) {
         return next(new UnprocessableError("User already belongs to group"));
       }
-      const userToGrantMembershipFor = await models.User.findByPk(id);
+      const userToGrantMembershipFor = await User.findByPk(id);
       if (!userToGrantMembershipFor) {
         return next(new UnprocessableError("User no longer exists"));
       }
       const asAdmin = request.body.admin;
       const asOwner = request.body.owner;
-      const permissions = {};
+      const permissions: { owner?: boolean; admin?: boolean } = {};
       if (asAdmin) {
-        (permissions as any).admin = true;
+        permissions.admin = true;
       }
       if (asOwner) {
-        (permissions as any).owner = true;
+        permissions.owner = true;
       }
-      await models.Group.addOrUpdateGroupUser(
+      await Group.addOrUpdateGroupUser(
         response.locals.group,
         userToGrantMembershipFor,
         asAdmin,
@@ -899,7 +978,6 @@ export default function (app: Application, baseUrl: string) {
       );
       if (userToGrantMembershipFor.emailConfirmed) {
         await sendAddedToGroupNotificationEmail(
-          request.headers.host,
           userToGrantMembershipFor.email,
           response.locals.group.groupName,
           permissions,

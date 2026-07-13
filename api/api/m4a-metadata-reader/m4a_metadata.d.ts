@@ -1,4 +1,5 @@
-/* tslint:disable */
+import { ReadableStreamDefaultReader } from "node:stream/web";
+
 /* eslint-disable */
 /**
  */
@@ -12,9 +13,9 @@ export class M4aReaderContext {
     stream: ReadableStreamDefaultReader
   ): M4aReaderContext;
   /**
-   * @returns {Promise<any>}
+   * @returns {Promise<object | unknown>}
    */
-  getMetadata(): Promise<any>;
+  getMetadata(): Promise<object | unknown>;
 }
 
 export type InitInput =

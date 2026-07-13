@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RouteParams } from "vue-router";
+import type { RouteLocationRaw, RouteParams } from "vue-router";
 import { useRoute } from "vue-router";
 import {
   computed,
@@ -9,6 +9,7 @@ import {
   onMounted,
   type Ref,
   ref,
+  useTemplateRef,
   watch,
 } from "vue";
 import type {
@@ -23,70 +24,71 @@ import {
   formatDuration,
   timeAtLocation,
   timezoneForLatLng,
+  visitClassificationLabel,
   visitDuration,
 } from "@models/visitsUtils";
-import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import router from "@/router";
-import {
-  deleteRecording as apiDeleteRecording,
-  getRecordingById,
-} from "@api/Recording";
 import type {
-  ApiVisitResponse,
-  VisitRecordingTag,
-} from "@typedefs/api/monitoring";
-import MapWithPoints from "@/components/MapWithPoints.vue";
+  ApiAudioRecordingMetadataResponse,
+  ApiAudioRecordingResponse,
+  ApiRecordingResponse,
+  ApiThermalRecordingMetadataResponse,
+  ApiThermalRecordingResponse,
+} from "@typedefs/api/recording";
+import router from "@/router";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { DateTime } from "luxon";
-import type { NamedPoint } from "@models/mapUtils";
 import CptvPlayer from "@/components/cptv-player/CptvPlayer.vue";
 import type { ApiTrackResponse } from "@typedefs/api/track";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import { useElementSize, useMediaQuery } from "@vueuse/core";
 import RecordingViewActionButtons from "@/components/RecordingViewActionButtons.vue";
-import { displayLabelForClassificationLabel } from "@api/Classifications";
-import type { LoggedInUser, LoggedInUserAuth } from "@models/LoggedInUser";
+import { displayLabelForClassificationLabel } from "@api/classificationsUtils.ts";
+import type { LoggedInUser } from "@models/LoggedInUser";
 import type { ApiHumanTrackTagResponse } from "@typedefs/api/trackTag";
-import { API_ROOT } from "@api/root";
+import { ClientApi } from "@/api";
 import {
   activeLocations,
   currentUser as currentUserInfo,
-  currentUserCreds as currentUserCredentials,
   latLngForActiveLocations,
 } from "@models/provides";
-import type { LoadedResource } from "@api/types";
+import { DEFAULT_AUTH_ID, type LoadedResource } from "@apiClient/types";
 import {
   RecordingProcessingState,
+  RecordingType as ConcreteRecordingType,
   RecordingType,
 } from "@typedefs/api/consts.ts";
-import { hasReferenceImageForDeviceAtTime } from "@api/Device.ts";
 import sunCalc from "suncalc";
-import { urlNormaliseName } from "@/utils.ts";
+import { capitalize } from "@/utils.ts";
 import SpectrogramViewer from "@/components/SpectrogramViewer.vue";
-import RecordingViewNotes from "@/components/RecordingViewNotes.vue";
-import RecordingViewLabels from "@/components/RecordingViewLabels.vue";
-import RecordingViewTracks from "@/components/RecordingViewTracks.vue";
-import { maybeRefreshStaleCredentials } from "@api/fetch.ts";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import RecordingViewMetadata from "@/components/RecordingViewMetadata.vue";
+import RecordingViewTabs from "@/components/RecordingViewTabs.vue";
+import { BModal, BTooltip } from "bootstrap-vue-next";
+import LocationName from "@/components/LocationName.vue";
+import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
 
 const selectedVisit = inject(
   "currentlySelectedVisit",
-) as Ref<ApiVisitResponse | null>;
+) as Ref<ApiStaticVisitResponse | null>;
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
-const visitsContext = inject("visitsContext") as Ref<ApiVisitResponse[] | null>;
-const currentUserCreds = inject(
-  currentUserCredentials,
-) as Ref<LoggedInUserAuth | null>;
-
+const visitsContext = inject("visitsContext") as Ref<
+  ApiStaticVisitResponse[] | null
+>;
 const route = useRoute();
 const emit = defineEmits<{
   (e: "close"): void;
   (e: "start-blocking-work"): void;
   (e: "end-blocking-work"): void;
   (e: "loaded-recording", type: RecordingType): void;
-  (e: "recording-updated", recordingId: RecordingId, action: string): void;
+  (
+    e: "recording-updated",
+    recordingId: RecordingId,
+    action: "deleted" | "updated",
+    newClassification?: string,
+    oldClassification?: string,
+  ): void;
 }>();
 const inlineModalEl = ref<HTMLDivElement>();
-
 const { height: inlineModalHeight } = useElementSize(inlineModalEl);
 watch(inlineModalHeight, (newHeight) => {
   if (inlineModalEl.value) {
@@ -151,11 +153,6 @@ const userSelectedTrack = ref<ApiTrackResponse | undefined>(undefined);
 const currentLocations = ref<ApiLocationResponse[] | null>(locations.value);
 const visitLabel = ref<string>((route.params.visitLabel as string) || "");
 
-const deviceNameSpan = ref<HTMLSpanElement>();
-const stationNameSpan = ref<HTMLSpanElement>();
-const stationNameIsTruncated = ref<boolean>(false);
-const deviceNameIsTruncated = ref<boolean>(false);
-
 const recordingIsProcessing = computed<boolean>(() => {
   if (recording.value) {
     return ![
@@ -214,25 +211,25 @@ watch(
   },
 );
 
-const nextVisit = computed<ApiVisitResponse | null>(() => {
+const nextVisit = computed<ApiStaticVisitResponse | null>(() => {
   return (
     (currentVisitIndex.value !== null &&
       visitsContext.value &&
       currentVisitIndex.value !== 0 &&
-      (visitsContext.value as ApiVisitResponse[])[
+      (visitsContext.value as ApiStaticVisitResponse[])[
         currentVisitIndex.value - 1
       ]) ||
     null
   );
 });
 
-const previousVisit = computed<ApiVisitResponse | null>(() => {
+const previousVisit = computed<ApiStaticVisitResponse | null>(() => {
   return (
     (currentVisitIndex.value !== null &&
       visitsContext.value &&
       (currentVisitIndex.value as number) <
-        (visitsContext.value as ApiVisitResponse[]).length &&
-      (visitsContext.value as ApiVisitResponse[])[
+        (visitsContext.value as ApiStaticVisitResponse[]).length &&
+      (visitsContext.value as ApiStaticVisitResponse[])[
         currentVisitIndex.value + 1
       ]) ||
     null
@@ -308,13 +305,22 @@ const isInVisitContext = computed<boolean>(() => {
 const currentVisitIndex = computed<number | null>(() => {
   if (visitsContext.value && selectedVisit.value) {
     const currentVisitIndex = (
-      visitsContext.value as ApiVisitResponse[]
-    ).indexOf(selectedVisit.value as ApiVisitResponse);
+      visitsContext.value as ApiStaticVisitResponse[]
+    ).indexOf(selectedVisit.value as ApiStaticVisitResponse);
     if (currentVisitIndex !== -1) {
       return currentVisitIndex;
     }
   }
   return null;
+});
+
+const hasRecordingsOrVisitsInContext = computed<boolean>(() => {
+  return (
+    hasPreviousRecording.value ||
+    hasPreviousVisit.value ||
+    hasNextRecording.value ||
+    hasNextVisit.value
+  );
 });
 
 const hasNextRecording = computed<boolean>(() => {
@@ -350,7 +356,7 @@ const gotoNextRecording = async () => {
 const gotoNextVisit = async () => {
   if (nextVisit.value) {
     selectedVisit.value = nextVisit.value;
-    return gotoVisit(selectedVisit.value as ApiVisitResponse, true);
+    return gotoVisit(selectedVisit.value as ApiStaticVisitResponse, true);
   }
 };
 
@@ -363,7 +369,6 @@ const gotoPreviousRecordingOrVisit = async () => {
 };
 
 const gotoRecording = async (recordingId: RecordingId) => {
-  console.log("gotoRecording", recordingId);
   const params: RouteParams = {
     ...route.params,
     currentRecordingId: recordingId.toString(),
@@ -383,21 +388,25 @@ const gotoRecording = async (recordingId: RecordingId) => {
   });
 };
 
-const gotoVisit = async (visit: ApiVisitResponse, startOfVisit: boolean) => {
+const gotoVisit = async (
+  visit: ApiStaticVisitResponse,
+  startOfVisit: boolean,
+) => {
   let recId;
   if (!startOfVisit) {
-    recId = visit.recordings[visit.recordings.length - 1].recId;
+    recId = visit.recordingIds[visit.recordingIds.length - 1];
   } else {
-    recId = visit.recordings[0].recId;
+    recId = visit.recordingIds[0];
   }
-  const recordingIds = visit.recordings.map(({ recId }) => recId).join(",");
+  const recordingIds = visit.recordingIds.join(",");
   const params: RouteParams = {
     ...route.params,
     currentRecordingId: recId.toString(),
     recordingIds,
   };
-  if (visit.classification) {
-    params.visitLabel = visit.classification;
+  const visitLabel = visitClassificationLabel(visit);
+  if (visitLabel) {
+    params.visitLabel = visitLabel;
   }
   delete params.trackId;
   delete params.detail;
@@ -423,182 +432,15 @@ const gotoPreviousRecording = async () => {
 const gotoPreviousVisit = async () => {
   if (previousVisit.value) {
     selectedVisit.value = previousVisit.value;
-    return gotoVisit(selectedVisit.value as ApiVisitResponse, false);
+    return gotoVisit(selectedVisit.value as ApiStaticVisitResponse, false);
   }
-};
-
-const visitForRecording = computed<string>(() => {
-  if (recording.value) {
-    const humanTags: Record<string, number> = {};
-    const aiTags: Record<string, number> = {};
-    for (const track of (recording.value as ApiRecordingResponse).tracks) {
-      for (const tag of track.tags) {
-        if (!tag.automatic) {
-          humanTags[tag.what] = humanTags[tag.what] || 0;
-          humanTags[tag.what] += 1;
-        } else {
-          aiTags[tag.what] = aiTags[tag.what] || 0;
-          aiTags[tag.what] += 1;
-        }
-      }
-    }
-
-    const humanTagCounts = Object.entries(humanTags);
-    if (humanTagCounts.length) {
-      let bestHumanTagCount = 0;
-      let bestHumanTag;
-      // If there's anything human tagged that's not false-positive or unidentified, use that first.
-      for (const [tag, count] of humanTagCounts.filter(
-        ([tag, _]) => !["false-positive", "unidentified"].includes(tag),
-      )) {
-        if (count > bestHumanTagCount) {
-          bestHumanTagCount = count;
-          bestHumanTag = tag;
-        }
-      }
-      if (!bestHumanTag) {
-        for (const [tag, count] of humanTagCounts) {
-          if (count > bestHumanTagCount) {
-            bestHumanTagCount = count;
-            bestHumanTag = tag;
-          }
-        }
-      }
-      return (
-        (bestHumanTag &&
-          displayLabelForClassificationLabel(bestHumanTag, false)) ||
-        ""
-      );
-    } else {
-      const aiTagCounts = Object.entries(aiTags);
-      if (aiTagCounts.length) {
-        let bestAiTagCount = 0;
-        let bestAiTag;
-
-        // TODO: If the counts are the same, prefer non-other based tags.
-
-        for (const [tag, count] of aiTagCounts) {
-          if (count > bestAiTagCount) {
-            bestAiTagCount = count;
-            bestAiTag = tag;
-          }
-        }
-        return (
-          (bestAiTag && displayLabelForClassificationLabel(bestAiTag, true)) ||
-          ""
-        );
-      }
-    }
-    return "None";
-  }
-  return "";
-});
-
-const negativeThingTags = [
-  "part",
-  "poor tracking",
-  "unidentified",
-  "unknown",
-  "false-positive",
-];
-
-// TODO - Handle previous visits
-const recalculateCurrentVisit = async (
-  track: ApiTrackResponse,
-  addedTag?: ApiHumanTrackTagResponse,
-  removedTag?: string,
-) => {
-  if (recording.value && isInVisitContext.value) {
-    // When a tag for the current visit changes, we need to recalculate visits.  Should we tell the parent to do this,
-    // or just do it ourselves and get out of sync with the parent?  I'm leaning towards telling the parent.
-    const recordingId = (recording.value as ApiRecordingResponse).id;
-    // Find the visit:
-    const targetVisit =
-      visitsContext.value &&
-      (visitsContext.value as ApiVisitResponse[]).find((visit) =>
-        visit.recordings.find(({ recId }) => recId === recordingId),
-      );
-    if (targetVisit) {
-      const targetVisitRecording = targetVisit.recordings.find(
-        ({ recId }) => recId === recordingId,
-      ) as { recId: number; start: string; tracks: VisitRecordingTag[] };
-      const targetTrack = targetVisitRecording.tracks.find(
-        ({ id }) => id === track.id,
-      );
-      if (targetTrack) {
-        if (removedTag) {
-          // If we removed the last human tag from the visit, then the visit classification will fall back to the best
-          // AI tag.
-          targetTrack.isAITagged = true;
-          targetTrack.tag = null;
-          // If there are still user tags, then the visit classification becomes the next user tag.
-        } else if (addedTag) {
-          targetTrack.isAITagged = false;
-          targetTrack.tag = addedTag.what;
-        }
-        await mutateCurrentVisit(targetVisit);
-      } else {
-        console.warn("failed to find target track in visit");
-      }
-    } else {
-      console.warn("failed to find visit context to update");
-    }
-  }
-};
-
-const mutateCurrentVisit = async (targetVisit: ApiVisitResponse) => {
-  // Now, recalculate the visit:
-  // If there are any human tags, pick the most numerous one as the classification,
-  // Unless it is a false-positive or similar, but only if there is another animal tag
-  const humanTags: Record<string, number> = {};
-  for (const recording of targetVisit.recordings) {
-    for (const track of recording.tracks) {
-      if (!track.isAITagged && track.tag !== null) {
-        humanTags[track.tag as string] = humanTags[track.tag as string] || 0;
-        humanTags[track.tag as string] += 1;
-      }
-    }
-  }
-
-  const hasNonFalsePositiveTag =
-    Object.keys(humanTags).filter((tag) => !negativeThingTags.includes(tag))
-      .length !== 0;
-  const humanTagCounts = Object.entries(humanTags);
-  if (humanTagCounts.length) {
-    let bestHumanTagCount = 0;
-    let bestHumanTag;
-    for (const [tag, count] of humanTagCounts) {
-      if (
-        (hasNonFalsePositiveTag && !negativeThingTags.includes(tag)) ||
-        !hasNonFalsePositiveTag
-      ) {
-        if (count > bestHumanTagCount) {
-          bestHumanTagCount = count;
-          bestHumanTag = tag;
-        }
-      }
-    }
-    targetVisit.classification = bestHumanTag;
-    targetVisit.classFromUserTag = true;
-  } else {
-    // If there are no human tags, pick the most pre-calculated AI one.
-    targetVisit.classification = targetVisit.classificationAi;
-    targetVisit.classFromUserTag = false;
-  }
-  const params = {
-    ...route.params,
-    visitLabel: targetVisit.classification,
-  };
-  await router.replace({
-    name: route.name as string,
-    params,
-    query: route.query,
-  });
 };
 
 const trackRemoved = ({ trackId }: { trackId: TrackId }) => {
   if (recording.value) {
-    const index = recording.value.tracks.findIndex(({ id }) => id === trackId);
+    const index = recording.value.tracks.findIndex(
+      ({ id }: { id: TrackId }) => id === trackId,
+    );
     recording.value.tracks.splice(index, 1);
     if (currentTrack.value && currentTrack.value.id === trackId) {
       currentTrack.value = undefined;
@@ -638,12 +480,16 @@ const trackTagChanged = async ({
       trackToPatch.tags = [...track.tags];
       if (action === "add") {
         const changedTag = trackToPatch.tags.find(
-          ({ what, userId }) => what === tag && userId === currentUser.value?.id,
+          ({ what, userId }) =>
+            what === tag && userId === currentUser.value?.id,
         );
         if (changedTag) {
-          await recalculateCurrentVisit(
-            track,
-            changedTag as ApiHumanTrackTagResponse,
+          emit(
+            "recording-updated",
+            recording.value.id,
+            "updated",
+            tag,
+            changedTag.what,
           );
         } else {
           console.error("Failed to find changed tag", tag);
@@ -652,7 +498,13 @@ const trackTagChanged = async ({
           await selectedTrack(-1, true);
         }
       } else if (action === "remove") {
-        await recalculateCurrentVisit(track, undefined, tag);
+        emit(
+          "recording-updated",
+          recording.value.id,
+          "updated",
+          undefined,
+          tag,
+        );
       }
       if (!isInVisitContext.value) {
         updatedRecording(recording.value as ApiRecordingResponse);
@@ -681,6 +533,11 @@ const removedRecordingLabel = (labelId: TagId) => {
   }
 };
 
+const inTextEditMode = ref<boolean>(false);
+const textEditModeChanged = (enabled: boolean) => {
+  inTextEditMode.value = enabled;
+};
+
 const locationContext: ComputedRef<LatLng> | undefined = inject(
   latLngForActiveLocations,
 );
@@ -690,43 +547,6 @@ const isInGreaterVisitContext = computed<boolean>(() => {
 });
 
 const recording = ref<LoadedResource<ApiRecordingResponse>>(null);
-
-const tracks = computed<ApiTrackResponse[]>(() => {
-  if (recording.value) {
-    return (recording.value as ApiRecordingResponse).tracks;
-  }
-  return [];
-});
-
-const tags = computed<ApiRecordingTagResponse[]>(() => {
-  if (recording.value) {
-    return (recording.value as ApiRecordingResponse).tags.filter(
-      (tag) => tag.detail !== "note",
-    );
-  }
-  return [];
-});
-
-const notes = computed<ApiRecordingTagResponse[]>(() => {
-  if (recording.value) {
-    return (recording.value as ApiRecordingResponse).tags.filter(
-      (tag) => tag.detail === "note",
-    );
-  }
-  return [];
-});
-
-const checkNameTruncations = () => {
-  stationNameIsTruncated.value =
-    (stationNameSpan.value &&
-      stationNameSpan.value?.offsetWidth <
-        stationNameSpan.value?.scrollWidth) ||
-    false;
-  deviceNameIsTruncated.value =
-    (deviceNameSpan.value &&
-      deviceNameSpan.value?.offsetWidth < deviceNameSpan.value?.scrollWidth) ||
-    false;
-};
 
 interface Timespan {
   fromDateTime: Date;
@@ -751,11 +571,13 @@ const checkReferencePhotoAtTime = async (deviceId: DeviceId, atTime: Date) => {
     }
   }
 
-  const hasReferenceResponse = await hasReferenceImageForDeviceAtTime(
-    deviceId,
-    atTime,
-    true,
-  );
+  // FIXME: We'd like a way of cancelling this request if we navigate to another device.
+  const hasReferenceResponse =
+    await ClientApi.Devices.hasReferenceImageForDeviceAtTime(
+      deviceId,
+      atTime,
+      true,
+    );
   if (
     // We know the earliest time for the reference image, and the location.
     // We could infer that later recordings for this device at the exact same location
@@ -796,23 +618,49 @@ const isNightTime = (date: Date, location: LatLng): boolean => {
 };
 
 const loadRecording = async () => {
+  // Reset scroll offset when new recording loads
+  document.documentElement.style.setProperty("--scroll-y-offset", `0px`);
   if (currentRecordingId.value) {
     // Load the current recording, and then preload the next and previous recordings.
     // This behaviour will differ depending on whether we're viewing raw recordings or visits.
-    recording.value = await getRecordingById(currentRecordingId.value);
-    if (recording.value) {
+    recording.value = null;
+    const recordingResponse = await ClientApi.Recordings.getRecordingById(
+      currentRecordingId.value,
+    );
+    if (recordingResponse) {
+      recording.value = recordingResponse;
+
       if (
-        (recording.value.type === RecordingType.ThermalRaw &&
+        (recording.value.type === ConcreteRecordingType.ThermalRaw &&
           recording.value.duration < 2.5 &&
           recording.value.duration > 1.8) ||
-        (recording.value.type === RecordingType.Audio &&
-          recording.value.duration > 9.8 &&
-          recording.value.duration < 11)
+        "status" in
+          ((recording.value as ApiThermalRecordingResponse)
+            .additionalMetadata || {}) ||
+        (recording.value.type === ConcreteRecordingType.Audio &&
+          recording.value.duration < 11 &&
+          recording.value.duration > 9.8) ||
+        "status" in
+          ((recording.value as ApiAudioRecordingResponse).additionalMetadata ||
+            {})
       ) {
+        let detail = "Test Recording";
+        if (
+          "status" in
+          ((
+            recording.value as
+              | ApiAudioRecordingResponse
+              | ApiThermalRecordingResponse
+          ).additionalMetadata || {})
+        ) {
+          detail = capitalize(
+            `${((recording.value as ApiAudioRecordingResponse).additionalMetadata as ApiAudioRecordingMetadataResponse | ApiThermalRecordingMetadataResponse).status} recording`,
+          );
+        }
         recording.value.tags.push({
           id: -1,
           confidence: 1,
-          detail: "Test recording",
+          detail,
           createdAt: recording.value.recordingDateTime,
         });
       }
@@ -825,11 +673,7 @@ const loadRecording = async () => {
         setTimeout(loadRecording, 30000);
       }
 
-      if (
-        [RecordingType.ThermalRaw, RecordingType.TrailCamImage].includes(
-          rec.type,
-        )
-      ) {
+      if (rec.type === RecordingType.ThermalRaw) {
         // If not already known, check if there is a reference image for the recording device at the time
         // the recording was made.
         const _ = checkReferencePhotoAtTime(
@@ -838,7 +682,6 @@ const loadRecording = async () => {
         );
       }
 
-      const _ = nextTick(checkNameTruncations);
       if (route.params.trackId) {
         currentTrack.value = (
           recording.value as ApiRecordingResponse
@@ -858,11 +701,11 @@ const loadRecording = async () => {
       //   }
       // }
     } else {
-      console.log("Recording load failed");
-      // TODO Handle failure to get recording
+      console.warn("Recording load failed");
+      // TODO: Handle failure to get recording (it may have been deleted, or we may not have authorisation)
     }
   } else {
-    console.log("No recording id??");
+    console.warn("No recording id??");
   }
 };
 
@@ -888,7 +731,7 @@ const selectedTrack = async (trackId: TrackId, automatically: boolean) => {
   };
   if (
     recording.value &&
-    recording.value.tracks.find(({ id }) => id == trackId)
+    recording.value.tracks.find(({ id }: { id: TrackId }) => id == trackId)
   ) {
     if (!automatically) {
       // Make the player start playing at the beginning of the selected track,
@@ -926,24 +769,71 @@ onMounted(async () => {
 });
 
 const visitDurationString = computed<string>(() => {
+  let date;
+  const now = new Date();
+  if (selectedVisit.value) {
+    date = DateTime.fromISO(selectedVisit.value.startTime);
+  } else {
+    //date = DateTime.fromJSDate(new Date());
+  }
+  if (date && locationContext && locationContext.value) {
+    const zone = timezoneForLatLng(locationContext.value);
+    date = date.setZone(zone);
+  }
+  let dateString = "";
+  if (date) {
+    if (date.year != now.getFullYear()) {
+      dateString = `${date.toFormat("d MMM yy")}, `;
+    } else {
+      dateString = `${date.toFormat("d MMM")}, `;
+    }
+  }
+  if (!isMobileView.value) {
+    dateString = "";
+  }
   if (selectedVisit.value && locationContext && locationContext.value) {
-    const visit = selectedVisit.value as ApiVisitResponse;
-    const duration = visitDuration(visit, true);
-    let visitStart = timeAtLocation(visit.timeStart, locationContext.value);
-    const visitEnd = timeAtLocation(visit.timeEnd, locationContext.value);
+    const visit = selectedVisit.value as ApiStaticVisitResponse;
+    const duration = visitDuration(visit, !!isDesktop.value);
+    let visitStart = timeAtLocation(visit.startTime, locationContext.value);
+    const visitEnd = timeAtLocation(visit.endTime, locationContext.value);
     if (visitStart === visitEnd) {
-      return `${visitStart} (${duration})`;
+      return `${dateString}${visitStart} (${duration})`;
     }
     if (visitStart.slice(-2) === visitEnd.slice(-2)) {
       // If visitStart has the same suffix as visitEnd, omit it.
-      visitStart = visitStart.replace("am", "").replace("pm", "");
+      visitStart = visitStart.replace(/ am/i, "").replace(/ pm/i, "");
     }
-    return `${visitStart}&ndash;${visitEnd} (${duration})`;
+    return `${dateString}${visitStart}&ndash;${visitEnd} (${duration})`;
   }
-  return "";
+  return `${dateString.replace(", ", "")}`;
 });
 
 const recordingDurationString = computed<string>(() => {
+  let date;
+  const now = new Date();
+  if (recording.value) {
+    date = DateTime.fromJSDate(new Date(recording.value.recordingDateTime));
+  } else {
+    //date = DateTime.fromJSDate(now);
+  }
+
+  if (date && recording.value && locationContext && locationContext.value) {
+    const zone = timezoneForLatLng(
+      recording.value.location || locationContext.value,
+    );
+    date = date.setZone(zone);
+  }
+  let dateString = "";
+  if (date) {
+    if (date.year != now.getFullYear()) {
+      dateString = `${date.toFormat("d MMM yy")}, `;
+    } else {
+      dateString = `${date.toFormat("d MMM")}, `;
+    }
+  }
+  if (!isMobileView.value) {
+    dateString = "";
+  }
   if (recording.value && locationContext && locationContext.value) {
     const rec = recording.value as ApiRecordingResponse;
     const durationMs = rec.duration * 1000;
@@ -959,104 +849,52 @@ const recordingDurationString = computed<string>(() => {
       rec.location || locationContext.value,
     );
     if (visitStart === visitEnd) {
-      return `${visitStart} (${duration})`;
+      return `${dateString}${visitStart} (${duration})`;
     }
     if (visitStart.slice(-2) === visitEnd.slice(-2)) {
       // If visitStart has the same suffix as visitEnd, omit it.
-      visitStart = visitStart.replace("am", "").replace("pm", "");
+      visitStart = visitStart.replace(/ am/i, "").replace(/ pm/i, "");
     }
-    return `${visitStart}&ndash;${visitEnd} (${duration})`;
+    return `${dateString}${visitStart}&ndash;${visitEnd} (${duration})`;
   }
-  return "";
+  return "&nbsp;";
 });
 
-const recordingDateTime = computed<DateTime | null>(() => {
-  if (recording.value) {
-    const rec = recording.value as ApiRecordingResponse;
-    if (rec.location) {
-      const zone = timezoneForLatLng(rec.location);
-      return DateTime.fromISO(rec.recordingDateTime, {
-        zone,
-      });
-    }
-    return DateTime.fromISO(rec.recordingDateTime);
-  }
-  return null;
-});
-
-const recordingDate = computed<string>(() => {
-  return recordingDateTime.value?.toFormat("dd/MM/yyyy") || "&ndash;";
-});
-const recordingStartTime = computed<string>(() => {
-  return (
-    recordingDateTime.value
-      ?.toLocaleString({
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hourCycle: "h12",
-      })
-      .replace(/ /g, "") || "&ndash;"
-  );
-});
-
-const currentLocationName = computed<string>(() => {
-  return (
-    (recording.value &&
-      (recording.value as ApiRecordingResponse).stationName) ||
-    "–"
-  );
-});
-
-const currentDeviceName = computed<string>(() => {
-  return (
-    (recording.value && (recording.value as ApiRecordingResponse).deviceName) ||
-    "–"
-  );
-});
-
-const mapPointForRecording = computed<NamedPoint[]>(() => {
-  if (recording.value) {
-    const rec = recording.value as ApiRecordingResponse;
-    if (rec.location) {
-      return [
-        {
-          name: currentLocationName.value,
-          location: rec.location,
-          project: rec.groupName,
-        },
-      ] as NamedPoint[];
-    }
-  }
-  return [];
-});
-
-const navLinkClasses = ["nav-item", "nav-link", "border-0", "fs-7", "fw-bold"];
-const activeTabName = computed(() => {
-  return route.name;
-});
-
-const desktop = useMediaQuery("(min-width: 1040px)");
+const isDesktop = useMediaQuery("(min-width: 992px)");
 const isMobileView = computed<boolean>(() => {
-  return !desktop.value;
+  return !isDesktop.value;
+});
 
-  // ||
-  //   (!!recordingType.value && recordingType.value === RecordingType.Audio)
+watch(isMobileView, async (next, prev) => {
+  if (!next) {
+    document.documentElement.style.setProperty("--scroll-y-offset", `0px`);
+    if (((route.name || "") as string).endsWith("info")) {
+      // Redirect
+      const routeName = (route.name as string).replace("info", "tracks");
+      await router.push({
+        ...route,
+        name: routeName as string,
+      } as RouteLocationRaw);
+    }
+  }
 });
 
 const recordingViewContext: string = (route.meta as Record<string, string>)
   .context;
 
-const recordingInfo = ref<HTMLDivElement>();
-const playerContainer = ref<HTMLDivElement>();
+const recordingInfo: Ref<HTMLDivElement | null> =
+  useTemplateRef("recordingInfo");
+const playerContainer: Ref<HTMLDivElement | null> =
+  useTemplateRef("playerContainer");
 
 const playerHeight = useElementSize(playerContainer);
+
 watch(playerHeight.height, (newHeight) => {
   if (recordingInfo.value) {
     const recordingInfoEl = recordingInfo.value as HTMLDivElement;
-    if (desktop.value && recordingType.value !== RecordingType.Audio) {
+    if (isDesktop.value && recordingType.value !== RecordingType.Audio) {
       recordingInfoEl.style.maxHeight = `${newHeight}px`;
-    } else if (desktop.value && recordingType.value === RecordingType.Audio) {
+    } else if (isDesktop.value && recordingType.value === RecordingType.Audio) {
       recordingInfoEl.removeAttribute("style");
     } else {
       recordingInfoEl.style.maxHeight = "auto";
@@ -1064,7 +902,7 @@ watch(playerHeight.height, (newHeight) => {
   }
 });
 
-const exportRequested = ref<boolean | "advanced">(false);
+const exportRequested = ref<boolean | "advanced" | "download">(false);
 const requestedExport = () => {
   inlineModal.value = true;
   nextTick(() => {
@@ -1130,12 +968,16 @@ const getExtensionForMimeType = (mimeType: string): string => {
 const requestedDownload = async () => {
   if (recording.value) {
     const rec = recording.value as ApiRecordingResponse;
-    await maybeRefreshStaleCredentials();
+    const apiToken = await ClientApi.getCredentials(DEFAULT_AUTH_ID);
+    if (!apiToken) {
+      console.warn("api token not found");
+      return;
+    }
     const request = {
       mode: "cors",
       cache: "no-cache",
       headers: {
-        Authorization: currentUserCreds.value?.apiToken,
+        Authorization: apiToken,
       },
       method: "get",
     };
@@ -1147,24 +989,56 @@ const requestedDownload = async () => {
       anchor.click();
     };
     const recordingId = rec.id;
+    inlineModal.value = true;
+    await nextTick(() => {
+      exportRequested.value = "download";
+    });
     const downloadedFileResponse = await window.fetch(
-      `${API_ROOT}/api/v1/recordings/raw/${recordingId}/archive`,
+      `${ClientApi.getApiRoot()}/api/v1/recordings/raw/${recordingId}`,
       // eslint-disable-next-line no-undef
       request as RequestInit,
     );
     const mimeType =
       downloadedFileResponse.headers.get("Content-Type") ||
       "application/octet-stream";
-    const rawFileUint8Array = await downloadedFileResponse.arrayBuffer();
+    const downloadSize =
+      Number(downloadedFileResponse.headers.get("X-Fallback-Content-Length")) ||
+      0;
+    const chunks = [];
+    if (downloadSize && downloadedFileResponse.body) {
+      let loaded = 0;
+      const reader = downloadedFileResponse.body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          break; // Reading is complete
+        }
+
+        chunks.push(value);
+        loaded += value.length;
+
+        // Calculate and log progress (update a UI element here)
+        downloadProgress.value = Math.round((loaded / downloadSize) * 100);
+      }
+    } else {
+      chunks.push(await downloadedFileResponse.arrayBuffer());
+    }
+    //const rawFileUint8Array = await downloadedFileResponse.arrayBuffer();
+    inlineModal.value = false;
+    await nextTick(() => {
+      exportRequested.value = false;
+      downloadProgress.value = 0;
+    });
     download(
-      URL.createObjectURL(new Blob([rawFileUint8Array], { type: mimeType })),
+      URL.createObjectURL(new Blob(chunks, { type: mimeType })),
       `recording-${recordingId}-${DateTime.fromJSDate(
         new Date(rec.recordingDateTime),
       ).toFormat("dd-MM-yyyy--HH-mm-ss")}.${getExtensionForMimeType(mimeType)}`,
     );
   }
 };
-
+const downloadProgress = ref<number>(0);
 const recordingHasRealDuration = computed<boolean>(() => {
   if (recording.value) {
     if (
@@ -1197,65 +1071,15 @@ const recordingType = computed<RecordingType | null>(() => {
 interface MaybeDeletedRecording extends ApiRecordingResponse {
   tombstoned?: boolean;
 }
-interface MaybeDeletedVisit extends ApiVisitResponse {
-  tombstoned?: boolean;
-}
 
 const deleteRecording = async () => {
   if (recording.value) {
     const recordingIdToDelete = recording.value.id;
-    const deleteResponse = await apiDeleteRecording(recording.value.id);
+    const deleteResponse =
+      await ClientApi.Recordings.deleteRecording(recordingIdToDelete);
     if (deleteResponse.success) {
-      const hasNextRec = hasNextRecording.value;
-      const hasNextVis = hasNextVisit.value;
-      const hasPrevRec = hasPreviousRecording.value;
-      const hasPrevVis = hasPreviousVisit.value;
-
-      if (hasNextRec || hasNextVis || hasPrevRec || hasPrevVis) {
-        if (hasNextRec || hasNextVis) {
-          await gotoNextRecordingOrVisit();
-        } else {
-          await gotoPreviousRecordingOrVisit();
-        }
-      } else {
-        // Close the modal if there are no other recordings to move to.
-        emit("close");
-      }
       if (isInVisitContext.value) {
-        const ids = (
-          (route.params.recordingIds &&
-            (route.params.recordingIds as string).split(",").map(Number)) ||
-          []
-        ).filter((id) => id !== recordingIdToDelete);
-        const params = {
-          ...route.params,
-          recordingIds: ids.map((id) => String(id)).join(","),
-        };
-        await router.replace({
-          name: route.name as string,
-          params,
-          query: route.query,
-        });
-      }
-      if (isInVisitContext.value) {
-        // Remove from visits context, then recalc current visit.
-        // Find the visit:
-        const targetVisit =
-          visitsContext.value &&
-          (visitsContext.value as ApiVisitResponse[]).find((visit) =>
-            visit.recordings.find(({ recId }) => recId === recordingIdToDelete),
-          );
-        if (targetVisit) {
-          const targetVisitRecordingIndex = targetVisit.recordings.findIndex(
-            ({ recId }) => recId === recordingIdToDelete,
-          );
-          targetVisit.recordings.splice(targetVisitRecordingIndex, 1);
-          if (targetVisit.recordings.length !== 0) {
-            await mutateCurrentVisit(targetVisit);
-          } else {
-            (targetVisit as MaybeDeletedVisit).tombstoned = true;
-          }
-        }
+        emit("recording-updated", recordingIdToDelete, "deleted");
       } else {
         const targetRecording = (loadedRecordings.value || []).find(
           (rec) => rec.id === recordingIdToDelete,
@@ -1263,271 +1087,218 @@ const deleteRecording = async () => {
         if (targetRecording) {
           (targetRecording as MaybeDeletedRecording).tombstoned = true;
         }
+        const hasNextRec = hasNextRecording.value;
+        const hasNextVis = hasNextVisit.value;
+        const hasPrevRec = hasPreviousRecording.value;
+        const hasPrevVis = hasPreviousVisit.value;
+
+        if (hasNextRec || hasNextVis || hasPrevRec || hasPrevVis) {
+          if (hasNextRec || hasNextVis) {
+            await gotoNextRecordingOrVisit();
+          } else {
+            await gotoPreviousRecordingOrVisit();
+          }
+        } else {
+          // Close the modal if there are no other recordings to move to.
+          console.log("No recordings to advance to, close modal automatically");
+          emit("close");
+        }
       }
     }
   }
 };
 const inlineModal = ref<boolean>(false);
+const onScroll = (e: Event) => {
+  // So, when we make the player smaller, we're also *reducing* the scrollTop amount again.
+  const scrollTop = (e.target as HTMLElement).scrollTop;
+  if (playerContainer.value) {
+    document.documentElement.style.setProperty(
+      "--scroll-y-offset",
+      `${Math.max(0, scrollTop).toString()}px`,
+    );
+  }
+};
+
+const locationName = (
+  visitOrRecording: ApiStaticVisitResponse | ApiRecordingResponse,
+): string => {
+  if ("stationName" in visitOrRecording) {
+    return visitOrRecording.stationName || "";
+  } else if ("locationName" in visitOrRecording) {
+    return visitOrRecording.locationName;
+  }
+  return "";
+};
 </script>
 <template>
   <div
     class="recording-view d-flex flex-column"
+    data-cy="recording view"
     :class="{
-      dimmed: inlineModal,
       'recording-type-audio':
         recordingType && recordingType === RecordingType.Audio,
     }"
   >
+    <div v-if="inlineModal" class="dimmed">
+      <b-modal v-model="inlineModal" no-backdrop no-footer no-header centered>
+        <div
+          class="inline-modal"
+          id="recording-status-modal"
+          ref="inlineModalEl"
+        />
+      </b-modal>
+    </div>
     <header
-      class="recording-view-header d-flex justify-content-between ps-sm-3 pe-sm-1 ps-2 pe-1 py-sm-1"
+      class="recording-view-header d-flex align-items-center justify-content-between ps-sm-3 pe-0 pe-sm-1 ps-2 py-sm-2"
     >
-      <div v-if="isInVisitContext">
-        <span class="recording-header-type text-uppercase fw-bold">Visit</span>
-        <div class="recording-header-details mb-1 mb-sm-0">
-          <span class="recording-header-label fw-bold text-capitalize">{{
-            displayLabelForClassificationLabel(visitLabel)
-          }}</span>
+      <div v-if="isInVisitContext" class="overflow-hidden w-100">
+        <span
+          class="recording-header-type w-100 fs-6 align-items-center d-inline-flex"
+          ><span class="fw-medium me-2">Visit</span
+          ><location-name
+            :icon-size="0.85"
+            class="text-secondary"
+            truncate
+            v-if="isMobileView && (selectedVisit || recording)"
+            :name="
+              locationName(
+                (selectedVisit as ApiStaticVisitResponse) ||
+                  (recording as ApiRecordingResponse),
+              )
+            "
+        /></span>
+        <div
+          class="recording-header-details d-flex align-items-baseline mb-1 mb-sm-0"
+        >
+          <span
+            class="recording-header-label fw-semibold text-capitalize"
+            data-cy="recording visit classification"
+            >{{ displayLabelForClassificationLabel(visitLabel) }}</span
+          >
           <span
             v-if="isInGreaterVisitContext"
+            data-cy="visit duration"
             v-html="visitDurationString"
-            class="ms-sm-3 ms-2 recording-header-time"
-            style="color: #444"
+            class="recording-header-time ms-2 ms-sm-2 text-secondary"
           />
+          <span
+            v-else
+            data-cy="visit duration"
+            class="recording-header-time ms-2 ms-sm-2 text-secondary"
+            v-html="visitDurationString"
+          ></span>
         </div>
       </div>
-      <div v-else>
-        <span class="recording-header-type text-uppercase fw-bold">
+      <div v-else class="overflow-hidden w-100">
+        <span
+          class="recording-header-type w-100 fs-6 align-items-center d-inline-flex"
+        >
           <span
+            class="fw-medium me-2 text-nowrap"
             v-if="recordingType && recordingType === RecordingType.ThermalRaw"
             >Thermal Recording</span
           >
           <span
-            v-else-if="
-              recordingType && recordingType === RecordingType.TrailCamImage
-            "
-            >Trailcam image</span
-          >
-          <span
+            class="fw-medium me-2 text-nowrap"
             v-else-if="recordingType && recordingType === RecordingType.Audio"
             >Audio recording</span
           >
+          <location-name
+            class="text-secondary"
+            :icon-size="0.85"
+            truncate
+            v-if="isMobileView && recording"
+            :name="recording.stationName || ''"
+          />
         </span>
         <div class="recording-header-details mb-1 mb-sm-0">
-          <span class="recording-header-label fw-bold text-capitalize" v-if="isInVisitContext">{{
-            visitForRecording
-          }}</span>
           <span
-            v-if="recordingHasRealDuration"
             v-html="recordingDurationString"
-            class="recording-header-time"
-            :class="{
-              'ms-sm-3': isInVisitContext,
-              'ms-2': isInVisitContext,
-            }"
-            style="color: #444"
+            class="recording-header-time text-muted"
           />
         </div>
       </div>
       <button
+        data-cy="close recording view"
         type="button"
-        class="btn btn-square btn-hi"
+        class="btn btn-icon d-flex align-items-center"
         @click.stop.prevent="() => emit('close')"
       >
-        <font-awesome-icon icon="xmark" />
+        <material-symbol name="close" />
       </button>
     </header>
-
     <!--  Camera recording  -->
-    <div class="player-overflow" v-if="recordingType !== RecordingType.Audio">
-      <div class="player-and-tagging d-flex">
-        <div class="player-container">
-          <div ref="playerContainer">
-            <cptv-player
-              :recording="recording as ApiRecordingResponse"
-              :recording-id="currentRecordingId"
-              :current-track="currentTrack"
-              :has-next="hasNextRecording || hasNextVisit"
-              :has-prev="hasPreviousRecording || hasPreviousVisit"
-              :user-selected-track="userSelectedTrack"
-              :export-requested="exportRequested"
-              :display-header-info="showHeaderInfo"
-              :has-reference-photo="deviceHasReferencePhotoAtRecordingTime"
-              @export-completed="exportCompleted"
-              @request-next-recording="
-                async () => await gotoNextRecordingOrVisit()
-              "
-              @request-prev-recording="
-                async () => await gotoPreviousRecordingOrVisit()
-              "
-              @request-next-visit="async () => await gotoNextVisit()"
-              @request-prev-visit="async () => await gotoPreviousVisit()"
-              @request-header-info-display="requestedHeaderInfoDisplay"
-              @dismiss-header-info="dismissHeaderInfo"
-              @track-selected="selectedTrackWrap"
-            />
-          </div>
+    <div
+      class="player-overflow flex-grow-1"
+      v-if="recordingType !== RecordingType.Audio"
+      :class="{ 'd-flex': isMobileView }"
+    >
+      <div
+        @scroll.passive="onScroll"
+        class="player-and-tagging d-flex"
+        :class="{ 'flex-fill overflow-x-hidden': isMobileView }"
+      >
+        <div
+          class="player-container bg-black"
+          ref="playerContainer"
+          :class="{ 'sticky-top': isMobileView }"
+        >
+          <cptv-player
+            :recording="recording as ApiRecordingResponse"
+            :in-text-edit-mode="inTextEditMode"
+            :recording-id="currentRecordingId"
+            :download-progress="downloadProgress"
+            :current-track="currentTrack"
+            :has-next="hasNextRecording || hasNextVisit"
+            :has-prev="hasPreviousRecording || hasPreviousVisit"
+            :user-selected-track="userSelectedTrack"
+            :export-requested="exportRequested"
+            :display-header-info="showHeaderInfo"
+            :has-reference-photo="deviceHasReferencePhotoAtRecordingTime"
+            @export-completed="exportCompleted"
+            @request-next-recording="gotoNextRecordingOrVisit"
+            @request-prev-recording="gotoPreviousRecordingOrVisit"
+            @request-next-visit="gotoNextVisit"
+            @request-prev-visit="gotoPreviousVisit"
+            @request-header-info-display="requestedHeaderInfoDisplay"
+            @dismiss-header-info="dismissHeaderInfo"
+            @track-selected="selectedTrackWrap"
+          >
+          </cptv-player>
         </div>
-        <div class="recording-info d-flex flex-column" ref="recordingInfo">
-          <!-- Desktop view only -->
-          <div
-            class="recording-station-info d-inline-flex mb-3"
-            v-if="!isMobileView"
-          >
-            <map-with-points
-              class="recording-location-map"
-              :points="mapPointForRecording"
-              :active-points="mapPointForRecording"
-              :highlighted-point="null"
-              :is-interactive="false"
-              :markers-are-interactive="false"
-              :has-attribution="false"
-              :can-change-base-map="false"
-              :zoom="false"
-              :radius="30"
+        <recording-view-tabs
+          :recording="recording"
+          :current-track="currentTrack"
+          v-if="isMobileView"
+          class="sticky-top recording-tabs-mobile"
+        />
+        <div
+          class="recording-info d-flex flex-column flex-fill"
+          :class="{
+            'overflow-hidden':
+              isDesktop && recordingType === RecordingType.ThermalRaw,
+          }"
+          ref="recordingInfo"
+        >
+          <recording-view-metadata v-if="isDesktop" :recording="recording">
+            <recording-view-action-buttons
+              :recording="recording"
+              @added-recording-label="addedRecordingLabel"
+              @removed-recording-label="removedRecordingLabel"
+              @requested-export="requestedExport"
+              @requested-advanced-export="requestedAdvancedExport"
+              @requested-download="requestedDownload"
+              @delete-recording="deleteRecording"
             />
-            <div class="recording-details d-flex flex-column flex-fill">
-              <div
-                class="fw-bolder"
-                :class="{
-                  'recording-details-hover':
-                    stationNameIsTruncated || deviceNameIsTruncated,
-                }"
-              >
-                <div
-                  class="device-name pt-3 px-3 text-truncate d-inline-flex"
-                  :class="{ 'is-truncated': deviceNameIsTruncated }"
-                >
-                  <font-awesome-icon
-                    icon="microchip"
-                    size="xs"
-                    class="me-2"
-                    color="rgba(0, 0, 0, 0.7)"
-                  />
-                  <router-link
-                    class="text-truncate non-blue-link"
-                    ref="deviceNameSpan"
-                    v-if="recording && recording.deviceId"
-                    :to="{
-                      name: 'device-diagnostics',
-                      params: {
-                        deviceId: recording.deviceId,
-                        deviceName: urlNormaliseName(recording.deviceName),
-                      },
-                    }"
-                  >
-                    {{ currentDeviceName }}
-                  </router-link>
-                </div>
-                <div
-                  class="station-name pt-3 pe-2 text-truncate d-inline-flex"
-                  :class="{ 'is-truncated': stationNameIsTruncated }"
-                >
-                  <font-awesome-icon
-                    icon="map-marker-alt"
-                    size="xs"
-                    class="me-2"
-                    color="rgba(0, 0, 0, 0.7)"
-                  />
-                  <span class="text-truncate" ref="stationNameSpan">
-                    {{ currentLocationName }}
-                  </span>
-                </div>
-              </div>
-              <div class="recording-date-time fs-7 d-flex px-3 mt-1">
-                <div>
-                  <font-awesome-icon
-                    :icon="['far', 'calendar']"
-                    size="sm"
-                    class="me-1"
-                    color="rgba(0, 0, 0, 0.5)"
-                  />
-                  <span v-html="recordingDate" />
-                </div>
-                <div class="ms-4">
-                  <font-awesome-icon
-                    :icon="['far', 'clock']"
-                    size="sm"
-                    class="me-1"
-                    color="rgba(0, 0, 0, 0.5)"
-                  />
-                  <span v-html="recordingStartTime" />
-                </div>
-              </div>
-              <recording-view-action-buttons
-                :recording="recording"
-                @added-recording-label="addedRecordingLabel"
-                @removed-recording-label="removedRecordingLabel"
-                @requested-export="requestedExport"
-                @requested-advanced-export="requestedAdvancedExport"
-                @requested-download="requestedDownload"
-                @delete-recording="deleteRecording"
-              />
-            </div>
-          </div>
-          <ul
-            class="nav nav-tabs justify-content-md-center justify-content-evenly"
-            v-if="!isMobileView"
-          >
-            <router-link
-              :class="[
-                ...navLinkClasses,
-                { active: activeTabName === `${recordingViewContext}-tracks` },
-              ]"
-              title="Tracks"
-              :to="{
-                name: `${recordingViewContext}-tracks`,
-                params: {
-                  ...route.params,
-                  trackId: currentTrack?.id || tracks[0]?.id,
-                },
-                query: route.query,
-              }"
-              >Tracks
-              <span v-if="activeTabName !== `${recordingViewContext}-tracks`"
-                >({{ tracks.length }})</span
-              ></router-link
-            >
-            <router-link
-              :class="[
-                ...navLinkClasses,
-                { active: activeTabName === `${recordingViewContext}-labels` },
-              ]"
-              title="Labels"
-              :to="{
-                name: `${recordingViewContext}-labels`,
-                params: {
-                  ...route.params,
-                  trackId: currentTrack?.id || tracks[0]?.id,
-                },
-                query: route.query,
-              }"
-              >Labels
-              <span v-if="activeTabName !== `${recordingViewContext}-labels`"
-                >({{ tags.length }})</span
-              ></router-link
-            >
-            <router-link
-              :class="[
-                ...navLinkClasses,
-                { active: activeTabName === `${recordingViewContext}-notes` },
-              ]"
-              title="Notes"
-              :to="{
-                name: `${recordingViewContext}-notes`,
-                params: {
-                  ...route.params,
-                  trackId: currentTrack?.id || tracks[0]?.id,
-                },
-                query: route.query,
-              }"
-              >Notes
-              <span v-if="activeTabName !== `${recordingViewContext}-notes`"
-                >({{ notes.length }})</span
-              ></router-link
-            >
-          </ul>
-          <div class="tags-overflow" v-if="!isMobileView">
-            <!-- RecordingViewTracks -->
+          </recording-view-metadata>
+          <recording-view-tabs
+            :recording="recording"
+            :current-track="currentTrack"
+            v-if="isDesktop"
+          />
+
+          <div class="tags-overflow d-flex flex-grow-1" ref="scrollContainer">
+            <!-- RecordingViewTracks, RecordingViewLabels, RecordingViewNotes, RecordingViewMetadata (mobile) -->
             <router-view
               :recording="recording"
               @track-tag-changed="trackTagChanged"
@@ -1535,114 +1306,9 @@ const inlineModal = ref<boolean>(false);
               @track-removed="trackRemoved"
               @added-recording-label="addedRecordingLabel"
               @removed-recording-label="removedRecordingLabel"
+              @text-edit-mode-change="textEditModeChanged"
               @delete-recording="deleteRecording"
             />
-          </div>
-          <!-- Mobile view only -->
-          <recording-view-tracks
-            v-if="isMobileView"
-            :recording="recording"
-            class="recording-tracks"
-            @track-tag-changed="trackTagChanged"
-            @track-removed="trackRemoved"
-            @track-selected="selectedTrackWrap"
-            @added-recording-label="addedRecordingLabel"
-            @delete-recording="deleteRecording"
-          />
-          <div
-            class="recording-info-mobile p-3 flex-grow-1"
-            v-if="isMobileView"
-          >
-            <recording-view-labels
-              :recording="recording as ApiRecordingResponse"
-              @added-recording-label="addedRecordingLabel"
-              @removed-recording-label="removedRecordingLabel"
-              v-if="isMobileView"
-            />
-            <recording-view-notes
-              :recording="recording as ApiRecordingResponse"
-              @added-recording-label="addedRecordingLabel"
-              @removed-recording-label="removedRecordingLabel"
-              v-if="isMobileView"
-            />
-            <div
-              class="recording-station-info bg-white d-flex mb-3 flex-column-reverse mt-3"
-            >
-
-              <map-with-points
-                class="recording-location-map"
-                :points="mapPointForRecording"
-                :active-points="mapPointForRecording"
-                :highlighted-point="null"
-                :is-interactive="false"
-                :markers-are-interactive="false"
-                :has-attribution="false"
-                :can-change-base-map="false"
-                :zoom="false"
-                :radius="30"
-              />
-              <div
-                class="flex-fill d-flex align-items-sm-center p-2 px-3 flex-column flex-sm-row"
-              >
-                <div class="fw-bolder d-flex">
-                  <div class="device-name pe-3 text-truncate">
-                    <font-awesome-icon
-                      icon="microchip"
-                      size="xs"
-                      class="me-2"
-                      color="rgba(0, 0, 0, 0.7)"
-                    />
-                    <router-link
-                      class="text-truncate non-blue-link"
-                      ref="deviceNameSpan"
-                      v-if="recording && recording.deviceId"
-                      :to="{
-                        name: 'device-diagnostics',
-                        params: {
-                          deviceId: recording.deviceId,
-                          deviceName: urlNormaliseName(recording.deviceName),
-                        },
-                      }"
-                    >
-                      {{ currentDeviceName }}
-                    </router-link>
-                  </div>
-                  <div class="station-name pe-2 text-truncate">
-                    <font-awesome-icon
-                      icon="map-marker-alt"
-                      size="xs"
-                      class="me-2"
-                      color="rgba(0, 0, 0, 0.7)"
-                    />
-                    <span class="text-truncate">
-                      {{ currentLocationName }}
-                    </span>
-                  </div>
-                </div>
-
-                <div class="recording-date-time fs-7 d-flex px-sm-3 ps-0 mt-1">
-                  <div>
-                    <font-awesome-icon
-                      :icon="['far', 'calendar']"
-                      size="sm"
-                      class="me-1"
-                      color="rgba(0, 0, 0, 0.5)"
-                    />
-                    <span v-html="recordingDate" />
-                  </div>
-                  <div class="ms-4">
-                    <font-awesome-icon
-                      :icon="['far', 'clock']"
-                      size="sm"
-                      class="me-1"
-                      color="rgba(0, 0, 0, 0.5)"
-                    />
-                    <span v-html="recordingStartTime" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
           </div>
         </div>
       </div>
@@ -1666,77 +1332,19 @@ const inlineModal = ref<boolean>(false);
       />
     </div>
     <div
-      class="d-flex flex-row overflow-auto flex-fill recording-type-audio"
+      class="recording-type-audio d-flex flex-row overflow-y-auto overflow-x-hidden flex-fill"
       ref="recordingInfo"
       v-if="recordingType === RecordingType.Audio"
     >
-      <!-- Desktop view only -->
-      <div class="recording-info d-flex flex-column">
-        <ul
-          class="nav nav-tabs justify-content-md-center justify-content-evenly"
-          v-if="!isMobileView"
+      <div class="recording-info d-flex flex-column flex-fill overflow-hidden">
+        <recording-view-tabs
+          :recording="recording"
+          :current-track="currentTrack"
+        />
+        <div
+          class="recording-type-audio overflow-y-auto overflow-x-hidden h-100"
         >
-          <router-link
-            :class="[
-              ...navLinkClasses,
-              { active: activeTabName === `${recordingViewContext}-tracks` },
-            ]"
-            title="Tracks"
-            :to="{
-              name: `${recordingViewContext}-tracks`,
-              params: {
-                ...route.params,
-                trackId: currentTrack?.id || tracks[0]?.id,
-              },
-              query: route.query,
-            }"
-            >Tracks
-            <span v-if="activeTabName !== `${recordingViewContext}-tracks`"
-              >({{ tracks.length }})</span
-            ></router-link
-          >
-          <router-link
-            :class="[
-              ...navLinkClasses,
-              { active: activeTabName === `${recordingViewContext}-labels` },
-            ]"
-            title="Labels"
-            :to="{
-              name: `${recordingViewContext}-labels`,
-              params: {
-                ...route.params,
-                trackId: currentTrack?.id || tracks[0]?.id,
-              },
-              query: route.query,
-            }"
-            >Labels
-            <span v-if="activeTabName !== `${recordingViewContext}-labels`"
-              >({{ tags.length }})</span
-            ></router-link
-          >
-          <router-link
-            :class="[
-              ...navLinkClasses,
-              { active: activeTabName === `${recordingViewContext}-notes` },
-            ]"
-            title="Notes"
-            :to="{
-              name: `${recordingViewContext}-notes`,
-              params: {
-                ...route.params,
-                trackId: currentTrack?.id || tracks[0]?.id,
-              },
-              query: route.query,
-            }"
-            >Notes
-            <span v-if="activeTabName !== `${recordingViewContext}-notes`"
-              >({{ notes.length }})</span
-            ></router-link
-          >
-        </ul>
-        <div class="overflow-auto recording-type-audio">
           <router-view
-            v-if="!isMobileView"
             :recording="recording"
             @track-tag-changed="trackTagChanged"
             @track-selected="selectedTrackWrapped"
@@ -1745,209 +1353,28 @@ const inlineModal = ref<boolean>(false);
             @removed-recording-label="removedRecordingLabel"
             @delete-recording="deleteRecording"
           />
-          <recording-view-tracks
-            v-if="isMobileView && recording"
-            :recording="recording"
-            class="recording-tracks"
-            @track-tag-changed="trackTagChanged"
-            @track-removed="trackRemoved"
-            @track-selected="selectedTrackWrap"
-            @added-recording-label="addedRecordingLabel"
-            @delete-recording="deleteRecording"
-          />
-          <div class="recording-info-mobile p-3" v-if="isMobileView">
-            <div
-              class="recording-station-info bg-white d-flex mb-3 flex-column-reverse mt-3"
-            >
-              <map-with-points
-                class="recording-location-map"
-                :points="mapPointForRecording"
-                :active-points="mapPointForRecording"
-                :highlighted-point="null"
-                :is-interactive="false"
-                :markers-are-interactive="false"
-                :has-attribution="false"
-                :can-change-base-map="false"
-                :zoom="false"
-                :radius="30"
-              />
-              <div
-                class="flex-fill d-flex align-items-sm-center p-2 px-3 flex-column flex-sm-row"
-              >
-                <div class="fw-bolder d-flex">
-                  <div class="device-name pe-3 text-truncate">
-                    <font-awesome-icon
-                      icon="microchip"
-                      size="xs"
-                      class="me-2"
-                      color="rgba(0, 0, 0, 0.7)"
-                    />
-                    <router-link
-                      class="text-truncate non-blue-link"
-                      ref="deviceNameSpan"
-                      v-if="recording && recording.deviceId"
-                      :to="{
-                        name: 'device-diagnostics',
-                        params: {
-                          deviceId: recording.deviceId,
-                          deviceName: urlNormaliseName(recording.deviceName),
-                        },
-                      }"
-                    >
-                      {{ currentDeviceName }}
-                    </router-link>
-                  </div>
-                  <div class="station-name pe-2 text-truncate">
-                    <font-awesome-icon
-                      icon="map-marker-alt"
-                      size="xs"
-                      class="me-2"
-                      color="rgba(0, 0, 0, 0.7)"
-                    />
-                    <span class="text-truncate">
-                      {{ currentLocationName }}
-                    </span>
-                  </div>
-                </div>
-                <div class="recording-date-time fs-7 d-flex px-sm-3 ps-0 mt-1">
-                  <div>
-                    <font-awesome-icon
-                      :icon="['far', 'calendar']"
-                      size="sm"
-                      class="me-1"
-                      color="rgba(0, 0, 0, 0.5)"
-                    />
-                    <span v-html="recordingDate" />
-                  </div>
-                  <div class="ms-4">
-                    <font-awesome-icon
-                      :icon="['far', 'clock']"
-                      size="sm"
-                      class="me-1"
-                      color="rgba(0, 0, 0, 0.5)"
-                    />
-                    <span v-html="recordingStartTime" />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <recording-view-labels
-              :recording="recording as ApiRecordingResponse"
-              @added-recording-label="addedRecordingLabel"
-              @removed-recording-label="removedRecordingLabel"
-              v-if="isMobileView"
-            />
-            <recording-view-notes
-              :recording="recording as ApiRecordingResponse"
-              @added-recording-label="addedRecordingLabel"
-              @removed-recording-label="removedRecordingLabel"
-              v-if="isMobileView"
-            />
-          </div>
         </div>
       </div>
-      <div
-        class="recording-station-info"
-        style="min-width: min(30%, 550px)"
-        v-if="!isMobileView"
-      >
-        <map-with-points
-          class="recording-location-map"
-          :points="mapPointForRecording"
-          :active-points="mapPointForRecording"
-          :highlighted-point="null"
-          :is-interactive="false"
-          :markers-are-interactive="false"
-          :has-attribution="false"
-          :can-change-base-map="false"
-          :zoom="false"
-          :radius="30"
+      <recording-view-metadata v-if="!isMobileView" :recording="recording">
+        <recording-view-action-buttons
+          v-if="recording"
+          :recording="recording"
+          :classes="['align-self-center']"
+          @added-recording-label="addedRecordingLabel"
+          @removed-recording-label="removedRecordingLabel"
+          @requested-export="requestedExport"
+          @requested-advanced-export="requestedAdvancedExport"
+          @requested-download="requestedDownload"
+          @delete-recording="deleteRecording"
         />
-        <div class="recording-details d-flex flex-column">
-          <div
-            class="fw-bolder"
-            :class="{
-              'recording-details-hover':
-                stationNameIsTruncated || deviceNameIsTruncated,
-            }"
-          >
-            <div
-              class="device-name pt-3 px-3 text-truncate d-inline-flex"
-              :class="{ 'is-truncated': deviceNameIsTruncated }"
-            >
-              <font-awesome-icon
-                icon="microchip"
-                size="xs"
-                class="me-2"
-                color="rgba(0, 0, 0, 0.7)"
-              />
-              <router-link
-                class="text-truncate non-blue-link"
-                ref="deviceNameSpan"
-                v-if="recording && recording.deviceId"
-                :to="{
-                  name: 'device-diagnostics',
-                  params: {
-                    deviceId: recording.deviceId,
-                    deviceName: urlNormaliseName(recording.deviceName),
-                  },
-                }"
-              >
-                {{ currentDeviceName }}
-              </router-link>
-            </div>
-            <div
-              class="station-name pt-3 pe-2 text-truncate d-inline-flex"
-              :class="{ 'is-truncated': stationNameIsTruncated }"
-            >
-              <font-awesome-icon
-                icon="map-marker-alt"
-                size="xs"
-                class="me-2"
-                color="rgba(0, 0, 0, 0.7)"
-              />
-              <span class="text-truncate" ref="stationNameSpan">
-                {{ currentLocationName }}
-              </span>
-            </div>
-          </div>
-          <div class="recording-date-time fs-7 d-flex px-3 mt-1">
-            <div>
-              <font-awesome-icon
-                :icon="['far', 'calendar']"
-                size="sm"
-                class="me-1"
-                color="rgba(0, 0, 0, 0.5)"
-              />
-              <span v-html="recordingDate" />
-            </div>
-            <div class="ms-4">
-              <font-awesome-icon
-                :icon="['far', 'clock']"
-                size="sm"
-                class="me-1"
-                color="rgba(0, 0, 0, 0.5)"
-              />
-              <span v-html="recordingStartTime" />
-            </div>
-          </div>
-          <recording-view-action-buttons
-            v-if="recording"
-            :recording="recording"
-            :classes="['align-self-center']"
-            @added-recording-label="addedRecordingLabel"
-            @removed-recording-label="removedRecordingLabel"
-            @requested-export="requestedExport"
-            @requested-advanced-export="requestedAdvancedExport"
-            @requested-download="requestedDownload"
-            @delete-recording="deleteRecording"
-          />
-        </div>
-      </div>
+      </recording-view-metadata>
     </div>
 
-    <!-- Mobile view only -->
-    <footer class="recording-view-footer">
+    <!-- Footer -->
+    <footer
+      v-if="(hasRecordingsOrVisitsInContext && isDesktop) || isMobileView"
+      class="recording-view-footer"
+    >
       <div class="visit-progress">
         <div
           class="progress-bar"
@@ -1959,122 +1386,120 @@ const inlineModal = ref<boolean>(false);
           }"
         ></div>
       </div>
-      <nav class="d-flex footer-nav flex-fill">
+
+      <nav class="d-flex justify-content-between flex-fill">
         <div class="prev-button d-flex">
           <!-- Mobile only button without labels, advances through recordings and visits -->
           <button
+            data-cy="goto previous recording or visit"
             type="button"
-            class="btn d-flex d-md-none flex-row-reverse align-items-center btn-hi position-relative"
+            class="btn btn-icon d-flex d-md-none flex-row-reverse align-items-center position-relative"
             :disabled="!hasPreviousRecording && !hasPreviousVisit"
             @click.prevent="gotoPreviousRecordingOrVisit"
           >
-            <span class="px-1">
-              <svg
-                :width="hasPreviousRecording ? 10 : 17"
-                height="16"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M10 2.28c0 .17-.06.32-.18.45L4.69 8l5.13 5.27a.64.64 0 0 1 0 .89l-1.6 1.65a.59.59 0 0 1-.44.19.59.59 0 0 1-.43-.19L.18 8.45A.62.62 0 0 1 0 8c0-.17.06-.32.18-.45L7.35.2a.59.59 0 0 1 .43-.2c.17 0 .31.06.43.19l1.6 1.65c.13.12.19.27.19.44Z"
-                  fill="#666"
-                />
-                <path
-                  v-if="!hasPreviousRecording"
-                  transform="translate(7 0)"
-                  d="M10 2.28c0 .17-.06.32-.18.45L4.69 8l5.13 5.27a.64.64 0 0 1 0 .89l-1.6 1.65a.59.59 0 0 1-.44.19.59.59 0 0 1-.43-.19L.18 8.45A.62.62 0 0 1 0 8c0-.17.06-.32.18-.45L7.35.2a.59.59 0 0 1 .43-.2c.17 0 .31.06.43.19l1.6 1.65c.13.12.19.27.19.44Z"
-                  fill="#666"
-                />
-              </svg>
-            </span>
+            <material-symbol
+              v-if="hasPreviousRecording"
+              name="keyboard_arrow_left"
+            />
+            <material-symbol
+              v-if="hasPreviousVisit && !hasPreviousRecording"
+              name="keyboard_double_arrow_left"
+            />
           </button>
           <!-- Desktop only button, advances through visits -->
-          <button
-            type="button"
-            class="btn d-none d-md-flex flex-row-reverse align-items-center btn-hi position-relative"
-            :disabled="!hasPreviousVisit"
-            @click.prevent="gotoPreviousVisit"
-            v-if="isInGreaterVisitContext"
-            title="alt+shift &larr;"
+          <b-tooltip
+            placement="bottom"
+            teleport-to="body"
+            :delay="{ show: 1000, hide: 100 }"
+            v-if="isInGreaterVisitContext && hasPreviousVisit"
           >
-            <span class="d-none d-md-flex ps-2 flex-column align-items-start">
-              <span class="fs-8 fw-bold" v-if="hasPreviousVisit"
-                >Prev<span class="d-sm-none d-cs-inline">ious</span> visit</span
+            <template #target>
+              <button
+                type="button"
+                data-cy="goto previous visit"
+                class="btn d-none d-md-flex flex-row-reverse align-items-center position-relative"
+                :disabled="!hasPreviousVisit"
+                @click.prevent="gotoPreviousVisit"
               >
-              <span class="fs-8" v-else v-html="'&nbsp;'"></span>
-              <span class="fs-9" v-if="previousVisit">
-                <span class="text-capitalize fw-bold">{{
-                  displayLabelForClassificationLabel(
-                    previousVisit.classification as string,
-                  )
-                }}</span
-                >,&nbsp;<span
-                  >{{ previousVisit.recordings.length }} rec<span
-                    class="d-sm-none d-cs-inline"
-                    >ording</span
-                  ><span v-if="previousVisit.recordings.length > 1"
-                    >s</span
-                  ></span
+                <span
+                  class="d-none d-md-flex ps-2 flex-column align-items-start"
                 >
-              </span>
-              <span class="fs-9" v-else v-html="'&nbsp;'"></span>
-            </span>
-            <span class="px-1">
-              <svg width="17" height="16" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M10 2.28c0 .17-.06.32-.18.45L4.69 8l5.13 5.27a.64.64 0 0 1 0 .89l-1.6 1.65a.59.59 0 0 1-.44.19.59.59 0 0 1-.43-.19L.18 8.45A.62.62 0 0 1 0 8c0-.17.06-.32.18-.45L7.35.2a.59.59 0 0 1 .43-.2c.17 0 .31.06.43.19l1.6 1.65c.13.12.19.27.19.44Z"
-                  fill="#666"
+                  <span class="fs-6 text-body-secondary"
+                    >Prev<span class="d-none d-lg-inline">ious</span>
+                    visit</span
+                  >
+                  <span
+                    v-if="previousVisit"
+                    class="text-capitalize fw-medium fs-6"
+                  >
+                    {{
+                      displayLabelForClassificationLabel(
+                        visitClassificationLabel(previousVisit),
+                      ) || "none"
+                    }}
+                  </span>
+                </span>
+                <material-symbol
+                  name="keyboard_double_arrow_left"
+                  size="1.25rem"
+                  class="me-1"
                 />
-                <path
-                  transform="translate(7 0)"
-                  d="M10 2.28c0 .17-.06.32-.18.45L4.69 8l5.13 5.27a.64.64 0 0 1 0 .89l-1.6 1.65a.59.59 0 0 1-.44.19.59.59 0 0 1-.43-.19L.18 8.45A.62.62 0 0 1 0 8c0-.17.06-.32.18-.45L7.35.2a.59.59 0 0 1 .43-.2c.17 0 .31.06.43.19l1.6 1.65c.13.12.19.27.19.44Z"
-                  fill="#666"
-                />
-              </svg>
-            </span>
-          </button>
+              </button>
+            </template>
+            alt + shift + left arrow
+          </b-tooltip>
           <!-- Desktop only button, advances through recordings -->
-          <button
-            type="button"
-            class="btn d-none d-md-flex flex-row-reverse align-items-center btn-hi position-relative"
+          <b-tooltip
+            placement="bottom"
+            teleport-to="body"
+            :delay="{ show: 1000, hide: 100 }"
             v-if="hasPreviousRecording"
-            @click.prevent="gotoPreviousRecording"
-            title="alt &larr;"
           >
-            <span class="d-none d-md-flex ps-2 flex-column align-items-start">
-              <span class="fs-8 fw-bold"
-                >Prev<span
-                  :class="{
-                    'd-sm-none': hasPreviousVisit,
-                    'd-cs-inline': hasPreviousVisit,
-                  }"
-                  >ious</span
+            <template #target>
+              <button
+                data-cy="goto previous recording"
+                type="button"
+                class="btn d-none d-md-flex flex-row-reverse align-items-center position-relative"
+                @click.prevent="gotoPreviousRecording"
+              >
+                <span
+                  class="d-none d-md-flex ps-2 flex-column align-items-start"
                 >
-                rec<span
-                  :class="{
-                    'd-sm-none': hasPreviousVisit,
-                    'd-cs-inline': hasPreviousVisit,
-                  }"
-                  >ording</span
-                ></span
-              >
-              <span class="fs-9"
-                >{{ (previousRecordingIndex as number) + 1 }}/{{
-                  currentRecordingCount || allRecordingIds.length
-                }}</span
-              >
-            </span>
-            <span class="px-1">
-              <svg width="10" height="16" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M10 2.28c0 .17-.06.32-.18.45L4.69 8l5.13 5.27a.64.64 0 0 1 0 .89l-1.6 1.65a.59.59 0 0 1-.44.19.59.59 0 0 1-.43-.19L.18 8.45A.62.62 0 0 1 0 8c0-.17.06-.32.18-.45L7.35.2a.59.59 0 0 1 .43-.2c.17 0 .31.06.43.19l1.6 1.65c.13.12.19.27.19.44Z"
-                  fill="#666"
+                  <span class="fs-6 text-body-secondary"
+                    >Prev<span
+                      class=""
+                      :class="{
+                        'd-none': hasPreviousVisit,
+                        'd-lg-inline': hasPreviousVisit,
+                      }"
+                      >ious</span
+                    >
+                    rec<span
+                      :class="{
+                        'd-sm-none': hasPreviousVisit,
+                        'd-lg-inline': hasPreviousVisit,
+                      }"
+                      >ording</span
+                    ></span
+                  >
+                  <span class="fs-6 fw-medium"
+                    >{{ (previousRecordingIndex as number) + 1 }}/{{
+                      currentRecordingCount || allRecordingIds.length
+                    }}</span
+                  >
+                </span>
+                <material-symbol
+                  name="keyboard_arrow_left"
+                  size="1.25rem"
+                  class="me-1"
                 />
-              </svg>
-            </span>
-          </button>
+              </button>
+            </template>
+            alt + left arrow
+          </b-tooltip>
         </div>
         <recording-view-action-buttons
-          class="action-buttons"
+          class="action-buttons ms-auto me-auto"
           v-if="isMobileView"
           :recording="recording as ApiRecordingResponse"
           @added-recording-label="addedRecordingLabel"
@@ -2084,412 +1509,320 @@ const inlineModal = ref<boolean>(false);
           @requested-download="requestedDownload"
           @delete-recording="deleteRecording"
         />
-        <div class="next-button d-flex">
-          <!-- Desktop only button, advances through recordings -->
-          <button
-            type="button"
-            class="btn d-none d-md-flex align-items-center btn-hi position-relative"
+        <div class="next-button d-flex justify-content-end">
+          <b-tooltip
+            placement="bottom"
+            teleport-to="body"
+            :delay="{ show: 1000, hide: 100 }"
             v-if="hasNextRecording"
-            @click.prevent="gotoNextRecording"
-            title="alt &rarr;"
           >
-            <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
-              <span class="fs-8 fw-bold"
-                >Next rec<span
-                  :class="{
-                    'd-sm-none': hasNextVisit,
-                    'd-cs-inline': hasNextVisit,
-                  }"
-                  >ording</span
-                ></span
+            <!-- Desktop only button, advances through recordings -->
+            <template #target>
+              <button
+                data-cy="goto next recording"
+                type="button"
+                class="btn d-none d-md-flex align-items-center position-relative"
+                @click.prevent="gotoNextRecording"
               >
-              <span class="fs-9"
-                >{{ (nextRecordingIndex as number) + 1 }}/{{
-                  currentRecordingCount || allRecordingIds.length
-                }}</span
-              >
-            </span>
-            <span class="px-1">
-              <svg width="10" height="16" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M10 8c0 .17-.06.32-.18.45L2.65 15.8a.59.59 0 0 1-.43.19.59.59 0 0 1-.43-.19l-1.6-1.65a.62.62 0 0 1-.19-.44c0-.17.06-.32.18-.45L5.31 8 .18 2.73A.62.62 0 0 1 0 2.28a.6.6 0 0 1 .18-.44L1.78.19A.59.59 0 0 1 2.23 0c.17 0 .31.06.43.19l7.17 7.36c.12.13.18.28.18.45Z"
-                  fill="#666"
+                <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
+                  <span class="fs-6 text-body-secondary"
+                    >Next rec<span
+                      :class="{
+                        'd-sm-none': hasNextVisit,
+                        'd-lg-inline': hasNextVisit,
+                      }"
+                      >ording</span
+                    ></span
+                  >
+                  <span class="fs-6 fw-medium"
+                    >{{ (nextRecordingIndex as number) + 1 }}/{{
+                      currentRecordingCount || allRecordingIds.length
+                    }}</span
+                  >
+                </span>
+                <material-symbol
+                  name="keyboard_arrow_right"
+                  size="1.25rem"
+                  class="ms-1"
                 />
-              </svg>
-            </span>
-          </button>
-          <!-- Desktop only button, advances through visits -->
-          <button
-            type="button"
-            class="btn d-none d-md-flex align-items-center btn-hi position-relative"
-            :disabled="!hasNextVisit"
-            @click.prevent="gotoNextVisit"
-            v-if="isInGreaterVisitContext"
-            title="alt+shift &rarr;"
+              </button>
+            </template>
+            alt + right arrow
+          </b-tooltip>
+          <b-tooltip
+            placement="bottom"
+            teleport-to="body"
+            :delay="{ show: 1000, hide: 100 }"
+            v-if="isInGreaterVisitContext && hasNextVisit"
           >
-            <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
-              <span class="fs-8 fw-bold" v-if="hasNextVisit">Next visit</span>
-              <span class="fs-8" v-else v-html="'&nbsp;'"></span>
-              <span class="fs-9" v-if="nextVisit">
-                <span class="text-capitalize fw-bold">{{
-                  displayLabelForClassificationLabel(
-                    nextVisit.classification as string,
-                  )
-                }}</span
-                >,&nbsp;<span
-                  >{{ nextVisit.recordings.length }} rec<span
-                    class="d-sm-none d-cs-inline"
-                    >ording</span
-                  ><span v-if="nextVisit.recordings.length > 1">s</span></span
-                >
-              </span>
-              <span class="fs-9" v-else v-html="'&nbsp;'"></span>
-            </span>
-            <span class="px-1">
-              <svg width="17" height="16" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M10 8c0 .17-.06.32-.18.45L2.65 15.8a.59.59 0 0 1-.43.19.59.59 0 0 1-.43-.19l-1.6-1.65a.62.62 0 0 1-.19-.44c0-.17.06-.32.18-.45L5.31 8 .18 2.73A.62.62 0 0 1 0 2.28a.6.6 0 0 1 .18-.44L1.78.19A.59.59 0 0 1 2.23 0c.17 0 .31.06.43.19l7.17 7.36c.12.13.18.28.18.45Z"
-                  fill="#666"
+            <!-- Desktop only button, advances through visits -->
+            <template #target>
+              <button
+                data-cy="goto next visit"
+                type="button"
+                class="btn d-none d-md-flex align-items-center position-relative"
+                :disabled="!hasNextVisit"
+                @click.prevent="gotoNextVisit"
+              >
+                <span class="d-none d-sm-flex pe-2 flex-column align-items-end">
+                  <span class="fs-6 text-body-secondary">Next visit</span>
+                  <span v-if="nextVisit" class="text-capitalize fw-medium fs-6">
+                    {{
+                      displayLabelForClassificationLabel(
+                        visitClassificationLabel(nextVisit),
+                      ) || "none"
+                    }}
+                  </span>
+                </span>
+                <material-symbol
+                  name="keyboard_double_arrow_right"
+                  size="1.25rem"
+                  class="ms-1"
                 />
-                <path
-                  transform="translate(7 0)"
-                  d="M10 8c0 .17-.06.32-.18.45L2.65 15.8a.59.59 0 0 1-.43.19.59.59 0 0 1-.43-.19l-1.6-1.65a.62.62 0 0 1-.19-.44c0-.17.06-.32.18-.45L5.31 8 .18 2.73A.62.62 0 0 1 0 2.28a.6.6 0 0 1 .18-.44L1.78.19A.59.59 0 0 1 2.23 0c.17 0 .31.06.43.19l7.17 7.36c.12.13.18.28.18.45Z"
-                  fill="#666"
-                />
-              </svg>
-            </span>
-          </button>
+              </button>
+            </template>
+            alt + shift + right arrow
+          </b-tooltip>
           <!-- Mobile only button without labels, advances through recordings and visits -->
           <button
             type="button"
-            class="btn d-flex d-md-none align-items-center btn-hi"
+            class="btn btn-icon d-flex d-md-none align-items-center"
             :disabled="!hasNextRecording && !hasNextVisit"
-            @click.prevent="async () => await gotoNextRecordingOrVisit()"
+            @click.prevent="gotoNextRecordingOrVisit"
+            data-cy="goto next recording or visit"
           >
-            <span class="px-1">
-              <svg
-                :width="hasNextRecording ? 10 : 17"
-                height="16"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M10 8c0 .17-.06.32-.18.45L2.65 15.8a.59.59 0 0 1-.43.19.59.59 0 0 1-.43-.19l-1.6-1.65a.62.62 0 0 1-.19-.44c0-.17.06-.32.18-.45L5.31 8 .18 2.73A.62.62 0 0 1 0 2.28a.6.6 0 0 1 .18-.44L1.78.19A.59.59 0 0 1 2.23 0c.17 0 .31.06.43.19l7.17 7.36c.12.13.18.28.18.45Z"
-                  fill="#666"
-                />
-                <path
-                  transform="translate(7 0)"
-                  v-if="!hasNextRecording"
-                  d="M10 8c0 .17-.06.32-.18.45L2.65 15.8a.59.59 0 0 1-.43.19.59.59 0 0 1-.43-.19l-1.6-1.65a.62.62 0 0 1-.19-.44c0-.17.06-.32.18-.45L5.31 8 .18 2.73A.62.62 0 0 1 0 2.28a.6.6 0 0 1 .18-.44L1.78.19A.59.59 0 0 1 2.23 0c.17 0 .31.06.43.19l7.17 7.36c.12.13.18.28.18.45Z"
-                  fill="#666"
-                />
-              </svg>
-            </span>
+            <material-symbol
+              v-if="hasNextRecording"
+              name="keyboard_arrow_right"
+            />
+            <material-symbol
+              v-if="hasNextVisit && !hasNextRecording"
+              name="keyboard_double_arrow_right"
+            />
           </button>
         </div>
       </nav>
     </footer>
   </div>
-  <div
-    v-if="inlineModal"
-    class="inline-modal"
-    id="recording-status-modal"
-    ref="inlineModalEl"
-  />
 </template>
 
 <style scoped lang="less">
-@import "../assets/font-sizes.less";
-@import "../assets/mixins.less";
+@import "../assets/less/typography.less";
+@import "../assets/less/elevation.less";
+@import "../assets/less/breakpoints.less";
 
-.overflow-x-hidden {
-  overflow-x: hidden;
-}
-// TODO: When there is overflow, show shadows at top/bottom
-.player-overflow {
-  @media screen and (max-width: 1040px) {
-    overflow-y: auto;
-  }
-  background: #f6f6f6;
-}
-.player-overflow.recording-type-audio {
-  overflow-y: auto;
-  background: #f6f6f6;
-}
-.tags-overflow {
-  @media screen and (min-width: 1041px) {
-    overflow-y: scroll;
-    @headerHeight: 64px;
-    @playerHeight: 426px;
-    @locationInfoHeight: 120px;
-    @tabsHeight: 38.5px;
-    @footerHeight: 55px;
-    flex: 1;
-    //max-height: min(
-    //  @playerHeight,
-    //  calc(
-    //    100svh -
-    //      (
-    //        @headerHeight + @playerHeight + @locationInfoHeight + @tabsHeight +
-    //          @footerHeight
-    //      )
-    //  )
-    //);
-    height: 100%;
-  }
-}
-.footer-nav {
-  flex-direction: row;
-  justify-content: center;
-  align-items: stretch;
-  position: relative;
-
-  @media screen and (min-width: 576px) {
-    min-height: 55px;
-  }
-  min-height: 48px;
-}
-.next-button,
-.prev-button {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-}
-.next-button {
-  right: 0;
-}
-.prev-button {
-  left: 0;
-}
-
-.recording-tracks {
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.4);
-  z-index: 1;
-}
-
-.recording-view-header {
-  border-bottom: 2px solid #e1e1e1;
-  .recording-header-type {
-    .fs-8();
-  }
-  .recording-header-details {
-    line-height: 1;
-  }
-  .recording-header-label {
-    .fs-6();
-  }
-  .recording-header-time {
-    .fs-8();
-  }
-  @media screen and (min-width: 576px) {
-    .recording-header-type {
-      .fs-8();
-    }
-    .recording-header-details {
-      line-height: unset;
-    }
-    .recording-header-label {
-      .fs-5();
-    }
-    .recording-header-time {
-      .fs-7();
-    }
-  }
-  @container (max-height: 940px) {
-    .recording-header-type {
-      .fs-8();
-    }
-    .recording-header-details {
-      line-height: 1;
-    }
-    .recording-header-label {
-      .fs-6();
-    }
-    .recording-header-time {
-      .fs-8();
-    }
-  }
-}
-.recording-view-footer {
-  background: white;
-  .visit-progress {
-    height: 2px;
-    background: #e1e1e1;
-    .progress-bar {
-      transition: width 0.3s;
-      // TODO - make the progress bar proportional to the offset of the recording within the visit timeline.
-      // When the video is playing, we could even update it for the duration of the video?
-      height: 100%;
-      background: #6dbd4b;
-    }
-  }
-}
-.recording-info {
-  width: 100%;
-}
-.recording-station-info {
-  .standard-shadow();
-}
-.recording-details {
-  max-width: 318px;
-}
-.recording-type-audio .recording-details {
-  max-width: unset;
-}
-.recording-location-map {
-  @media screen and (max-width: 1039px) {
-    width: 100%;
-    height: 180px;
-  }
-  width: 120px;
-  height: 120px;
-  min-width: 120px;
-}
-@media screen and (min-width: 880px) {
-  .d-cs-inline {
-    display: inline !important;
-  }
-}
-.nav-item.active {
-  background: unset;
-  border-bottom: 3px solid #6dbd4b !important;
-}
-.station-name,
-.recording-date-time {
-  color: #444;
-}
-@media screen and (min-width: 1041px) {
-  .recording-details-hover {
-    &:hover {
-      position: relative;
-      .device-name,
-      .station-name {
-        transition: all 0.2s ease-in-out;
-        opacity: 0.25;
-        &:hover {
-          opacity: 1;
-        }
-      }
-      .station-name:hover {
-        transform: translateX(-90%);
-        > span {
-          min-width: 270px;
-        }
-      }
-    }
-  }
-}
-
-.device-name span {
-  transition: background-color 1s ease-in;
-  background-color: transparent;
-}
-
-.device-name,
-.station-name {
-  max-width: 50%;
-  width: 50%;
-  cursor: default;
-  padding-top: 0;
-  align-items: center;
-  background-color: transparent;
-  @media screen and (min-width: 1041px) {
-    &:hover {
-      z-index: 1;
-      background: #f6f6f6;
-      > span {
-        background: #f6f6f6;
-        border-radius: 3px;
-      }
-
-      > .text-truncate {
-        overflow: unset;
-        white-space: unset;
-        word-break: break-all;
-        z-index: 1;
-      }
-      overflow: visible;
-    }
-  }
-}
-
-.nav-tabs {
-  .nav-link:not(.active) {
-    color: inherit;
-  }
-  .active {
-    cursor: default;
-  }
-}
-.player-and-tagging {
-  flex-direction: row;
-  @media screen and (max-width: 1040px) {
-    flex-direction: column;
-  }
-}
-.player-and-tagging.recording-type-audio {
-  flex-direction: column;
-}
-.inline-modal {
-  // TODO - Max width for mobile breakpoints
-  @width: 400px;
-  @height: auto;
-  width: @width;
-  height: @height;
-  position: absolute;
-  border-radius: 2px;
-  top: 40%;
-  left: calc(50% - (@width / 2));
-  background: white;
-  z-index: 401;
-  .standard-shadow();
-}
-
-.recording-view.recording-type-audio {
-  background: white;
-  position: fixed;
-  top: 16px;
-  bottom: 16px;
-  left: 16px;
-  right: 16px;
-  container-type: size;
-  @media screen and (max-width: 1040px) {
-    top: 0;
-    bottom: 0;
-    left: 0;
-    right: 0;
-  }
-}
 .recording-view {
-  @media screen and (max-width: 1040px) {
-    background: white;
+  @media screen and (max-width: @breakpoint-md-max) {
+    background: var(--bs-white);
     position: fixed;
     top: 0;
     bottom: 0;
     left: 0;
     right: 0;
   }
+  &.recording-type-audio {
+    background: var(--bs-white);
+    position: fixed;
+    top: var(--cp-spacing-base);
+    bottom: var(--cp-spacing-base);
+    left: var(--cp-spacing-base);
+    right: var(--cp-spacing-base);
+    container-type: size;
+    @media screen and (max-width: @breakpoint-md-max) {
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+    }
+    @media screen and (min-width: @breakpoint-lg) {
+      border-radius: var(--bs-modal-border-radius);
+    }
+  }
+}
+
+// TODO: When there is overflow, show shadows at top/bottom
+.player-overflow {
+  @media (max-width: @breakpoint-md-max) {
+    overflow-y: auto;
+  }
+  &.recording-type-audio {
+    overflow-y: auto;
+  }
+}
+
+.recording-view-header {
+  border-bottom: 1px solid var(--border-color-light);
+}
+
+.recording-header-details {
+  @media (max-width: @breakpoint-xs-max) {
+    line-height: var(--cp-line-height-sm);
+  }
+  @media (min-width: @breakpoint-sm) {
+    line-height: var(--cp-line-height-md);
+  }
+}
+
+.recording-header-label {
+  @media (max-width: @breakpoint-xs-max) {
+    font-size: var(--cp-font-size-md);
+  }
+  @media (min-width: @breakpoint-sm) {
+    font-size: var(--cp-font-size-lg);
+  }
+}
+
+.recording-header-time {
+  @media (max-width: @breakpoint-xs-max) {
+    font-size: var(--cp-font-size-sm);
+  }
+  @media (min-width: @breakpoint-sm) {
+    font-size: var(--cp-font-size-md);
+  }
+}
+
+.recording-view-footer {
+  @media (min-width: @breakpoint-sm) {
+    padding-bottom: var(--cp-spacing-xxxs);
+  }
+  .visit-progress {
+    height: 2px;
+    background: var(--border-color-light);
+    @media (min-width: @breakpoint-sm) {
+      margin-bottom: var(--cp-spacing-xxxs);
+    }
+    .progress-bar {
+      transition: width 0.3s;
+      // TODO - make the progress bar proportional to the offset of the recording within the visit timeline.
+      // When the video is playing, we could even update it for the duration of the video?
+      height: 100%;
+      background: var(--cp-color-primary);
+    }
+  }
+  .prev-button,
+  .next-button {
+    // maybe there's a cleaner way of doing this but it works for now
+    width: calc(calc(100% - 256px) / 2); // 256px is the width of action buttons
+  }
+}
+
+// only for video
+.player-and-tagging {
+  @media screen and (max-width: @breakpoint-md-max) {
+    flex-direction: column;
+  }
+  @media screen and (min-width: @breakpoint-lg) {
+    flex-direction: row;
+  }
+}
+
+.tags-overflow {
+  //max-height: 1000000px;
+  @media (max-width: @breakpoint-md-max) {
+    overflow: auto;
+  }
+  @media (min-width: @breakpoint-lg) {
+    overflow-y: auto;
+    flex: 1;
+    height: 100%;
+  }
+}
+
+// Video export modals
+.inline-modal {
+  //--modal-width: calc(min(calc(100svw - 20px), 400px));
+  //width: var(--modal-width);
+  //height: auto;
+  //max-height: calc(100svh - 30px);
+  //position: absolute;
+  //overflow-y: auto;
+  //top: 40%;
+  //left: calc(50% - (var(--modal-width) / 2));
+  //background: var(--bs-white);
+  //z-index: 2000;
+  //border-radius: var(--bs-border-radius);
+  //.standard-shadow();
 }
 
 .dimmed {
   user-select: none;
-  position: relative;
+  // FIXME: This breaks at certain breakpoints because they are position fixed.
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  z-index: 2400;
+  background: rgba(0, 0, 0, 0.2);
+}
+</style>
 
-  &::after {
-    content: "";
-    display: block;
-    background: rgba(0, 0, 0, 0.2);
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    z-index: 400;
+<style lang="less">
+@import "../assets/less/breakpoints.less";
+
+.player-and-tagging {
+  overscroll-behavior-y: none;
+  .video-container {
+    height: var(--video-container-height);
+
+    @media screen and (min-width: @breakpoint-lg) and (max-width: @breakpoint-lg-max) {
+      max-width: 576px;
+      max-height: 432px;
+    }
   }
 }
 .player-container {
-  background: black;
+  margin-bottom: min(var(--min-player-height), var(--scroll-y-offset));
 }
-.non-blue-link {
-  color: inherit;
+:root {
+  --scroll-y-offset: 0px;
+  --num-unique-y-slots: 0;
+  --min-player-height: 150px;
+  --max-player-height: min(480px, 75svw);
+  @media screen and (min-width: @breakpoint-lg) and (max-width: @breakpoint-lg-max) {
+    --max-player-height: min(432px, 75svw);
+  }
+  --max-scroll-y-offset: calc(
+    var(--max-player-height) - var(--min-player-height)
+  );
+  // Shrink amount should be in the range 0..1
+  --scroll-ratio: calc(var(--scroll-y-offset) / var(--max-scroll-y-offset));
+  --shrink-amount: 1;
+  //calc(
+  //    min(
+  //        1,
+  //        max(
+  //            0,
+  //            var(--scroll-ratio)
+  //        )
+  //    )
+  //);
+  //--shrink-amount: calc(min(1, max(0, calc(0))));
+  //--track-height: calc(7px - calc(4px * var(--shrink-amount)));
+  //--track-height: calc(3px + calc(10px / var(--num-unique-y-slots) * 0.5));
+  --track-height: min(7px, calc(3px + calc(10px / var(--num-unique-y-slots))));
+  --min-height-for-tracks: 44px;
+  --player-chrome-height: 44px;
+  --height-for-tracks: calc(
+    max(
+      var(--min-height-for-tracks),
+      calc(var(--track-height, 0px) * calc(var(--num-unique-y-slots) + 4))
+    )
+  );
+  --video-container-height: calc(
+    min(
+      var(--max-player-height),
+      max(
+        var(--min-player-height),
+        calc(var(--max-player-height) - var(--scroll-y-offset))
+      )
+    )
+  );
+}
+.recording-tabs-mobile {
+  top: calc(
+    var(--video-container-height) + var(--height-for-tracks) +
+      var(--player-chrome-height)
+  );
 }
 </style>

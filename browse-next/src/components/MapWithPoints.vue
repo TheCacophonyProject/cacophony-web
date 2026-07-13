@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import "leaflet/dist/leaflet.css";
 
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import type { RouteLocationRaw } from "vue-router";
 import type { CircleMarkerOptions, LatLngTuple } from "leaflet";
@@ -92,7 +92,7 @@ const mapEl = ref<HTMLDivElement | null>(null);
 
 const pointKey = (point: NamedPoint) => {
   if (!point.location) {
-    debugger;
+    console.warn("No location for point found", point);
   }
   return `${point.project}|${point.name}|${point.location.lat}|${point.location.lng}`;
 };
@@ -185,25 +185,28 @@ watch(
   () => props.highlightedPoint,
   (newP: NamedPoint | null) => {
     const key = (newP && pointKey(newP)) || "";
-    for (const [markerKey, pointMarker] of Object.entries(markers)) {
-      if (key === markerKey) {
-        // If the highlighted point is outside the current map bounds, pan to it and center it, or fit the bounds.
-        pointMarker.foregroundMarker.bringToFront();
-        highlightMarker(pointMarker, markerKey);
-        if (props.centerOnHighlighted) {
-          pointMarker.foregroundMarker.openTooltip();
-          (
+    if (mapEl.value) {
+      const bounds = mapEl.value.getBoundingClientRect();
+      for (const [markerKey, pointMarker] of Object.entries(markers)) {
+        if (key === markerKey) {
+          // If the highlighted point is outside the current map bounds, pan to it and center it, or fit the bounds.
+          pointMarker.foregroundMarker.bringToFront();
+          highlightMarker(pointMarker, markerKey);
+          if (props.centerOnHighlighted) {
+            pointMarker.foregroundMarker.openTooltip();
             (
-              pointMarker.foregroundMarker as unknown as LeafletInternalRawMarker
-            )._map as LeafletMap
-          ).panInside(pointMarker.foregroundMarker.getLatLng(), {
-            padding: [100, 30],
-          });
+              (
+                pointMarker.foregroundMarker as unknown as LeafletInternalRawMarker
+              )._map as LeafletMap
+            ).panInside(pointMarker.foregroundMarker.getLatLng(), {
+              padding: [bounds.width / 2, bounds.height / 2],
+            });
+          }
+        } else {
+          cancelAnimationFrame(markerAnimationFrames[markerKey]);
+          unhighlightImmediately(pointMarker);
+          pointMarker.foregroundMarker.closeTooltip();
         }
-      } else {
-        cancelAnimationFrame(markerAnimationFrames[markerKey]);
-        unhighlightImmediately(pointMarker);
-        pointMarker.foregroundMarker.closeTooltip();
       }
     }
   },
@@ -213,16 +216,14 @@ const mapLayers = [
   {
     name: "OpenTopoMap Basemap",
     url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
-    attribution:
-      "Map data: &copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors, <a href=\"http://viewfinderpanoramas.org\">SRTM</a> | Map style: &copy; <a href=\"https://opentopomap.org\">OpenTopoMap</a> (<a href=\"https://creativecommons.org/licenses/by-sa/3.0/\">CC-BY-SA</a>)",
+    attribution: `Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)`,
     visible: true,
   },
   {
     name: "OpenStreetMap Basemap",
     visible: false,
     url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution:
-      "&copy; <a href=\"http://osm.org/copyright\">OpenStreetMap</a> contributors",
+    attribution: `&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors`,
   },
 ];
 const mapBounds = computed<LatLngBounds | null>(() => {
@@ -259,7 +260,7 @@ const mapBounds = computed<LatLngBounds | null>(() => {
     (props.points &&
       props.points.length &&
       latLngBounds(
-        props.points.flatMap(({ location }) => {
+        props.points.flatMap(({ location }: NamedPoint) => {
           const pBounds = latLng(location).toBounds(boundsPaddingInMeters);
           return [pBounds.getNorthWest(), pBounds.getSouthEast()];
         }),
@@ -355,7 +356,7 @@ const addPoints = () => {
       const isFocusedPoint =
         props.focusedPoint && pointKey(props.focusedPoint) === thisPointKey;
       if (!point.color && !isAnActivePoint) {
-        colour.fillColor = "#666";
+        colour.fillColor = "#52554f";
       } else if (point.color) {
         colour.fillColor = point.color;
       }
@@ -395,7 +396,10 @@ const addPoints = () => {
       markers[pointKey(point)] = marker;
 
       if (props.markersAreInteractive && isAnActivePoint) {
-        const tooltipText = `${point.name}`;
+        let tooltipText = `${point.name}`;
+        if (point.name && point.locationName) {
+          tooltipText = `${point.name} - ${point.locationName}`;
+        }
         marker.foregroundMarker
           .bindTooltip(tooltipText, {
             direction: "top",
@@ -406,7 +410,8 @@ const addPoints = () => {
         marker.foregroundMarker.on("mouseover", (e) => {
           const namedPoint = props.points.find(
             (p: NamedPoint) =>
-              p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng,
+              p.location.lat === e.latlng.lat &&
+              p.location.lng === e.latlng.lng,
           );
           namedPoint && hoverPoint(namedPoint);
         });
@@ -414,7 +419,8 @@ const addPoints = () => {
         marker.foregroundMarker.on("click", (e) => {
           const namedPoint = props.points.find(
             (p: NamedPoint) =>
-              p.location.lat === e.latlng.lat && p.location.lng === e.latlng.lng,
+              p.location.lat === e.latlng.lat &&
+              p.location.lng === e.latlng.lng,
           );
           namedPoint && selectPoint(namedPoint);
         });
@@ -439,7 +445,7 @@ const addPoints = () => {
       // TODO: Try and get the contrast with the markers looking better
       map.eachLayer((layer) => {
         if ((layer as TileLayer).options.attribution) {
-          (layer as TileLayer).setOpacity(0.15);
+          (layer as TileLayer).setOpacity(0.5);
         }
       });
     }
@@ -504,7 +510,7 @@ onMounted(() => {
     dragging: props.isInteractive,
     scrollWheelZoom: props.isInteractive,
     keyboard: props.isInteractive,
-    tap: props.isInteractive,
+    tapHold: props.isInteractive, // TODO: Check this is the correct property for interactivity
     maxZoom: 15,
     minZoom: props.minZoom,
     attributionControl: false,
@@ -559,8 +565,10 @@ onMounted(() => {
     map.addControl(attributionToggle);
   }
   if (!props.center) {
-    map.invalidateSize();
-    fitMapBounds();
+    nextTick(() => {
+      (map as LeafletMap).invalidateSize();
+      fitMapBounds();
+    });
   }
   addPoints();
 });
@@ -649,11 +657,10 @@ const leavePoint = () => {
 .map {
   position: relative;
   overflow: hidden;
-  background: radial-gradient(
-    circle,
-    rgba(230, 230, 230, 1) 0%,
-    rgba(188, 188, 188, 1) 100%
-  );
+}
+
+.leaflet-tile-pane {
+  filter: grayscale(20%) sepia(10%);
 }
 .loading-overlay {
   position: absolute;
@@ -661,10 +668,10 @@ const leavePoint = () => {
   left: 0;
   right: 0;
   bottom: 0;
-  color: #666;
+  color: var(--bs-gray-600);
 }
 .map.loading {
-  background: rgba(140, 140, 140, 0.5);
+  background: rgba(119, 120, 117, 0.5);
 }
 .pulse {
   animation: pulsate 1s ease-out;

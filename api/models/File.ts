@@ -15,66 +15,47 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-import _ from "lodash";
-import type { Order } from "sequelize";
+import { CreationOptional, DataTypes, ForeignKey } from "sequelize";
 import sequelize from "sequelize";
-import type { ModelCommon, ModelStaticCommon } from "./index.js";
+import { ModelStaticCommon } from "./index.js";
 import type Sequelize from "sequelize";
-import type { User } from "./User.js";
 import type { FileId, UserId } from "@typedefs/api/common.js";
+import { AudiobaitDetails } from "@typedefs/api/file.js";
+import { User } from "@models/User.js";
+import { JsonDocument } from "@typedefs/api/event.js";
 
 const Op = sequelize.Op;
-export interface File extends Sequelize.Model, ModelCommon<File> {
-  id: FileId;
-  UserId: UserId;
-  details: any;
-  type: any;
-  fileKey: string;
-  fileSize: number;
-}
-export interface FileStatic extends ModelStaticCommon<File> {
-  buildSafely: (fields: Record<string, any>) => File;
-  query: (
-    where: any,
-    offset: number,
-    limit: number,
-    order?: Order
-  ) => Promise<{ rows: File[]; count: number }>;
-  deleteIfAllowedElseThrow: (user: User, file: File) => Promise<void>;
-  getMultiple: (ids: FileId[]) => Promise<File[]>;
-}
-export default function (sequelize, DataTypes) {
-  const name = "File";
 
-  const attributes = {
-    type: DataTypes.STRING,
-    fileKey: DataTypes.STRING,
-    details: DataTypes.JSONB,
-    fileSize: DataTypes.INTEGER,
-  };
+export class File extends ModelStaticCommon<File> {
+  declare id: CreationOptional<FileId>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare UserId: ForeignKey<UserId>;
+  declare details: JsonDocument | AudiobaitDetails;
+  declare type: string;
+  declare fileKey: string;
+  declare fileSize: number;
+  static apiSettableFields = Object.freeze(["type", "details"]);
 
-  const File = sequelize.define(name, attributes) as unknown as FileStatic;
+  static buildSafely(fields: { type: string; details: JsonDocument }) {
+    return this.build({ type: fields.type, details: fields.details || {} });
+  }
 
-  File.apiSettableFields = ["type", "details"];
-
-  //---------------
-  // CLASS METHODS
-  //---------------
-
-  File.buildSafely = function (fields) {
-    return File.build(_.pick(fields, File.apiSettableFields)) as File;
-  };
-
-  File.addAssociations = function (models) {
-    models.File.belongsTo(models.User);
-  };
+  static addAssociations() {
+    this.belongsTo(User);
+  }
 
   /**
    * Return one or more files for a user matching the query
    * arguments given.
    */
-  File.query = async function (where, offset, limit, order) {
-    if (order == null) {
+  static async query(
+    where: Sequelize.WhereOptions,
+    offset: number,
+    limit: number,
+    order: Sequelize.Order | null = null,
+  ) {
+    if (order === null) {
       order = [["id", "DESC"]];
     }
 
@@ -86,9 +67,9 @@ export default function (sequelize, DataTypes) {
       offset: offset,
     };
     return this.findAndCountAll(q);
-  };
+  }
 
-  File.getMultiple = async function (ids) {
+  static async getMultiple(ids: FileId[]) {
     return this.findAll({
       where: {
         id: {
@@ -96,7 +77,30 @@ export default function (sequelize, DataTypes) {
         },
       },
     });
+  }
+}
+export const init = (sequelizeInstance: Sequelize.Sequelize) => {
+  const attributes = {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE,
+    type: DataTypes.STRING,
+    fileKey: DataTypes.STRING,
+    details: DataTypes.JSONB,
+    fileSize: DataTypes.INTEGER,
   };
 
+  File.init(attributes, {
+    tableName: "Files",
+    sequelize: sequelizeInstance,
+    name: {
+      singular: "File",
+      plural: "Files",
+    },
+  });
   return File;
-}
+};

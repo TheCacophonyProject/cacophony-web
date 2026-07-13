@@ -1,4 +1,10 @@
-import { randomBytes } from "crypto";
+function uint8ArrayToHexString(uint8Array: Uint8Array) {
+  return Array.from(uint8Array)
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+const randomBytes = (length: number) =>
+  uint8ArrayToHexString(window.crypto.getRandomValues(new Uint8Array(length)));
 
 //suffix to add to ids making them unique within each test run
 let userId = 0;
@@ -15,13 +21,13 @@ export function getTestEmail(baseName: string): string {
   return getTestName(baseName).toLowerCase() + "@api.created.com";
 }
 
-export function initializeTestNames(uniqueId: string = "") {
+export function initializeTestNames(uniqueId = "") {
   if (
     typeof Cypress.config("env") === "undefined" ||
     typeof Cypress.config("env")[uniqueIdName] === "undefined"
   ) {
     if (uniqueId.length < 1) {
-      uniqueId = randomBytes(4).toString("hex");
+      uniqueId = randomBytes(4);
     }
 
     cy.log(`Unique id for names for this run is '${uniqueId}'`);
@@ -37,7 +43,7 @@ export function stripBackName(testName: string): string {
   return testName.substring(3, testName.length - uniqueId.length - 1);
 }
 
-export function getNewIdentity(userName: string): any {
+export function getNewIdentity(userName: string) {
   const user = {
     name: userName + userId.toString(),
     group: userName + userId.toString() + "_group",

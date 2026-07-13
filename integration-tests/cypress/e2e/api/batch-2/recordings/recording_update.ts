@@ -211,7 +211,7 @@ describe("Update recordings", () => {
   });
 });
 
-function updateExpected(expectedRecording: any) {
+function updateExpected(expectedRecording: ApiThermalRecordingResponse) {
   expectedRecording.processingState = RecordingProcessingState.Finished;
   expectedRecording.comment = "This is a new comment";
   //expectedRecording.additionalMetadata={newField: "newValue", newField2: "newValue2", algorithm: 99999, totalFrames: 141, previewSecs: null};

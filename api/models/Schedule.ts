@@ -16,43 +16,46 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import _ from "lodash";
-import type { ModelCommon, ModelStaticCommon } from "./index.js";
-import type Sequelize from "sequelize";
+import { ModelStaticCommon } from "./index.js";
+import Sequelize, { CreationOptional, DataTypes, ForeignKey } from "sequelize";
 import type { ScheduleId, UserId } from "@typedefs/api/common.js";
 import type { ScheduleConfig } from "@typedefs/api/schedule.js";
+import { User } from "@models/User.js";
+import { Device } from "@models/Device.js";
 
-export interface Schedule extends Sequelize.Model, ModelCommon<Schedule> {
-  id: ScheduleId;
-  UserId: UserId;
-  schedule: ScheduleConfig;
+export class Schedule extends ModelStaticCommon<Schedule> {
+  declare id: CreationOptional<ScheduleId>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+  declare schedule: CreationOptional<ScheduleConfig>;
+  declare UserId: ForeignKey<UserId>;
+
+  static addAssociations() {
+    this.belongsTo(User);
+    this.hasMany(Device);
+  }
+  static buildSafely(fields: { schedule: ScheduleConfig }) {
+    return Schedule.build({ schedule: fields.schedule });
+  }
 }
-
-export interface ScheduleStatic extends ModelStaticCommon<Schedule> {
-  buildSafely: (fields: any) => Schedule;
-}
-
-export default function (sequelize, DataTypes): ScheduleStatic {
-  const name = "Schedule";
-
+export const init = (sequelizeInstance: Sequelize.Sequelize) => {
   const attributes = {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE,
     schedule: DataTypes.JSONB,
   };
-
-  const Schedule = sequelize.define(name, attributes);
-
-  //---------------
-  // CLASS METHODS
-  //---------------
-
-  Schedule.buildSafely = function (fields) {
-    return Schedule.build(_.pick(fields, ["schedule"]));
-  };
-
-  Schedule.addAssociations = function (models) {
-    models.Schedule.belongsTo(models.User);
-    models.Schedule.hasMany(models.Device);
-  };
-
+  Schedule.init(attributes, {
+    sequelize: sequelizeInstance,
+    tableName: "Schedules",
+    name: {
+      singular: "Schedule",
+      plural: "Schedules",
+    },
+  });
   return Schedule;
-}
+};

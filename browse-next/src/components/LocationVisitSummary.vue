@@ -1,14 +1,14 @@
 <script lang="ts" setup>
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
-import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import { computed, inject } from "vue";
 import type { Ref } from "vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { LatLng } from "leaflet";
 import { visitsByLocation, visitsCountBySpecies } from "@models/visitsUtils";
 import type { NamedPoint } from "@models/mapUtils";
-import { displayLabelForClassificationLabel } from "@api/Classifications";
+import { displayLabelForClassificationLabel } from "@api/classificationsUtils.ts";
 import type { StationId as LocationId } from "@typedefs/api/common";
+import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
 
 const currentlyHighlightedLocation = inject(
   "currentlyHighlightedLocation",
@@ -19,13 +19,13 @@ const props = withDefaults(
     location: ApiLocationResponse;
     locations: ApiLocationResponse[] | null;
     activeLocations: ApiLocationResponse[];
-    visits: ApiVisitResponse[];
+    visits: ApiStaticVisitResponse[];
   }>(),
   { locations: null },
 );
 
-const visitsForLocation = computed<ApiVisitResponse[]>(() => {
-  return props.visits.filter((visit) => visit.stationId === props.location.id);
+const visitsForLocation = computed<ApiStaticVisitResponse[]>(() => {
+  return props.visits.filter((visit) => visit.locationId === props.location.id);
 });
 
 const visitCount = computed<number>(() => visitsForLocation.value.length);
@@ -96,7 +96,7 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
         :highlighted-point="highlightedPoint"
         :points="locationsForMap"
         :active-points="activeLocationsForMap"
-        :center-on-highlighted="false"
+        :center-on-highlighted="true"
         :is-interactive="false"
         :zoom="false"
         :can-change-base-map="false"
@@ -106,19 +106,19 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
       >
       </map-with-points>
       <div class="overlay me-1">
-        <div class="station-name mb-1 p-1 px-sm-1 py-sm-0">
+        <div class="station-name h5 lh-base mb-1">
           {{ location.name }}
         </div>
-        <div class="visit-count p-1 px-sm-1 py-sm-0">
+        <div class="visit-count lh-base text-muted">
           {{ visitCount }} visits
         </div>
       </div>
     </div>
-    <div class="visit-species-breakdown d-flex justify-content-between">
-      <div class="names my-2">
+    <div class="visit-species-breakdown d-flex justify-content-between gap-3">
+      <div class="names">
         <div
           v-for="([species, _path, count], index) in speciesSummary"
-          :class="['species-count', 'ps-1']"
+          :class="['species-count']"
           :key="index"
         >
           <strong class="me-1 text-capitalize">{{ count }}</strong
@@ -127,7 +127,7 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
           }}</span>
         </div>
       </div>
-      <div class="values flex-fill px-2 my-2">
+      <div class="values flex-fill">
         <div
           v-for="([species, path, count], index) in speciesSummary"
           :class="[species, 'species-value', ...path.split('.')]"
@@ -144,45 +144,28 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
 </template>
 
 <style scoped lang="less">
-@import "../assets/font-sizes.less";
+@import "../assets/less/typography.less";
+@import "../assets/less/elevation.less";
 
-.map {
-  height: 150px;
-}
 .location-visit-summary {
-  background: white;
-  border-radius: 2px;
-  width: 300px;
+  background: var(--bs-white);
+  border-radius: var(--bs-border-radius);
+  width: calc(var(--cp-grid-base) * 75); // 300px
+  min-width: calc(var(--cp-grid-base) * 75); // 300px
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
   margin-bottom: 2px;
-  min-width: 295px;
-  @media screen and (min-width: 576px) {
-    &:not(:first-child) {
-      margin-left: 19px;
-    }
-  }
-
   cursor: pointer;
   user-select: none;
   text-decoration: none;
   color: inherit;
-  transition: background-color 0.2s ease-in-out;
-  &:hover {
-    background-color: #ececec;
-    border-bottom: 4px solid #999;
-  }
+  .standard-shadow();
 }
 .visit-species-breakdown {
+  padding: var(--cp-spacing-sm);
   .species-count {
-    margin-left: 8px;
     height: 24px;
     line-height: 24px;
-  }
-  .names {
-    .fs-7();
-    @media screen and (min-width: 576px) {
-      font-size: unset;
-    }
+    font-size: var(--cp-font-size-sm);
   }
   .species-value {
     position: relative;
@@ -193,25 +176,26 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
       content: " ";
       display: block;
       height: 6px;
-      background: #9d9d9d;
+      background: var(--cp-tag-no-priority);
       top: 9px;
       width: 100%;
+      border-radius: var(--bs-border-radius-sm);
     }
     &.mustelid {
       &::before {
-        background: red;
+        background: var(--cp-tag-priority-1);
       }
     }
     &.possum,
     &.cat {
       &::before {
-        background: #b53326;
+        background: var(--cp-tag-priority-2);
       }
     }
     &.rodent,
     &.hedgehog {
       &::before {
-        background: lighten(coral, 20%);
+        background: var(--cp-tag-priority-3);
       }
     }
   }
@@ -219,33 +203,28 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
 .map-container {
   position: relative;
   // TODO - For proper z-indexing, we need to add these html labels as leaflet controls...
+  .map {
+    height: calc(var(--cp-grid-base) * 40); // 160px
+    border-radius: var(--bs-border-radius) var(--bs-border-radius) 0 0;
+  }
   .overlay {
     position: absolute;
-    top: 8px;
-    left: 7px;
+    top: var(--cp-spacing-xs);
+    left: var(--cp-spacing-xs);
     z-index: 400;
   }
   .station-name,
   .visit-count {
-    background: white;
+    background: var(--bs-white);
+    border-radius: var(--bs-border-radius-sm);
+    padding: var(--cp-spacing-xxxs) var(--cp-spacing-xs);
   }
   .station-name {
-    display: block;
-    color: #016e9d;
-    font-weight: 500;
-    .fs-7();
+    font-weight: var(--cp-font-weight-medium);
+    //color: var(--cp-color-green-700);
   }
   .visit-count {
     display: inline-block;
-    .fs-7();
-  }
-
-  @media screen and (min-width: 576px) {
-    .visit-count,
-    .station-name {
-      .fs-6();
-      font-weight: unset;
-    }
   }
 }
 </style>

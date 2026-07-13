@@ -1,20 +1,33 @@
-import { parentPort } from "worker_threads";
-import type { CptvFrame, CptvFrameHeader, CptvHeader } from "./decoder.js";
+import { workerData } from "worker_threads";
+import type {
+  CptvFrame,
+  CptvFrameHeader,
+  CptvHeader,
+  CptvHeaderMapped,
+} from "./decoder.js";
 import type { CptvDecoderContext as DecoderContext } from "./decoder/cptv_decoder.js";
-const context = parentPort;
+import type { MessagePort } from "node:worker_threads";
+const context = workerData.port as MessagePort;
 import init, { CptvDecoderContext } from "./decoder/cptv_decoder.js";
 import { readFileSync } from "fs";
 import type { ReadableStream } from "stream/web";
 import { fileURLToPath } from "url";
 import path from "path";
-
+console.log = () => {
+  /* empty */
+};
+// This lock is intended to prevent multiple commands from the parent thread running at once.
+// Can that even happen in a single-threaded model though?  Will the new message be received before the
+// previous one completes?
 class Unlocker {
   fn: (() => void) | null = null;
   constructor() {
     this.fn = null;
   }
   unlock() {
-    this.fn && this.fn();
+    if (this.fn) {
+      this.fn();
+    }
   }
 }
 
@@ -64,7 +77,9 @@ const FakeReader = (
         resolve();
       });
     },
-    releaseLock() {},
+    releaseLock() {
+      return;
+    },
     closed: new Promise((resolve) => {
       resolve(undefined);
     }),
@@ -77,22 +92,34 @@ class CptvDecoderInterface {
   private locked = false;
   private consumed = false;
   private prevFrameHeader: CptvFrameHeader | null = null;
-  private response: Response | null = null;
   private reader: ReadableStreamDefaultReader | null = null;
   private playerContext: DecoderContext | null = null;
   private expectedSize = 0;
   private inited = false;
-  private currentContentType = "application/x-cptv";
   streamError: string | null = null;
 
-  free() {
+  async free() {
     this.framesRead = 0;
+    this.expectedSize = 0;
     this.locked = false;
     this.consumed = false;
     this.inited = false;
     this.prevFrameHeader = null;
-    this.playerContext && this.playerContext.free();
-    this.reader && this.reader.cancel();
+    if (this.playerContext) {
+      this.playerContext.free();
+    }
+    if (this.reader && this.reader.cancel) {
+      try {
+        await this.reader.cancel();
+      } catch (_e) {
+        // Do nothing
+      }
+      try {
+        this.reader.releaseLock();
+      } catch (_e) {
+        // Do nothing
+      }
+    }
     this.streamError = null;
     this.reader = null;
     this.playerContext = null;
@@ -103,7 +130,11 @@ class CptvDecoderInterface {
   }
 
   async initWithFileBytes(fileBytes: Uint8Array) {
-    this.free();
+    try {
+      await this.free();
+    } catch (_e) {
+      // Do nothing
+    }
     this.framesRead = 0;
     this.streamError = null;
     const unlocker = new Unlocker();
@@ -115,7 +146,7 @@ class CptvDecoderInterface {
     let result;
     try {
       const __filename = fileURLToPath(import.meta.url);
-      // eslint-disable-next-line no-undef
+
       const __dirname = path.dirname(__filename);
       const wasm = readFileSync(
         path.join(__dirname, "./decoder/cptv_decoder_bg.wasm"),
@@ -126,8 +157,10 @@ class CptvDecoderInterface {
       );
       this.inited = true;
       result = true;
-    } catch (e) {
-      this.streamError = e;
+    } catch (e: unknown) {
+      if (typeof e === "string") {
+        this.streamError = e;
+      }
       result = `Failed to load CPTV file, ${e}`;
     }
     unlocker.unlock();
@@ -136,7 +169,11 @@ class CptvDecoderInterface {
   }
 
   async initWithReadableStream(stream: ReadableStream) {
-    this.free();
+    try {
+      await this.free();
+    } catch (_e) {
+      // Do nothing
+    }
     this.framesRead = 0;
     this.streamError = null;
     const unlocker = new Unlocker();
@@ -147,7 +184,7 @@ class CptvDecoderInterface {
     try {
       if (!wasmBytes) {
         const __filename = fileURLToPath(import.meta.url);
-        // eslint-disable-next-line no-undef
+
         const __dirname = path.dirname(__filename);
         wasmBytes = readFileSync(
           path.join(__dirname, "./decoder/cptv_decoder_bg.wasm"),
@@ -159,8 +196,10 @@ class CptvDecoderInterface {
       );
       this.inited = true;
       result = true;
-    } catch (e) {
-      this.streamError = e;
+    } catch (e: unknown) {
+      if (typeof e === "string") {
+        this.streamError = e;
+      }
       result = `Failed to load CPTV file, ${e}`;
     }
     unlocker.unlock();
@@ -216,15 +255,36 @@ class CptvDecoderInterface {
   }
 
   async getMetadata(): Promise<
-    (CptvHeader & { duration: number; totalFrames: number }) | string
+    | (CptvHeaderMapped & {
+        duration: number;
+        totalFrames: number;
+        firstFrame?: CptvFrame;
+      })
+    | string
   > {
     const header = await this.getHeader();
     let totalFrameCount = 0;
-    if (this.hasStreamError()) {
+    let firstFrame: CptvFrame | null = null;
+    if (this.hasStreamError() && typeof header === "string") {
       return this.streamError;
     } else {
-      if ((header as CptvHeader).totalFrames) {
-        totalFrameCount = (header as CptvHeader).totalFrames;
+      const h = header as CptvHeaderMapped;
+      if (h["totalFrames"]) {
+        totalFrameCount = h["totalFrames"];
+        let frame: CptvFrame | null;
+        // Strictly speaking, we're not validating the file as non-corrupt here, since we don't
+        // try to decode all of the frames.
+        while (
+          (frame = await (this.playerContext as DecoderContext).nextFrame())
+        ) {
+          if (!frame.isBackgroundFrame) {
+            firstFrame = {
+              ...frame,
+              imageData: frame.imageData.slice(),
+            };
+            break;
+          }
+        }
       } else {
         let frame: CptvFrame | null;
         let num = 0;
@@ -232,6 +292,12 @@ class CptvDecoderInterface {
           (frame = await (this.playerContext as DecoderContext).nextFrame())
         ) {
           if (!frame.isBackgroundFrame) {
+            if (!firstFrame) {
+              firstFrame = {
+                ...frame,
+                imageData: frame.imageData.slice(),
+              };
+            }
             num++;
           }
         }
@@ -240,12 +306,20 @@ class CptvDecoderInterface {
       if (this.hasStreamError()) {
         return this.streamError;
       }
-      const duration = (1 / (header as CptvHeader).fps) * totalFrameCount;
-      return {
-        ...(header as CptvHeader),
+      const duration = (1 / h.fps) * totalFrameCount;
+      const payload: CptvHeaderMapped & {
+        duration: number;
+        totalFrames: number;
+        firstFrame?: CptvFrame;
+      } = {
+        ...h,
         duration,
         totalFrames: totalFrameCount,
       };
+      if (firstFrame) {
+        payload.firstFrame = firstFrame;
+      }
+      return payload;
     }
   }
 
@@ -259,13 +333,26 @@ class CptvDecoderInterface {
 
   async getStreamMetadata(stream: ReadableStream) {
     const initedResult = await this.initWithReadableStream(stream);
-    if (initedResult === true) {
-      const meta = await this.getMetadata();
-      this.reader && (this.reader as any).releaseLock();
-      return meta;
+    try {
+      if (initedResult === true) {
+        return await this.getMetadata();
+      }
+      return initedResult as string;
+    } finally {
+      if (this.reader) {
+        try {
+          await this.reader.cancel();
+        } catch (_e) {
+          // Do nothing
+        }
+        try {
+          this.reader.releaseLock();
+        } catch (_e) {
+          // Do nothing
+        }
+      }
+      this.reader = null;
     }
-    this.reader && (this.reader as any).releaseLock();
-    return initedResult as string;
   }
 
   async lockIsUncontended(unlocker: Unlocker) {
@@ -278,7 +365,7 @@ class CptvDecoderInterface {
     });
   }
 
-  async getHeader() {
+  async getHeader(): Promise<CptvHeaderMapped | string> {
     if (!this.reader) {
       return "You need to initialise the player with the url of a CPTV file";
     }
@@ -299,23 +386,16 @@ class CptvDecoderInterface {
         unlocker.unlock();
         this.locked = false;
         if (typeof header === "object") {
-          const h: any = { ...header };
-          h.deviceName = h.deviceName.inner;
-          if (h.brand) {
-            h.brand = h.brand.inner;
-          }
-          if (h.model) {
-            h.model = h.model.inner;
-          }
-          if (h.firmwareVersion) {
-            h.firmwareVersion = h.firmwareVersion.inner;
-          }
-          if (h.motionConfig) {
-            h.motionConfig = h.motionConfig.inner;
-          }
-          return h;
+          return {
+            ...header,
+            deviceName: header.deviceName.inner,
+            brand: header.brand && header.brand.inner,
+            model: header.model && header.model.inner,
+            firmwareVersion:
+              header.firmwareVersion && header.firmwareVersion.inner,
+            motionConfig: header.motionConfig && header.motionConfig.inner,
+          };
         }
-        return null;
       }
     }
     return this.streamError;
@@ -327,7 +407,8 @@ class CptvDecoderInterface {
 }
 
 const player = new CptvDecoderInterface();
-context.addListener("message", async (data) => {
+context.unref();
+context.on("message", async (data) => {
   switch (data.type) {
     case "initWithLocalCptvFile":
       {
@@ -349,8 +430,12 @@ context.addListener("message", async (data) => {
       break;
     case "getStreamMetadata":
       {
-        const result = await player.getStreamMetadata(data.streamReader);
-        context.postMessage({ type: data.type, data: result });
+        try {
+          const result = await player.getStreamMetadata(data.streamReader);
+          context.postMessage({ type: data.type, data: result });
+        } catch (error) {
+          context.postMessage({ type: data.type, data: error });
+        }
       }
       break;
     case "getNextFrame":
@@ -377,10 +462,26 @@ context.addListener("message", async (data) => {
         context.postMessage({ type: data.type, data: error });
       }
       break;
-    case "freeResources":
+    case "reset":
       {
-        player.free();
+        try {
+          await player.free();
+        } catch (_e) {
+          // Do nothing
+        }
         context.postMessage({ type: data.type, data: true });
+      }
+      break;
+    case "shutdown":
+      {
+        try {
+          await player.free();
+        } catch (_e) {
+          // Do nothing
+        }
+        context.postMessage({ type: data.type, data: true });
+        context.removeAllListeners();
+        context.close();
       }
       break;
     default:

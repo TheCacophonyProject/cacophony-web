@@ -15,68 +15,39 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-
-import Sequelize from "sequelize";
-import type { ModelCommon, ModelStaticCommon } from "./index.js";
-import type { File, FileStatic } from "./File.js";
+import Sequelize, { CreationOptional, DataTypes } from "sequelize";
+import { ModelStaticCommon } from "./index.js";
+import { Track } from "@models/Track.js";
+import { Event } from "@models/Event.js";
+import { JsonDocument } from "@typedefs/api/event.js";
 
 const Op = Sequelize.Op;
 export type DetailSnapshotId = number;
-export interface DetailSnapShot
-  extends Sequelize.Model,
-    ModelCommon<DetailSnapShot> {
-  getFile: () => Promise<File>;
-  id: DetailSnapshotId;
-  type: string;
-  details: any; // JSON
-}
 
-export interface DetailSnapshotStatic
-  extends ModelStaticCommon<DetailSnapShot> {
-  getOrCreateMatching: (searchType, searchDetails) => Promise<DetailSnapShot>;
-  getFromId: (id: DetailSnapshotId) => Promise<DetailSnapShot>;
-}
+export class DetailSnapshot extends ModelStaticCommon<DetailSnapshot> {
+  declare id: CreationOptional<DetailSnapshotId>;
+  declare type: string;
+  declare details: JsonDocument; // FIXME: SaltUpdateEventDetail etc
+  // & {
+  //   unitName?: string;
+  //   logs?: string[];
+  //   nodegroup?: string;
+  //   fileId?: number;
+  //   volume?: number; // audiobait
+  // };
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
 
-export default function (sequelize, DataTypes): DetailSnapshotStatic {
-  const name = "DetailSnapshot";
-
-  const attributes = {
-    type: DataTypes.STRING,
-    details: DataTypes.JSONB,
-  };
-
-  const options = {};
-
-  const DetailSnapshot = sequelize.define(
-    name,
-    attributes,
-    options,
-  ) as unknown as DetailSnapshotStatic;
-
-  const models = sequelize.models;
-
-  //---------------
-  // CLASS METHODS
-  //---------------
-
-  DetailSnapshot.addAssociations = function (models) {
-    models.DetailSnapshot.hasMany(models.Event, {
-      foreignKey: "EventDetailId",
-    });
-    models.DetailSnapshot.hasMany(models.Track, { foreignKey: "AlgorithmId" });
-  };
-
-  DetailSnapshot.getOrCreateMatching = async function (
+  static getOrCreateMatching = async (
     searchType: string,
-    searchDetails: any,
-  ): Promise<DetailSnapShot> {
+    searchDetails: JsonDocument | Sequelize.WhereOptions,
+  ): Promise<DetailSnapshot> => {
     if (!searchDetails) {
       searchDetails = {
         [Op.eq]: null,
       };
     }
-
-    const existing = await this.findOne({
+    const existing = await DetailSnapshot.findOne({
       where: {
         type: searchType,
         details: {
@@ -84,32 +55,44 @@ export default function (sequelize, DataTypes): DetailSnapshotStatic {
         },
       },
     });
-
     if (existing) {
       return existing;
-    } else {
-      return this.create({
-        type: searchType,
-        details: searchDetails,
-      });
     }
+    return DetailSnapshot.create({
+      type: searchType,
+      details: searchDetails,
+    });
   };
-
-  DetailSnapshot.getFromId = async function (id: DetailSnapshotId) {
-    return await this.findById(id);
-  };
-
-  //-----------------
-  // INSTANCE METHODS
-  //-----------------
-
-  DetailSnapshot.prototype.getFile = async function () {
-    const fid = this.details.fileId;
-    if (!fid) {
-      return null;
-    }
-    return (models.File as FileStatic).findByPk(fid);
-  };
-
-  return DetailSnapshot;
+  static apiSettableFields: string[] = [];
+  static addAssociations() {
+    this.hasMany(Event, {
+      foreignKey: "EventDetailId",
+    });
+    this.hasMany(Track, { foreignKey: "AlgorithmId" });
+  }
 }
+
+export const init = (sequelizeInstance: Sequelize.Sequelize) => {
+  const attributes = {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE,
+
+    type: DataTypes.STRING,
+    details: DataTypes.JSONB,
+  };
+
+  DetailSnapshot.init(attributes, {
+    sequelize: sequelizeInstance,
+    tableName: "DetailSnapshots",
+    name: {
+      singular: "DetailSnapshot",
+      plural: "DetailSnapshots",
+    },
+  });
+  return DetailSnapshot;
+};

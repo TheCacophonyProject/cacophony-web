@@ -104,11 +104,7 @@
 //   },
 // };
 module.exports = {
-  up: async function (queryInterface, Sequelize) {
+  up: async function (queryInterface, Sequelize) {},
 
-  },
-
-  down: async function (queryInterface) {
-
-  },
+  down: async function (queryInterface) {},
 };

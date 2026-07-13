@@ -8,23 +8,32 @@ import {
   useTemplateRef,
   watch,
 } from "vue";
-import { BFormInput } from "bootstrap-vue-next";
+import {
+  BAlert,
+  BBadge,
+  BButton,
+  BInput,
+  BSpinner,
+  BTooltip,
+} from "bootstrap-vue-next";
 import type { StationId as LocationId } from "@typedefs/api/common";
-import { changeLocationName } from "@api/Location.ts";
 import { userIsProjectAdmin } from "@models/provides.ts";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import { ClientApi } from "@/api";
 
 const { location } = defineProps<{ location: ApiLocationResponse }>();
-
-const editLocationField = useTemplateRef("input");
-watch(editLocationField, (next) => {
+const editLocationField = ref<typeof BInput | null>(null);
+watch(editLocationField, (next: typeof BInput | null) => {
   // Edit location field is mounted
   if (next) {
-    (next as typeof BFormInput).focus();
+    next.focus();
+    (next.$el as HTMLInputElement).select();
   }
 });
-const clickedRename = () => {
+const clickedRename = (e: MouseEvent) => {
   errorMessage.value = "";
   editingLocationName.value = true;
+  locationName.value = location.name;
 };
 const editingLocationName = ref<boolean>(false);
 const savingLocation = ref<boolean>(false);
@@ -52,22 +61,33 @@ const saveLocationName = async () => {
     locationName.value !== location.name
   ) {
     savingLocation.value = true;
-    const response = await changeLocationName(locationName.value, location.id);
+    const response = await ClientApi.Locations.changeLocationName(
+      location.id,
+      locationName.value,
+    );
+    savingLocation.value = false;
     if (!response.success) {
       // Else show error
       errorMessage.value = response.result.messages[0];
+      locationName.value = "";
+    } else {
+      emit("changed-location-name", {
+        newName: locationName.value,
+        id: location.id,
+      });
     }
-    savingLocation.value = false;
-    emit("changed-location-name", {
-      newName: locationName.value,
-      id: location.id,
-    });
   }
   locationName.value = "";
   editingLocationName.value = false;
 };
 const hasError = computed<boolean>(() => errorMessage.value !== "");
-const exitEditMode = () => {
+const exitEditMode = (event: MouseEvent) => {
+  if (
+    event.relatedTarget &&
+    (event.relatedTarget as HTMLElement).tagName === "BUTTON"
+  ) {
+    return;
+  }
   locationName.value = "";
   editingLocationName.value = false;
 };
@@ -80,47 +100,78 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
       <b-input
         v-if="editingLocationName"
         v-model="locationName"
-        ref="input"
+        ref="editLocationField"
         autofocus
         size="sm"
         placeholder="Enter the new name for this location"
-        @blur="saveLocationName"
+        class="me-1 me-sm-2 mb-2"
+        @blur="exitEditMode"
         @keyup.enter="saveLocationName"
         @keyup.esc="exitEditMode"
       />
-      <strong
+      <h4
         v-else
         class="location-name"
-        :class="{ 'needs-rename': !!location.needsRename }"
-        >{{ location.name }}</strong
+        :class="[
+          'h4 me-2',
+          { 'needs-rename text-break': !!location.needsRename },
+        ]"
       >
+        {{ location.name }}
+      </h4>
       <b-spinner small v-if="savingLocation" class="ms-3" />
     </div>
-    <div>
-      <b-button
-        variant="light"
-        class="ms-2"
-        size="sm"
-        @click="clickedRename"
-        v-if="isProjectAdmin"
+    <div class="d-flex align-items-center" v-if="!editingLocationName">
+      <span
+        class="d-flex align-items-center"
+        @mouseover.stop.prevent="showRenameHint"
+        @mouseout.stop.prevent="hideRenameHint"
+        v-if="location.needsRename"
       >
-        <span
-          class="rename-hint fs-7"
-          @mouseover.stop.prevent="showRenameHint"
-          @mouseout.stop.prevent="hideRenameHint"
-          v-if="location.needsRename"
+        <b-badge
+          variant="warning"
+          class="rename-hint d-flex flex-row align-items-center me-2"
         >
-          <font-awesome-icon
-            icon="exclamation-triangle"
+          <material-symbol name="warning" filled size="1rem" class="me-1" />
+          Rename
+        </b-badge>
+      </span>
+      <b-tooltip>
+        <template #target>
+          <b-button
+            variant="light"
+            class="btn-icon"
             size="sm"
-            class="me-1"
-            :color="'#e39768'"
-          />
-          <span class="me-2">Rename</span>
-          <font-awesome-icon icon="pencil" size="sm" color="#666" />
-        </span>
-        <font-awesome-icon v-else icon="pencil" size="sm" color="#bbb" />
+            id="rename"
+            aria-label="Rename location"
+            @click="clickedRename"
+            v-if="isProjectAdmin"
+          >
+            <material-symbol name="edit" size="1.125rem" />
+          </b-button>
+        </template>
+        Rename location
+      </b-tooltip>
+    </div>
+    <div v-else class="d-flex gap-1 gap-sm-2">
+      <b-button
+        variant="outline-secondary"
+        size="sm"
+        @click.stop.prevent="exitEditMode"
+        class="d-flex"
+      >
+        <material-symbol name="close" size="1.25rem" class="d-sm-none" />
+        <span class="d-none d-sm-inline">Cancel</span>
       </b-button>
+      <b-button
+        variant="outline-secondary"
+        @click.stop.prevent="saveLocationName"
+        size="sm"
+        class="d-flex"
+      >
+        <material-symbol name="check" size="1.25rem" class="d-sm-none" />
+        <span class="d-none d-sm-inline">Save</span></b-button
+      >
     </div>
   </div>
   <b-alert
@@ -133,10 +184,4 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
   >
 </template>
 
-<style scoped lang="less">
-@media screen and (max-width: 575px) {
-  .location-name.needs-rename {
-    max-width: 230px;
-  }
-}
-</style>
+<style scoped lang="less"></style>

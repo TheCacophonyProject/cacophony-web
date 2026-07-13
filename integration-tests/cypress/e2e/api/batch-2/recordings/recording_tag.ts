@@ -182,7 +182,7 @@ describe("Recordings: tag", () => {
   it("Can set all valid tag fields", () => {
     const fullTag: ApiRecordingTagRequest = {
       detail: "morepork",
-      confidence: 0.9,
+      confidence: 90,
       startTime: 13.4,
       duration: 2.3,
       automatic: true,
@@ -192,7 +192,7 @@ describe("Recordings: tag", () => {
     const expectedTag: ApiRecordingTagResponse = {
       id: -99,
       detail: "morepork",
-      confidence: 0.9,
+      confidence: 90,
       startTime: 13.4,
       duration: 2.3,
       automatic: true,
@@ -227,7 +227,7 @@ describe("Recordings: tag", () => {
   it("Correct handling of invalid tag data", () => {
     const fullTag: ApiRecordingTagRequest = {
       detail: "morepork",
-      confidence: 0.9,
+      confidence: 90,
       startTime: 13.4,
       duration: 2.3,
       automatic: true,

@@ -10,7 +10,17 @@ import { RecordingType } from "@typedefs/api/consts.ts";
 
 const route = useRoute();
 const router = useRouter();
-const emit = defineEmits(["close", "shown"]);
+const emit = defineEmits<{
+  (e: "close"): void;
+  (e: "shown"): void;
+  (
+    e: "recording-updated",
+    recording: RecordingId,
+    action: "deleted" | "updated",
+    newClassification?: string,
+    oldClassification?: string,
+  ): void;
+}>();
 
 const urlNormalisedGroupName = inject(
   urlNormalisedCurrentSelectedProjectName,
@@ -68,7 +78,20 @@ const onShown = () => {
   emit("shown");
 };
 const recordingType = ref<RecordingType>(RecordingType.ThermalRaw);
-const updatedRecording = (recordingId: RecordingId, action: string) => {};
+const updatedRecording = (
+  recordingId: RecordingId,
+  action: "deleted" | "updated",
+  newClassification?: string,
+  oldClassification?: string,
+) => {
+  emit(
+    "recording-updated",
+    recordingId,
+    action,
+    newClassification,
+    oldClassification,
+  );
+};
 const loadedRecording = (type: RecordingType) => {
   recordingType.value = type;
 };
@@ -81,15 +104,18 @@ const isBusy = ref<boolean>(false);
       v-model="show"
       centered
       lazy
-      hide-footer
-      hide-header
+      no-footer
+      no-header
       :no-fade="noFadeInternal"
       ref="modal"
+      size="xl"
       @hide="show = false"
       @hidden="closedModal"
       @shown="onShown"
       :cancel-disabled="isBusy"
-      :no-close-on-backdrop="recordingType === RecordingType.Audio || isBusy || noCloseOnBackdrop"
+      :no-close-on-backdrop="
+        recordingType === RecordingType.Audio || isBusy || noCloseOnBackdrop
+      "
       :no-close-on-esc="isBusy"
       body-class="p-0"
       :content-class="{
@@ -117,22 +143,20 @@ const isBusy = ref<boolean>(false);
 </template>
 
 <style lang="less">
+@import "../assets/less/breakpoints";
 .inline-view-dialog {
   pointer-events: none;
   user-select: none;
+  @media (min-width: @breakpoint-md) and (max-width: @breakpoint-lg-max) {
+    max-width: 98vw;
+  }
 }
 .inline-view-modal {
-  border-radius: 2px;
-  box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.2);
-
+  overflow: hidden;
   // TODO What's the best way to set the width of this at different breakpoints?
   &.disabled {
     pointer-events: none;
     user-select: none;
   }
-}
-.inline-view-dialog {
-  max-width: 1080px;
-  overflow: hidden;
 }
 </style>

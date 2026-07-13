@@ -606,7 +606,7 @@ describe("Recordings - parameter tests", () => {
       );
       // NOTE: Version seems to only ever be set for audio recordings, so doesn't
       //  really apply here
-      delete (expectedRecording1 as any).version;
+      delete expectedRecording1["version"];
       cy.apiRecordingCheck(
         "rpaGroupAdmin",
         "rpaRecording21",

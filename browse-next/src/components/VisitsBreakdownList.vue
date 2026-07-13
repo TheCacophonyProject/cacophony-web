@@ -3,7 +3,6 @@
 // Farms out to visit breakdown dropdown component.
 
 import { computed } from "vue";
-import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import VisitsDailyBreakdown from "@/components/VisitsDailyBreakdown.vue";
 import {
@@ -13,17 +12,18 @@ import {
 } from "@models/visitsUtils";
 import type { LatLng } from "@typedefs/api/common";
 import type { DateTime } from "luxon";
+import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
 
 const props = withDefaults(
   defineProps<{
-    visits: ApiVisitResponse[];
+    visits: ApiStaticVisitResponse[];
     location: LatLng;
     highlightedLocation: LocationId | null;
   }>(),
   { highlightedLocation: null },
 );
 const emit = defineEmits<{
-  (e: "selected-visit", payload: ApiVisitResponse): void;
+  (e: "selected-visit", payload: ApiStaticVisitResponse): void;
   (e: "change-highlighted-location", payload: LocationId | null): void;
 }>();
 
@@ -31,14 +31,12 @@ const isNocturnal = computed<boolean>(() =>
   visitsAreNocturnalOnlyAtLocation(props.visits, props.location),
 );
 
-const visitsByChunk = computed<[DateTime, ApiVisitResponse[]][]>(() => {
+const visitsByChunk = computed<[DateTime, ApiStaticVisitResponse[]][]>(() => {
   if (isNocturnal.value) {
     return visitsByNightAtLocation(props.visits, props.location); //.reverse();
-  } else {
-    return visitsByDayAtLocation(props.visits, props.location); //.reverse();
   }
+  return visitsByDayAtLocation(props.visits, props.location); //.reverse();
 });
-const hasVisits = computed<boolean>(() => props.visits.length !== 0);
 // :class="[{ 'ps-md-3': hasVisits }]"
 
 // NOTE: If we only supply visits for half a night (from midnight for instance) the labelling is misleading, since it
@@ -52,11 +50,12 @@ const hasVisits = computed<boolean>(() => props.visits.length !== 0);
       :key="`${startTime.toISO()}_${index}`"
       :start-time="startTime"
       :visits="visits"
+      :data-cy="`visit group ${index}`"
       :is-nocturnal="isNocturnal"
       :location="location"
       :currently-highlighed-location="highlightedLocation"
       @selected-visit="
-        (visit: ApiVisitResponse) => emit('selected-visit', visit)
+        (visit: ApiStaticVisitResponse) => emit('selected-visit', visit)
       "
       @change-highlighted-location="
         (loc: LocationId | null) => emit('change-highlighted-location', loc)
@@ -64,15 +63,3 @@ const hasVisits = computed<boolean>(() => props.visits.length !== 0);
     />
   </div>
 </template>
-
-<style scoped lang="less">
-.visits-breakdown-list {
-  // We want this in the context of Dashboard
-  @media screen and (min-width: 1200px) {
-    width: 540px;
-  }
-  //@media screen and (min-width: 992px) {
-  //  width: 430px;
-  //}
-}
-</style>

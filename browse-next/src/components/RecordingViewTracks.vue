@@ -22,13 +22,6 @@ import type {
 } from "@typedefs/api/track";
 import type { TrackId, TrackTagId } from "@typedefs/api/common";
 import {
-  addRecordingLabel,
-  createDummyTrack,
-  deleteTrack,
-  removeTrackTag,
-  replaceTrackTag,
-} from "@api/Recording";
-import {
   type LoggedInUser,
   persistUserProjectSettings,
   type SelectedProject,
@@ -39,10 +32,11 @@ import type {
   ApiTrackTagResponse,
   TrackTagData,
 } from "@typedefs/api/trackTag";
+import { ClientApi } from "@/api";
 import {
   displayLabelForClassificationLabel,
   getPathForLabel,
-} from "@api/Classifications";
+} from "@api/classificationsUtils.ts";
 import {
   currentSelectedProject as currentActiveProject,
   currentUser as currentUserInfo,
@@ -53,6 +47,7 @@ import {
 } from "@typedefs/api/consts.ts";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "@typedefs/api/group";
+import { BFormCheckbox, BSpinner } from "bootstrap-vue-next";
 
 const route = useRoute();
 const router = useRouter();
@@ -90,6 +85,7 @@ const emit = defineEmits<{
   (e: "track-removed", track: { trackId: TrackId }): void;
   (e: "added-recording-label", label: ApiRecordingTagResponse): void;
   (e: "delete-recording"): void;
+  (e: "text-edit-mode-change", enabled: boolean): void;
 }>();
 
 const getTrackById = (trackId: TrackId): ApiTrackResponse | null => {
@@ -104,6 +100,10 @@ watch(
     currentTrack.value = getTrackById(Number(nextTrackId));
   },
 );
+
+const trackIsExpanded = computed<boolean>(() => {
+  return route.path.endsWith("detail");
+});
 
 const showFalseTriggers = ref<boolean>(false);
 
@@ -190,10 +190,12 @@ watch(
         recordingTracksPossiblyFiltered.value.length !== 0 &&
         nextRecording.type !== RecordingType.Audio
       ) {
-        emit("track-selected", {
-          trackId: recordingTracksPossiblyFiltered.value[0].id,
-          automatically: true,
-        });
+        // NOTE: This used to automatically select and seek to the first track in a recording,
+        //  but we are disabling that for now.
+        // emit("track-selected", {
+        //   trackId: recordingTracksPossiblyFiltered.value[0].id,
+        //   automatically: true,
+        // });
       }
     }
   },
@@ -204,10 +206,12 @@ onMounted(() => {
   if (route.params.trackId) {
     currentTrack.value = getTrackById(currentTrackId.value);
   } else if (recordingTracksPossiblyFiltered.value.length !== 0) {
-    emit("track-selected", {
-      trackId: recordingTracksPossiblyFiltered.value[0].id,
-      automatically: true,
-    });
+    // NOTE: This used to automatically select and seek to the first track in a recording,
+    //  but we are disabling that for now.
+    // emit("track-selected", {
+    //   trackId: recordingTracksPossiblyFiltered.value[0].id,
+    //   automatically: true,
+    // });
   }
   initialised.value = true;
 });
@@ -243,7 +247,10 @@ const selectedTrack = (trackId: TrackId, forceReplay = false) => {
 
 const removedTrack = async ({ trackId }: { trackId: TrackId }) => {
   if (props.recording) {
-    const response = await deleteTrack(props.recording, trackId);
+    const response = await ClientApi.Recordings.deleteTrack(
+      props.recording,
+      trackId,
+    );
     if (response.success) {
       emit("track-removed", { trackId });
     }
@@ -268,6 +275,9 @@ const mapTrack = (track: ApiTrackResponse): ApiTrackDataRequest => {
   };
   return mappedTrack as ApiTrackDataRequest;
 };
+const textEditModeChanged = (enabled: boolean) => {
+  emit("text-edit-mode-change", enabled);
+};
 const addOrRemoveUserTag = async ({
   tag,
   trackId,
@@ -288,20 +298,16 @@ const addOrRemoveUserTag = async ({
         // This is a dummy track and needs to be created via the API before we can actually tag it.
         const dummyTrack = mapTrack(track);
         const positions = [];
-        if (props.recording.type === RecordingType.TrailCamImage) {
-          positions.push({
-            x: 0,
-            y: 0,
-            width: 1,
-            height: 1,
-            order: 0,
-          });
-        } else if (props.recording.type === RecordingType.ThermalRaw) {
+        if (props.recording.type === RecordingType.ThermalRaw) {
           const recording = props.recording as ApiThermalRecordingResponse;
-          if (!recording.tags.some((tag) => tag.detail === "missed track")) {
-            // If we're adding a dummy track to a thermal recording, also add the "missed track" tag.
-            addRecordingLabel(recording.id, "missed track").then(
-              (labelResponse) => {
+          if (tag !== "false-positive") {
+            // Only add if we're not tagging recording as a false-positive.
+            if (!recording.tags.some((tag) => tag.detail === "missed track")) {
+              // If we're adding a dummy track to a thermal recording, also add the "missed track" tag.
+              ClientApi.Recordings.addRecordingLabel(
+                recording.id,
+                "missed track",
+              ).then((labelResponse) => {
                 if (labelResponse.success) {
                   emit("added-recording-label", {
                     id: labelResponse.result.tagId,
@@ -310,8 +316,8 @@ const addOrRemoveUserTag = async ({
                     confidence: 0.9,
                   });
                 }
-              },
-            );
+              });
+            }
           }
           const numFrames = Math.floor(
             recording.additionalMetadata?.totalFrames || recording.duration * 9,
@@ -328,7 +334,7 @@ const addOrRemoveUserTag = async ({
         }
         dummyTrack.positions = positions;
         track.positions = positions;
-        const createdTrack = await createDummyTrack(
+        const createdTrack = await ClientApi.Recordings.createDummyTrack(
           props.recording,
           dummyTrack,
         );
@@ -347,20 +353,13 @@ const addOrRemoveUserTag = async ({
       track.tags = track.tags.filter((tag) => tag !== thisUserTag);
       if (thisUserTag && thisUserTag.what === tag) {
         // We are removing the current tag.
-        const removeTagResponse = await removeTrackTag(
+        const removeTagResponse = await ClientApi.Recordings.removeTrackTag(
           props.recording.id,
           trackId,
           thisUserTag.id,
         );
         if (removeTagResponse.success) {
-          const completelyRemoved = !track.tags.some(
-            (tag) =>
-              displayLabelForClassificationLabel(tag.what, tag.automatic) ===
-              displayLabelForClassificationLabel(thisUserTag.what),
-          );
-          if (completelyRemoved) {
-            emit("track-tag-changed", { track, tag, action: "remove" });
-          }
+          emit("track-tag-changed", { track, tag, action: "remove" });
         } else {
           // Add the tag back if failed
           track.tags.push(thisUserTag);
@@ -380,7 +379,7 @@ const addOrRemoveUserTag = async ({
           trackId,
           id: -1,
           what: tag,
-          path: getPathForLabel(tag),
+          path: getPathForLabel(tag) || "",
           userId: currentUser.value?.id,
           userName: currentUser.value?.userName,
           automatic: false,
@@ -390,27 +389,31 @@ const addOrRemoveUserTag = async ({
         };
         track.tags.push(interimTag);
 
-
-        if (tag === "human" && recordingType.value === RecordingType.Audio && groupSettingsRedactHumanSpeech.value) {
+        if (
+          tag === "human" &&
+          recordingType.value === RecordingType.Audio &&
+          groupSettingsRedactHumanSpeech.value
+        ) {
           // Offer to delete the recording, using built in confirmation because it's blocking and easy for this edge case.
-          willDeleteRecording = confirm("Your project has been configured to delete recordings containing human speech. Do you want to delete this recording?");
+          willDeleteRecording = confirm(
+            "Your project has been configured to delete recordings containing human speech. Do you want to delete this recording?",
+          );
         }
         if (willDeleteRecording) {
           // Do delete
           emit("delete-recording");
         } else {
-          const newTagResponse = await replaceTrackTag(
-              {
-                what: tag,
-                confidence: 0.85,
-              },
-              props.recording.id,
-              trackId,
+          const newTagResponse = await ClientApi.Recordings.replaceTrackTag(
+            {
+              what: tag,
+            },
+            props.recording.id,
+            trackId,
           );
           if (newTagResponse.success && newTagResponse.result.trackTagId) {
             interimTag.id = newTagResponse.result.trackTagId;
             if (!tagAlreadyExists) {
-              emit("track-tag-changed", {track, tag, action: "add"});
+              emit("track-tag-changed", { track, tag, action: "add" });
             }
           } else {
             // Remove the interim tag
@@ -444,7 +447,7 @@ const removeTag = async ({
       if (targetTag) {
         track.tags = track.tags.filter((tag) => tag !== targetTag);
         // We are removing the current tag.
-        const removeTagResponse = await removeTrackTag(
+        const removeTagResponse = await ClientApi.Recordings.removeTrackTag(
           props.recording.id,
           trackId,
           targetTag.id,
@@ -562,7 +565,7 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
       recording &&
       recording.processingState === RecordingProcessingState.Tracking
     "
-    class="d-flex justify-content-center align-items-center mt-3"
+    class="d-flex justify-content-center flex-grow-1 align-items-center mt-3"
   >
     <div>
       <b-spinner variant="secondary" small class="me-2" />Track creation in
@@ -574,11 +577,12 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
       recording &&
       recording.processingState !== RecordingProcessingState.Tracking
     "
-    class="accordion"
+    class="accordion flex-grow-1 px-1 px-sm-2 py-1"
+    :class="{ 'has-selected': trackIsExpanded }"
   >
     <div v-if="recordingHasFalseTriggers" class="p-2">
       <b-form-checkbox switch v-model="showFalseTriggers"
-        ><span class="fs-7"
+        ><span
           >Show<span v-if="showFalseTriggers">ing</span> {{ numFalseTriggers }}
           <span v-if="!showFalseTriggers">hidden </span>
           <span v-if="recordingType !== RecordingType.Audio"
@@ -598,12 +602,14 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
       v-for="(track, index) in recordingTracksPossiblyFiltered"
       :key="track.id"
       :index="index"
+      :data-cy="`track ${index}`"
       :processing-state="recording.processingState"
       :is-audio-recording="recordingType === RecordingType.Audio"
       @expanded-changed="expandedItemChanged"
       @selected-track="selectedTrack"
       @removed-track="removedTrack"
       @add-or-remove-user-tag="addOrRemoveUserTag"
+      @text-edit-mode-change="textEditModeChanged"
       @remove-tag="removeTag"
       :selected="
         (currentTrack && currentTrack.id === track.id) ||
@@ -616,8 +622,17 @@ const recordingHasFalseTriggers = computed<boolean>(() => {
   </div>
   <div
     v-else
-    class="d-flex justify-content-center align-items-center loading p-5 h-100"
+    class="d-flex justify-content-center flex-grow-1 align-items-center loading p-5 h-100"
   >
     <b-spinner variant="secondary" />
   </div>
 </template>
+<style scoped>
+.accordion {
+  overflow: auto;
+  transition: background-color 0.2s linear;
+  &.has-selected {
+    background-color: rgba(0, 10, 0, 0.05);
+  }
+}
+</style>

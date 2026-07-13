@@ -10,7 +10,6 @@ describe("Groups - add, check and remove users", () => {
   const OWNER = true;
   const NOT_OWNER = false;
   let expectedGuAdminUser: ApiGroupUserResponse;
-  let expectedGuAdminUser2: ApiGroupUserResponse;
 
   before(() => {
     cy.testCreateUserGroupAndDevice("guGroupAdmin", "guGroup", "guCamera").then(
@@ -23,19 +22,7 @@ describe("Groups - add, check and remove users", () => {
         };
       },
     );
-    cy.testCreateUserGroupAndDevice(
-      "guGroup2Admin",
-      "guGroup2",
-      "guCamera2",
-    ).then(() => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      expectedGuAdminUser2 = {
-        userName: getTestName("guGroup2Admin"),
-        id: getCreds("guGroup2Admin").id,
-        admin: ADMIN,
-        owner: OWNER,
-      };
-    });
+    cy.testCreateUserGroupAndDevice("guGroup2Admin", "guGroup2", "guCamera2");
 
     cy.apiUserAdd("guTestUser");
     cy.apiUserAdd("guTestUser2");

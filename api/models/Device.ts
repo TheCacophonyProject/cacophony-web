@@ -14,290 +14,133 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import bcrypt from "bcrypt";
-import { format } from "util";
-import type { FindOptions } from "sequelize";
+import {
+  Attributes,
+  BelongsTo,
+  CreationOptional,
+  DataTypes,
+  Error,
+  ForeignKey,
+  HasMany,
+  NonAttribute,
+  Transaction,
+} from "sequelize";
 import Sequelize, { QueryTypes } from "sequelize";
-import type {
-  ModelCommon,
-  ModelsDictionary,
-  ModelStaticCommon,
-} from "./index.js";
-import type { User } from "./User.js";
-import type { Group } from "./Group.js";
-import type { Event } from "./Event.js";
+import { ModelStaticCommon } from "./index.js";
+import { Group } from "./Group.js";
 import logger from "../logging.js";
-import { DeviceType } from "@typedefs/api/consts.js";
+import { RecordingType } from "@typedefs/api/consts.js";
 import type {
   DeviceId,
   GroupId,
   LatLng,
+  SaltId,
   ScheduleId,
-  UserId,
 } from "@typedefs/api/common.js";
-import type { Station } from "@models/Station.js";
-import { tryToMatchLocationToStationInGroup } from "@models/util/locationUtils.js";
+import { Station, TimeInterval } from "@models/Station.js";
+import {
+  removeLocationSpecificSettings,
+  tryToMatchLocationToStationInGroup,
+} from "@models/util/locationUtils.js";
 import { locationField } from "@models/util/util.js";
-import { ClientError } from "@api/customErrors.js";
-
+import { ClientError, CustomError } from "@api/customErrors.js";
+import { Recording } from "@models/Recording.js";
+import { DeviceHistory } from "@models/DeviceHistory.js";
+import { Event } from "@models/Event.js";
+import { Schedule } from "@models/Schedule.js";
+import { Alert } from "@models/Alert.js";
+import {
+  ApiDeviceHistorySettings,
+  DeviceHistorySetBy,
+} from "@typedefs/api/device.js";
 const Op = Sequelize.Op;
 
-export interface Device extends Sequelize.Model, ModelCommon<Device> {
-  id: DeviceId;
-  addUser: (userId: UserId, options: any) => any;
-  deviceName: string;
-  groupName: string;
-  saltId: number;
-  uuid: number;
-  active: boolean;
-  public: boolean;
-  lastConnectionTime: Date | null;
-  lastRecordingTime: Date | null;
-  password?: string;
-  location?: LatLng;
-  heartbeat: Date | null;
-  nextHeartbeat: Date | null;
-  comparePassword: (password: string) => Promise<boolean>;
-  reRegister: (
-    models: ModelsDictionary,
-    deviceName: string,
-    group: Group,
-    newPassword: string,
-    reassign?: boolean
-  ) => Promise<Device | false>;
-  Group: Group;
-  GroupId: number;
-  ScheduleId: ScheduleId;
-  kind: DeviceType;
-  getEvents: (options: FindOptions) => Promise<Event[]>;
-  getGroup: () => Promise<Group>;
-  updateHeartbeat: (
-    models: ModelsDictionary,
-    nextHeartbeat: Date
-  ) => Promise<boolean>;
-}
+const maxDate = (a?: Date, b?: Date): Date | undefined => {
+  if (!a && !b) {
+    return undefined;
+  }
+  if (!a && b) {
+    return b;
+  }
+  if (!b && a) {
+    return a;
+  }
+  if (a > b) {
+    return a;
+  }
+  return b;
+};
+const minDate = (a?: Date, b?: Date): Date | undefined => {
+  if (!a && !b) {
+    return undefined;
+  }
+  if (!a && b) {
+    return b;
+  }
+  if (!b && a) {
+    return a;
+  }
+  if (a < b) {
+    return a;
+  }
+  return b;
+};
 
-export interface DeviceStatic extends ModelStaticCommon<Device> {
-  freeDeviceName: (name: string, id: GroupId) => Promise<boolean>;
-  getFromId: (id: DeviceId) => Promise<Device>;
-  findDevice: (
-    deviceID?: DeviceId,
-    deviceName?: string,
-    groupName?: string,
-    password?: string
-  ) => Promise<Device>;
-  wherePasswordMatches: (
-    devices: Device[],
-    password: string
-  ) => Promise<Device>;
-  getFromNameAndPassword: (name: string, password: string) => Promise<Device>;
-  allWithName: (name: string) => Promise<Device[]>;
-  getFromNameAndGroup: (name: string, groupName: string) => Promise<Device>;
-  getCacophonyIndex: (
-    authUser: User,
-    deviceId: Device,
-    from: Date,
-    windowSize: number
-  ) => Promise<number>;
-  getCacophonyIndexBulk: (
-    authUser: User,
-    deviceId: Device,
-    from: Date,
-    steps: number,
-    interval: String
-  ) => Promise<{ deviceId: DeviceId; from: string; cacophonyIndex: number }[]>;
-  getCacophonyIndexHistogram: (
-    authUser: User,
-    deviceId: DeviceId,
-    from: Date,
-    windowSize: number
-  ) => Promise<{ hour: number; index: number }[]>;
-  getSpeciesCount: (
-    authUser: User,
-    deviceId: DeviceId,
-    from: Date,
-    windowSize: number,
-    recordingType: string
-  ) => Promise<{ what: string; count: number }[]>;
-  getSpeciesCountBulk: (
-    authUser: User,
-    deviceId: DeviceId,
-    from: Date,
-    steps: number,
-    interval: String,
-    recordingType: string
-  ) => Promise<
-    { deviceId: DeviceId; from: string; what: string; count: number }[]
-  >;
-  getDaysActive: (
-    authUser: any,
-    deviceId: any,
-    from: any,
-    windowSizeInHours: any
-  ) => Promise<number>;
-  stoppedDevices: () => Promise<Device[]>;
-}
+export class Device extends ModelStaticCommon<Device> {
+  declare id: CreationOptional<DeviceId>;
 
-export default function (
-  sequelize: Sequelize.Sequelize,
-  DataTypes,
-): DeviceStatic {
-  const name = "Device";
+  // FIXME: Several of these "creation optional" attributes should in fact be
+  // supplied on creation, but the current DB schema has these columns as NULLable,
+  // and we should fix the schema.
+  declare deviceName: CreationOptional<string>;
+  declare saltId: CreationOptional<SaltId>;
+  declare uuid: CreationOptional<number>;
+  declare active: CreationOptional<boolean>; // Default true
+  declare public: CreationOptional<boolean>; // Default false
 
-  const attributes = {
-    deviceName: {
-      type: DataTypes.STRING,
-      unique: true,
-    },
-    password: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    location: locationField(),
-    lastConnectionTime: {
-      type: DataTypes.DATE,
-    },
-    lastRecordingTime: {
-      type: DataTypes.DATE,
-    },
-    public: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
-    saltId: {
-      type: DataTypes.INTEGER,
-    },
-    uuid: {
-      type: DataTypes.INTEGER,
-    },
-    active: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: true,
-      allowNull: false,
-    },
-    kind: {
-      type: DataTypes.ENUM,
-      values: Object.values(DeviceType),
-      defaultValue: DeviceType.Unknown,
-    },
-    heartbeat: {
-      type: DataTypes.DATE,
-    },
-    nextHeartbeat: {
-      type: DataTypes.DATE,
-    },
+  declare lastConnectionTime: CreationOptional<Date>;
+  declare lastThermalRecordingTime: CreationOptional<Date>;
+  declare lastAudioRecordingTime: CreationOptional<Date>;
+  declare earliestThermalRecordingTime: CreationOptional<Date>;
+  declare earliestAudioRecordingTime: CreationOptional<Date>;
+  declare password: CreationOptional<string>;
+  declare location: CreationOptional<LatLng>;
+
+  declare GroupId: ForeignKey<GroupId>;
+  declare ScheduleId: ForeignKey<ScheduleId>;
+  declare Group: NonAttribute<Group>;
+  declare Events?: NonAttribute<Event[]>;
+
+  declare static associations: {
+    Group: BelongsTo<Group>;
+    Events: HasMany<Event>;
   };
 
-  const options = {
-    hooks: {
-      beforeCreate: beforeModify,
-      beforeUpdate: beforeModify,
-      beforeUpsert: beforeModify,
-    },
-  };
+  static addAssociations() {
+    this.hasMany(Recording);
+    this.hasMany(Event);
+    this.belongsTo(Group);
+    this.belongsTo(Schedule);
+    this.hasMany(Alert);
+    this.hasMany(DeviceHistory);
+  }
 
-  const Device = sequelize.define(
-    name,
-    attributes,
-    options,
-  ) as unknown as DeviceStatic;
+  // Fields that are directly settable by the API.
+  static apiSettableFields = ["location", "newConfig"];
 
-  //---------------
-  // CLASS METHODS
-  //---------------
-  const models = sequelize.models;
-
-  Device.addAssociations = function (models) {
-    models.Device.hasMany(models.Recording);
-    models.Device.hasMany(models.Event);
-    models.Device.belongsTo(models.Group);
-    models.Device.belongsTo(models.Schedule);
-    models.Device.hasMany(models.Alert);
-    models.Device.hasMany(models.DeviceHistory);
-  };
-
-  Device.freeDeviceName = async function (deviceName, groupId) {
+  static async freeDeviceName(deviceName: string, groupId: GroupId) {
     const device = await this.findOne({
       where: { deviceName, GroupId: groupId },
     });
     return device === null;
-  };
+  }
 
-  Device.getFromId = async function (id) {
-    return this.findByPk(id);
-  };
-
-  Device.findDevice = async function (
-    deviceID,
-    deviceName,
-    groupName,
-    password,
-  ) {
-    // attempts to find a unique device by groupName, then deviceId (deviceName if int),
-    // then deviceName, finally password
-    let model = null;
-    if (deviceID && deviceID > 0) {
-      model = this.findByPk(deviceID);
-    } else if (groupName) {
-      model = await this.getFromNameAndGroup(deviceName, groupName);
-    } else {
-      const models = await this.allWithName(deviceName);
-      //check for deviceName being id
-      deviceID = parseExactInt(deviceName);
-      if (deviceID) {
-        model = this.findByPk(deviceID);
-      }
-
-      //check for distinct name
-      if (model == null) {
-        if (models.length == 1) {
-          model = models[0];
-        }
-      }
-
-      //check for device match from password
-      if (model == null && password) {
-        model = await this.wherePasswordMatches(models, password);
-      }
-    }
-    return model;
-  };
-
-  Device.wherePasswordMatches = async function (devices, password) {
-    // checks if there is a unique deviceName and password match, else returns null
-    const validDevices = [];
-    let passwordMatch = false;
-    for (let i = 0; i < devices.length; i++) {
-      passwordMatch = await devices[i].comparePassword(password);
-      if (passwordMatch) {
-        validDevices.push(devices[i]);
-      }
-    }
-    if (validDevices.length == 1) {
-      return validDevices[0];
-    } else {
-      if (validDevices.length > 1) {
-        throw new Error(
-          format("Multiple devices match %s and supplied password", name),
-        );
-      }
-      return null;
-    }
-  };
-
-  Device.getFromNameAndPassword = async function (name, password) {
-    const devices = await this.allWithName(name);
-    return this.wherePasswordMatches(devices, password);
-  };
-
-  Device.allWithName = async function (name) {
-    return this.findAll({ where: { deviceName: name } });
-  };
-
-  Device.stoppedDevices = async function () {
+  static async stoppedDevices() {
     const oneDayAgo = new Date();
     const twoDaysAgo = new Date();
-    const audioOnlyDeviceIds = await sequelize.query(
-      `
+    const audioOnlyDeviceIds: { DeviceId: DeviceId }[] =
+      await this.sequelize.query(
+        `
     select "DeviceId" from (
       select
       distinct on
@@ -314,10 +157,10 @@ export default function (
     ) as latest_device_configs where 
     latest_device_configs.details->'audio-recording'->>'audio-mode' = 'AudioOnly';
     `,
-      {
-        type: QueryTypes.SELECT,
-      },
-    );
+        {
+          type: QueryTypes.SELECT,
+        },
+      );
 
     oneDayAgo.setHours(oneDayAgo.getHours() - 25);
     twoDaysAgo.setHours(twoDaysAgo.getHours() - 48);
@@ -326,11 +169,11 @@ export default function (
         lastConnectionTime: {
           [Op.and]: [{ [Op.lt]: oneDayAgo }, { [Op.ne]: null }],
         },
-        id: { [Op.notIn]: audioOnlyDeviceIds.map((d) => d["DeviceId"]) },
+        id: { [Op.notIn]: audioOnlyDeviceIds.map((d) => d.DeviceId) },
       },
       include: [
         {
-          model: models.Group,
+          model: Group,
         },
       ],
     });
@@ -343,35 +186,22 @@ export default function (
       },
       include: [
         {
-          model: models.Group,
+          model: Group,
         },
       ],
     });
     return [...stoppedAudioOnlyDevices, ...stoppedThermalDevices];
-  };
+  }
 
-  Device.getFromNameAndGroup = async function (deviceName, groupName) {
-    return this.findOne({
-      where: { deviceName },
-      include: [
-        {
-          model: models.Group,
-          where: { groupName },
-        },
-      ],
-    });
-  };
-
-  Device.getCacophonyIndex = async function (
-    authUser,
-    device,
-    from,
-    windowSizeInHours,
+  static async getCacophonyIndex(
+    device: Device,
+    from: Date,
+    windowSizeInHours: number,
   ) {
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [result, _] = (await sequelize.query(
+
+    const [result, _] = (await this.sequelize.query(
       `select round((avg(scores))::numeric, 2) as index from
     (select
       (jsonb_array_elements("cacophonyIndex")->>'index_percent')::float as scores
@@ -387,115 +217,21 @@ where
       return Number(index);
     }
     return index;
-  };
+  }
 
-  Device.getCacophonyIndexBulk = async function (
-    authUser,
-    device,
-    from,
-    steps,
-    interval,
-  ): Promise<{ deviceId: DeviceId; from: string; cacophonyIndex: number }[]> {
-    const counts = [];
-    let stepSizeInMs;
-    switch (interval) {
-      case "hours":
-        stepSizeInMs = 60 * 60 * 1000;
-        break;
-      case "days":
-        stepSizeInMs = 24 * 60 * 60 * 1000;
-        break;
-      case "weeks":
-        stepSizeInMs = 7 * 24 * 60 * 60 * 1000;
-        break;
-      case "months": {
-        const currMonthDays = new Date(
-          from.getFullYear(),
-          from.getMonth() + 1,
-          0,
-        ).getDate();
-        stepSizeInMs = currMonthDays * 24 * 60 * 60 * 1000;
-        break;
-      }
-      case "years": {
-        const currYearDays = new Date(from.getFullYear(), 11, 31).getDate();
-        stepSizeInMs = currYearDays * 24 * 60 * 60 * 1000;
-        break;
-      }
-      default:
-        throw new Error(`Invalid interval: ${interval}`);
-    }
-    const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
-
-    for (let i = 0; i < steps; i++) {
-      const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
-      const result = await Device.getCacophonyIndex(
-        authUser,
-        device,
-        windowEnd,
-        stepSizeInHours,
-      );
-      counts.push({
-        deviceId: device.id,
-        from: windowEnd.toISOString(),
-        cacophonyIndex: result,
-      });
-    }
-    return counts;
-  };
-
-  Device.getCacophonyIndexHistogram = async function (
-    authUser,
-    deviceId,
-    from,
-    windowSizeInHours,
-  ): Promise<{ hour: number; index: number }[]> {
-    windowSizeInHours = Math.abs(windowSizeInHours);
-    // We need to take the time down to the previous hour, so remove 1 second
-    const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
-    // Get a spread of 24 results with each result falling into an hour bucket.
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [results, _] = (await sequelize.query(`select
-	hour,
-	round((avg(scores))::numeric, 2) as index
-from
-(select
-	date_part('hour', "recordingDateTime") as hour,
-	(jsonb_array_elements("cacophonyIndex")->>'index_percent')::float as scores
-from
-	"Recordings"
-where
-	"DeviceId" = ${deviceId}
-	and "type" = 'audio'
-	and "recordingDateTime" at time zone 'UTC' between (to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC' - interval '${windowSizeInHours} hours') and to_timestamp(${windowEndTimestampUtc}) at time zone 'UTC'
-) as cacophonyIndex
-group by hour
-order by hour;
-`)) as [{ hour: number; index: number }[], unknown];
-    // TODO(jon): Do we want to validate that there is enough data in a given hour
-    //  to get a reasonable index histogram?
-    return results.map((item) => ({
-      hour: Number(item.hour),
-      index: Number(item.index),
-    }));
-  };
-
-  Device.getSpeciesCount = async function (
-    authUser,
-    deviceId,
-    from,
-    windowSizeInHours,
-    recordingType,
+  static async getSpeciesCount(
+    deviceId: DeviceId,
+    from: Date,
+    windowSizeInHours: number,
+    recordingType: RecordingType,
   ): Promise<{ what: string; count: number }[]> {
     windowSizeInHours = Math.abs(windowSizeInHours);
     // We need to take the time down to the previous hour, so remove 1 second
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
     // Get a spread of 24 results with each result falling into an hour bucket.
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [results, _] =
-      (await sequelize.query(`SELECT tt.what, count(*) as count 
+    const [results, _] = (await this.sequelize
+      .query(`SELECT tt.what, count(*) as count 
       FROM "Recordings" r 
       JOIN "Tracks" t ON r.id = t."RecordingId" 
       JOIN "TrackTags" tt ON t.id = tt."TrackId" 
@@ -509,20 +245,24 @@ order by hour;
       what: String(item.what),
       count: Number(item.count),
     }));
-  };
+  }
 
-  Device.getSpeciesCountBulk = async function (
-    authUser,
-    deviceId,
-    from,
-    steps,
-    interval,
-    recordingType,
+  static async getSpeciesCountBulk(
+    deviceId: DeviceId,
+    from: Date,
+    steps: number,
+    interval: TimeInterval,
+    recordingType: RecordingType,
   ): Promise<
     { deviceId: DeviceId; from: string; what: string; count: number }[]
   > {
-    const counts = [];
-    let stepSizeInMs;
+    const counts: {
+      deviceId: DeviceId;
+      from: string;
+      what: string;
+      count: number;
+    }[] = [];
+    let stepSizeInMs: number;
     switch (interval) {
       case "hours":
         stepSizeInMs = 60 * 60 * 1000;
@@ -548,13 +288,12 @@ order by hour;
         break;
       }
       default:
-        throw new Error(`Invalid interval: ${interval}`);
+        throw new CustomError(`Invalid interval: ${interval}`);
     }
     const stepSizeInHours = stepSizeInMs / (60 * 60 * 1000);
     for (let i = 0; i < steps; i++) {
       const windowEnd = new Date(from.getTime() - i * stepSizeInMs);
       const result = await Device.getSpeciesCount(
-        authUser,
         deviceId,
         windowEnd,
         stepSizeInHours,
@@ -570,13 +309,12 @@ order by hour;
       );
     }
     return counts;
-  };
+  }
 
-  Device.getDaysActive = async function (
-    authUser,
-    deviceId,
-    from,
-    windowSizeInHours,
+  static async getDaysActive(
+    deviceId: DeviceId,
+    from: Date,
+    windowSizeInHours: number,
   ): Promise<number> {
     windowSizeInHours = Math.abs(windowSizeInHours);
     const windowEndTimestampUtc = Math.ceil(from.getTime() / 1000);
@@ -588,10 +326,10 @@ order by hour;
       AND "DeviceId" = ${deviceId}
       ORDER BY DATE DESC
     `;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [results, _] = (await sequelize.query(query)) as [
+
+    const [results, _] = (await this.sequelize.query(query)) as [
       { date: string; has_recordings: boolean }[],
-      unknown
+      unknown,
     ];
 
     const eventQuery = `
@@ -601,35 +339,57 @@ order by hour;
       AND "DeviceId" = ${deviceId}
       ORDER BY DATE DESC
     `;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [eventResults, __] = (await sequelize.query(eventQuery)) as [
+
+    const [eventResults, __] = (await this.sequelize.query(eventQuery)) as [
       { date: string; has_recordings: boolean }[],
-      unknown
+      unknown,
     ];
     const activeDates = new Set();
     results.forEach((item) => activeDates.add(item.date));
     eventResults.forEach((item) => activeDates.add(item.date));
     return activeDates.size;
-  };
-
-  // Fields that are directly settable by the API.
-  Device.apiSettableFields = ["location", "newConfig"];
+  }
 
   //------------------
   // INSTANCE METHODS
   //------------------
 
-  Device.prototype.getJwtDataValues = function () {
+  getJwtDataValues() {
     return {
-      id: this.getDataValue("id"),
+      id: this.id,
       _type: "device",
     };
-  };
+  }
 
-  Device.prototype.comparePassword = function (password) {
-    const device = this;
-    return new Promise(function (resolve, reject) {
-      bcrypt.compare(password, device.password, function (err, isMatch) {
+  minTimeForRecordingType(
+    type: RecordingType,
+    fromTime?: Date,
+  ): Date | undefined {
+    const cacophonyEpoch = new Date();
+    cacophonyEpoch.setFullYear(2010, 0, 0);
+    cacophonyEpoch.setHours(0, 0, 0);
+    const earliestDeviceTime =
+      type === RecordingType.ThermalRaw
+        ? this.earliestThermalRecordingTime
+        : this.earliestAudioRecordingTime;
+    return maxDate(fromTime || cacophonyEpoch, earliestDeviceTime);
+  }
+
+  maxTimeForRecordingType(
+    type: RecordingType,
+    untilTime?: Date,
+  ): Date | undefined {
+    const latestDeviceTime =
+      type === RecordingType.ThermalRaw
+        ? this.lastThermalRecordingTime
+        : this.lastAudioRecordingTime;
+    return minDate(untilTime || new Date(), latestDeviceTime);
+  }
+
+  comparePassword(password: string): Promise<boolean> {
+    const thisPassword = this.password;
+    return new Promise((resolve, reject) => {
+      bcrypt.compare(password, thisPassword, (err: Error, isMatch: boolean) => {
         if (err) {
           reject(err);
         } else {
@@ -637,90 +397,60 @@ order by hour;
         }
       });
     });
-  };
+  }
 
   // Will register as a new device
-  Device.prototype.reRegister = async function (
-    models: ModelsDictionary,
+  async reRegister(
     newName: string,
     newGroup: Group,
     newPassword: string,
     reassign = false,
+    fromDateTime?: Date,
   ): Promise<Device | false> {
     let newDevice: Device;
-    const now = new Date();
-    let stationToAssign;
+    const now = fromDateTime || new Date();
+    let stationToAssign: Station;
     // NOTE: As far as we're aware this API is only called directly
     //  from the device, and assumes the device is connected, so we will set the
     //  lastConnectionTime on the device we create/update.
-
     const deviceIsMovingBetweenGroups = newGroup.id !== this.GroupId;
-    let shouldDeleteExistingDevice = false;
+
+    const latestHistory = await DeviceHistory.latestWithAnyLocationAtTime(
+      this.id,
+      this.GroupId,
+    );
+    let originalSettings: ApiDeviceHistorySettings | null = null;
+    if (latestHistory && latestHistory.settings) {
+      originalSettings = latestHistory.settings;
+    }
+
     if (this.location) {
       // NOTE: This needs to happen outside the transaction to succeed.
       stationToAssign = await tryToMatchLocationToStationInGroup(
-        models,
         this.location,
         newGroup.id,
         now,
       );
     }
     try {
-      await sequelize.transaction(
+      await Device.sequelize.transaction(
         {
           isolationLevel:
             Sequelize.Transaction.ISOLATION_LEVELS.REPEATABLE_READ,
         },
-        async (t) => {
-          const deviceHasRecordingsInCurrentGroup =
-            !!(await models.Recording.findOne({
-              where: {
-                DeviceId: this.id,
-                GroupId: this.GroupId,
-                deletedAt: null,
-              },
-              transaction: t,
-            }));
-          const conflictingDevice = await models.Device.findOne({
+        async (transaction: Transaction) => {
+          const conflictingDevice = await Device.findOne({
             where: {
               deviceName: newName,
               GroupId: newGroup.id,
             },
-            transaction: t,
+            transaction,
           });
           // NOTE: If we're moving a device back into the same group as a conflicting device,
           //  we really want to *become* that device, and inherit all its recording history.
           if (reassign) {
-            let newKind = this.kind;
-            if (conflictingDevice !== null) {
-              if (conflictingDevice.kind !== newKind) {
-                if (conflictingDevice.kind === DeviceType.Hybrid) {
-                  newKind = conflictingDevice.kind;
-                }
-                if (
-                  (conflictingDevice.kind === DeviceType.Audio &&
-                    newKind === DeviceType.Thermal) ||
-                  (conflictingDevice.kind === DeviceType.Thermal &&
-                    newKind === DeviceType.Audio)
-                ) {
-                  newKind = DeviceType.Hybrid;
-                }
-                if (
-                  newKind === DeviceType.Unknown &&
-                  conflictingDevice.kind !== DeviceType.Unknown
-                ) {
-                  newKind = conflictingDevice.kind;
-                }
-              }
-            }
             if (deviceIsMovingBetweenGroups) {
-              // If the device in the old group has recordings, set it inactive, otherwise it's safe to delete it from
-              // the group that we're moving it from.
-              if (deviceHasRecordingsInCurrentGroup) {
-                await this.update({ active: false }, { transaction: t });
-              } else {
-                shouldDeleteExistingDevice = true;
-              }
+              await this.update({ active: false }, { transaction });
               if (
                 conflictingDevice !== null &&
                 conflictingDevice.id !== this.id &&
@@ -736,15 +466,14 @@ order by hour;
                     uuid: this.uuid,
                     lastConnectionTime: now,
                     location: this.location,
-                    kind: newKind,
                     active: true,
                   },
-                  { transaction: t },
+                  { transaction },
                 );
                 newDevice = conflictingDevice;
               } else {
                 // Just create the new device in the destination group.
-                newDevice = (await models.Device.create(
+                newDevice = await Device.create(
                   {
                     deviceName: newName,
                     GroupId: newGroup.id,
@@ -753,12 +482,11 @@ order by hour;
                     uuid: this.uuid,
                     lastConnectionTime: now,
                     location: this.location,
-                    kind: this.kind,
                   },
                   {
-                    transaction: t,
+                    transaction,
                   },
-                )) as Device;
+                );
               }
             } else {
               // Device is being reassigned to the same group it's currently in.
@@ -774,15 +502,13 @@ order by hour;
                     //  from the device, and assumes the device is connected.
                     lastConnectionTime: now,
                     location: this.location,
-                    kind: newKind,
                     active: true,
                   },
-                  { transaction: t },
+                  { transaction },
                 );
-                shouldDeleteExistingDevice = false;
                 newDevice = conflictingDevice;
               } else {
-                newDevice = (await models.Device.create(
+                newDevice = await Device.create(
                   {
                     deviceName: newName,
                     GroupId: newGroup.id,
@@ -793,12 +519,11 @@ order by hour;
                     //  from the device, and assumes the device is connected.
                     lastConnectionTime: now,
                     location: this.location,
-                    kind: this.kind,
                   },
                   {
-                    transaction: t,
+                    transaction,
                   },
-                )) as Device;
+                );
               }
             }
           } else {
@@ -807,15 +532,10 @@ order by hour;
                 `A device with the name '${newName}' already exists in '${newGroup.groupName}'`,
               );
             }
-            if (deviceHasRecordingsInCurrentGroup) {
-              await this.update({ active: false }, { transaction: t });
-            } else {
-              // We can safely delete the existing device.
-              shouldDeleteExistingDevice = true;
-            }
+            await this.update({ active: false }, { transaction });
             // We need to either find an existing station for this DeviceHistory entry, or create a new one:
             // NOTE: When a device is re-registered it keeps the last known location.
-            newDevice = (await models.Device.create(
+            newDevice = await Device.create(
               {
                 deviceName: newName,
                 GroupId: newGroup.id,
@@ -826,117 +546,145 @@ order by hour;
                 //  from the device, and assumes the device is connected.
                 lastConnectionTime: now,
                 location: this.location,
-                kind: this.kind,
               },
               {
-                transaction: t,
+                transaction,
               },
-            )) as Device;
+            );
           }
 
-          const newDeviceHistoryEntry = {
+          let settings: ApiDeviceHistorySettings | null = null;
+          if (!conflictingDevice) {
+            if (deviceIsMovingBetweenGroups) {
+              settings = removeLocationSpecificSettings(originalSettings);
+            } else {
+              settings = originalSettings;
+            }
+          }
+          const newDeviceHistoryEntry: Partial<Attributes<DeviceHistory>> = {
             GroupId: newGroup.id,
             DeviceId: newDevice.id,
             location: this.location,
             fromDateTime: now,
-            setBy: "re-register",
+            setBy: "re-register" as DeviceHistorySetBy,
             deviceName: newName,
             uuid: newDevice.uuid,
             saltId: newDevice.saltId,
+            stationId: null,
+            settings,
           };
 
           if (this.location && !stationToAssign) {
             // Create new automatic station
-            stationToAssign = (await models.Station.create(
+            stationToAssign = await Station.create(
               {
-                name: `New station for ${newName}_${now.toISOString()}`,
+                name: `New location for ${newName}_${now.toISOString()}`,
                 location: this.location,
                 activeAt: now,
                 automatic: true,
                 needsRename: true,
                 GroupId: newGroup.id,
               },
-              { transaction: t },
-            )) as Station;
+              { transaction },
+            );
           }
           if (stationToAssign) {
-            (newDeviceHistoryEntry as any).stationId = stationToAssign.id;
+            newDeviceHistoryEntry.stationId = stationToAssign.id;
           }
 
-          await models.DeviceHistory.create(newDeviceHistoryEntry, {
-            transaction: t,
+          await DeviceHistory.create(newDeviceHistoryEntry, {
+            transaction,
           });
-          // NOTE: Special case: If the device is moving out of the `new` group,
-          //  we delete the old device and all its recordings
-          const group = await models.Group.findByPk(this.GroupId, {
-            transaction: t,
-          });
-          if (group && group.groupName === "new") {
-            // Delete every recording properly
-            await models.Recording.update(
-              { deletedAt: new Date() },
-              { where: { DeviceId: this.id }, transaction: t },
-            );
-            await this.destroy({ transaction: t });
-          } else if (shouldDeleteExistingDevice) {
-            await this.destroy({ transaction: t });
-          }
         },
       );
-    } catch (e) {
-      logger.error("Failed to re-register device %s: %s", this.deviceName, e);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        logger.error(
+          "Failed to re-register device %s: %s",
+          this.deviceName,
+          e as Error,
+        );
+      }
       return false;
     }
     return newDevice;
+  }
+}
+
+export const init = (sequelizeInstance: Sequelize.Sequelize) => {
+  const attributes = {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE,
+
+    deviceName: {
+      type: DataTypes.STRING,
+      unique: true,
+    },
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    location: locationField(),
+    lastConnectionTime: {
+      type: DataTypes.DATE,
+    },
+    lastThermalRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastAudioRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    earliestThermalRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    earliestAudioRecordingTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    public: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    saltId: {
+      type: DataTypes.INTEGER,
+    },
+    uuid: {
+      type: DataTypes.INTEGER,
+    },
+    active: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+      allowNull: false,
+    },
   };
 
-  Device.prototype.updateHeartbeat = async function (
-    models: ModelsDictionary,
-    nextHeartbeat: Date,
-  ) {
-    const now = new Date();
-    if (this.location && this.kind !== DeviceType.Unknown) {
-      // Find the station the device was in, update its lastActiveTime.
-      const station = await tryToMatchLocationToStationInGroup(
-        models,
-        this.location,
-        this.GroupId,
-        now,
-      );
-      if (station) {
-        if (this.kind === DeviceType.Thermal) {
-          await station.update({ lastActiveThermalTime: now });
-        } else if (this.kind === DeviceType.Audio) {
-          await station.update({ lastActiveAudioTime: now });
-        }
-      }
+  const beforeModify = async (device: Device): Promise<void> | undefined => {
+    if (device.changed("password")) {
+      device.password = await bcrypt.hash(device.password, 10);
     }
-
-    return this.update({
-      lastConnectionTime: now,
-      nextHeartbeat: nextHeartbeat,
-      heartbeat: now,
-    });
   };
+
+  Device.init(attributes, {
+    sequelize: sequelizeInstance,
+    tableName: "Devices",
+    name: {
+      singular: "Device",
+      plural: "Devices",
+    },
+    hooks: {
+      beforeCreate: beforeModify,
+      beforeUpdate: beforeModify,
+      beforeUpsert: beforeModify,
+    },
+  });
 
   return Device;
-}
-
-function parseExactInt(value) {
-  const iValue = parseInt(value);
-  if (value === iValue.toString()) {
-    return Number(iValue);
-  } else {
-    return null;
-  }
-}
-
-/********************/
-/* Validation methods */
-/********************/
-
-async function beforeModify(device: Device): Promise<void> | undefined {
-  if (device.changed("password")) {
-    device.password = await bcrypt.hash(device.password, 10);
-  }
-}
+};

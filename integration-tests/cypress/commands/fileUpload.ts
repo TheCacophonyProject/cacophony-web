@@ -7,9 +7,9 @@ import { RecordingId } from "@typedefs/api/common";
 export function sendMultipartMessage(
   url: string,
   jwt: string,
-  formData: any,
-  waitOn: string,
-  onComplete: any,
+  formData: FormData,
+  _waitOn: string,
+  onComplete: (xhr: XMLHttpRequest) => void,
 ) {
   //: Cypress.Chainable<Interception>
   const xhr = new XMLHttpRequest();
@@ -44,7 +44,7 @@ export function uploadFile(
   fileType: RecordingType | string,
   data: ApiRecordingSet | Record<string, string | string[] | number>,
   waitOn: string,
-  statusCode: number = 200,
+  statusCode = 200,
   fileNameToUse?: string,
 ): Cypress.Chainable<
   Promise<{
@@ -56,7 +56,7 @@ export function uploadFile(
   const jwt = getCreds(credName).jwt;
   const doUpload = (
     blob: Blob | { fileBlob: Blob; filename: string; key: string }[],
-    data: any,
+    data: unknown,
     resolve,
   ) => {
     // Build up the form
@@ -157,9 +157,9 @@ export function uploadFile(
   //   // Create a test cptv file from data.
   // } else if (fileType === RecordingType.Audio) {
   // Get file from fixtures as binary
-  let uploadPromise: Promise<any>;
+  let uploadPromise: Promise<unknown>;
   if (Array.isArray(fileName)) {
-    uploadPromise = new Promise((resolve, reject) => {
+    uploadPromise = new Promise((resolve, _reject) => {
       const blobs = {};
       for (const item of fileName) {
         cy.fixture(item.filename, "binary").then((fileBinary) => {
@@ -176,7 +176,7 @@ export function uploadFile(
       }
     });
   } else {
-    uploadPromise = new Promise((resolve, reject) => {
+    uploadPromise = new Promise((resolve, _reject) => {
       cy.fixture(fileName, "binary").then((fileBinary) => {
         // File in binary format gets converted to blob so it can be sent as Form data
         const blob = Cypress.Blob.binaryStringToBlob(

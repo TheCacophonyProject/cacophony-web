@@ -1,0 +1,4 @@
+#
+# cron.d/cacophony-api-rebuild-missing-visits
+# every 5 minutes
+*/5 * * * * root (cd /srv/cacophony/api/ && node --no-warnings --disable-warning=ExperimentalWarning --loader esm-module-alias/loader ./scripts/check-for-missing-visits.js) 2>&1 | logger --tag rebuild-missing-visits

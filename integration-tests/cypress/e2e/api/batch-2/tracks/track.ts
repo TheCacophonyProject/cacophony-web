@@ -3,7 +3,6 @@ import { NOT_NULL_STRING } from "@commands/constants";
 import { ApiRecordingSet } from "@commands/types";
 import {
   TestCreateRecordingData,
-  predictionResponseFromSet,
   positionResponseFromSet,
 } from "@commands/api/recording-tests";
 import {
@@ -55,7 +54,6 @@ describe("Tracks: add, check, delete", () => {
     start_s: 1,
     end_s: 3,
     positions: positions1,
-    label: "a label",
     clarity: 0.9,
     message: "a message",
     tag: "a tag",

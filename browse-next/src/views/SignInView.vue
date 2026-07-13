@@ -1,11 +1,23 @@
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref } from "vue";
-import { login } from "@models/LoggedInUser";
+import { computed, reactive, ref } from "vue";
+import {
+  login,
+  refreshUserProjects,
+  urlNormalisedCurrentProjectName,
+} from "@models/LoggedInUser";
 import type { PendingRequest } from "@models/LoggedInUser";
 import { isEmpty, formFieldInputText } from "@/utils";
 import type { FormInputValue, FormInputValidationState } from "@/utils";
 import { useRoute, useRouter } from "vue-router";
 import type { RouteLocationRaw } from "vue-router";
+import {
+  BAlert,
+  BForm,
+  BFormInput,
+  BFormInvalidFeedback,
+  BSpinner,
+} from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const showPassword = ref(false);
 const togglePasswordVisibility = () => {
@@ -15,6 +27,7 @@ const togglePasswordVisibility = () => {
 const userEmailAddress: FormInputValue = formFieldInputText();
 const userPassword: FormInputValue = formFieldInputText();
 const signInErrorMessage = ref("");
+
 const signInInProgress = reactive({
   requestPending: false,
 });
@@ -32,6 +45,13 @@ const hasError = computed({
 
 const router = useRouter();
 const route = useRoute();
+
+const hasProjectInviteToken = computed<boolean>(() => {
+  return (
+    !!route.query.nextUrl && route.query.nextUrl.includes("/accept-invite/")
+  );
+});
+
 const submitLogin = async () => {
   delete (signInInProgress as PendingRequest).errors;
   await login(userEmailAddress.value, userPassword.value, signInInProgress);
@@ -40,18 +60,26 @@ const submitLogin = async () => {
       (signInInProgress as PendingRequest).errors?.messages[0] || "";
   } else {
     const nextUrl = route.query.nextUrl;
-    const to: RouteLocationRaw = {
-      path: "/",
-    };
+    await refreshUserProjects();
     if (nextUrl) {
-      to.query = {
-        nextUrl,
+      const to: RouteLocationRaw = {
+        path: nextUrl as string,
       };
-    }
-    // Avoids a weird re-paint of the sign-in form
-    await nextTick(async () => {
       await router.push(to);
-    });
+    } else {
+      if (urlNormalisedCurrentProjectName.value) {
+        await router.push({
+          name: "dashboard",
+          params: {
+            projectName: urlNormalisedCurrentProjectName.value,
+          },
+        });
+      } else {
+        await router.push({
+          name: "setup",
+        });
+      }
+    }
   }
 };
 
@@ -79,11 +107,11 @@ const signInFormIsFilledAndValid = computed<boolean>(
 );
 </script>
 <template>
-  <div class="sign-in-form px-4 pb-4 pt-5">
+  <div class="sign-in-form p-4">
     <img
-      src="../assets/logo-full.svg"
+      src="../assets/cacophony-monitoring-logo.svg"
       alt="The Cacophony Project logo"
-      width="220"
+      width="256"
       class="mx-auto d-block mb-5"
     />
     <h1 class="h4 text-center mb-4">Sign in</h1>
@@ -95,6 +123,15 @@ const signInFormIsFilledAndValid = computed<boolean>(
       <b-alert v-model="hasError" variant="danger" class="text-center">
         {{ signInErrorMessage }}
       </b-alert>
+      <b-alert
+        v-model="hasProjectInviteToken"
+        variant="warning"
+        class="text-center"
+      >
+        You've been invited to join a project.<br />To accept the invitation,
+        first sign in. <br />If you don't yet have an account, first create one,
+        using the email address that the invite was sent to.
+      </b-alert>
       <div class="mb-3">
         <b-form-input
           type="email"
@@ -102,8 +139,8 @@ const signInFormIsFilledAndValid = computed<boolean>(
           @blur="userEmailAddress.touched = true"
           :state="needsValidationAndIsValidEmailAddress"
           @input="hasError = false"
-          aria-label="email address"
-          placeholder="email address"
+          aria-label="Email address"
+          placeholder="Email address"
           data-cy="email address"
           :disabled="signInInProgress.requestPending"
           required
@@ -120,8 +157,8 @@ const signInFormIsFilledAndValid = computed<boolean>(
             @blur="userPassword.touched = true"
             @input="hasError = false"
             :state="needsValidationAndIsValidPassword"
-            aria-label="password"
-            placeholder="password"
+            aria-label="Password"
+            placeholder="Password"
             data-cy="password"
             :disabled="signInInProgress.requestPending"
             required
@@ -132,7 +169,10 @@ const signInFormIsFilledAndValid = computed<boolean>(
             class="input-group-text toggle-password-visibility-btn justify-content-center"
             @click.stop.prevent="togglePasswordVisibility"
           >
-            <font-awesome-icon :icon="showPassword ? 'eye-slash' : 'eye'" />
+            <material-symbol
+              :name="showPassword ? 'visibility_off' : 'visibility'"
+              size="1.25rem"
+            />
           </button>
         </div>
         <b-form-invalid-feedback :state="needsValidationAndIsValidPassword">
@@ -146,7 +186,7 @@ const signInFormIsFilledAndValid = computed<boolean>(
       </div>
       <button
         type="submit"
-        class="btn btn-primary mb-3"
+        class="btn btn-primary btn-lg mb-3"
         data-cy="sign in button"
         :disabled="
           !signInFormIsFilledAndValid || signInInProgress.requestPending
@@ -165,11 +205,14 @@ const signInFormIsFilledAndValid = computed<boolean>(
     <div class="alternate-action-links d-flex justify-content-between my-2">
       <router-link
         :to="{ name: 'forgot-password' }"
-        class="small"
+        class="small text-decoration-none"
         data-cy="forgotten password link"
         >Forgot password?</router-link
       >
-      <router-link :to="{ name: 'register' }" class="small"
+      <router-link
+        :to="{ name: 'register' }"
+        class="small text-decoration-none"
+        data-cy="create new account link"
         >Create a new account</router-link
       >
     </div>
@@ -178,21 +221,7 @@ const signInFormIsFilledAndValid = computed<boolean>(
 
 <style scoped lang="less">
 .sign-in-form {
-  background: white;
   max-width: 360px;
   width: 100%;
-  @media (min-width: 768px) {
-    border-radius: 0.25rem;
-  }
-}
-.toggle-password-visibility-btn {
-  min-width: 3rem;
-}
-.alternate-action-links a {
-  text-decoration: none;
-  text-align: center;
-  &:hover {
-    text-decoration: underline;
-  }
 }
 </style>

@@ -2,7 +2,7 @@
   <b-container v-if="recording">
     <b-modal
       v-model="showModal"
-      hide-footer
+      no-footer
       hide-header
       body-class="p-0 d-flex justify-content-center align-items-center"
       centered
@@ -511,8 +511,5 @@ export default {
 .images-icon.svg-inline--fa {
   color: $gray-600;
   min-width: 1rem;
-}
-.recording-time {
-  outline: 1px solid red;
 }
 </style>

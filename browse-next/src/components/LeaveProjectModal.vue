@@ -2,6 +2,8 @@
 import { computed } from "vue";
 import { currentSelectedProject } from "@models/LoggedInUser";
 import type { SelectedProject } from "@models/LoggedInUser";
+import { BModal } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const leaveProject = () => {
   // If we're not an admin of the group, or we're an admin but not the *last* admin
@@ -18,17 +20,16 @@ const projectName = computed(() => {
     ok-title="Yes, leave this project"
   >
     <template #title>
-      <font-awesome-icon
-        icon="exclamation-triangle"
-        class="me-2"
-        color="#dc3545"
-      />
-      <span>Leave '{{ projectName }}'</span>
+      <div class="d-flex align-items-center">
+        <material-symbol name="warning" class="text-danger me-2" />
+        <span>Leave project</span>
+      </div>
     </template>
     <p>
-      Are you <strong><em>sure?</em></strong>
+      Are you sure you want to leave <strong>{{ projectName }}</strong
+      >?
     </p>
-    <p>
+    <p class="mb-0">
       You will lose access to this project, and will have to re-request access
       from the project administrator if you want to see this project again. You
       will no longer receive notifications for this project.

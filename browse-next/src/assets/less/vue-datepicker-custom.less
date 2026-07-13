@@ -1,0 +1,23 @@
+@import url("@vuepic/vue-datepicker/dist/main.css");
+
+.dp__theme_light {
+  --dp-primary-color: var(--cp-color-green-600) !important;
+  --dp-font-family: var(--cp-font-family);
+  --dp-font-size: var(--cp-font-size-md);
+
+  .dp__action_select,
+  .dp__action_buttons .dp__action_select {
+    &:hover {
+      background: var(--cp-color-green-700);
+    }
+  }
+
+  .dp__action_cancel:hover {
+    border-color: var(--bs-gray-500);
+  }
+
+  .dp__input_focus {
+    border-color: var(--cp-color-green-300);
+    box-shadow: 0 0 0 0.25rem  color-mix(in oklch, var(--cp-color-green-600), transparent 80%);
+  }
+}

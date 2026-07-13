@@ -1,19 +1,194 @@
 import { getTestEmail, getTestName } from "../names";
 import {
   apiPath,
-  v1ApiPath,
+  checkTreeStructuresAreEqualExcept,
+  expectRequestHasFailed,
   getCreds,
+  makeAuthorizedRequestWithStatus,
   renameCreds,
   saveCreds,
-  expectRequestHasFailed,
-  makeAuthorizedRequestWithStatus,
   sortArrayOn,
-  checkTreeStructuresAreEqualExcept,
+  v1ApiPath,
 } from "../server";
 import { logTestDescription, prettyLog } from "../descriptions";
 import { LATEST_END_USER_AGREEMENT } from "../constants";
-import { ApiLoggedInUserResponse, ApiUserResponse } from "@typedefs/api/user";
+import {
+  ApiLoggedInUserResponse,
+  ApiUserResponse,
+  ApiUserUpdateRequest,
+} from "@typedefs/api/user";
 import { GroupId, UserId } from "@typedefs/api/common";
+import { HttpStatusCode, UserGlobalPermission } from "@shared/api/consts";
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Cypress {
+    interface Chainable {
+      /**
+       * Create user and save api credentials further use
+       * By default makes the userName unique.
+       * Optionally: Use the raw provided username additionalChecks["useRawUserName"]==true
+       * By default unique password, email are generated.  Optionally supply these parameters
+       * By default set endUserAgreement to latest value. Optionally supply this parameter
+       * Optionally, check for non-200 return statusCode
+       * Optionally, check that returned error messages[] contains additionalChecks["message"]
+       */
+      apiUserAdd(
+        userName: string,
+        password?: string,
+        email?: string,
+        endUserAgreement?: number,
+        statusCode?: number,
+        additionalChecks?: {
+          useRawUserName?: boolean;
+          additionalParams?: object;
+          message?: string;
+          errors?: { location: string; path: string }[];
+        },
+        inviteToken?: string,
+      ): Cypress.Chainable<UserId>;
+
+      /**
+       * Update user with parameters supplied in updates. Valid updates parameters are:
+       * { userName: "..", password: "..", email: "..." }
+       * Optionally, check for non-200 return statusCode
+       * Optionally, check that returned error messages[] contains additionalChecks["message"]
+       * By default makes the userNameOrId unique.
+       * Optionally: Use the raw provided userNameOrId additionalChecks["useRawUserName"]==true
+       */
+      apiAdminUpdate(
+        userName: string,
+        updateUserNameOrId: string,
+        permission: string,
+        statusCode?: HttpStatusCode,
+        additionalChecks?: {
+          useRawUserName?: boolean;
+          message?: string;
+          errors?: { path: string; location: string }[];
+        },
+      ): Cypress.Chainable<void>;
+
+      /**
+       * Update user's super-user (global) permissions
+       * Optionally, check for non-200 return statusCode
+       * Optionally, check that returned error messages[] contains additionalChecks["message"]
+       */
+      apiUserUpdate(
+        userName: string,
+        updates: ApiUserUpdateRequest,
+        statusCode?: number,
+        additionalChecks?: { useRawUserName?: boolean; message?: string },
+      ): Cypress.Chainable<void>;
+
+      /**
+       * Query an individual user's details by name or id and check returned values
+       * Note: userName is the user doing the query
+       *       checkedUserNameOrId is the user being queried
+       * Optionally: exclude checks on specific parameters detailed in excludeCheckOn
+       * Optionally, check for non-200 return statusCode
+       * Optionally, check that returned error messages[] contains additionalChecks["message"]
+       */
+      apiUserCheck(
+        userName: string,
+        checkedUserNameOrId: string,
+        expectedUser: ApiLoggedInUserResponse,
+        excludeCheckOn?: string[],
+        statusCode?: number,
+        additionalChecks?: { message?: string },
+      ): Cypress.Chainable<void>;
+
+      /**
+       * Query an all users' details and check returned values
+       * Optionally: exclude checks on specific parameters detailed in excludeCheckOn
+       * Optionally, check for non-200 return statusCode
+       * Optionally, check that returned error messages[] contains additionalChecks["message"]
+       * By default returned usersList and expectedUsers are sorted by username before comparison
+       * Optionally do not sort by specifying additionalChecks["doNotSort"]=true
+       * By default checks that the returned usersList MATCHES the expectedUsers
+       * Optionally, check that usersLists CONTAINS expectedUsers (additionalChecks["contains"]=true)
+       */
+      apiUsersCheck(
+        userName: string,
+        expectedUsers: ApiUserResponse[],
+        excludeCheckOn?: string[],
+        statusCode?: number,
+        additionalChecks?: {
+          contains?: boolean;
+          doNotSort?: boolean;
+          message?: string;
+        },
+      ): Cypress.Chainable<void>;
+
+      /**
+       * Query latest end user agreement version
+       */
+      apiEUACheck(expectedVersion: number): Cypress.Chainable<number>;
+
+      /**
+       * Request password reset on user by name
+       * Optionally, check for non-200 return statusCode
+       * By default makes the userName unique.
+       * Optionally: Use the raw provided username additionalChecks["useRawUserName"]==true
+       */
+      apiResetPassword(
+        userName: string,
+        statusCode?: HttpStatusCode,
+        additionalChecks?: { useRawUserName?: boolean },
+      ): Chainable<void>;
+
+      /**
+       * Request password reset on user by name
+       * Optionally, check for non-200 return statusCode
+       * By default makes the userName unique.
+       * Optionally: Use the raw provided username additionalChecks["useRawUserName"]==true
+       */
+      apiResetPasswordLegacy(
+        userName: string,
+        statusCode?: HttpStatusCode,
+        additionalChecks?: { useRawUserName?: boolean },
+      ): Chainable<void>;
+
+      /**
+       * Change password using reset token
+       * Optionally, check for non-200 return statusCode
+       */
+      apiUserChangePassword(token: string, password: string): Chainable<void>;
+
+      /**
+       * Confirm the email address of the user on sign-up and
+       * when the user changes their email address
+       */
+      apiConfirmEmailAddress(token: string): Chainable<void>;
+
+      /**
+       * create user group and camera at the same time
+       */
+      testCreateUserGroupAndDevice(
+        userName: string,
+        group: string,
+        camera: string,
+        atTime?: Date,
+      ): Chainable<void>;
+
+      /**
+       * create user group and camera at the same time
+       */
+      testCreateUserAndGroup(
+        userName: string,
+        group: string,
+      ): Cypress.Chainable<{ userId: UserId; groupId: GroupId }>;
+
+      /**
+       * create user group and camera at the same time
+       */
+      testCreateGroupAndDevices(
+        userName: string,
+        group: string,
+        ...cameras: string[]
+      ): Cypress.Chainable<{ groupId: GroupId; deviceIds: DeviceId[] }>;
+    }
+  }
+}
 
 Cypress.Commands.add(
   "apiUserAdd",
@@ -22,8 +197,13 @@ Cypress.Commands.add(
     password: string = "p" + getTestName(userName),
     email: string = getTestEmail(userName),
     endUserAgreement: number = LATEST_END_USER_AGREEMENT,
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: {
+      useRawUserName?: boolean;
+      additionalParams?: object;
+      message?: string;
+      errors?: { path: string; location: string }[];
+    } = {},
     inviteToken: string | undefined = undefined,
   ) => {
     logTestDescription(`Create user '${userName}'`, { user: userName }, true);
@@ -31,7 +211,7 @@ Cypress.Commands.add(
     const usersUrl = apiPath() + "/api/v1/users";
     let fullName: string;
 
-    if (additionalChecks["useRawUserName"] === true) {
+    if (additionalChecks.useRawUserName === true) {
       fullName = userName;
     } else {
       fullName = getTestName(userName);
@@ -41,10 +221,10 @@ Cypress.Commands.add(
       password: password,
       email: email,
       endUserAgreement: endUserAgreement,
-      ...additionalChecks["additionalParams"],
+      ...(additionalChecks.additionalParams || {}),
     };
     if (inviteToken) {
-      (data as any).inviteTokenJWT = inviteToken.replace(/:/g, ".");
+      data["inviteTokenJWT"] = inviteToken.replace(/:/g, ".");
     }
 
     if (statusCode && statusCode > 200) {
@@ -57,9 +237,9 @@ Cypress.Commands.add(
         //expect fail
         expectRequestHasFailed(response, statusCode);
         //check messages[] contain expected error`
-        if (additionalChecks["message"] !== undefined) {
+        if (additionalChecks.message !== undefined) {
           expect(response.body.messages.join("|")).to.include(
-            additionalChecks["message"],
+            additionalChecks.message,
           );
         }
       });
@@ -79,21 +259,18 @@ Cypress.Commands.add(
   "apiUserUpdate",
   (
     userName: string,
-    updates: any,
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    updates: { userName?: string; email?: string },
+    statusCode = 200,
+    additionalChecks: { useRawUserName?: boolean; message?: string } = {},
   ) => {
     logTestDescription(`Update user ${userName} `, {});
 
     const url = v1ApiPath(`users`);
 
-    const newUserName = updates["userName"];
+    const newUserName = updates.userName;
     //make name unique if supplied, unless asked not to
-    if (
-      additionalChecks["useRawUserName"] !== true &&
-      newUserName !== undefined
-    ) {
-      updates["userName"] = getTestName(newUserName);
+    if (additionalChecks.useRawUserName !== true && newUserName !== undefined) {
+      updates.userName = getTestName(newUserName);
     }
 
     makeAuthorizedRequestWithStatus(
@@ -104,15 +281,15 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
+    ).then((response: Cypress.Response<{ messages: string[] }>) => {
       if (statusCode == 200) {
         if (newUserName !== undefined) {
           renameCreds(userName, newUserName);
         }
       }
-      if (additionalChecks["message"] !== undefined) {
+      if (additionalChecks.message !== undefined) {
         expect(response.body.messages.join("|")).to.include(
-          additionalChecks["message"],
+          additionalChecks.message,
         );
       }
     });
@@ -125,8 +302,8 @@ Cypress.Commands.add(
     userName: string,
     updateUserNameOrId: string,
     permission: string,
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: { useRawUserName?: boolean; message?: string } = {},
   ) => {
     logTestDescription(
       `Update user ${updateUserNameOrId} access to ${permission}`,
@@ -136,7 +313,7 @@ Cypress.Commands.add(
     let fullUserName: string;
 
     //make name unique if supplied, unless asked not to
-    if (additionalChecks["useRawUserName"] == true) {
+    if (additionalChecks.useRawUserName === true) {
       fullUserName = updateUserNameOrId;
     } else {
       fullUserName = getTestEmail(updateUserNameOrId);
@@ -153,10 +330,10 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (additionalChecks["message"] !== undefined) {
+    ).then((response: Cypress.Response<{ messages: string[] }>) => {
+      if (additionalChecks.message !== undefined) {
         expect(response.body.messages.join("|")).to.include(
-          additionalChecks["message"],
+          additionalChecks.message,
         );
       }
     });
@@ -170,8 +347,8 @@ Cypress.Commands.add(
     checkedUserNameOrId: string,
     expectedUser: ApiLoggedInUserResponse,
     excludeCheckOn: string[] = [],
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: { message?: string } = {},
   ) => {
     logTestDescription(`Check user ${checkedUserNameOrId} `, {});
 
@@ -184,21 +361,28 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (statusCode === 200) {
-        checkTreeStructuresAreEqualExcept(
-          expectedUser,
-          response.body.userData,
-          excludeCheckOn,
-        );
-      } else {
-        if (additionalChecks["message"] !== undefined) {
-          expect(response.body.messages.join("|")).to.include(
-            additionalChecks["message"],
+    ).then(
+      (
+        response: Cypress.Response<{
+          userData: ApiLoggedInUserResponse;
+          messages: string[];
+        }>,
+      ) => {
+        if (statusCode === 200) {
+          checkTreeStructuresAreEqualExcept(
+            expectedUser,
+            response.body.userData,
+            excludeCheckOn,
           );
+        } else {
+          if (additionalChecks.message !== undefined) {
+            expect(response.body.messages.join("|")).to.include(
+              additionalChecks.message,
+            );
+          }
         }
-      }
-    });
+      },
+    );
   },
 );
 
@@ -224,8 +408,12 @@ Cypress.Commands.add(
     userName: string,
     expectedUsers: ApiUserResponse[],
     excludeCheckOn: string[] = [],
-    statusCode: number = 200,
-    additionalChecks: any = {},
+    statusCode = 200,
+    additionalChecks: {
+      contains?: boolean;
+      doNotSort?: boolean;
+      message?: string;
+    } = {},
   ) => {
     logTestDescription(`Check users`, {});
 
@@ -238,60 +426,71 @@ Cypress.Commands.add(
       },
       userName,
       statusCode,
-    ).then((response) => {
-      if (statusCode === 200) {
-        if (additionalChecks["contains"] === true) {
-          expectedUsers.forEach((expectedUser) => {
-            //check expectedUser is in returned usersList
-            const index = response.body.usersList.findIndex(
-              (user) => user.userName === expectedUser.userName,
-            );
-            expect(
-              index,
-              `User ${expectedUser.userName} is in returned usersList`,
-            ).to.be.gt(0);
+    ).then(
+      (
+        response: Cypress.Response<{
+          usersList: ApiLoggedInUserResponse[];
+          messages: string[];
+        }>,
+      ) => {
+        if (statusCode === 200) {
+          if (additionalChecks.contains === true) {
+            expectedUsers.forEach((expectedUser) => {
+              //check expectedUser is in returned usersList
+              const index = response.body.usersList.findIndex(
+                (user) => user.userName === expectedUser.userName,
+              );
+              expect(
+                index,
+                `User ${expectedUser.userName} is in returned usersList`,
+              ).to.be.gt(0);
 
-            //check expectedUser and usersList[x] entries match
+              //check expectedUser and usersList[x] entries match
+              checkTreeStructuresAreEqualExcept(
+                expectedUser,
+                response.body.usersList[index],
+                excludeCheckOn,
+              );
+            });
+          } else {
+            //!contains so check for match
+            let sortUsers: ApiUserResponse[];
+            let sortExpectedUsers: ApiUserResponse[];
+
+            if (additionalChecks.doNotSort === true) {
+              sortUsers = response.body.usersList;
+              sortExpectedUsers = expectedUsers;
+            } else {
+              sortUsers = sortArrayOn(response.body.usersList, "userName");
+              sortExpectedUsers = sortArrayOn(expectedUsers, "userName");
+            }
+
             checkTreeStructuresAreEqualExcept(
-              expectedUser,
-              response.body.usersList[index],
+              sortExpectedUsers,
+              sortUsers,
               excludeCheckOn,
             );
-          });
-        } else {
-          //!contains so check for match
-          let sortUsers: ApiUserResponse[];
-          let sortExpectedUsers: ApiUserResponse[];
-
-          if (additionalChecks["doNotSort"] === true) {
-            sortUsers = response.body.usrsList;
-            sortExpectedUsers = expectedUsers;
-          } else {
-            sortUsers = sortArrayOn(response.body.usersList, "userName");
-            sortExpectedUsers = sortArrayOn(expectedUsers, "userName");
           }
-
-          checkTreeStructuresAreEqualExcept(
-            sortExpectedUsers,
-            sortUsers,
-            excludeCheckOn,
-          );
+        } else {
+          //statusCode!=200
+          if (additionalChecks.message !== undefined) {
+            expect(response.body.messages.join("|")).to.include(
+              additionalChecks.message,
+            );
+          }
         }
-      } else {
-        //statusCode!=200
-        if (additionalChecks["message"] !== undefined) {
-          expect(response.body.messages.join("|")).to.include(
-            additionalChecks["message"],
-          );
-        }
-      }
-    });
+      },
+    );
   },
 );
 
 Cypress.Commands.add(
   "apiResetPassword",
-  (userName: string, statusCode: number, additionalChecks: any = {}) => {
+  (
+    userName: string,
+    _statusCode: HttpStatusCode,
+    additionalChecks: { useRawUserName?: boolean } = {},
+  ) => {
     const fullUrl = v1ApiPath("users/reset-password");
     let fullName: string;
 
@@ -316,11 +515,15 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "apiResetPasswordLegacy",
-  (userName: string, statusCode: number, additionalChecks: any = {}) => {
+  (
+    userName: string,
+    _statusCode: HttpStatusCode,
+    additionalChecks: { useRawUserName?: boolean } = {},
+  ) => {
     const fullUrl = apiPath() + "/resetpassword";
     let fullName: string;
 
-    if (additionalChecks["useRawUserName"] === true) {
+    if (additionalChecks.useRawUserName === true) {
       fullName = userName;
     } else {
       fullName = getTestEmail(userName);
@@ -374,14 +577,14 @@ Cypress.Commands.add(
 
 Cypress.Commands.add(
   "testCreateUserGroupAndDevice",
-  (userName, group, camera) => {
+  (userName, group, camera, atTime) => {
     logTestDescription(
       `Create user '${userName}' with camera '${camera}' in group '${group}'`,
       { user: userName, group: group, camera: camera },
     );
     cy.apiUserAdd(userName);
     cy.apiGroupAdd(userName, group, false);
-    cy.apiDeviceAdd(camera, group, null, null);
+    cy.apiDeviceAdd(camera, group, atTime, null, null);
   },
 );
 
@@ -422,18 +625,22 @@ Cypress.Commands.add(
 
 export function TestCreateExpectedUser(
   userName: string,
-  params: any,
+  params: {
+    globalPermission?: UserGlobalPermission;
+    endUserAgreement?: number;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+  } = {},
 ): ApiLoggedInUserResponse {
-  const user: ApiLoggedInUserResponse = {
+  return {
     email:
       params["email"] ||
       (getTestName(userName) + "@api.created.com").toLowerCase(),
     emailConfirmed: false,
     userName: getTestName(userName),
-    globalPermission: params["globalPermission"] || "off",
+    globalPermission: params["globalPermission"] || UserGlobalPermission.Off,
     endUserAgreement: params["endUserAgreement"] || LATEST_END_USER_AGREEMENT,
     id: getCreds(userName).id,
   };
-
-  return user;
 }

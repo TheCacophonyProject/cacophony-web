@@ -1,11 +1,9 @@
-
-
-const util =  require("./util/util.cjs");
+const util = require("./util/util.cjs");
 
 module.exports = {
   up: async function (queryInterface) {
     await queryInterface.sequelize.query(
-      `DELETE FROM "Tags" where "AudioRecordingId" is NOT NULL`
+      `DELETE FROM "Tags" where "AudioRecordingId" is NOT NULL`,
     );
     await queryInterface.removeColumn("Tags", "AudioRecordingId");
   },

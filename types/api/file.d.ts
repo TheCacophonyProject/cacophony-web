@@ -1,4 +1,4 @@
-import { FileId, UserId } from "./common";
+import type { FileId, UserId } from "./common.ts";
 
 export interface AudiobaitDetails {
   name: string;
@@ -11,7 +11,7 @@ export interface AudiobaitDetails {
 
 export interface ApiFileResponse {
   id: FileId;
-  details: any;
+  details: unknown;
   userId: UserId;
 }
 
@@ -21,5 +21,5 @@ export interface ApiAudiobaitFileResponse extends ApiFileResponse {
 
 export interface ApiAudiobaitFileRequest {
   details: AudiobaitDetails;
-  file: any;
+  file: unknown;
 }

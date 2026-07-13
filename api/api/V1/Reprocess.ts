@@ -24,8 +24,6 @@ import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredFlatRecordingById,
   fetchAuthorizedRequiredFlatRecordingsByIds,
-  fetchAuthorizedRequiredLimitedRecordingById,
-  fetchAuthorizedRequiredLimitedRecordingsByIds,
 } from "../extract-middleware.js";
 import { idOf } from "../validation-middleware.js";
 import { successResponse } from "./responseUtil.js";
@@ -33,8 +31,9 @@ import type { NextFunction } from "express-serve-static-core";
 import { ClientError, BadRequestError } from "../customErrors.js";
 import { arrayOf, jsonSchemaOf } from "../schema-validation.js";
 import lodash from "lodash";
-import RecordingIdSchema from "@schemas/api/common/RecordingId.schema.json" assert { type: "json" };
+import RecordingIdSchema from "@schemas/api/common/RecordingId.schema.json" with { type: "json" };
 import { HttpStatusCode } from "@typedefs/api/consts.js";
+import { Visit } from "@models/Visit.js";
 
 const { uniq: dedupe } = lodash;
 export default (app: Application, baseUrl: string) => {
@@ -45,7 +44,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiName Reprocess
    * @apiGroup Recordings
    * @apiParam {Integer} id of recording to retry
-   * @apiDescription Retries processing a recording thats in a failed state
+   * @apiDescription Retries processing a recording that's in a failed state
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -82,7 +81,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiName Reprocess
    * @apiGroup Recordings
    * @apiParam {Integer} id of recording to reprocess
-   * @apiDescription Marks a recording for reprocessing (tracking), and archives existing tracks.
+   * @apiDescription Marks a recording for reprocessing (tracking) and archives existing tracks.
    * Used if tracking algorithms have changed
    *
    * @apiUse V1UserAuthorizationHeader
@@ -97,6 +96,7 @@ export default (app: Application, baseUrl: string) => {
     fetchAuthorizedRequiredFlatRecordingById(param("id")),
     async (_request: Request, response: Response) => {
       await response.locals.recording.reprocess();
+      await Visit.rebuildForRecording(response.locals.recording);
       return successResponse(response, "Recording reprocessed");
     },
   );
@@ -142,6 +142,8 @@ export default (app: Application, baseUrl: string) => {
       }
       for (const recording of recordings) {
         await recording.reprocess();
+        // FIXME: This could be slow?
+        await Visit.rebuildForRecording(recording);
       }
       return successResponse(response, "Recordings scheduled for reprocessing");
     },

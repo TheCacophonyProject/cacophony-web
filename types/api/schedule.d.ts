@@ -1,4 +1,4 @@
-import { ScheduleId, Seconds } from "./common";
+import type { ScheduleId, Seconds } from "./common.ts";
 
 export interface ScheduleConfig {
   combos: {

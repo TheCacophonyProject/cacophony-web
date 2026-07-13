@@ -1,32 +1,30 @@
 <script setup lang="ts">
-import { BModal } from "bootstrap-vue-next";
+import { BForm, BFormCheckbox, BModal } from "bootstrap-vue-next";
 import { onMounted, ref } from "vue";
 import {
   hasAcceptedSomeEUA,
   euaIsOutOfDate,
   currentEUAVersion,
-  CurrentUser,
-  setLoggedInUserData,
 } from "@models/LoggedInUser";
-import type { LoggedInUser } from "@models/LoggedInUser";
-import { updateUserFields } from "@api/User";
+import { ClientApi } from "@/api";
 
 const acceptedEUA = ref(false);
 const submitting = ref(false);
 
 const acceptEndUserAgreement = async () => {
   submitting.value = true;
-  await updateUserFields({
+  await ClientApi.Users.updateUserFields({
     endUserAgreement: currentEUAVersion.value,
   });
   submitting.value = false;
   showModal.value = false;
 };
 const onHidden = () => {
-  setLoggedInUserData({
-    ...(CurrentUser.value as LoggedInUser),
-    endUserAgreement: currentEUAVersion.value,
-  });
+  // FIXME(auth): Make this work again
+  // setLoggedInUserData({
+  //   ...(CurrentUser.value as LoggedInUser),
+  //   endUserAgreement: currentEUAVersion.value,
+  // });
 };
 const showModal = ref<boolean>(false);
 onMounted(() => {
@@ -41,7 +39,7 @@ onMounted(() => {
     centered
     no-close-on-backdrop
     no-close-on-esc
-    hide-footer
+    no-footer
     hide-header-close
     @hidden="onHidden"
   >

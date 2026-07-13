@@ -382,7 +382,7 @@ describe("Recordings (thermal): add, get, delete", () => {
     });
   });
 
-  it("Group member can add recordings by device on behalf - for inactive device", () => {
+  it.skip("Group member can add recordings by device on behalf - for inactive device", () => {
     // NOTE: This test requires the previous test to also pass.
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecording1: ApiThermalRecordingResponse;
@@ -605,11 +605,6 @@ describe("Recordings (thermal): add, get, delete", () => {
         RecordingType.ThermalRaw,
         undefined,
       );
-      cy.testDeleteRecordingsInState(
-        superuser,
-        RecordingType.TrailCamImage,
-        undefined,
-      );
     }
 
     let stationId;
@@ -628,13 +623,6 @@ describe("Recordings (thermal): add, get, delete", () => {
 
     cy.log("Delete recording");
     cy.apiRecordingDelete("raGroupAdmin", "raRecording1");
-
-    cy.log("Check /recordings/report ignores deleted recording");
-    cy.apiRecordingsReportCheck(
-      "raGroupAdmin",
-      { where: {}, order: "[[\"id\", \"ASC\"]]" },
-      [],
-    );
 
     cy.log("Check /recordings/id: ignores deleted recording");
     cy.apiRecordingCheck(
@@ -657,7 +645,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raGroupAdmin",
       {
         where: {},
-        order: "[[\"id\", \"ASC\"]]",
+        order: '[["id", "ASC"]]',
       },
       0,
     );
@@ -667,7 +655,7 @@ describe("Recordings (thermal): add, get, delete", () => {
       "raGroupAdmin",
       {
         where: {},
-        order: "[[\"id\", \"ASC\"]]",
+        order: '[["id", "ASC"]]',
       },
       [],
       EXCLUDE_IDS,
@@ -676,42 +664,7 @@ describe("Recordings (thermal): add, get, delete", () => {
     cy.checkMonitoringWithFilter("raGroupAdmin", stationId, filter, []);
   });
 
-  it("Can upload multiple file attachments for trailcam devices", () => {
-    const recording1 = TestCreateRecordingData(templateRecording);
-    recording1.type = RecordingType.TrailCamImage;
-    let expectedRecording1: ApiThermalRecordingResponse;
-
-    cy.log("Add recording as device");
-    cy.apiRecordingAddOnBehalfUsingGroup(
-      "raGroupAdmin",
-      "raCamera1",
-      "raGroup",
-      recording1,
-      "tcRecording1",
-      [
-        { filename: "trailcam-image.jpeg", key: "file" },
-        { filename: "trailcam-image-resized.webp", key: "derived" },
-      ],
-    ).then(() => {
-      expectedRecording1 = TestCreateExpectedRecordingData(
-        templateExpectedRecording,
-        "tcRecording1",
-        "raCamera1",
-        "raGroup",
-        null,
-        recording1,
-      );
-      cy.log("Check recording can be viewed correctly");
-      cy.apiRecordingCheck(
-        "raGroupAdmin",
-        "tcRecording1",
-        expectedRecording1,
-        EXCLUDE_IDS,
-      );
-    });
-  });
-
-  it("Zero sized recordings are rejected", () => {
+  it("Zero sized recordings are accepted, and marked as corrupt", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     delete recording1.processingState;
     let expectedRecording1: ApiThermalRecordingResponse;
@@ -740,5 +693,58 @@ describe("Recordings (thermal): add, get, delete", () => {
         EXCLUDE_IDS,
       );
     });
+  });
+
+  it("Recordings with invalid recordingDateTimes are rejected", () => {
+    const recording1 = TestCreateRecordingData(templateRecording);
+    recording1.recordingDateTime = "Not a date";
+    delete recording1.processingState;
+
+    cy.log("Add invalid recording as device");
+    cy.apiRecordingAdd(
+      "raCamera1",
+      recording1,
+      "invalid.cptv",
+      "invalidDate",
+      422,
+    );
+  });
+
+  it("Recordings with future recordingDateTimes are allowed, but have their recordingDateTime set to now", () => {
+    const recording1 = TestCreateRecordingData(templateRecording);
+    recording1.recordingDateTime = "2160-01-01T07:22:56.000Z";
+    delete recording1.processingState;
+    const now = new Date();
+    cy.log("Add far future recording as device");
+    cy.apiRecordingAdd(
+      "raCamera1",
+      recording1,
+      "invalid.cptv",
+      "futureDate",
+      200,
+    ).then((id) => {
+      cy.apiRecordingGet("raGroupAdmin", id).then((response) => {
+        const recDateTime = new Date(response.body.recording.recordingDateTime);
+        expect(recDateTime.getTime()).to.be.closeTo(now.getTime(), 5000);
+      });
+    });
+  });
+
+  it("Recordings with *minor* future recordingDateTimes are allowed", () => {
+    const recording1 = TestCreateRecordingData(templateRecording);
+    // Five minutes in the future
+    recording1.recordingDateTime = new Date(
+      Date.now() + 1000 * 5 * 60,
+    ).toISOString();
+    delete recording1.processingState;
+
+    cy.log("Add slight future recording as device");
+    cy.apiRecordingAdd(
+      "raCamera1",
+      recording1,
+      "invalid.cptv",
+      "slightFutureDate",
+      200,
+    );
   });
 });

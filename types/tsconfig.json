@@ -1,16 +1,19 @@
 {
-    "extends": "@tsconfig/node16/tsconfig.json",
     "compilerOptions": {
-        "module": "commonjs",
+        "module": "nodenext",
         "target": "es2020",
         "sourceMap": false,
         "esModuleInterop": true,
-        "moduleResolution": "node",
+        "moduleResolution": "nodenext",
         "baseUrl": ".",
-        "lib": ["es2020"]
+        "lib": ["ESNext", "dom", "dom.iterable"],
+        "paths": {
+            "@typedefs/*":  ["./*"],
+        }
     },
     "exclude": [
-        "node_modules"
+        "node_modules",
+        "types/client/**"
     ],
     "include": [
         "./**/*.ts",

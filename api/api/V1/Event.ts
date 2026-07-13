@@ -16,13 +16,11 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { expectedTypeOf, validateFields, requestWrapper } from "../middleware.js";
-import modelsInit from "@models/index.js";
-import type { Event, QueryOptions } from "@models/Event.js";
+import { expectedTypeOf, validateFields } from "../middleware.js";
+import { initSequelize } from "@models/index.js";
 import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction, Request, Response } from "express";
-import { powerEventsPerDevice } from "./eventUtil.js";
 import {
   extractJwtAuthorisedDevice,
   extractJwtAuthorizedUser,
@@ -32,28 +30,33 @@ import {
   fetchUnAuthorizedOptionalEventDetailSnapshotById,
 } from "../extract-middleware.js";
 import { jsonSchemaOf } from "../schema-validation.js";
-import EventDatesSchema from "@schemas/api/event/EventDates.schema.json" assert { type: "json" };
-import EventDescriptionSchema from "@schemas/api/event/EventDescription.schema.json" assert { type: "json" };
-import type { EventDescription } from "@typedefs/api/event.js";
+import EventDatesSchema from "@schemas/api/event/EventDates.schema.json" with { type: "json" };
+import EventDescriptionSchema from "@schemas/api/event/EventDescription.schema.json" with { type: "json" };
+import type { EventDescription, JsonDocument } from "@typedefs/api/event.js";
 import logger from "@log";
 import {
-  anyOf,
   booleanOf,
   deprecatedField,
+  exactlyOneOf,
   idOf,
   integerOf,
+  optionalDateOf,
 } from "../validation-middleware.js";
 import { ClientError, UnprocessableError } from "@api/customErrors.js";
-import type { IsoFormattedDateString } from "@typedefs/api/common.js";
-import { maybeUpdateDeviceHistory } from "@api/V1/recordingUtil.js";
-import { HttpStatusCode } from "@typedefs/api/consts.js";
-import { isLatLon } from "@models/util/validation.js";
-import util from "@api/V1/util.js";
+import type { DeviceId, IsoFormattedDateString } from "@typedefs/api/common.js";
+import { EventEnv, HttpStatusCode } from "@typedefs/api/consts.js";
+import { isLatLng } from "@models/util/validation.js";
 import { streamS3Object } from "@api/V1/signedUrl.js";
-import config from "@config";
-import { QueryTypes } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
+import { Device } from "@models/Device.js";
+import { Event } from "@models/Event.js";
+import { DetailSnapshot } from "@models/DetailSnapshot.js";
+import { maybeUpdateDeviceHistoryLocation } from "@api/V1/deviceHistoryUpdates.js";
+import { DeviceHistory } from "@/models/DeviceHistory.js";
+import { greaterDate } from "@api/fileUploaders/uploadGenericRecording.js";
+import { GroupUsers } from "@models/GroupUsers.js";
 
-const models = await modelsInit();
+const sequelize = await initSequelize();
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
 
 const uploadEvent = async (
@@ -62,100 +65,214 @@ const uploadEvent = async (
   next: NextFunction,
 ) => {
   let device = response.locals.device || response.locals.requestDevice;
+  const now = (request.query["at-time"] as unknown as Date) || new Date();
+  if (!device.deviceName) {
+    // If we just have a device JWT id, get the actual device at this point.
+    device = await Device.findByPk(device.id);
+  }
   if (response.locals.requestDevice) {
     // The device is connecting directly, so update the last connected time.
-    if (!device.deviceName) {
-      // If we just have a device JWT id, get the actual device at this point.
-      device = await models.Device.findByPk(device.id);
-    }
-    await device.update({ lastConnectionTime: new Date() });
+    await device.update({
+      lastConnectionTime: greaterDate(now, "lastConnectionTime"),
+    });
   }
+
   let detailsId = response.locals.detailsnapshot?.id;
-  let env = "unknown";
+  let env: EventEnv = EventEnv.Unknown;
   if (!detailsId) {
     const description: EventDescription = request.body.description;
-
-    let details: any = description.details || {};
-    if (typeof description.details === "string") {
-      try {
-        details = JSON.parse(description.details);
-      } catch (e) {
-        //
-        logger.error(
-          "Failed to parse JSON %s: %s",
-          e,
-          typeof description.details,
-        );
+    let resolvedDetails: Record<string, JsonDocument>;
+    {
+      let details: JsonDocument = description.details || {};
+      if (typeof description.details === "string") {
+        try {
+          details = JSON.parse(description.details as string);
+        } catch (e) {
+          //
+          logger.error(
+            "Failed to parse JSON %s: %s",
+            e,
+            typeof description.details,
+          );
+        }
       }
+      resolvedDetails = details as Record<string, JsonDocument>;
     }
 
-    env = details.env || "unknown";
-    if (["tc2-dev", "tc2-test", "tc2-prod", "unknown"].includes(env)) {
-      env = "unknown";
+    env = (resolvedDetails["env"] as EventEnv) || EventEnv.Unknown;
+    if (!["tc2-dev", "tc2-test", "tc2-prod", "unknown"].includes(env)) {
+      env = EventEnv.Unknown;
     }
-    delete details.env;
-    const detail = await models.DetailSnapshot.getOrCreateMatching(
+    delete resolvedDetails["env"];
+    const detail = await DetailSnapshot.getOrCreateMatching(
       description.type,
-      details,
+      resolvedDetails,
     );
     detailsId = detail.id;
 
     // Maybe update the device history entry on config change if location has updated.
     if (description.type === "config") {
+      interface ConfigEvent {
+        location?: {
+          latitude: number;
+          longitude: number;
+          updated: IsoFormattedDateString;
+        };
+        device?: {
+          id: DeviceId;
+        };
+      }
+      const configEventDetails = resolvedDetails as unknown as ConfigEvent;
+
       if (
-        details.location !== null &&
-        details.location.latitude !== undefined &&
-        details.location.longitude !== undefined
+        configEventDetails.location &&
+        configEventDetails.location.latitude !== undefined &&
+        configEventDetails.location.longitude !== undefined
       ) {
-        const lat = details.location.latitude;
-        const lng = details.location.longitude;
-        // Pre-validate to avoid server-side crashes on invalid inputs
-        if (!isLatLon({ lat, lng }, false)) {
+        const deviceId =
+          (configEventDetails.device && configEventDetails.device.id) ||
+          device.id;
+        let configDevice = device;
+        if (
+          configEventDetails.device &&
+          configEventDetails.device.id !== device.id
+        ) {
+          configDevice = await Device.findByPk(deviceId);
+        }
+        if (configDevice) {
+          const lat = configEventDetails.location.latitude;
+          const lng = configEventDetails.location.longitude;
+          // Pre-validate to avoid server-side crashes on invalid inputs
+          if (!isLatLng({ lat, lng }, false)) {
+            // Allow logging the event still to get it off the device, just don't update the device location.
+            logger.warning(`Invalid location '{"lat":${lat},"lng":${lng}}'`);
+          } else {
+            try {
+              await maybeUpdateDeviceHistoryLocation(
+                configDevice,
+                { lat, lng },
+                new Date(configEventDetails.location.updated),
+                "config",
+              );
+            } catch (e: unknown) {
+              let message = "unknown error";
+              if (e instanceof Error) {
+                message = e.message;
+              }
+              if (
+                (e && (e as Error).name === "SequelizeValidationError") ||
+                message.includes("Invalid location")
+              ) {
+                return next(
+                  new UnprocessableError(
+                    `Invalid location '{"lat":${lat},"lng":${lng}}'`,
+                  ),
+                );
+              }
+              return next(
+                new ClientError(`Failed to update device history: ${message}`),
+              );
+            }
+          }
+        } else {
           return next(
-            new UnprocessableError(
-              `Invalid location '{"lat":${lat},"lng":${lng}}'`,
+            new ClientError(
+              `Couldn't find device #${deviceId} to update device history location for`,
             ),
           );
-        }
-        try {
-          await maybeUpdateDeviceHistory(
-            models,
-            device,
-            { lat, lng },
-            new Date(details.location.updated),
-            "config",
-          );
-        } catch (e: any) {
-          const message = e?.message || "unknown error";
-          if (
-            e?.name === "SequelizeValidationError" ||
-            message.includes("Location is not valid")
-          ) {
-            return next(
-              new UnprocessableError(
-                `Invalid location '{"lat":${lat},"lng":${lng}}'`,
-              ),
-            );
-          }
-          return next(new ClientError(`Failed to update device history: ${message}`));
         }
       }
     }
   }
+  // NOTE: Allow event dates to be a little in the future to account for clock drift.
+  const tenMinutesFromNow = new Date(
+    new Date().setMinutes(new Date().getMinutes() + 10),
+  );
 
-  const eventList = request.body.dateTimes.map((dateTime) => ({
-    DeviceId: device.id,
-    EventDetailId: detailsId,
-    dateTime,
-    env,
-  }));
+  const sortedTimes: Date[] = request.body.dateTimes
+    .map((dateTime: IsoFormattedDateString) => new Date(dateTime))
+    .sort((a: Date, b: Date) => a.getTime() - b.getTime());
+  // Check that the device was the same for earliest and latest times, otherwise need to binary
+  // search to attribute events correctly.
+  const earliest = sortedTimes[0];
+  const latest = sortedTimes[sortedTimes.length - 1];
+  const earliestActualDevice = await DeviceHistory.getDeviceFromUuidAtTime(
+    device.uuid,
+    earliest,
+  );
+  let latestActualDevice = earliestActualDevice;
+  if (earliest !== latest) {
+    // Check both ends
+    latestActualDevice = await DeviceHistory.getDeviceFromUuidAtTime(
+      device.uuid,
+      latest,
+    );
+  }
+  let eventList: {
+    DeviceId: DeviceId;
+    EventDetailId: number;
+    dateTime: Date;
+    env: EventEnv;
+  }[];
+  if (
+    earliestActualDevice &&
+    latestActualDevice &&
+    earliestActualDevice.DeviceId !== latestActualDevice.DeviceId
+  ) {
+    // We need to bisect, but this is rare, so just map every event to the deviceId.
+    const actualDevices: DeviceHistory[] = await Promise.all(
+      sortedTimes.map((dateTime) =>
+        DeviceHistory.getDeviceFromUuidAtTime(device.uuid, dateTime),
+      ),
+    );
+    eventList = sortedTimes.map((dateTime, index) => ({
+      DeviceId: actualDevices[index].DeviceId,
+      EventDetailId: detailsId,
+      dateTime,
+      env,
+    }));
+  } else if (
+    earliestActualDevice &&
+    device.id !== earliestActualDevice.DeviceId
+  ) {
+    eventList = sortedTimes.map((dateTime) => ({
+      DeviceId: earliestActualDevice.DeviceId,
+      EventDetailId: detailsId,
+      dateTime,
+      env,
+    }));
+  } else {
+    eventList = sortedTimes.map((dateTime) => ({
+      DeviceId: device.id,
+      EventDetailId: detailsId,
+      dateTime,
+      env,
+    }));
+  }
+  eventList = eventList.filter((event: { dateTime: Date }) => {
+    if (event.dateTime > tenMinutesFromNow) {
+      logger.warning(
+        "Discarding event with invalid future dateTime %s.",
+        JSON.stringify(event),
+      );
+      return false;
+    }
+    return true;
+  });
   const count = eventList.length;
   try {
-    await models.Event.bulkCreate(eventList);
-  } catch (exception) {
-    return next(
-      new ClientError(`Failed to record events. ${exception.message}`),
-    );
+    // Batch inserting events to max 100 events at a time, to spare DB memory usage.
+    for (let i = 0; i < eventList.length; i += 100) {
+      await Event.bulkCreate(
+        eventList.slice(i, Math.min(i + 100, eventList.length)),
+      );
+    }
+  } catch (e: unknown) {
+    let message = "unknown error";
+    if (e) {
+      message = (e as Error).message;
+    }
+    return next(new ClientError(`Failed to record events. ${message}`));
   }
   return successResponse(response, "Added events.", {
     eventsAdded: count,
@@ -163,19 +280,16 @@ const uploadEvent = async (
   });
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiEventsRequestBody {
+export interface ApiEventsRequestBody {
   Timestamp?: IsoFormattedDateString; // Deprecated, use 'dateTimes' instead
   eventDetailId?: number; // ID of existing event details entry if known. Either eventDetailId or description are required.
   description?: EventDescription; // Description of the event. Either eventDetailId or description are required.
   dateTimes: IsoFormattedDateString[]; // Array of event times in ISO standard format, eg ["2017-11-13T00:47:51.160Z"]
 }
 
-// TODO(jon): Consider whether extracting this is worth it compared with just
-//  duplicating and having things be explicit in each api endpoint?
 const commonEventFields = [
   deprecatedField(body("Timestamp")),
-  anyOf(
+  exactlyOneOf(
     idOf(body("eventDetailId")),
     body("description")
       .exists()
@@ -197,6 +311,9 @@ const commonEventFields = [
     .withMessage(`Got empty array`)
     .bail()
     .custom(jsonSchemaOf(EventDatesSchema)),
+
+  // NOTE: Primarily used in testing, allows us to backdate the lastConnectionTime of an uploading device
+  optionalDateOf(query("at-time")),
 ];
 
 export default function (app: Application, baseUrl: string) {
@@ -241,7 +358,7 @@ export default function (app: Application, baseUrl: string) {
       next();
     },
     // Finally, upload event(s)
-    requestWrapper(uploadEvent),
+    uploadEvent,
   );
 
   /**
@@ -259,19 +376,21 @@ export default function (app: Application, baseUrl: string) {
    * @apiSuccess {String} success
    * @apiUse V1ResponseError
    */
+
+  /*
+  // FIXME: re-enable when we have some tests
   app.post(
     `${apiUrl}/thumbnail`,
     extractJwtAuthorisedDevice,
     util.multipartUpload(
       "event-thumb",
       async (
-        uploader,
+        _uploader,
         uploadingDevice,
-        uploadingUser,
+        _uploadingUser,
         data,
         keys,
         _uploadedFileDatas,
-        _locals,
       ): Promise<Event> => {
         console.assert(
           keys.length === 1,
@@ -286,17 +405,19 @@ export default function (app: Application, baseUrl: string) {
             ...data,
           },
         };
-        delete description.details.type;
-        delete description.details.filename;
-        delete description.details.dateTimes;
-        const detail = await models.DetailSnapshot.getOrCreateMatching(
+        delete description.details["type"];
+        delete description.details["filename"];
+        delete description.details["dateTimes"];
+        const detail = await DetailSnapshot.getOrCreateMatching(
           description.type,
           description.details,
         );
         const dateTime =
-          (data.dateTimes && data.dateTimes.length && data.dateTimes[0]) ||
+          (data["dateTimes"] &&
+            data["dateTimes"].length &&
+            data["dateTimes"][0]) ||
           new Date().toISOString();
-        return await models.Event.create({
+        return await Event.create({
           DeviceId: uploadingDevice.id,
           EventDetailId: detail.id,
           dateTime,
@@ -304,6 +425,7 @@ export default function (app: Application, baseUrl: string) {
       },
     ),
   );
+   */
 
   /**
    * @api {get} /api/v1/events/:id/thumbnail Return an event thumbnail given an event id.
@@ -379,6 +501,46 @@ export default function (app: Application, baseUrl: string) {
     // Extract required resources
     fetchUnAuthorizedOptionalEventDetailSnapshotById(body("eventDetailId")),
     async (request: Request, response: Response, next: NextFunction) => {
+      // Pull out device here, since if a device gets moved from a project a user is not a member of
+      // and then sidekick tries to offload events for the old device pre-move, it would otherwise
+      // fail, and the events are stuck on sidekick forever.
+      const device = await Device.findByPk(
+        request.params.deviceId as unknown as DeviceId,
+      );
+      if (!device) {
+        return next(
+          new ClientError(
+            `Could not find a device an id of '${request.params.deviceId}`,
+            HttpStatusCode.Forbidden,
+          ),
+        );
+      }
+      // Make sure the user has access to a device with the same uuid
+      const user = response.locals.requestUser;
+      const userGroups = (
+        await GroupUsers.findAll({
+          where: {
+            UserId: user.id,
+            removedAt: null,
+          },
+        })
+      ).map((g) => g.GroupId);
+      const userDevice = await Device.findOne({
+        where: {
+          uuid: device.uuid,
+          GroupId: { [Op.in]: userGroups },
+        },
+      });
+      if (!userDevice) {
+        return next(
+          new ClientError(
+            `Could not find a device an id of ${request.params.deviceId} for user`,
+            HttpStatusCode.Forbidden,
+          ),
+        );
+      }
+
+      response.locals.device = device;
       // eventDetailId is optional, but if it is supplied we need to make sure it exists
       if (request.body.eventDetailId && !response.locals.detailsnapshot) {
         return next(
@@ -390,8 +552,7 @@ export default function (app: Application, baseUrl: string) {
       }
       next();
     },
-    fetchAuthorizedRequiredDeviceById(param("deviceId")),
-    requestWrapper(uploadEvent),
+    uploadEvent,
   );
 
   /**
@@ -460,197 +621,36 @@ export default function (app: Application, baseUrl: string) {
       const query = request.query;
       const offset: number =
         (query.offset && (query.offset as unknown as number)) || 0;
-      let options: QueryOptions;
-      if (query.type) {
-        options = { eventType: query.type } as QueryOptions;
-      }
       const includeCount = query["include-count"] as unknown as boolean;
-      const result = await models.Event.query(
+      const result = await Event.query(
         response.locals.requestUser.id,
         query.startTime as string,
         query.endTime as string,
         Number(query.deviceId),
         offset,
-        query.limit as unknown as number,
+        query.limit as unknown as number | undefined,
         query.latest as unknown as boolean,
-        options,
+        query.type as unknown as string,
         includeCount,
       );
-      const payload = {
-        limit: query.limit,
+      const payload: {
+        limit?: number;
+        offset: number;
+        rows: Event[];
+        count?: number;
+      } = {
         offset,
         rows: includeCount
           ? (result as { rows: Event[]; count: number }).rows
-          : result,
+          : (result as Event[]),
       };
+      if (query.limit) {
+        payload.limit = Number(query.limit);
+      }
       if (includeCount) {
-        (payload as any).count = (
-          result as { rows: Event[]; count: number }
-        ).count;
+        payload.count = (result as { rows: Event[]; count: number }).count;
       }
       return successResponse(response, "Completed query.", payload);
-    },
-  );
-
-  if (!config.productionEnv) {
-    // DEPRECATED: As far as I can tell, no client ever actually calls this API endpoint, is it only used by CI?
-    /**
-     * @api {get} /api/v1/events/errors Query recorded errors
-     * @apiName QueryErrors
-     * @apiGroup Events
-     *
-     * @apiUse V1UserAuthorizationHeader
-     * @apiQuery {Datetime} [startTime] Return only errors on or after this time
-     * @apiQuery {Datetime} [endTime] Return only errors from before this time
-     * @apiQuery {Integer} [deviceId] Return only errors for this device id
-     * @apiQuery {Integer} [limit=100] Limit returned errors to this number (default is 100)
-     * @apiQuery {Integer} [offset=0] Offset returned errors by this amount (default is 0)
-     * @apiQuery {Boolean} [only-active=true] Only return errors for active devices
-     *
-     * @apiSuccess {json} rows Map of Service Name to Service errors
-     * @apiUse V1ResponseSuccess
-     * @apiSuccessExample {json} rows
-     * {
-     *   "<service-name>": {
-     *     "name": "<service-name>",
-     *     "devices": ["device1","device2"],
-     *     "errors": ApiEventError[]
-     *   },
-     *   "<service-name2>": {
-     *     "name": "<service-name2>",
-     *     "devices": ["device3","device4"],
-     *     "errors": ApiEventError[]
-     *   }
-     * }
-     * @apiSuccessExample {json} ApiEventError
-     * {
-     *   devices: ["device1", "device2"],
-     *   timestamps: ["2020-08-10T13:10:38.000Z", "2020-08-11T13:10:38.000Z"],
-     *   similar: ApiEventErrorSimilar[],
-     *   patterns: ApiEventErrorPattern[]
-     * }
-     * @apiSuccessExample {json} ApiEventErrorSimilar
-     * {
-     *   device: "device1",
-     *   timestamp: "2020-08-10T13:10:38.000Z",
-     *   lines: ["error line 1", "error line 2", "error line 3"]
-     * }
-     * @apiSuccessExample {json} ApiEventErrorPattern
-     * {
-     *   score: 100,
-     *   index: 0,
-     *   patterns: ["matched error line"]
-     * }
-     * @apiUse V1ResponseError
-     */
-    // app.get(
-    //   `${apiUrl}/errors`,
-    //   // Authenticate the session
-    //   extractJwtAuthorizedUser,
-    //   // Validate request structure
-    //   validateFields([
-    //     query("startTime").isISO8601({ strict: true }).toDate().optional(),
-    //     query("endTime").isISO8601({ strict: true }).toDate().optional(),
-    //     idOf(query("deviceId")).optional(),
-    //     integerOf(query("offset")).optional(),
-    //     integerOf(query("limit")).optional(),
-    //     query("only-active").optional().isBoolean().toBoolean(),
-    //   ]),
-    //   // Extract required resources
-    //   fetchAuthorizedOptionalDeviceById(query("deviceId")),
-    //   async (request: Request, response: Response, next: NextFunction) => {
-    //     // deviceId is optional, but if it is supplied we need to make sure that the user
-    //     // is allowed to access it.
-    //     if (request.query.deviceId && !response.locals.device) {
-    //       return next(
-    //         new ClientError(
-    //           `Could not find a device with an id of '${request.query.deviceId} for user`,
-    //           HttpStatusCode.Forbidden
-    //         )
-    //       );
-    //     }
-    //     next();
-    //   },
-    //   async (request: Request, response: Response) => {
-    //     // TODO: Fix these tests.
-    //     const query = request.query;
-    //     const startTime = query.startTime as unknown as Date | undefined;
-    //     const endTime = query.endTime as unknown as Date | undefined;
-    //     const result = await groupedSystemErrors(startTime, endTime);
-    //     return successResponse(response, "Completed query.", {
-    //       limit: query.limit,
-    //       offset: query.offset,
-    //       rows: result,
-    //     });
-    //   }
-    // );
-  }
-
-  // DEPRECATED: As far as I can tell, no client ever calls this API endpoint - is it only used by CI?
-  /**
-   * @api {get} /api/v1/events/powerEvents Query power events for devices
-   * @apiName QueryPower
-   * @apiGroup Events
-   *
-   * @apiUse V1UserAuthorizationHeader
-   * @apiQuery {Integer} [deviceId] Return only errors for this deviceId
-   *
-   * @apiSuccess {JSON} events Array of `ApiPowerEvent` containing details of power events matching the criteria given.
-   * @apiSuccessExample ApiPowerEvent:
-   * {
-   *   "hasStopped": true,
-   *   "lastStarted": "2021-07-21T02:00:02.929Z",
-   *   "lastReported": "2021-07-21T02:00:02.929Z",
-   *   "lastStopped": "2021-07-17T20:41:55.000Z",
-   *   "hasAlerted": true,
-   *   "Device": {
-   *     "id": 1576,
-   *     "deviceName": "test-device",
-   *     "GroupId": 246,
-   *     "Group":  {
-   *       "groupName": "test-group",
-   *       "id": 246
-   *     }
-   *    }
-   *  }
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/powerEvents`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      idOf(query("deviceId")).optional(),
-      query("only-active").optional().isBoolean().toBoolean(),
-    ]),
-    // Extract required resources
-    fetchAuthorizedOptionalDeviceById(query("deviceId")),
-    async (request: Request, response: Response, next: NextFunction) => {
-      // FIXME - can this be incorporated into our fetch logic?
-      // deviceId is optional, but if it is supplied we need to make sure that the user
-      // is allowed to access it.
-      if (request.query.deviceId && !response.locals.device) {
-        return next(
-          new ClientError(
-            `Could not find a device with an id of '${request.query.deviceId} for user`,
-            HttpStatusCode.Forbidden,
-          ),
-        );
-      }
-      next();
-    },
-    async (request: Request, response: Response) => {
-      logger.info(
-        "Get power events for %s at time %s",
-        response.locals.requestUser,
-        new Date(),
-      );
-      const events = await powerEventsPerDevice({
-        query: { ...request.query },
-        res: { locals: { ...response.locals } },
-      });
-      return successResponse(response, "Completed query.", {
-        events,
-      });
     },
   );
 
@@ -669,7 +669,7 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/event-types`,
     extractJwtAuthorizedUser,
     async (_request: Request, response: Response) => {
-      const eventTypes = await models.sequelize.query(
+      const eventTypes = await sequelize.query(
         `select distinct type from "DetailSnapshots"`,
         { type: QueryTypes.SELECT },
       );
@@ -695,7 +695,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (_request: Request, response: Response) => {
-      const eventTypes = await models.sequelize.query(
+      const eventTypes = await sequelize.query(
         `
       select distinct 
         type 
@@ -729,7 +729,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
     fetchAuthorizedRequiredEventById(param("id")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       const event = response.locals.event;
       const details = {
         ...event.EventDetail.details,

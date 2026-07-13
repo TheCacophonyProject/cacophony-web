@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import { computed, inject, ref } from "vue";
 import type { Ref } from "vue";
@@ -7,32 +6,31 @@ import {
   visitsCountBySpecies as visitsCountBySpeciesCalc,
   timeAtLocation,
   visitDuration,
-  VisitProcessingStates,
-  someRecordingStillProcessing,
-  intlFormatForLocation,
 } from "@models/visitsUtils";
 import type { DateTime } from "luxon";
 import type { IsoFormattedDateString, LatLng } from "@typedefs/api/common";
 import * as sunCalc from "suncalc";
-import { API_ROOT } from "@api/root";
+import { ClientApi } from "@/api";
 import {
   displayLabelForClassificationLabel,
   getClassificationForLabel,
-} from "@api/Classifications";
+} from "@api/classificationsUtils.ts";
 import ImageLoader from "@/components/ImageLoader.vue";
-import { RecordingProcessingState } from "@typedefs/api/consts.ts";
-import type { ApiRecordingResponse } from "@typedefs/api/recording";
+import { BSpinner } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import LocationName from "@/components/LocationName.vue";
+import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
-// TODO: Empty nights in our time window should still show, assuming we had heartbeat events during them?
-//  Of course, we don't currently do this.
+// TODO: Empty nights in our time window should still show, assuming we had startup/shutdown events during them?
+//  Of course, we don't currently do this.  This could be done with new "activity days" API.
 
 const currentlySelectedVisit = inject(
   "currentlySelectedVisit",
-) as Ref<ApiVisitResponse | null>;
+) as Ref<ApiStaticVisitResponse | null>;
 
 const now = new Date();
 const props = defineProps<{
-  visits: ApiVisitResponse[];
+  visits: ApiStaticVisitResponse[];
   startTime: DateTime;
   isNocturnal: boolean;
   location: LatLng;
@@ -40,7 +38,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "selected-visit", payload: ApiVisitResponse): void;
+  (e: "selected-visit", payload: ApiStaticVisitResponse): void;
   (e: "change-highlighted-location", payload: LocationId | null): void;
 }>();
 
@@ -67,7 +65,7 @@ interface EventItem {
 
 interface VisitEventItem extends EventItem {
   type: "visit";
-  data: ApiVisitResponse;
+  data: ApiStaticVisitResponse;
 }
 
 interface SunEventItem extends EventItem {
@@ -76,21 +74,23 @@ interface SunEventItem extends EventItem {
 
 const visitEvents = computed<(VisitEventItem | SunEventItem)[]>(() => {
   // Take visits and interleave sunrise/sunset events.
-  // TODO - When visits are loaded, should we make the timeStart and timeEnd be Dates?
-  for (const visit of props.visits) {
-    if (!visit.classification) {
-      debugger;
-    }
-  }
   const events: (VisitEventItem | SunEventItem)[] = props.visits.map(
-    (visit) =>
-      ({
+    (visit) => {
+      const classification = (
+        visit.humanClassification ||
+        visit.aiClassification ||
+        "none"
+      )
+        .split(".")
+        .pop();
+      return {
         type: "visit",
-        name: visit.classification,
-        timeStart: visit.timeStart,
+        name: classification,
+        timeStart: visit.startTime,
         data: visit,
-        date: new Date(visit.timeStart),
-      } as VisitEventItem),
+        date: new Date(visit.startTime),
+      } as VisitEventItem;
+    },
   );
   const now = new Date();
   if (props.isNocturnal) {
@@ -255,34 +255,20 @@ const hasVisits = computed<boolean>(() => {
 const visitTime = (timeIsoString: string) =>
   timeAtLocation(timeIsoString, props.location);
 
-const thumbnailSrcForVisit = (visit: ApiVisitResponse): string => {
-  if (visit.recordings.length) {
-    let foundTrack;
-    let foundRec;
-    for (const rec of visit.recordings) {
-      const track = rec.tracks.find(
-        (track) => track.tag === visit.classification,
-      );
-      if (track) {
-        foundRec = rec;
-        foundTrack = track;
-        break;
-      }
-    }
-
-    if (import.meta.env.DEV) {
-      if (foundTrack && foundRec) {
-        return `https://api.cacophony.org.nz/api/v1/recordings/${foundRec.recId}/thumbnail?trackId=${foundTrack.id}`;
-      }
-      return `https://api.cacophony.org.nz/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
-    } else {
-      if (foundTrack && foundRec) {
-        return `${API_ROOT}/api/v1/recordings/${foundRec.recId}/thumbnail?trackId=${foundTrack.id}`;
-      }
-      return `${API_ROOT}/api/v1/recordings/${visit.recordings[0].recId}/thumbnail`;
-    }
+const thumbnailSrcForVisit = (
+  visit: ApiStaticVisitResponse,
+  prevUrl?: string,
+): string => {
+  const recId =
+    visit.humanClassificationRecordingId || visit.aiClassificationRecordingId;
+  const trackId =
+    visit.humanClassificationTrackId || visit.humanClassificationTrackId;
+  if (recId && trackId && !prevUrl) {
+    return `${ClientApi.getApiRoot()}/api/v1/recordings/${recId}/thumbnail?trackId=${trackId}`;
+  } else if (recId) {
+    return `${ClientApi.getApiRoot()}/api/v1/recordings/${recId}/thumbnail`;
   }
-  return "";
+  return `${ClientApi.getApiRoot()}/api/v1/recordings/${visit.recordingIds[0]}/thumbnail`;
 };
 
 const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
@@ -293,7 +279,7 @@ const selectedVisit = (visit: VisitEventItem | SunEventItem) => {
 
 const highlightedLocation = (visit: VisitEventItem | SunEventItem) => {
   if (visit.type === "visit") {
-    emit("change-highlighted-location", visit.data.stationId);
+    emit("change-highlighted-location", visit.data.locationId);
   }
 };
 const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
@@ -304,67 +290,80 @@ const unhighlightedLocation = (visit: VisitEventItem | SunEventItem) => {
 
 const isStillProcessing = computed<boolean>(() => {
   // TODO: Poll to see if processing has finished
-  return visitEvents.value.some(
-    (visit) =>
-      visit.type === "visit" &&
-      visit.data.recordings.some((rec) =>
-        VisitProcessingStates.includes(rec.processingState),
-      ),
-  );
+  // return visitEvents.value.some(
+  //   (visit) =>
+  //     visit.type === "visit" &&
+  //     visit.data.recordings.some((rec) =>
+  //       VisitProcessingStates.includes(rec.processingState),
+  //     ),
+  // );
+  return false;
 });
 </script>
 <template>
   <div class="visits-daily-breakdown mb-3" @click="openDetailIfClosed">
     <div
-      class="header fs-7 p-2 d-flex justify-content-between user-select-none align-items-center"
+      class="header py-2 px-3 d-flex gap-2 justify-content-between user-select-none align-items-center"
       @click="toggleVisitsDetail"
+      :class="showVisitsDetail ? 'is-expanded' : ''"
     >
-      <div>
-        <span v-if="isNocturnal" v-html="nightOfRange" />
-        <span v-else>
+      <div class="d-flex align-items-center flex-shrink-1">
+        <span
+          v-if="isNocturnal"
+          v-html="nightOfRange"
+          class="visit-title flex-shrink-1"
+        />
+        <span v-else class="visit-title flex-shrink-1">
           {{ startTime.day }} {{ startTime.monthLong }} {{ startTime.year }}
           {{ periodInProgress ? "(in progress)" : "" }}
         </span>
-        <span v-if="isNocturnal" class="night-icon px-2"
-          ><font-awesome-icon icon="moon"
-        /></span>
+        <material-symbol
+          v-if="isNocturnal"
+          name="dark_mode"
+          size="1.125rem"
+          class="night-icon px-2"
+        />
       </div>
-      <div>
-        <span
-          v-if="isStillProcessing"
-          class="d-inline-flex align-items-center bg-light px-1 rounded-1"
-        >
-          <b-spinner small variant="secondary" />
-          <span class="ms-2 me-1 fs-8" style="color: #7d7d7d">AI Queued</span>
-        </span>
-        <font-awesome-icon
+      <div class="d-flex align-items-center flex-shrink-0">
+        <material-symbol
           v-if="hasVisits"
-          class="px-2"
-          size="sm"
-          icon="chevron-right"
-          :rotation="showVisitsDetail ? 270 : 90"
+          :name="showVisitsDetail ? 'keyboard_arrow_up' : 'keyboard_arrow_down'"
+          size="1.5rem"
         />
       </div>
     </div>
     <div v-if="!showVisitsDetail" class="visits-summary">
-      <div class="no-activity p-3" v-if="!hasVisits">No activity</div>
-      <div v-else class="visits-species-count p-3 pb-1 user-select-none">
+      <div
+        class="no-activity p-3 fs-6 text-body-tertiary text-center"
+        v-if="!hasVisits"
+      >
+        No activity
+      </div>
+      <div
+        v-else
+        class="visits-species-count-wrapper d-flex flex-wrap p-3 user-select-none"
+      >
         <div
           v-for="([classification, path, count], index) in visitCountBySpecies"
-          class="fs-8 visit-species-count"
+          class="visit-species-count"
+          :data-cy="`visit species ${classification}`"
           :class="[classification, ...path.split('.')]"
           :key="index"
         >
-          <span class="count text-capitalize">
+          <span
+            class="count text-capitalize d-inline-flex justify-content-center align-items-center"
+          >
             <b-spinner
               v-if="classification === 'unclassified'"
               small
               variant="light"
               class="mx-1"
             />
-            <span :class="{ 'me-1': classification === 'unclassified' }">{{
-              count
-            }}</span>
+            <span
+              :class="{ 'me-1': classification === 'unclassified' }"
+              data-cy="visit count"
+              >{{ count }}</span
+            >
           </span>
           <span class="text-capitalize species d-inline-block">
             {{ displayLabelForClassificationLabel(classification) }}
@@ -372,11 +371,12 @@ const isStillProcessing = computed<boolean>(() => {
         </div>
       </div>
     </div>
-    <div v-else class="p-1 visits-detail">
+    <div v-else class="visits-detail px-2 py-3">
       <div
         v-for="(visit, index) in visitEvents"
         :key="index"
-        class="visit-event-item d-flex user-select-none fs-8"
+        class="visit-event-item px-1 d-flex user-select-none"
+        :data-cy="`${visit.type} ${index}`"
         :class="[
           visit.type,
           {
@@ -389,11 +389,19 @@ const isStillProcessing = computed<boolean>(() => {
         @mouseleave="() => unhighlightedLocation(visit)"
       >
         <div
-          class="visit-time-duration d-flex flex-column py-2 pe-3 flex-shrink-0"
+          class="visit-time-duration d-flex flex-column py-2 flex-shrink-0 fs-6"
+          :class="
+            visit.type === 'visit' ? 'text-secondary' : 'text-body-tertiary'
+          "
         >
-          <span class="pb-1">{{ visitTime(visit.timeStart) }}</span>
           <span
-            class="duration fs-8"
+            data-cy="visit start time"
+            :class="visit.type === 'visit' ? 'lh-sm pb-1' : ''"
+            >{{ visitTime(visit.timeStart) }}</span
+          >
+          <span
+            data-cy="visit duration"
+            class="duration lh-sm"
             v-if="visit.type === 'visit'"
             v-html="visitDuration(visit.data)"
           ></span>
@@ -440,28 +448,34 @@ const isStillProcessing = computed<boolean>(() => {
           </svg>
           <div v-else class="circle"></div>
         </div>
-        <div v-if="visit.type === 'sun'" class="py-2 ps-3">
+        <div v-if="visit.type === 'sun'" class="py-2 fs-6">
           {{ visit.name }}
         </div>
         <div
           v-else
-          class="d-flex py-2 ps-3 align-items-center flex-fill overflow-hidden"
+          class="d-flex py-2 flex-fill overflow-hidden"
+          :data-cy="`visit species ${visit.name}`"
         >
           <div class="visit-thumb rounded-1">
             <image-loader
               :src="thumbnailSrcForVisit(visit.data)"
+              @image-not-found="
+                (prevUrl) => thumbnailSrcForVisit(visit.data, prevUrl)
+              "
               alt="Thumbnail for first recording of this visit"
-              width="45"
-              height="45"
+              width="48"
+              height="48"
             />
-            <span class="num-recordings px-1">{{
-              visit.data.recordings.length
-            }}</span>
+            <span
+              class="num-recordings fw-medium px-1"
+              data-cy="visit recording count"
+              >{{ visit.data.recordingIds.length }}</span
+            >
           </div>
-          <div class="ps-3 d-flex flex-column text-truncate">
-            <div>
+          <div class="ps-2 ps-sm-3 overflow-hidden">
+            <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
               <span
-                class="visit-species-tag px-1 mb-1 text-capitalize d-inline-flex align-items-center"
+                class="visit-species-tag text-capitalize d-inline-flex align-items-center"
                 :class="[
                   visit.name,
                   ...(
@@ -469,38 +483,32 @@ const isStillProcessing = computed<boolean>(() => {
                     ''
                   ).split('.'),
                 ]"
-                ><b-spinner
-                  small
-                  class="me-1"
-                  variant="light"
-                  v-if="someRecordingStillProcessing(visit.data)"
-                /><span v-if="someRecordingStillProcessing(visit.data)"
-                  >AI Queued</span
-                ><span v-else>{{
+                ><span>{{
                   displayLabelForClassificationLabel(visit.name)
                 }}</span>
-                <font-awesome-icon
-                  icon="check"
-                  v-if="visit.data.classFromUserTag"
-                  class="mx-1 align-middle"
-                  style="padding-bottom: 2px"
+
+                <material-symbol
+                  v-if="visit.data.humanClassification"
+                  name="check"
+                  size="1.125rem"
+                  class="ms-1"
                 />
               </span>
-              <span
-                v-if="visit.data.userTagsConflict"
-                class="visit-species-tag px-1 mb-1 text-capitalize ms-1 bg-warning text-black"
-              >
-                <font-awesome-icon icon="exclamation-triangle" />
-                Controversial
-              </span>
+              <!--              <span-->
+              <!--                v-if="visit.data.userTagsConflict"-->
+              <!--                class="visit-species-tag text-capitalize d-inline-flex align-items-center bg-warning text-black"-->
+              <!--              >-->
+              <!--                <material-symbol name="swords" size="1.125rem" class="me-1" />-->
+              <!--                Controversial-->
+              <!--              </span>-->
             </div>
-            <span class="visit-station-name text-truncate flex-shrink-1 pe-2"
-              ><font-awesome-icon
-                icon="map-marker-alt"
-                size="xs"
-                class="station-icon pe-1 text"
-              />{{ (visit as VisitEventItem).data.stationName }}</span
-            >
+            <span class="track-metadata d-flex align-items-center">
+              <location-name
+                :name="(visit as VisitEventItem).data.locationName || ''"
+                truncate
+                class="fs-6"
+              />
+            </span>
           </div>
         </div>
       </div>
@@ -508,6 +516,8 @@ const isStillProcessing = computed<boolean>(() => {
   </div>
 </template>
 <style scoped lang="less">
+@import "../assets/less/breakpoints";
+@import "../assets/less/elevation";
 .spinner-border-sm {
   --bs-spinner-width: 0.65rem;
   --bs-spinner-height: 0.65rem;
@@ -515,124 +525,130 @@ const isStillProcessing = computed<boolean>(() => {
 }
 
 .visits-daily-breakdown {
-  background: white;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
-
+  background: var(--bs-white);
+  border-radius: var(--bs-border-radius);
+  .standard-shadow();
   .header {
-    border-bottom: 1px solid #eee;
-    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color-light);
+    border-radius: var(--bs-border-radius) var(--bs-border-radius) 0 0;
+    background: color-mix(in srgb, var(--bs-white), transparent 15%);
+    backdrop-filter: blur(8px);
+    font-weight: var(--cp-font-weight-medium);
+    &.is-expanded {
+      position: sticky;
+      z-index: 1;
+      @media (max-width: @breakpoint-xs-max) {
+        top: calc(var(--cp-grid-base) * 12); // size of the header on mobile
+      }
+      @media (min-width: @breakpoint-sm) {
+        top: 0;
+      }
+    }
+    .night-icon {
+      color: var(--bs-gray-500);
+    }
+  }
+  .visits-species-count-wrapper {
+    cursor: pointer;
+    gap: var(--cp-spacing-sm);
   }
   .visit-species-count {
-    border-radius: 2px;
-    color: #444444;
     display: inline-block;
-    height: 24px;
-    line-height: 24px;
-    margin-bottom: 10px;
-    &:not(:last-child) {
-      margin-right: 21px;
-    }
+    border-radius: var(--bs-border-radius-sm);
+    background: color-mix(in srgb, var(--cp-tag-no-priority), transparent 88%);
     .species {
-      padding: 0 5px;
+      padding: var(--cp-spacing-xxxs) var(--cp-spacing-xs);
     }
     .count {
-      background: #7d7d7d;
-      border-top-left-radius: 2px;
-      border-bottom-left-radius: 2px;
-      color: white;
-      text-align: center;
-      padding: 0 2px;
-      min-width: 21px;
-      font-weight: 500;
       display: inline-block;
+      min-width: calc(var(--cp-grid-base) * 5); // 20px
+      padding: var(--cp-spacing-xxxs);
+      background: var(--bs-gray-600);
+      color: var(--bs-white);
+      text-align: center;
+      font-weight: var(--cp-font-weight-medium);
+      border-top-left-radius: var(--bs-border-radius-sm);
+      border-bottom-left-radius: var(--bs-border-radius-sm);
     }
-    background: rgba(125, 125, 125, 0.1);
     &.mustelid {
-      background: rgba(173, 0, 0, 0.1);
+      background: color-mix(
+        in srgb,
+        var(--cp-tag-priority-badge-1),
+        transparent 88%
+      );
       .count {
-        background: #ad0000;
+        background: var(--cp-tag-priority-badge-1);
       }
     }
     &.possum,
     &.cat {
-      background: rgba(163, 0, 20, 0.1);
+      background: color-mix(
+        in srgb,
+        var(--cp-tag-priority-badge-2),
+        transparent 88%
+      );
       .count {
-        background: #a30014;
+        background: var(--cp-tag-priority-badge-2);
       }
     }
     &.rodent,
     &.hedgehog {
-      background: rgba(163, 96, 0, 0.1);
+      background: color-mix(
+        in srgb,
+        var(--cp-tag-priority-badge-3),
+        transparent 88%
+      );
       .count {
-        background: #a36000;
+        background: var(--cp-tag-priority-badge-3);
       }
     }
   }
 }
-.sun {
-  color: #aaa;
-}
-.night-icon {
-  color: rgba(0, 0, 0, 0.2);
-}
+
 .visit-event-item {
-  line-height: 14px;
   transition: background-color linear 0.2s;
-  border-radius: 3px;
-  > * {
-    pointer-events: none;
-  }
+  border-radius: var(--bs-border-radius-sm);
+  cursor: pointer;
   &:hover:not(&.sun) {
-    background: #eee;
+    background: var(--bs-gray-200);
   }
   &.selected {
-    background: #aaa;
-  }
-  .visit-time-duration {
-    width: 70px;
-    color: #666;
-    text-align: right;
+    background: var(--bs-gray-400);
   }
   &.sun {
-    .visit-time-duration {
-      color: #aaa;
-    }
+    color: var(--bs-tertiary-color);
   }
-  .visit-thumb {
-    min-width: 45px;
-    max-width: 45px;
-    width: 45px;
-    height: 45px;
-    overflow: hidden;
-    position: relative;
-    background: #aaa;
-    border-radius: 2.5px;
-    .num-recordings {
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      position: absolute;
-      bottom: 0;
-      left: 0;
-    }
+  .visit-time-duration {
+    width: calc(var(--cp-grid-base) * 13);
+    text-align: right;
   }
   .visit-timeline {
-    border-left: 1px solid #ddd;
+    border-left: 2px solid var(--bs-gray-300);
+    width: 2px;
+    @media (max-width: @breakpoint-xs-max) {
+      margin-left: var(--cp-spacing-md);
+      margin-right: var(--cp-spacing-md);
+    }
+    @media (min-width: @breakpoint-sm) {
+      margin-left: var(--cp-spacing-lg);
+      margin-right: var(--cp-spacing-lg);
+    }
     .circle {
-      margin-top: 12px;
-      width: 6px;
-      height: 6px;
-      border-radius: 3px;
-      background: white;
-      transform: translateX(-3.5px);
-      border: 1px solid #ddd;
+      margin-top: var(--cp-spacing-sm);
+      width: calc(var(--cp-grid-base) * 2); // 8px
+      height: calc(var(--cp-grid-base) * 2);
+      border-radius: var(--cp-grid-base);
+      background: var(--bs-white);
+      transform: translateX(-5px);
+      border: 2px solid var(--bs-gray-400);
     }
     .sun-icon {
-      margin-top: 12px;
-      width: 6px;
-      height: 6px;
-      color: #ccc;
-      background: white;
-      transform: translateX(-3.5px) scale(3.5);
+      width: calc(var(--cp-grid-base) * 2); // 8px
+      height: calc(var(--cp-grid-base) * 2);
+      color: var(--bs-gray-400);
+      transform: translateX(-4.5px) scale(3.5);
+      margin-top: var(--cp-spacing-xs);
       .sun-arrow {
         transform-box: fill-box;
         transform-origin: center;
@@ -649,45 +665,68 @@ const isStillProcessing = computed<boolean>(() => {
         display: block;
         content: " ";
         height: 50%;
-        width: 1px;
-        left: -1px;
-        border-left: 1px dashed white;
+        width: 2px;
+        left: -2px;
+        border-left: 2px dashed var(--bs-white);
+        transition: border-color 0.2s;
       }
     }
   }
-  &:last-child {
-    .visit-timeline {
-      &::before {
-        top: 15px;
-        height: unset;
-        bottom: 0;
+  &:hover:not(&.sun) {
+    &:first-child,
+    &:last-child {
+      .visit-timeline {
+        &::before {
+          border-left: 2px dashed var(--bs-gray-200);
+        }
       }
+    }
+  }
+  .visit-thumb {
+    min-width: calc(var(--cp-grid-base) * 12); // 48px
+    max-width: calc(var(--cp-grid-base) * 12);
+    width: calc(var(--cp-grid-base) * 12);
+    height: calc(var(--cp-grid-base) * 12);
+    overflow: hidden;
+    position: relative;
+    background: var(--bs-gray-200);
+    border-radius: var(--bs-border-radius-sm);
+    .num-recordings {
+      background: color-mix(in srgb, var(--bs-black), transparent 20%);
+      font-size: var(--cp-font-size-xs);
+      color: var(--bs-white);
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      border-top-right-radius: var(--bs-border-radius-sm);
     }
   }
   .visit-species-tag {
-    background: #999;
-    color: white;
+    background: var(--cp-tag-no-priority);
+    color: var(--bs-white);
     display: inline-block;
-    border-radius: 3px;
-    line-height: 20px;
-    font-weight: 500;
+    //line-height: var(--cp-line-height-md);
+    border-radius: var(--bs-border-radius-sm);
+    font-weight: var(--cp-font-weight-medium);
+    padding-left: calc(var(--cp-spacing-xxs) + var(--cp-spacing-xxxs));
+    padding-right: calc(var(--cp-spacing-xxs) + var(--cp-spacing-xxxs));
+    @media (max-width: @breakpoint-xs-max) {
+      font-size: var(--cp-font-size-sm);
+    }
+    @media (min-width: @breakpoint-sm) {
+      font-size: var(--cp-font-size-md);
+    }
     &.mustelid {
-      background: #ad0000;
+      background: var(--cp-tag-priority-badge-1);
     }
     &.possum,
     &.cat {
-      background: #a30014;
+      background: var(--cp-tag-priority-badge-2);
     }
     &.rodent,
     &.hedgehog {
-      background: #a36000;
+      background: var(--cp-tag-priority-badge-3);
     }
   }
-  .station-icon {
-    color: rgba(0, 0, 0, 0.5);
-  }
-}
-img.image-loading {
-  background: red;
 }
 </style>

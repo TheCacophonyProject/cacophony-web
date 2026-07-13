@@ -16,9 +16,8 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import middleware, { validateFields } from "../middleware.js";
+import { validateFields } from "../middleware.js";
 import {
-  authenticateUser,
   createEntityJWT,
   generateAuthTokensForUser,
   getEmailConfirmationToken,
@@ -28,7 +27,13 @@ import {
 import { body } from "express-validator";
 import { serverErrorResponse, successResponse } from "./responseUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
-import { anyOf, idOf, validPasswordOf } from "../validation-middleware.js";
+import {
+  deprecatedField,
+  emailOf,
+  exactlyOneOf,
+  idOf,
+  validPasswordOf,
+} from "../validation-middleware.js";
 import {
   extractJwtAuthorisedSuperAdminUser,
   extractJwtAuthorizedUser,
@@ -39,8 +44,8 @@ import {
 } from "../extract-middleware.js";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user.js";
 import { mapUser } from "@api/V1/User.js";
-import type { User } from "@models/User.js";
-import modelsInit from "@/models/index.js";
+import { User } from "@models/User.js";
+import { initSequelize } from "@/models/index.js";
 import type { IsoFormattedDateString, UserId } from "@typedefs/api/common.js";
 import jwt from "jsonwebtoken";
 import config from "@config";
@@ -61,15 +66,13 @@ import {
   UnprocessableError,
 } from "@api/customErrors.js";
 
-const models = await modelsInit();
+const sequelize = await initSequelize();
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiAuthenticateUserRequestBody {
+export interface ApiAuthenticateUserRequestBody {
   password: string; // Password for the user account
   email: string; // Email identifying a valid user account
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface ApiLoggedInUserResponseData {
   userData: ApiLoggedInUserResponse;
 }
@@ -81,11 +84,12 @@ export default function (app: Application, baseUrl: string) {
   //  of refresh tokens?
 
   // NOTE: nameOrEmail is just in here until we can update sidekick to just use email.
+  // FIXME: Check what sidekick is using currently.
   const authenticateUserOptions = [
     validateFields([
-      anyOf(
-        body("nameOrEmail").isEmail().optional(),
-        body("email").isEmail().optional(),
+      exactlyOneOf(
+        deprecatedField(emailOf(body("nameOrEmail"))),
+        emailOf(emailOf(body("email"))),
       ),
       validPasswordOf(body("password")),
     ]),
@@ -112,15 +116,15 @@ export default function (app: Application, baseUrl: string) {
         const isNewEndPoint = request.path.endsWith("authenticate");
 
         if (isNewEndPoint) {
-          // Clear out any out of date sessions for this user from the DB
-          await models.sequelize.query(
+          // Clear out any out-of-date sessions for this user from the DB
+          await sequelize.query(
             `delete from "UserSessions" where "UserSessions"."userId" = ${response.locals.user.id} and "UserSessions"."updatedAt" < now() - interval '15 days'`,
           );
         }
 
         await response.locals.user.update({ lastActiveAt: new Date() });
         const { refreshToken, apiToken } = await generateAuthTokensForUser(
-          models,
+          sequelize,
           response.locals.user,
           request.headers["viewport"] as string,
           request.headers["user-agent"],
@@ -193,11 +197,11 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/refresh-session-token`,
     validateFields([body("refreshToken").exists()]),
     extractJWTInfo(body("refreshToken")),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (_request: Request, response: Response, next: NextFunction) => {
       // NOTE: The key insight for refresh tokens is that they are "one-time-use" tokens.  Every time we give out
       //  a new refresh token, we invalidate the old one.
 
-      const result = await models.sequelize.query(
+      const result = await sequelize.query(
         `
             select * from "UserSessions" 
             where "refreshToken" = :refreshToken 
@@ -231,14 +235,16 @@ export default function (app: Application, baseUrl: string) {
         }
 
         const refreshToken = randomUUID();
-        const user = await models.User.findByPk(validToken.userId);
+        const user = await User.findByPk(validToken.userId);
         await user.update({ lastActiveAt: new Date() });
         const expiry = new Date(
-          new Date().setSeconds(new Date().getSeconds() + (ttlTypes.medium - 5)),
+          new Date().setSeconds(
+            new Date().getSeconds() + (ttlTypes.medium - 5),
+          ),
         );
 
         const now = new Date().toISOString();
-        await models.sequelize.query(
+        await sequelize.query(
           `
             update "UserSessions" 
             set "refreshToken" = :refreshToken, "updatedAt" = :updatedAt
@@ -275,7 +281,9 @@ export default function (app: Application, baseUrl: string) {
 
   const authenticateAsOtherUserOptions = [
     extractJwtAuthorisedSuperAdminUser,
-    validateFields([anyOf(body("email").isEmail(), idOf(body("userId")))]),
+    validateFields([
+      exactlyOneOf(emailOf(body("email")), idOf(body("userId"))),
+    ]),
     fetchUnauthorizedRequiredUserByEmailOrId(body(["email", "userId"])),
     async (request: Request, response: Response) => {
       const isNewEndPoint = request.path.endsWith(
@@ -342,53 +350,16 @@ export default function (app: Application, baseUrl: string) {
     ...authenticateAsOtherUserOptions,
   );
 
-  /**
-   * @api {post} /token Generate temporary JWT
-   * @apiName Token
-   * @apiGroup Authentication
-   * @apiDeprecated No longer maintained, not supported by all API endpoints and may be removed in future
-   * @apiDescription It is sometimes necessary to include an
-   * authentication token in a URL but it is not safe to provide a
-   * user's primary JWT as it can easily leak into logs etc. This API
-   * generates a short-lived token which can be used as part of URLs.
-   *
-   * @apiParam {String} [ttl] short,medium,long defining token expiry time
-   * @apiParam {JSON} [access] dictionary of access to different entities
-   *
-   * @apiParamExample  {JSON} access:
-   * {"devices":"r"}
-   *
-   * @apiUse V1UserAuthorizationHeader
-   * @apiSuccess {JSON} token JWT that may be used to call the report endpoint. Token will require
-   * prefixing with "JWT " before use in Authorization header fields.
-   */
-  app.post(
-    "/token",
-    validateFields([body("ttl").optional(), body("access").optional()]),
-    authenticateUser(models),
-    middleware.requestWrapper(async (request, response) => {
-      // FIXME - deprecate or remove this if not used anywhere?
-      const expiry = ttlTypes[request.body.ttl] || ttlTypes["short"];
-      const token = createEntityJWT(
-        request.user,
-        { expiresIn: expiry },
-        request.body.access,
-      );
-      return successResponse(response, "Token generated.", { token });
-    }),
-  );
-
   const resetPasswordOptions = [
-    validateFields([body("email").isEmail()]),
+    validateFields([emailOf(body("email"))]),
     fetchUnauthorizedOptionalUserByEmailOrId(body("email")),
     async (request: Request, response: Response, next: NextFunction) => {
       if (response.locals.user) {
         const user = response.locals.user as User;
         const isNewEndpoint = request.path.endsWith("reset-password");
         if (isNewEndpoint) {
-          const token = getPasswordResetToken(user.id, (user as any).password);
+          const token = getPasswordResetToken(user.id, user.password);
           const sendingSuccess = await sendPasswordResetEmail(
-            request.headers.host,
             token,
             user.email,
           );
@@ -442,7 +413,7 @@ export default function (app: Application, baseUrl: string) {
   const validateTokenOptions = [
     validateFields([body("token").exists()]),
     fetchUnauthorizedRequiredUserByResetToken(body("token")),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (_request: Request, response: Response, next: NextFunction) => {
       if (
         response.locals.user.password !== response.locals.resetInfo.password
       ) {
@@ -492,8 +463,8 @@ export default function (app: Application, baseUrl: string) {
     `${apiUrl}/resend-email-confirmation-request`,
     extractJwtAuthorizedUser,
     async (request: Request, response: Response, next: NextFunction) => {
-      const browseNextLaunchDate = new Date(); // FIXME Fix this to a specific date once browse-next goes live.
-      const user = await models.User.findByPk(response.locals.requestUser.id);
+      const browseNextLaunchDate = new Date("2026-02-01");
+      const user = await User.findByPk(response.locals.requestUser.id);
       if (user.email && !user.emailConfirmed) {
         const emailConfirmationToken = getEmailConfirmationToken(
           user.id,
@@ -501,24 +472,21 @@ export default function (app: Application, baseUrl: string) {
         );
         //
         const groups = await user.getGroups();
-        let sendSuccess;
+        let sendSuccess: boolean;
         if (!groups.length) {
           // If the user has no groups, re-send the welcome email,
           sendSuccess = await sendWelcomeEmailConfirmationEmail(
-            request.headers.host,
             emailConfirmationToken,
             user.email,
           );
         } else if (user.createdAt < browseNextLaunchDate) {
           sendSuccess = await sendEmailConfirmationEmailLegacyUser(
-            request.headers.host,
             emailConfirmationToken,
             user.email,
           );
         } else {
           // otherwise resend the email change confirmation email.
           sendSuccess = await sendChangedEmailConfirmationEmail(
-            request.headers.host,
             emailConfirmationToken,
             user.email,
           );
@@ -544,10 +512,10 @@ export default function (app: Application, baseUrl: string) {
     // NOTE: This exists only for cypress e2e browser tests, and is unauthenticated.
     app.post(
       `${apiUrl}/get-email-confirmation-token`,
-      validateFields([body("email")]),
+      validateFields([emailOf(body("email"))]),
       async (request: Request, response: Response, next: NextFunction) => {
         const email = request.body.email.toLowerCase();
-        const user = await models.User.findOne({
+        const user = await User.findOne({
           where: { email },
         });
         if (!user) {
@@ -602,9 +570,9 @@ export default function (app: Application, baseUrl: string) {
         //  again.  Either way we should return a new set of user keys.
         // Generate a new set of tokens to be replaced.
         const { refreshToken, apiToken } = await generateAuthTokensForUser(
-          models,
+          sequelize,
           user,
-          request.headers["viewport"] as string,
+          request.headers["viewport"] as unknown as string,
           request.headers["user-agent"],
         );
 

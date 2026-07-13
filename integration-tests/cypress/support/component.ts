@@ -12,8 +12,7 @@
 // You can read more here:
 // https://on.cypress.io/configuration
 // ***********************************************************
-
-/// <reference path="./index.d.ts"/>
+import "./index.d.ts";
 
 // Import commands.js using ES2015 syntax:
 import "./commands";
@@ -28,6 +27,7 @@ import { mount } from "cypress/vue";
 // Alternatively, can be defined in cypress/support/component.d.ts
 // with a <reference path="./component" /> at the top of your spec.
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Cypress {
     interface Chainable {
       mount: typeof mount;

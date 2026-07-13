@@ -1,6 +1,4 @@
-
-
-const util =  require("./util/util.cjs");
+const util = require("./util/util.cjs");
 
 module.exports = {
   up: async function (queryInterface, Sequelize) {
@@ -10,7 +8,7 @@ module.exports = {
       comment: "Earliest date that this station was active from",
     });
     await queryInterface.sequelize.query(
-      `update "Stations" set "activeAt" = "createdAt" where "activeAt" is null`
+      `update "Stations" set "activeAt" = "createdAt" where "activeAt" is null`,
     );
 
     // Now we no longer allow null.
@@ -98,7 +96,7 @@ module.exports = {
 
     // Now assign uuids for all current (active) devices - which can be initially derived from their deviceId.
     await queryInterface.sequelize.query(
-      `update "Devices" set uuid = "Devices"."saltId"`
+      `update "Devices" set uuid = "Devices"."saltId"`,
     );
 
     await queryInterface.createTable("DeviceHistory", {
@@ -118,7 +116,7 @@ module.exports = {
           "user",
           "re-register",
           "register",
-          "config"
+          "config",
         ),
         allowNull: false,
         comment:
@@ -154,13 +152,13 @@ module.exports = {
       queryInterface,
       "DeviceHistory",
       "Devices",
-      "strict"
+      "strict",
     );
     await util.migrationAddBelongsTo(
       queryInterface,
       "DeviceHistory",
       "Groups",
-      "strict"
+      "strict",
     );
   },
 
@@ -191,12 +189,12 @@ module.exports = {
     await util.migrationRemoveBelongsTo(
       queryInterface,
       "DeviceHistory",
-      "Devices"
+      "Devices",
     );
     await util.migrationRemoveBelongsTo(
       queryInterface,
       "DeviceHistory",
-      "Groups"
+      "Groups",
     );
     await queryInterface.dropTable("DeviceHistory");
   },

@@ -1,6 +1,8 @@
 // A real test configuration
 // @todo: consider reading from env vars
 
+// NOTE: For some reason this is copied over the local app.js during test runs.
+
 export const server = {
   passportSecret: "something",
   loggerLevel: "debug",
@@ -8,8 +10,7 @@ export const server = {
     active: true,
     port: 1080,
   },
-  recording_url_base: "http://test.site/recording",
-  browse_url: "http://test.site",
+  browseUrl: "http://localhost:5050",
   isLocalDev: true,
 };
 export const s3Local = {
@@ -45,13 +46,40 @@ export const smtpDetails = {
   fromName: "Cacophony Reporting",
   platformUsageEmail: "usage@example.com",
   serviceErrorsEmail: "service-errors@example.com",
-
-  //   service: "gmail",
-  //   auth: {
-  //     user: "noinfo@cacophony.org.nz",
-  //     pass: "thesecretpassword"
-  //   }
 };
+
+export const influx = {
+  host: "",
+  database: "",
+  username: "",
+  password: "",
+};
+
+export const grafana = {
+  host: "",
+  apiKey: "",
+};
+
+// Any user IDs in this array are considered processing users, and have access to
+// processing-only APIs.
+export const processingUserIds = [];
+
+// When testing, we don't know what ID a user will be assigned, so we use the user name
+// to determine if a user' thermal recordings should be available to a processing user.
+export const processingSuperUserNames = ["processing-super-user"];
+
+// For group IDs in this array, only direct users of that group will be able to view or download
+// thermal recordings made by the group devices.  All super user accounts (excluding the one used
+// by AI processing) will be served a dummy thermal recording when accessing any thermal recording
+// from this group account.
+export const groupIdsWithRedactedThermalRecordings = [];
+
+// When testing, we don't know what ID a group will be assigned, so we use the group name
+// to determine if a groups' thermal recordings should not be available even to non-processing
+// super-users.
+export const groupNamesWithRedactedThermalRecordings = [
+  "super-secret-squirrels",
+];
 
 // List of devices to ignore when making the service error report.
 export const deviceErrorIgnoreList = [];
@@ -72,4 +100,10 @@ export default {
   deviceErrorIgnoreList,
   cacophonyUserIds,
   cacophonyGroupIds,
+  processingUserIds,
+  processingSuperUserNames,
+  influx,
+  grafana,
+  groupNamesWithRedactedThermalRecordings,
+  groupIdsWithRedactedThermalRecordings,
 };

@@ -1,15 +1,10 @@
 import { EXCLUDE_IDS_ARRAY } from "@commands/constants";
 
-import {
-  ApiRecordingSet,
-  ApiRecordingColumns,
-  TestNameAndId,
-} from "@commands/types";
+import { ApiRecordingSet, TestNameAndId } from "@commands/types";
 import { getCreds } from "@commands/server";
 
 import {
   TestCreateExpectedRecordingData,
-  TestCreateExpectedRecordingColumns,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import { ApiThermalRecordingResponse } from "@typedefs/api/recording";
@@ -26,8 +21,6 @@ const EXCLUDE_IDS_RECORDINGS = EXCLUDE_IDS_ARRAY.concat([
   "[].tracks[].tags[].data",
   "[].tracks[].tags[].path",
 ]);
-
-const EXCLUDE_COLUMNS = ["Date", "Time"];
 
 describe("Recordings: soft delete, undelete", () => {
   const templateExpectedRecording: ApiThermalRecordingResponse = JSON.parse(
@@ -84,7 +77,7 @@ describe("Recordings: soft delete, undelete", () => {
         "rsdRecording1",
         HttpStatusCode.Ok,
         {
-          additionalParams: "{soft-delete: true}",
+          additionalParams: { "soft-delete": true },
         },
       ).then(() => {
         cy.log("Check recording no longer shown by default");
@@ -153,7 +146,7 @@ describe("Recordings: soft delete, undelete", () => {
         "rsdRecording2",
         HttpStatusCode.Ok,
         {
-          additionalParams: "{soft-delete: true}",
+          additionalParams: { "soft-delete": true },
         },
       ).then(() => {
         cy.log("Check recording no longer shown by default");
@@ -281,7 +274,7 @@ describe("Recordings: soft delete, undelete", () => {
         "rsdRecording6",
         HttpStatusCode.Ok,
         {
-          additionalParams: "{soft-delete: true}",
+          additionalParams: { "soft-delete": true },
         },
       ).then(() => {
         cy.log("Non member cannot list as deleted");
@@ -310,7 +303,7 @@ describe("Recordings: soft delete, undelete", () => {
     });
   });
 
-  it("Check soft-deleted recordings not returned by default, for supported endpoitns", () => {
+  it("Check soft-deleted recordings not returned by default, for supported endpoints", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
 
     cy.log("Add recording as device");
@@ -326,7 +319,7 @@ describe("Recordings: soft delete, undelete", () => {
         "rsdRecording7",
         HttpStatusCode.Ok,
         {
-          additionalParams: "{soft-delete: true}",
+          additionalParams: { "soft-delete": true },
         },
       ).then(() => {
         cy.log("Check not returned by /recordings/?where=");
@@ -344,14 +337,6 @@ describe("Recordings: soft delete, undelete", () => {
           { where: { id: getCreds("rsdRecording7").id } },
           0,
         );
-
-        //check /recordings/report
-        cy.log("Check not returned by /recordings/report");
-        cy.apiRecordingsReportCheck(
-          "rsdGroupAdmin",
-          { where: { id: getCreds("rsdRecording7").id } },
-          [],
-        );
       });
     });
   });
@@ -359,7 +344,6 @@ describe("Recordings: soft delete, undelete", () => {
   it("Check soft-deleted recordings returned where requested, for supported endpoints", () => {
     const recording1 = TestCreateRecordingData(templateRecording);
     let expectedRecordingFromQuery1: ApiThermalRecordingResponse;
-    let expectedReportFromQuery1: ApiRecordingColumns;
 
     cy.log("Add recording as device");
     cy.apiRecordingAdd("rsdCamera1", recording1, undefined, "rsdRecording8")
@@ -374,16 +358,6 @@ describe("Recordings: soft delete, undelete", () => {
           recording1,
           false,
         );
-        // TODO: Isue 104: positions whould be returned or absent, but not empty
-        //expectedRecordingFromQuery1.tracks[0].positions = [];
-
-        expectedReportFromQuery1 = TestCreateExpectedRecordingColumns(
-          "rsdRecording8",
-          "rsdCamera1",
-          "rsdGroup",
-          station.name,
-          recording1,
-        );
 
         cy.log("Soft-delete recording");
         cy.apiRecordingDelete(
@@ -391,7 +365,7 @@ describe("Recordings: soft delete, undelete", () => {
           "rsdRecording8",
           HttpStatusCode.Ok,
           {
-            additionalParams: "{soft-delete: true}",
+            additionalParams: { "soft-delete": true },
           },
         ).then(() => {
           cy.log(
@@ -410,15 +384,6 @@ describe("Recordings: soft delete, undelete", () => {
             "rsdGroupAdmin",
             { deleted: true, where: { id: getCreds("rsdRecording8").id } },
             1,
-          );
-
-          //check /recordings/report
-          cy.log("Check returned when deleted requested by /recordings/report");
-          cy.apiRecordingsReportCheck(
-            "rsdGroupAdmin",
-            { deleted: true, where: { id: getCreds("rsdRecording8").id } },
-            [expectedReportFromQuery1],
-            EXCLUDE_COLUMNS,
           );
         });
       });
@@ -478,7 +443,7 @@ describe("Recordings: soft delete, undelete", () => {
         "rsdRecording10",
         HttpStatusCode.Ok,
         {
-          additionalParams: "{soft-delete: true}",
+          additionalParams: { "soft-delete": true },
         },
       ).then(() => {
         cy.log("Handling of undelete invalid recording id");

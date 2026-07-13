@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { persistProjectSettings } from "@models/LoggedInUser";
 import type { SelectedProject } from "@models/LoggedInUser";
-import { computed, inject, onMounted, ref } from "vue";
+import { computed, inject, onMounted, ref, useTemplateRef } from "vue";
 import type { Ref } from "vue";
 import CardTable from "@/components/CardTable.vue";
 import type { CardTableRows } from "@/components/CardTableTypes";
@@ -9,10 +9,14 @@ import { DEFAULT_AUDIO_TAGS, DEFAULT_CAMERA_TAGS } from "@/consts";
 import {
   displayLabelForClassificationLabel,
   getClassifications,
-} from "@api/Classifications";
+} from "@api/classificationsUtils.ts";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import { capitalize } from "@/utils";
 import { currentSelectedProject } from "@models/provides";
+import SectionCard from "@/components/SectionCard.vue";
+import { BModal, BTooltip } from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
 const customCameraTags = computed<string[]>(() => {
@@ -228,107 +232,149 @@ const pendingTagIsValid = computed<boolean>(() => {
 // Add tag.  delete tag, move tag up, move tag down, reset to defaults
 </script>
 <template>
-  <h1 class="h5 d-none d-md-block">Project tagging settings</h1>
-  <div>
-    <p>
-      Manage the set of default tags that users see for this project when
-      tagging either camera recordings or bird recordings.<br />Users can also
-      add and pin their own most-used tags via each tagging interface.
-    </p>
-  </div>
-  <div
-    class="d-flex flex-column flex-md-row justify-content-md-between mb-3 align-items-center"
-  >
-    <h2 class="h6">Camera tags</h2>
-    <div class="d-flex align-items-end justify-content-end ms-md-5">
-      <button
-        type="button"
-        class="btn btn-outline-secondary ms-2"
-        @click.stop.prevent="showAddCameraTagModal = true"
-      >
-        Add
-      </button>
-      <button
-        type="button"
-        class="btn btn-outline-danger ms-2"
-        @click.stop.prevent="resetCameraTags"
-      >
-        Reset
-      </button>
+  <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
+    <div class="col-lg-3">
+      <h3 class="section-card-heading">Project tagging settings</h3>
+      <p class="text-secondary">
+        Manage the set of default tags that users see for this project when
+        tagging either thermal video recordings or audio recordings.
+      </p>
+      <p class="text-secondary pb-1">
+        Users can also add and pin their own most-used tags via each tagging
+        interface.
+      </p>
+    </div>
+    <div class="col-lg-9">
+      <section-card>
+        <template #header-title> Thermal video tags </template>
+        <template #header-action>
+          <div class="d-inline-flex gap-2 ms-2">
+            <two-step-action-button
+              :action="resetCameraTags"
+              :btn-variant-class="`btn-outline-secondary`"
+              :icon="null"
+              :confirmation-label="`Reset thermal tags`"
+              :label="`Reset`"
+              :placement="`bottom`"
+            />
+            <button
+              type="button"
+              class="btn btn-secondary"
+              @click.stop.prevent="showAddCameraTagModal = true"
+            >
+              Add
+            </button>
+          </div>
+        </template>
+        <card-table :items="cameraTagTableItems" compact :max-card-width="0">
+          <template #_moveUp="{ cell }">
+            <b-tooltip placement="left">
+              <template #target>
+                <button
+                  class="btn btn-icon d-inline-flex justify-content-center"
+                  @click.prevent="() => moveCameraTagUp(cell.value)"
+                  :disabled="isFirstTagInCameraList(cell.value)"
+                >
+                  <material-symbol name="arrow_upward" size="1.25rem" />
+                </button>
+              </template>
+              Move up
+            </b-tooltip>
+          </template>
+          <template #_moveDown="{ cell }">
+            <b-tooltip placement="left">
+              <template #target>
+                <button
+                  class="btn btn-icon d-inline-flex justify-content-center"
+                  @click.prevent="() => moveCameraTagDown(cell.value)"
+                  :disabled="isLastTagInCameraList(cell.value)"
+                  id="move-up"
+                >
+                  <material-symbol name="arrow_downward" size="1.25rem" />
+                </button>
+              </template>
+              Move down
+            </b-tooltip>
+          </template>
+          <template #_deleteAction="{ cell }">
+            <two-step-action-button
+              :action="() => removeCameraTag(cell.value)"
+              icon="delete"
+              :confirmation-label="`Delete tag`"
+              tooltip-label="Delete"
+            />
+          </template>
+        </card-table>
+      </section-card>
     </div>
   </div>
-  <card-table :items="cameraTagTableItems" compact :max-card-width="0">
-    <template #_moveUp="{ cell }">
-      <button
-        class="btn"
-        @click.prevent="() => moveCameraTagUp(cell.value)"
-        :disabled="isFirstTagInCameraList(cell.value)"
-      >
-        <font-awesome-icon icon="arrow-up" />
-      </button>
-    </template>
-    <template #_moveDown="{ cell }">
-      <button
-        class="btn"
-        @click.prevent="() => moveCameraTagDown(cell.value)"
-        :disabled="isLastTagInCameraList(cell.value)"
-      >
-        <font-awesome-icon icon="arrow-up" rotation="180" />
-      </button>
-    </template>
-    <template #_deleteAction="{ cell }">
-      <button class="btn" @click.prevent="() => removeCameraTag(cell.value)">
-        <font-awesome-icon icon="trash-can" />
-      </button>
-    </template>
-  </card-table>
 
-  <div
-    class="d-flex flex-column flex-md-row justify-content-md-between mb-3 align-items-center mt-5"
-  >
-    <h2 class="h6">Bird recording tags</h2>
-    <div class="d-flex align-items-end justify-content-end ms-md-5">
-      <button
-        type="button"
-        class="btn btn-outline-secondary ms-2"
-        @click.stop.prevent="showAddAudioTagModal = true"
-      >
-        Add
-      </button>
-      <button
-        type="button"
-        class="btn btn-outline-danger ms-2"
-        @click.stop.prevent="resetAudioTags"
-      >
-        Reset
-      </button>
+  <div class="row mb-3">
+    <div class="col-lg-3"></div>
+    <div class="col-lg-9">
+      <section-card>
+        <template #header-title> Audio tags </template>
+        <template #header-action>
+          <div class="d-inline-flex gap-2 ms-2">
+            <two-step-action-button
+              :action="resetAudioTags"
+              :btn-variant-class="`btn-outline-secondary`"
+              :icon="null"
+              :confirmation-label="`Reset audio tags`"
+              :label="`Reset`"
+              :placement="`bottom`"
+            />
+            <button
+              type="button"
+              class="btn btn-secondary"
+              @click.stop.prevent="showAddAudioTagModal = true"
+            >
+              Add
+            </button>
+          </div>
+        </template>
+        <card-table :items="audioTagTableItems" compact :max-card-width="0">
+          <template #_moveUp="{ cell }">
+            <b-tooltip placement="left">
+              <template #target>
+                <button
+                  class="btn btn-icon d-inline-flex justify-content-center"
+                  @click.prevent="() => moveAudioTagUp(cell.value)"
+                  :disabled="isFirstTagInAudioList(cell.value)"
+                >
+                  <material-symbol name="arrow_upward" size="1.25rem" />
+                </button>
+              </template>
+              Move up
+            </b-tooltip>
+          </template>
+          <template #_moveDown="{ cell }">
+            <b-tooltip placement="left">
+              <template #target>
+                <button
+                  class="btn btn-icon d-inline-flex justify-content-center"
+                  @click.prevent="() => moveAudioTagDown(cell.value)"
+                  :disabled="isLastTagInAudioList(cell.value)"
+                >
+                  <material-symbol name="arrow_downward" size="1.25rem" />
+                </button>
+              </template>
+              Move down
+            </b-tooltip>
+          </template>
+          <template #_deleteAction="{ cell }">
+            <two-step-action-button
+              :action="() => removeAudioTag(cell.value)"
+              icon="delete"
+              :confirmation-label="`Delete tag`"
+              tooltip-label="Delete"
+            />
+          </template>
+        </card-table>
+      </section-card>
     </div>
   </div>
-  <card-table :items="audioTagTableItems" compact :max-card-width="0">
-    <template #_moveUp="{ cell }">
-      <button
-        class="btn"
-        @click.prevent="() => moveAudioTagUp(cell.value)"
-        :disabled="isFirstTagInAudioList(cell.value)"
-      >
-        <font-awesome-icon icon="arrow-up" />
-      </button>
-    </template>
-    <template #_moveDown="{ cell }">
-      <button
-        class="btn"
-        @click.prevent="() => moveAudioTagDown(cell.value)"
-        :disabled="isLastTagInAudioList(cell.value)"
-      >
-        <font-awesome-icon icon="arrow-up" rotation="180" />
-      </button>
-    </template>
-    <template #_deleteAction="{ cell }">
-      <button class="btn" @click.prevent="() => removeAudioTag(cell.value)">
-        <font-awesome-icon icon="trash-can" />
-      </button>
-    </template>
-  </card-table>
+
   <b-modal
     v-model="showAddCameraTagModal"
     title="Add project camera tag"

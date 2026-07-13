@@ -1,5 +1,10 @@
-import { GroupId, IsoFormattedDateString, StationId, TrackId } from "./common";
-import { RecordingProcessingState, RecordingType } from "./consts.js";
+import type {
+  GroupId,
+  IsoFormattedDateString,
+  StationId,
+  TrackId,
+} from "./common.ts";
+import { RecordingProcessingState, RecordingType } from "./consts.ts";
 
 export interface MonitoringRequest {
   perPage?: number;
@@ -22,11 +27,7 @@ export interface MonitoringPageCriteria {
   pageUntil?: Date;
   searchFrom?: Date;
   searchUntil?: Date;
-  types?: (
-    | RecordingType.ThermalRaw
-    | RecordingType.TrailCamVideo
-    | RecordingType.TrailCamImage
-  )[];
+  types?: RecordingType[];
 }
 
 interface VisitRecordingTag {
@@ -37,6 +38,13 @@ interface VisitRecordingTag {
   isAITagged: boolean;
   mass: number;
   id: TrackId;
+}
+
+export interface ApiVisitResponseRecording {
+  recId: number;
+  start: string;
+  tracks: VisitRecordingTag[];
+  processingState: RecordingProcessingState;
 }
 
 export interface ApiVisitResponse {
@@ -53,10 +61,5 @@ export interface ApiVisitResponse {
   timeStart: string; // date for start of visit
   timeEnd: string; // date for start of visit
   incomplete: boolean; // is it possible that this visit still has more recordings that should be attached?
-  recordings: {
-    recId: number;
-    start: string;
-    tracks: VisitRecordingTag[];
-    processingState: RecordingProcessingState;
-  }[];
+  recordings: ApiVisitResponseRecording[];
 }

@@ -17,7 +17,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { validateFields } from "../middleware.js";
-import modelsInit from "@models/index.js";
 import util from "./util.js";
 import { successResponse } from "./responseUtil.js";
 import config from "@config";
@@ -29,20 +28,34 @@ import {
   extractJwtAuthorizedUserOrDevice,
   fetchUnauthorizedRequiredFileById,
 } from "../extract-middleware.js";
-import type { File } from "@models/File.js";
 import { Op } from "sequelize";
 import { idOf } from "@api/validation-middleware.js";
-import { AuthorizationError } from "@api/customErrors.js";
-import type { ApiAudiobaitFileResponse } from "@typedefs/api/file.js";
-import classification from "@/classifications/classification.json" assert { type: "json" };
-import type { User } from "@models/User.js";
-
-const models = await modelsInit();
+import { AuthorizationError, UnprocessableError } from "@api/customErrors.js";
+import type {
+  ApiAudiobaitFileResponse,
+  AudiobaitDetails,
+} from "@typedefs/api/file.js";
+import classification from "@/classifications/classification.json" with { type: "json" };
+import { File } from "@models/File.js";
+import { DeviceId, UserId } from "@typedefs/api/common.js";
+import moment from "moment/moment.js";
+import { v4 as uuidv4 } from "uuid";
+import { parseFormData } from "pechkin";
+import { JsonDocument } from "@typedefs/api/event.js";
+import {
+  deleteUpload,
+  uploadStream,
+} from "@api/fileUploaders/uploadGenericRecording.js";
+import {
+  ReadableStream as WebReadableStream,
+  TransformStream,
+} from "stream/web";
+import { Readable } from "stream";
 
 const mapAudiobaitFile = (file: File): ApiAudiobaitFileResponse => {
   return {
     id: file.id,
-    details: file.details,
+    details: file.details as AudiobaitDetails,
     userId: file.UserId,
   };
 };
@@ -106,28 +119,91 @@ export default (app: Application, baseUrl: string) => {
   app.post(
     apiUrl,
     extractJwtAuthorizedUser,
-    util.multipartUpload(
-      "f",
-      async (
-        uploader,
-        uploadingDevice,
-        uploadingUser,
-        data,
-        keys,
-        uploadedFileDatas,
-      ): Promise<File> => {
-        console.assert(
-          keys.length === 1,
-          "Only expected 1 file attachment for this end-point",
-        );
-        const dbRecord = models.File.buildSafely(data);
-        dbRecord.UserId = (uploadingUser as User).id;
-        dbRecord.fileKey = keys[0];
-        dbRecord.fileSize = uploadedFileDatas[0].data.length;
-        await dbRecord.save();
-        return dbRecord;
-      },
-    ),
+    async (request: Request, response: Response, next: NextFunction) => {
+      const key = `f/${moment().format("YYYY/MM/DD")}/${uuidv4()}`;
+      let data: { type: string; details: JsonDocument };
+      let fileLength = 0;
+      try {
+        const { fields, files } = await parseFormData(request, {
+          maxTotalFileFieldCount: Infinity,
+          maxFileCountPerField: Infinity,
+          maxTotalFileCount: 1,
+          maxFieldValueByteLength: 1024 * 1024, // 1MB - why would anything be bigger?
+        });
+        let validData = true;
+        if ("data" in fields) {
+          data = JSON.parse(fields.data) as {
+            type: string;
+            details: JsonDocument;
+          };
+          if (typeof data !== "object") {
+            validData = false;
+          } else if (!("type" in data)) {
+            validData = false;
+          }
+        }
+        if (!validData) {
+          for await (const { stream } of files) {
+            await stream.resume();
+          }
+          return next(
+            new UnprocessableError(
+              `Could not validate data part: ${JSON.stringify(data)}`,
+            ),
+          );
+        }
+
+        let uploadSucceeded = true;
+        let errorMessage = "unknown error";
+        // TODO: Reject multiple file attachments?
+        for await (const {
+          filename: originalFilename,
+          stream,
+          ...file
+        } of files) {
+          if (file.field === "file") {
+            const transform = new TransformStream({
+              transform(chunk, controller) {
+                fileLength += chunk.length;
+                controller.enqueue(chunk);
+              },
+            });
+            const fileStream: WebReadableStream = Readable.toWeb(stream);
+            const transformed = fileStream.pipeThrough(transform);
+            // Upload part, while piping it through a transform that performs sha1 + checks length.
+            await uploadStream(key, transformed, originalFilename)
+              .done()
+              .catch((e: unknown) => {
+                if (e instanceof Error) {
+                  errorMessage = e.message;
+                }
+                // Upload failed, rollback
+                uploadSucceeded = false;
+              });
+          } else {
+            await stream.resume();
+          }
+        }
+        if (uploadSucceeded) {
+          const dbRecord = File.buildSafely(data);
+          dbRecord.UserId = response.locals.requestUser.id;
+          dbRecord.fileKey = key;
+          dbRecord.fileSize = fileLength;
+          await dbRecord.save();
+          return successResponse(response, "Thanks for the data", {
+            fileKey: key,
+          });
+        } else {
+          await deleteUpload(key);
+          return next(
+            new UnprocessableError(`File upload failed: ${errorMessage}`),
+          );
+        }
+      } catch (err) {
+        // What kind of errors can we have?
+        return next(err);
+      }
+    },
   );
 
   /**
@@ -144,7 +220,7 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorizedUser,
     validateFields([query("type").equals("audioBait")]),
     async (request: Request, response: Response) => {
-      const result = await models.File.query(
+      const result = await File.query(
         {
           type: { [Op.eq]: request.query.type },
         },
@@ -180,18 +256,23 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorizedUserOrDevice,
     validateFields([idOf(param("id"))]),
     fetchUnauthorizedRequiredFileById(param("id")),
-    async (request: Request, response: Response) => {
-      const file = response.locals.file;
+    async (_request: Request, response: Response) => {
+      const file = response.locals.file as File;
       const user = response.locals.requestUser;
       const device = response.locals.requestDevice;
-      const downloadFileData = {
+      const downloadFileData: {
+        _type: string;
+        key: string;
+        userId?: UserId;
+        deviceId?: DeviceId;
+      } = {
         _type: "fileDownload",
         key: file.fileKey,
       };
       if (user) {
-        (downloadFileData as any).userId = user.id;
+        downloadFileData.userId = user.id;
       } else if (device) {
-        (downloadFileData as any).deviceId = device.id;
+        downloadFileData.deviceId = device.id;
       }
 
       return successResponse(response, "", {
@@ -225,7 +306,7 @@ export default (app: Application, baseUrl: string) => {
     extractJwtAuthorizedUser,
     validateFields([idOf(param("id"))]),
     fetchUnauthorizedRequiredFileById(param("id")),
-    async (request, response, next: NextFunction) => {
+    async (_request, response, next: NextFunction) => {
       const user = response.locals.requestUser;
       const file = response.locals.file;
       if (user.hasGlobalWrite() || user.id === file.UserId) {

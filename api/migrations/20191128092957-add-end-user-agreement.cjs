@@ -1,11 +1,9 @@
-
-
 module.exports = {
   up: async (queryInterface, Sequelize) => {
     await queryInterface.addColumn(
       "Users",
       "endUserAgreement",
-      Sequelize.INTEGER
+      Sequelize.INTEGER,
     );
   },
 
@@ -13,7 +11,7 @@ module.exports = {
     await queryInterface.removeColumn(
       "Users",
       "endUserAgreement",
-      Sequelize.INTEGER
+      Sequelize.INTEGER,
     );
   },
 };

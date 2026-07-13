@@ -32,17 +32,7 @@ import type {
   FetchResult,
   LoadedResource,
   SuccessFetchResult,
-} from "@api/types";
-import type {
-  ApiAudioRecordingResponse,
-  ApiRecordingResponse,
-} from "@typedefs/api/recording";
-import {
-  type BulkRecordingsResponse,
-  getAllRecordingsForProjectBetweenTimes,
-  queryRecordingsInProjectNew,
-  type QueryRecordingsOptions,
-} from "@api/Recording";
+} from "@apiClient/types";
 import {
   type RecordingType,
   RecordingType as ConcreteRecordingType,
@@ -50,24 +40,23 @@ import {
 } from "@typedefs/api/consts.ts";
 import type {
   DeviceId,
+  LatLng,
   RecordingId,
   StationId as LocationId,
 } from "@typedefs/api/common";
 import InlineViewModal from "@/components/InlineViewModal.vue";
 import type { MaybeElement } from "@vueuse/core";
-import {
-  useElementBounding,
-  useIntersectionObserver,
-  useWindowSize,
-} from "@vueuse/core";
+import { useIntersectionObserver, useWindowSize } from "@vueuse/core";
 import { DateTime } from "luxon";
 import {
-  dayAndTimeAtLocation,
-  formatDuration,
   timezoneForLatLng,
-  visitDuration,
+  visitClassificationLabelFromPath,
+  visitClassificationPath,
 } from "@models/visitsUtils";
-import { canonicalLatLngForLocations } from "@/helpers/Location";
+import {
+  canonicalLatLngForLocations,
+  latLngApproxDistance,
+} from "@/helpers/Location";
 import * as sunCalc from "suncalc";
 import {
   type LocationQuery,
@@ -77,12 +66,6 @@ import {
 } from "vue-router";
 import RecordingsList from "@/components/RecordingsList.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
-import type { ApiVisitResponse } from "@typedefs/api/monitoring";
-import {
-  getAllVisitsForProjectBetweenTimes,
-  getVisitsForProject,
-  type VisitsQueryResult,
-} from "@api/Monitoring";
 import ActivitySearchParameters from "@/components/ActivitySearchParameters.vue";
 import {
   ActivitySearchDisplayMode,
@@ -93,33 +76,46 @@ import {
   validateLocations,
 } from "@/components/activitySearchUtils.ts";
 import {
-  displayLabelForClassificationLabel,
   flatClassifications,
   getClassifications,
-} from "@api/Classifications.ts";
+} from "@api/classificationsUtils";
 import ActivitySearchDescription from "@/components/ActivitySearchDescription.vue";
 import { delayMs } from "@/utils.ts";
-import {
-  aiTagsForRecording,
-  canonicalTagsForRecording,
-  humanTagsForRecording,
-} from "@models/recordingUtils.ts";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
-import { CurrentViewAbortController } from "@/router";
-import { getDevicesForProject } from "@api/Project.ts";
+import type {
+  BulkRecordingsResponse,
+  QueryRecordingsOptions,
+} from "@apiClient/Recording.ts";
+import { ClientApi } from "@/api";
+import type { NonEmptyArray } from "@/helpers/utils.ts";
+import {
+  BButton,
+  BModal,
+  BOffcanvas,
+  BProgress,
+  BSpinner,
+} from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import type { ApiRecordingResponse } from "@typedefs/api/recording";
+import { CurrentViewAbortController } from "@apiClient/api.ts";
+import type { IconsProp } from "@dbetka/vue-material-symbols/dist/jscache/icons-names";
+import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
+import { recordingUpdatedInVisitsContext } from "@/helpers/patch-visits-context.ts";
+import { createRecordingsCsv, createVisitsCsv } from "@/helpers/csv-exports.ts";
+
+type RecordingItem = { type: "recording"; data: ApiRecordingResponse };
+type SunItem = { type: "sunset" | "sunrise"; data: string };
+type RecordingsChunk = {
+  dateTime: DateTime;
+  items: (RecordingItem | SunItem)[];
+};
 
 const mapBuffer = ref<HTMLDivElement>();
+const mapContainer = ref<HTMLDivElement>();
 const searchContainer = ref<HTMLDivElement>();
 const searchControls = ref<HTMLDivElement>();
 const searchResults = ref<HTMLDivElement>();
-const { left: searchContainerLeft, right: searchContainerRight } =
-  useElementBounding(searchContainer);
 const { height: windowHeight, width: windowWidth } = useWindowSize();
-
-const mapBufferWidth = computed<number>(() => {
-  const right = windowWidth.value - searchContainerRight.value;
-  return Math.max(0, mapWidthPx.value - right);
-});
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false
@@ -130,8 +126,6 @@ const fileSafeProjectName = inject(
 ) as ComputedRef<string>;
 
 export interface ActivitySearchParams {
-  // relativeDateRange: [Date, Date] | null;
-  // absoluteDateRange: [Date, Date] | null;
   from: string | Date | undefined;
   until: string | Date | undefined;
   locations: ("any" | LocationId)[];
@@ -151,6 +145,19 @@ const locations = inject(allHistoricLocations) as ComputedRef<
   ApiLocationResponse[]
 >;
 const devices = ref<LoadedResource<ApiDeviceResponse[]>>(null);
+
+const projectHasDevices = computed<boolean>(() => {
+  return !!devices.value && devices.value.length !== 0;
+});
+
+const projectHasInternetConnectedDevices = computed<boolean>(() => {
+  return (
+    projectHasDevices.value &&
+    (devices.value as ApiDeviceResponse[]).some(
+      (device) => device.lastConnectionTime !== undefined,
+    )
+  );
+});
 
 watch(currentProject, async (next, prev) => {
   if (next && prev && next.groupName !== prev.groupName) {
@@ -212,26 +219,18 @@ const diffChanges = (next: LocationQuery, prev: LocationQuery) => {
 };
 
 const defaultSearchParams = computed(() => {
-  const hasCameraRecordings = locations.value.some((location) =>
-    locationHasCameraRecordings(location),
-  );
-  const hasAudioRecordings = locations.value.some((location) =>
-    locationHasAudioRecordings(location),
-  );
-  if (hasAudioRecordings && !hasCameraRecordings) {
-    return {
-      "display-mode": ActivitySearchDisplayMode.Recordings,
-      "recording-mode": ActivitySearchRecordingMode.Audio,
-      locations: "any",
-      from: "24-hours-ago",
-    };
-  }
-  return {
-    "display-mode": ActivitySearchDisplayMode.Visits,
-    "recording-mode": ActivitySearchRecordingMode.Cameras,
+  const params: Record<string, string> = {
+    "display-mode": defaultDisplayMode.value,
+    "recording-mode": defaultRecordingMode.value,
     locations: "any",
-    from: "24-hours-ago",
+    from: "3-days-ago",
   };
+  if (defaultDisplayMode.value === ActivitySearchDisplayMode.Recordings) {
+    if (defaultFalseTriggerMode()) {
+      params["no-false-positives"] = "false";
+    }
+  }
+  return params;
 });
 
 const locationHasAudioRecordings = (location: ApiLocationResponse) => {
@@ -241,6 +240,16 @@ const locationHasCameraRecordings = (location: ApiLocationResponse) => {
   return !!location.lastThermalRecordingTime;
 };
 const route = useRoute();
+
+const savedRecordingMode =
+  (window.localStorage.getItem(
+    "activity-recording-mode",
+  ) as ActivitySearchRecordingMode) || ActivitySearchRecordingMode.Cameras;
+const savedDisplayMode =
+  (window.localStorage.getItem(
+    "activity-display-mode",
+  ) as ActivitySearchDisplayMode) || ActivitySearchDisplayMode.Visits;
+
 const defaultDisplayMode = computed<ActivitySearchDisplayMode>(() => {
   if (route && route.query["display-mode"]) {
     if (route.query["display-mode"] === "recordings") {
@@ -251,13 +260,14 @@ const defaultDisplayMode = computed<ActivitySearchDisplayMode>(() => {
   } else if (
     locations.value.some((location) => locationHasCameraRecordings(location))
   ) {
-    return ActivitySearchDisplayMode.Visits;
+    return savedDisplayMode;
   } else if (
-    locations.value.some((location) => locationHasAudioRecordings(location))
+    locations.value.some((location) => locationHasAudioRecordings(location)) &&
+    !locations.value.some((location) => locationHasCameraRecordings(location))
   ) {
     return ActivitySearchDisplayMode.Recordings;
   }
-  return ActivitySearchDisplayMode.Visits;
+  return savedDisplayMode;
 });
 
 const defaultRecordingMode = computed<ActivitySearchRecordingMode>(() => {
@@ -268,21 +278,40 @@ const defaultRecordingMode = computed<ActivitySearchRecordingMode>(() => {
       return ActivitySearchRecordingMode.Cameras;
     }
   } else if (
-    locations.value.some((location) => locationHasCameraRecordings(location))
+    locations.value.some((location) => locationHasCameraRecordings(location)) &&
+    !locations.value.some((location) => locationHasAudioRecordings(location))
   ) {
     return ActivitySearchRecordingMode.Cameras;
   } else if (
-    locations.value.some((location) => locationHasAudioRecordings(location))
+    locations.value.some((location) => locationHasAudioRecordings(location)) &&
+    !locations.value.some((location) => locationHasCameraRecordings(location))
   ) {
     return ActivitySearchRecordingMode.Audio;
   }
-  return ActivitySearchRecordingMode.Cameras;
+  if (route && route.query["display-mode"] === "visits") {
+    return ActivitySearchRecordingMode.Cameras;
+  }
+  return savedRecordingMode;
 });
+
+const defaultFalseTriggerMode = () => {
+  const userPreference = window.localStorage.getItem(
+    "activity-search-false-triggers",
+  );
+  if (userPreference) {
+    try {
+      return JSON.parse(userPreference);
+    } catch (e) {
+      //
+    }
+    return false;
+  }
+};
 
 const initSearchParams = (): ActivitySearchParams => ({
   devices: "all",
   duration: "any",
-  includeFalsePositives: false,
+  includeFalsePositives: defaultFalseTriggerMode(),
   labelledWith: null,
   offset: new Date(),
   tagMode: TagMode.Any,
@@ -292,16 +321,14 @@ const initSearchParams = (): ActivitySearchParams => ({
   displayMode: defaultDisplayMode.value,
   recordingMode: defaultRecordingMode.value,
   locations: ["any"],
-  from: "24-hours-ago",
+  from: "3-days-ago",
 });
 
 const searchParams = ref<ActivitySearchParams>(initSearchParams());
 
 const now = new Date();
 const oneDayAgo = new Date(new Date().setDate(now.getDate() - 1));
-//oneDayAgo.setHours(0, 0, 0, 0);
 const threeDaysAgo = new Date(new Date().setDate(now.getDate() - 3));
-//threeDaysAgo.setHours()
 const oneWeekAgo = new Date(new Date().setDate(now.getDate() - 7));
 const oneMonthAgo = new Date(new Date().setMonth(now.getMonth() - 1));
 const threeMonthsAgo = new Date(new Date().setMonth(now.getMonth() - 3));
@@ -312,11 +339,17 @@ const maxDateForProject = computed<Date>(() => {
   // Latest active location
   let latest = new Date();
   latest.setFullYear(2010);
+  let mode: ActivitySearchRecordingMode;
+  if (displayMode.value === ActivitySearchDisplayMode.Visits) {
+    mode = ActivitySearchRecordingMode.Cameras;
+  } else {
+    mode = recordingMode.value;
+  }
   if (locations.value) {
     for (const location of locations.value) {
       const latestDateForLocation = getLatestDateForLocationInRecordingMode(
         location,
-        searchParams.value.recordingMode,
+        mode,
       );
       if (latestDateForLocation && latestDateForLocation > latest) {
         latest = latestDateForLocation;
@@ -326,13 +359,22 @@ const maxDateForProject = computed<Date>(() => {
   return latest;
 });
 
-const availableDateRanges = computed<
-  { range: [Date, Date]; from: string; label: string }[]
->(() => {
-  const earliest = minDateForProject.value;
+interface DateRangeOption {
+  range: DateRange;
+  from: string;
+  label: string;
+}
+
+const availableDateRanges = computed<NonEmptyArray<DateRangeOption>>(() => {
+  const thermalMode =
+    recordingMode.value === ActivitySearchRecordingMode.Cameras ||
+    displayMode.value === ActivitySearchDisplayMode.Visits;
+  const earliest = thermalMode
+    ? minThermalDateForProject.value
+    : minAudioDateForProject.value;
   const latest = maxDateForProject.value;
-  const ranges = [] as { range: [Date, Date]; from: string; label: string }[];
-  if (earliest < oneDayAgo && latest > oneDayAgo) {
+  const ranges = [] as DateRangeOption[];
+  if (latest > oneDayAgo) {
     ranges.push({
       range: lastTwentyFourHours,
       from: "24-hours-ago",
@@ -375,7 +417,7 @@ const availableDateRanges = computed<
     });
   }
   ranges.push({ range: [earliest, now], from: "any", label: "at any time" });
-  return ranges;
+  return ranges as NonEmptyArray<DateRangeOption>;
 });
 
 const deserialiseAndValidateRouteValue = (
@@ -385,13 +427,7 @@ const deserialiseAndValidateRouteValue = (
   if (Array.isArray(value)) {
     value = value.join(",");
   }
-  // if (value === null) {
-  //   return { replacement: null };
-  // } else
   if (["display-mode", "recording-mode"].includes(key)) {
-    // const parts = key.split("-");
-    // const first = parts.shift() as string;
-    // const camelKey: string = first + parts.map(upperFirst);
     switch (key) {
       case "display-mode":
         if (
@@ -425,20 +461,36 @@ const deserialiseAndValidateRouteValue = (
     }
   } else if (key === "from") {
     value = value || "";
-    const knownLabels = availableDateRanges.value.reduce(
-      (arr: Record<string, DateRange>, { from, range }) => {
-        arr[from] = range;
-        return arr;
-      },
-      {},
-    );
+    const knownLabels: Record<string, DateRange> =
+      availableDateRanges.value.reduce(
+        (arr: Record<string, DateRange>, { from, range }) => {
+          arr[from] = range;
+          return arr;
+        },
+        {},
+      );
     if (value in knownLabels) {
-      dateRange.value = [...knownLabels[value]];
+      dateRange.value = [...(knownLabels[value] as DateRange)];
       searchParams.value.from = value;
     } else {
       const date = new Date(value);
       if (!value || (value && value.trim() === "") || Number.isNaN(date)) {
-        return { replacement: availableDateRanges.value[0].from };
+        let from = availableDateRanges.value.find(
+          (v) => v.from === "3-days-ago",
+        );
+        if (!from) {
+          from = availableDateRanges.value.find(
+            (v) => v.from === "24-hours-ago",
+          );
+        }
+        if (!from) {
+          from = availableDateRanges.value.find((v) => v.from === "any");
+        }
+        if (from) {
+          return { replacement: from.from }; // any time
+        } else {
+          console.error("Could not find from time for", value);
+        }
       }
       dateRange.value = [date, dateRange.value[1]];
       searchParams.value.from = date;
@@ -480,7 +532,7 @@ const deserialiseAndValidateRouteValue = (
         }
       }
     } else {
-      console.error("Invalid timespan?", value);
+      console.log("Invalid timespan?", value);
     }
   } else if (key === "devices") {
     value = value || [];
@@ -655,18 +707,38 @@ const locationHasRecordings = (location: ApiLocationResponse) => {
   );
 };
 
-const locationsForMap = computed<NamedPoint[]>(() => {
+const validLocations = computed(() => {
   if (locations.value) {
-    return (locations.value as ApiLocationResponse[])
-      .filter(
-        (location) =>
-          locationHasRecordings(location) &&
-          location.location &&
-          (location.location.lat !== 0 || location.location.lng !== 0),
-      )
-      .map(mapLocationForMap);
+    return (locations.value as ApiLocationResponse[]).filter(
+      (location) =>
+        locationHasRecordings(location) &&
+        location.location &&
+        (location.location.lat !== 0 || location.location.lng !== 0),
+    );
   }
   return [];
+});
+const cacophonyHq = { lat: -43.5339514, lng: 172.6467213 };
+const locIsInCacophonyHq = (location: LatLng): boolean => {
+  return latLngApproxDistance(cacophonyHq, location) < 2000;
+};
+
+const projectIsAroundCacophonyHq = computed<boolean>(() => {
+  // All locations are around cacophony hq
+  if (validLocations.value) {
+    return validLocations.value.every(
+      ({ location }) => latLngApproxDistance(cacophonyHq, location) < 50000,
+    );
+  }
+  return false;
+});
+
+const locationsForMap = computed<NamedPoint[]>(() => {
+  return validLocations.value
+    .filter(({ location }) =>
+      projectIsAroundCacophonyHq.value ? true : !locIsInCacophonyHq(location),
+    )
+    .map(mapLocationForMap);
 });
 const highlightedPoint = computed<NamedPoint | null>(() => {
   return (
@@ -677,7 +749,10 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
 });
 
 const selectedLocations = computed<(ApiLocationResponse | "any")[]>(() => {
-  if (searchParams.value.locations.includes("any")) {
+  if (
+    searchParams.value.locations.includes("any") ||
+    searchParams.value.locations.length === 0
+  ) {
     return ["any"];
   }
   return searchParams.value.locations
@@ -703,6 +778,7 @@ const locationsInSelectedTimespan = computed<ApiLocationResponse[]>(() => {
     return [];
   }
   if (locations.value) {
+    const [fromDateTime, untilDateTime] = dateRange.value as [Date, Date];
     return (locations.value as ApiLocationResponse[]).filter((location) => {
       if (location.location.lat === 0 && location.location.lng === 0) {
         return false;
@@ -713,8 +789,8 @@ const locationsInSelectedTimespan = computed<ApiLocationResponse[]>(() => {
       );
       return (
         latestDateForLocation &&
-        latestDateForLocation >= (dateRange.value[0] as Date) &&
-        new Date(location.activeAt) <= (dateRange.value[1] as Date)
+        latestDateForLocation >= fromDateTime &&
+        new Date(location.activeAt) <= untilDateTime
       );
     });
   }
@@ -735,38 +811,131 @@ const locationsInSelectedTimespanForMap = computed<NamedPoint[]>(() => {
         }
       }
     })
+    .filter(({ location }) =>
+      projectIsAroundCacophonyHq.value ? true : !locIsInCacophonyHq(location),
+    )
     .map(mapLocationForMap);
 });
 
-const minDateForProject = computed<Date>(() => {
-  // Earliest active location
+const minThermalDateForProject = computed<Date>(() => {
+  // Earliest active location for thermal
   let earliest = new Date();
   if (locations.value) {
     for (const location of locations.value) {
-      const activeAt = new Date(location.activeAt);
-      if (activeAt < earliest) {
-        earliest = activeAt;
+      if (location.earliestThermalRecordingTime) {
+        const activeAt = new Date(location.earliestThermalRecordingTime);
+        if (activeAt < earliest) {
+          earliest = activeAt;
+        }
       }
     }
   }
   return earliest;
 });
 
-const minDateForSelectedLocations = computed<Date>(() => {
-  // Earliest active location
-  if (selectedLocations.value.includes("any")) {
-    return new Date(minDateForProject.value);
-  }
+const minAudioDateForProject = computed<Date>(() => {
+  // Earliest active location for audio
   let earliest = new Date();
-  if (selectedLocations.value) {
-    for (const location of selectedLocations.value) {
-      const activeAt = new Date((location as ApiLocationResponse).activeAt);
+  if (locations.value) {
+    for (const location of locations.value) {
+      if (location.earliestAudioRecordingTime) {
+        const activeAt = new Date(location.earliestAudioRecordingTime);
+        if (activeAt < earliest) {
+          earliest = activeAt;
+        }
+      }
+    }
+  }
+  return earliest;
+});
+
+const earliestThermalRecordingTimeForDevices = (
+  devices: ApiDeviceResponse[],
+): Date => {
+  let earliest = new Date();
+  for (const device of devices) {
+    if (device.earliestThermalRecordingTime) {
+      const activeAt = new Date(device.earliestThermalRecordingTime);
       if (activeAt < earliest) {
         earliest = activeAt;
       }
     }
   }
   return earliest;
+};
+
+const earliestAudioRecordingTimeForDevices = (
+  devices: ApiDeviceResponse[],
+): Date => {
+  let earliest = new Date();
+  for (const device of devices) {
+    if (device.earliestAudioRecordingTime) {
+      const activeAt = new Date(device.earliestAudioRecordingTime);
+      if (activeAt < earliest) {
+        earliest = activeAt;
+      }
+    }
+  }
+  return earliest;
+};
+
+const minDateForSelectedLocations = computed<Date>(() => {
+  // Earliest active location
+  if (
+    (displayMode.value === ActivitySearchDisplayMode.Recordings &&
+      recordingMode.value === ActivitySearchRecordingMode.Cameras) ||
+    displayMode.value === ActivitySearchDisplayMode.Visits
+  ) {
+    // Return earliest thermal recording times
+    if (selectedLocations.value.includes("any")) {
+      if (
+        selectedDevices.value.length !== 0 &&
+        selectedDevices.value !== "all"
+      ) {
+        return earliestThermalRecordingTimeForDevices(
+          selectedDevices.value as ApiDeviceResponse[],
+        );
+      }
+      return new Date(minThermalDateForProject.value);
+    }
+    let earliest = new Date();
+    if (selectedLocations.value) {
+      for (const location of selectedLocations.value) {
+        if (location !== "any" && location.earliestThermalRecordingTime) {
+          const activeAt = new Date(location.earliestThermalRecordingTime);
+          if (activeAt < earliest) {
+            earliest = activeAt;
+          }
+        }
+      }
+    }
+    return earliest;
+  } else {
+    // Earliest audio recording times.
+    if (selectedLocations.value.includes("any")) {
+      if (
+        selectedDevices.value.length !== 0 &&
+        selectedDevices.value !== "all"
+      ) {
+        return earliestAudioRecordingTimeForDevices(
+          selectedDevices.value as ApiDeviceResponse[],
+        );
+      }
+      return new Date(minAudioDateForProject.value);
+    }
+    let earliest = new Date();
+    if (selectedLocations.value) {
+      for (const location of selectedLocations.value) {
+        if (location !== "any" && location.earliestAudioRecordingTime) {
+          const activeAt = new Date(location.earliestAudioRecordingTime);
+          if (activeAt < earliest) {
+            earliest = activeAt;
+          }
+        }
+      }
+    }
+    return earliest;
+  }
 });
 
 const maxDateForSelectedLocations = computed<Date>(() => {
@@ -858,22 +1027,13 @@ const updatedRecording = (
   }
 };
 
-const currentlySelectedVisit = ref<ApiVisitResponse | null>(null);
-
-//const visitsContext = ref<ApiVisitResponse[] | null>(null);
-type RecordingItem = { type: "recording"; data: ApiRecordingResponse };
-type SunItem = { type: "sunset" | "sunrise"; data: string };
+const currentlySelectedVisit = ref<ApiStaticVisitResponse | null>(null);
 // Chunk recordings into days and hours.
 // Do we want to insert sunrise and sunset?  Probably.
-const chunkedRecordings = ref<
-  {
-    dateTime: DateTime;
-    items: (RecordingItem | SunItem)[];
-  }[]
->([]);
+const chunkedRecordings = ref<RecordingsChunk[]>([]);
 
-const prefilteredChunkedVisits = ref<ApiVisitResponse[]>([]);
-const chunkedVisits = computed<ApiVisitResponse[]>(() => {
+const prefilteredChunkedVisits = ref<ApiStaticVisitResponse[]>([]);
+const chunkedVisits = computed<ApiStaticVisitResponse[]>(() => {
   return prefilteredChunkedVisits.value.filter(
     (visit) => !visit.hasOwnProperty("tombstoned"),
   );
@@ -985,6 +1145,7 @@ onUpdated(() => {
 const getCurrentQueryHash = (): string => {
   // Keep track of the recordingState/cursor using a hash of the query,
   const untilDateTime = endOfDay(dateRange.value[1] as Date);
+  //const fromDateTime = endOfDay(dateRange.value[0] as Date);
   return JSON.stringify({
     ...getCurrentQuery(),
     displayMode: displayMode.value,
@@ -994,12 +1155,7 @@ const getCurrentQueryHash = (): string => {
 };
 
 interface RecordingQueryBase {
-  types: (
-    | RecordingType.ThermalRaw
-    | RecordingType.Audio
-    | RecordingType.TrailCamVideo
-    | RecordingType.TrailCamImage
-  )[];
+  types: (RecordingType.ThermalRaw | RecordingType.Audio)[];
   locations?: LocationId[];
   tagMode?: TagMode;
   tags?: string[];
@@ -1007,15 +1163,10 @@ interface RecordingQueryBase {
   includeFilteredFalsePositivesAndNones: boolean;
 }
 const getCurrentQuery = (): QueryRecordingsOptions => {
-  // console.log("Search params", searchParams.value);
   const query: QueryRecordingsOptions = {
     types:
       searchParams.value.recordingMode === "cameras"
-        ? [
-            ConcreteRecordingType.ThermalRaw,
-            ConcreteRecordingType.TrailCamVideo,
-            ConcreteRecordingType.TrailCamImage,
-          ]
+        ? [ConcreteRecordingType.ThermalRaw]
         : [ConcreteRecordingType.Audio],
   };
   if (searchParams.value.displayMode === "recordings") {
@@ -1071,11 +1222,12 @@ const getCurrentQuery = (): QueryRecordingsOptions => {
 };
 
 const appendRecordingsChunkedByDay = (recordings: ApiRecordingResponse[]) => {
+  const zone = timezoneForLatLng(canonicalLatLngForActiveLocations.value);
   for (const recording of recordings) {
     // Get the location local day:
     const recordingDate = new Date(recording.recordingDateTime);
     const dateTime = DateTime.fromJSDate(recordingDate, {
-      zone: timezoneForLatLng(canonicalLatLngForActiveLocations.value),
+      zone,
     });
 
     const { sunrise, sunset } = sunCalc.getTimes(
@@ -1129,17 +1281,23 @@ const appendRecordingsChunkedByDay = (recordings: ApiRecordingResponse[]) => {
       }
     }
     if (
-      (recording.type === "thermalRaw" &&
+      (recording.type === ConcreteRecordingType.ThermalRaw &&
         recording.duration < 2.5 &&
         recording.duration > 1.8) ||
-      (recording.type === "audio" &&
+      recording.status ||
+      (recording.type === ConcreteRecordingType.Audio &&
         recording.duration < 11 &&
-        recording.duration > 9.8)
+        recording.duration > 9.8) ||
+      recording.status
     ) {
+      let detail = "test recording";
+      if (recording.status && recording.status !== "true") {
+        detail = `${recording.status} recording`;
+      }
       recording.tags.push({
         id: -1,
         confidence: 1,
-        detail: "test recording",
+        detail,
         createdAt: recording.recordingDateTime,
       });
     }
@@ -1158,7 +1316,7 @@ const appendRecordingsChunkedByDay = (recordings: ApiRecordingResponse[]) => {
   }
 };
 
-const appendVisitsChunkedByDay = (visits: ApiVisitResponse[]) => {
+const appendVisitsChunkedByDay = (visits: ApiStaticVisitResponse[]) => {
   for (const visit of visits) {
     // TODO: May need to optimise this as the list gets long?
     prefilteredChunkedVisits.value.push(visit);
@@ -1170,6 +1328,8 @@ const resetQuery = (
   fromDateTime: Date,
   untilDateTime: Date,
 ) => {
+  // NOTE: We want to maintain object identity for these arrays,
+  // so we drain them rather than assigning a new empty array.
   while (loadedRecordings.value.length) {
     loadedRecordings.value.pop();
   }
@@ -1192,10 +1352,16 @@ const resetQuery = (
     fromDateTime: new Date(fromDateTime),
     untilDateTime: new Date(untilDateTime),
   };
+  console.log(
+    `Current query cursor ${(currentQueryCursor.value.fromDateTime as Date).toISOString()} -- ${(currentQueryCursor.value.untilDateTime as Date).toISOString()}`,
+  );
 };
 
 const displayMode = computed<ActivitySearchDisplayMode>(
   () => searchParams.value.displayMode,
+);
+const recordingMode = computed<ActivitySearchRecordingMode>(
+  () => searchParams.value.recordingMode,
 );
 const inRecordingsMode = computed<boolean>(
   () => displayMode.value === ActivitySearchDisplayMode.Recordings,
@@ -1220,11 +1386,7 @@ const minDate = (a: Date, b: Date): Date => {
 
 const typesForRecordingMode = computed<ConcreteRecordingType[]>(() => {
   if (searchParams.value.recordingMode === "cameras") {
-    return [
-      ConcreteRecordingType.ThermalRaw,
-      ConcreteRecordingType.TrailCamVideo,
-      ConcreteRecordingType.TrailCamImage,
-    ];
+    return [ConcreteRecordingType.ThermalRaw];
   } else {
     return [ConcreteRecordingType.Audio];
   }
@@ -1241,25 +1403,25 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       // Date range not yet defined
       return;
     }
-    let queryHash = getCurrentQueryHash();
-    let query = getCurrentQuery();
+    const queryHash = getCurrentQueryHash();
+    const query = getCurrentQuery();
     const project = currentProject.value as SelectedProject;
     let isNewQuery;
     if (firstLoad.value) {
       firstLoad.value = false;
-      queryHash = getCurrentQueryHash();
-      query = getCurrentQuery();
       isNewQuery = true;
     } else {
       isNewQuery = queryHash !== currentQueryHash.value;
     }
-    if (
-      (currentQueryCursor.value.fromDateTime as Date) < (fromDateTime as Date)
-    ) {
+    const a = new Date(currentQueryCursor.value.fromDateTime as Date);
+    const b = new Date(fromDateTime as Date);
+    a.setMilliseconds(0);
+    b.setMilliseconds(0);
+    if (a < b) {
       // We need to narrow the already loaded search range
       isNewQuery = true;
     }
-
+    //loadingQuery.value = queryHash;
     let earliestRecord = null;
     if (inRecordingsMode.value) {
       if (filteredLoadedRecordings.value.length) {
@@ -1275,7 +1437,6 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
     if (earliestRecord !== null && earliestRecord < (fromDateTime as Date)) {
       isNewQuery = true;
     }
-
     if (isNewQuery) {
       resetQuery(
         queryHash,
@@ -1289,6 +1450,8 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
     aa.setMilliseconds(0);
     bb.setMilliseconds(0);
     const hasNotLoadedAllOfQueryTimeRange = aa > bb;
+
+    // console.log("aa", aa.toISOString(), bb.toISOString());
     if (hasNotLoadedAllOfQueryTimeRange) {
       // console.log("Count all", queryMap[key].loaded === 0);
       // First time through, we want to count all for a given timespan query.
@@ -1296,52 +1459,55 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
       const twoPagesWorth = Math.ceil(windowHeight.value / itemHeight) * 2;
       let response:
         | FetchResult<BulkRecordingsResponse>
-        | FetchResult<VisitsQueryResult>;
+        | LoadedResource<ApiStaticVisitResponse[]>;
+      const maxVisitsPerRequest = 1000;
       if (inRecordingsMode.value) {
         // NOTE: Not sure we need to ever get the total count for this query for the
         //  purposes of this UI?
         CurrentViewAbortController.newView();
-        response = await queryRecordingsInProjectNew(project.id, {
-          ...query,
-          limit: twoPagesWorth,
-          fromDateTime: dateRange.value[0],
-          untilDateTime: currentQueryCursor.value.untilDateTime as Date,
-          queryIsTimeSensitive: true,
-          types: typesForRecordingMode.value as (
-            | RecordingType.TrailCamImage
-            | RecordingType.TrailCamVideo
-            | RecordingType.ThermalRaw
-            | RecordingType.Audio
-          )[],
-        });
+        response = await ClientApi.Recordings.queryRecordingsInProjectNew(
+          project.id,
+          {
+            ...query,
+            limit: twoPagesWorth,
+            fromDateTime: dateRange.value[0],
+            untilDateTime: currentQueryCursor.value.untilDateTime as Date,
+            queryIsTimeSensitive: true,
+            types: typesForRecordingMode.value as (
+              | RecordingType.ThermalRaw
+              | RecordingType.Audio
+            )[],
+          },
+        );
         if (response && response.success && response.result.count) {
           currentQueryCount.value = response.result.count;
         }
       } else {
         // Else visits
-        // TODO: This needs to have a limit
         // Make it the lesser of the current date range or 2 pages worth of days.
-        //const pageSize = 100;
+        // We don't really know what 2 pages worth of days looks like in any given project though.
+        // We could gauge it from the number of visits we get over time for the first request,
+        // and adapt it dynamically?  Start small and ramp up?
         CurrentViewAbortController.newView();
-        response = await getVisitsForProject(
+        response = (await ClientApi.Visits.getVisitsForProject(
           project.id,
           dateRange.value[0] as Date,
           minDate(
             currentQueryCursor.value.untilDateTime as Date,
             endOfDay(maxDateForSelectedLocations.value),
           ),
-          //pageSize,
           query.locations,
-          query.types as
-            | (
-                | RecordingType.ThermalRaw
-                | RecordingType.TrailCamImage
-                | RecordingType.TrailCamVideo
-              )[]
-            | undefined,
-        );
+          maxVisitsPerRequest,
+          true,
+        )) as ApiStaticVisitResponse[];
       }
-      if (response && response.success) {
+      if (
+        response &&
+        ((inRecordingsMode.value &&
+          "success" in response &&
+          response.success) ||
+          inVisitsMode.value)
+      ) {
         let loadedFewerItemsThanRequested;
         let gotUntilDate: Date | undefined;
         if (inRecordingsMode.value) {
@@ -1349,41 +1515,41 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             recordings: ApiRecordingResponse[];
           }>;
           const recordings = recordingsResponse.result.recordings;
-          loadedRecordings.value.push(...recordings);
-          loadedFewerItemsThanRequested = recordings.length < twoPagesWorth;
-          loadedRecordingIds.value.push(...recordings.map(({ id }) => id));
-          appendRecordingsChunkedByDay(recordings);
-          currentQueryLoaded.value += recordings.length;
-          if (recordings.length !== 0) {
-            gotUntilDate = new Date(
+          if (recordings && recordings.length) {
+            const latest = new Date(recordings[0].recordingDateTime);
+            const earliest = new Date(
               recordings[recordings.length - 1].recordingDateTime,
             );
-          }
-        } else if (inVisitsMode.value) {
-          const visitsResponse = response.result as VisitsQueryResult;
-          const visits = visitsResponse.visits as ApiVisitResponse[];
-          loadedFewerItemsThanRequested =
-            visitsResponse.params.pagesEstimate > 1;
-
-          if (visits.length !== 0) {
-            let lastVisit = visits[visits.length - 1];
-            gotUntilDate = new Date(lastVisit.timeStart);
-            if (lastVisit.incomplete) {
-              // Remove last incomplete visit, start again at end of the previous complete one.
-              visits.pop();
-              if (visits.length) {
-                lastVisit = visits[visits.length - 1];
-                gotUntilDate = new Date(lastVisit.timeStart);
-              } else {
-                gotUntilDate = undefined;
+            if (
+              !loadedRecordings.value.length ||
+              (loadedRecordings.value.length &&
+                latest.getTime() > earliest.getTime())
+            ) {
+              // Don't append duplicate recordings
+              loadedRecordings.value.push(...recordings);
+              loadedFewerItemsThanRequested = recordings.length < twoPagesWorth;
+              loadedRecordingIds.value.push(...recordings.map(({ id }) => id));
+              appendRecordingsChunkedByDay(recordings);
+              currentQueryLoaded.value += recordings.length;
+              if (recordings.length !== 0) {
+                const earliestTime =
+                  recordings[recordings.length - 1].recordingDateTime;
+                gotUntilDate = new Date(earliestTime);
               }
+            } else {
+              console.warn("Duplicate recordings, not appending");
             }
           }
-          // NOTE: Append new visits.
-          // Keep loading visits in the time-range selected until we fill up the page.
-          appendVisitsChunkedByDay(visits);
-          if (visits.length === 0) {
-            //debugger;
+        } else if (inVisitsMode.value) {
+          const visits = response as ApiStaticVisitResponse[];
+          loadedFewerItemsThanRequested = visits.length < maxVisitsPerRequest;
+          if (visits.length !== 0) {
+            // This is the earliest visit we have so far
+            const earliestVisit = visits[visits.length - 1];
+            gotUntilDate = new Date(earliestVisit.startTime);
+            // NOTE: Append new visits.
+            // Keep loading visits in the time-range selected until we fill up the page.
+            appendVisitsChunkedByDay(visits);
           }
         }
         if (gotUntilDate) {
@@ -1392,10 +1558,21 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           gotUntilDate.setMilliseconds(gotUntilDate.getMilliseconds() - 1);
           currentQueryCursor.value.untilDateTime = gotUntilDate;
           const reachedMinDateForSelectedLocations =
+            !!currentQueryCursor.value.fromDateTime &&
             (currentQueryCursor.value.fromDateTime as Date).getTime() ===
-            minDateForSelectedLocations.value.getTime();
+              minDateForSelectedLocations.value.getTime();
+          /*console.log(
+            "Loaded fewer than requested",
+            reachedMinDateForSelectedLocations,
+            minDateForSelectedLocations.value.toISOString(),
+            "from",
+            (currentQueryCursor.value.fromDateTime as Date).toISOString(),
+            "until",
+            (currentQueryCursor.value.untilDateTime as Date).toISOString(),
+          );*/
           if (loadedFewerItemsThanRequested) {
-            if (reachedMinDateForSelectedLocations) {
+            if (reachedMinDateForSelectedLocations || inVisitsMode.value) {
+              console.log("Cancel observer");
               currentObserver && currentObserver.stop();
               currentObserver = null;
               // We're at the limit
@@ -1443,8 +1620,8 @@ const doSearch = async () => {
   searching.value = true;
   await getClassifications();
   await loadActiveAndInactiveDevices();
-  const success = await getRecordingsOrVisitsForCurrentQuery();
-  if (success) {
+  const succeededWithoutAbort = await getRecordingsOrVisitsForCurrentQuery();
+  if (succeededWithoutAbort) {
     searching.value = false;
   }
 };
@@ -1454,164 +1631,6 @@ const download = (url: string, filename: string) => {
   anchor.href = url;
   anchor.download = filename || "download";
   anchor.click();
-};
-
-const arrayToCsv = (data: string[][]) => {
-  return data
-    .map(
-      (row) =>
-        row
-          .map(String) // convert every value to String
-          .map((v) => v.replaceAll("\"", "\"\"")) // escape double quotes
-          .map((v) => `"${v}"`) // quote it
-          .join(","), // comma-separated
-    )
-    .join("\r\n"); // rows starting on new lines
-};
-const upperFirst = (str: string): string => {
-  const trim = str.trim();
-  return trim.charAt(0).toUpperCase() + trim.slice(1);
-};
-const createVisitsCsv = (data: ApiVisitResponse[]): string => {
-  const csv = [
-    [
-      "Location",
-      "Start time",
-      "End time",
-      "Local start time",
-      "Local end time",
-      "Duration",
-      "Visit classification",
-      "Classified by",
-      "# Recordings",
-    ],
-  ];
-  for (const visit of data) {
-    const classificationAgreesWithAi =
-      visit.classificationAi === visit.classification && visit.classFromUserTag;
-    const classificationType = visit.classFromUserTag
-      ? classificationAgreesWithAi
-        ? "User & AI"
-        : "User"
-      : visit.classificationAi
-        ? "AI"
-        : "unknown";
-    const location = (locations.value || []).find(
-      ({ id }) => id === visit.stationId,
-    );
-    if (location) {
-      csv.push([
-        visit.stationName,
-        visit.timeStart,
-        visit.timeEnd,
-        dayAndTimeAtLocation(visit.timeStart, location.location),
-        dayAndTimeAtLocation(visit.timeEnd, location.location),
-        visitDuration(visit).replace("&nbsp;", " "),
-        upperFirst(
-          (visit.classification &&
-            displayLabelForClassificationLabel(
-              visit.classification,
-              !visit.classFromUserTag,
-            )) ||
-            "none",
-        ),
-        classificationType,
-        (visit.recordings?.length || 0).toString(),
-      ]);
-    }
-  }
-  return arrayToCsv(csv);
-};
-
-const createRecordingsCsv = (data: ApiRecordingResponse[]): string => {
-  // TODO: More columns as needed
-  const csv = [
-    [
-      "Location",
-      "Latitude/Longitude",
-      "Device name",
-      "Time",
-      "Local time",
-      "Duration",
-      "Canonical classification",
-      "Human classification",
-      "AI classification",
-      "Labels",
-    ],
-  ];
-  const isAudioMode =
-    searchParams.value.recordingMode === ActivitySearchRecordingMode.Audio;
-  if (isAudioMode) {
-    csv[0].push("Cacophony Index");
-  }
-  for (const recording of data) {
-    const location = (locations.value || []).find(
-      ({ id }) => id === recording.stationId,
-    );
-
-    const canonicalTags = canonicalTagsForRecording(recording);
-    const aiTags = aiTagsForRecording(recording);
-    const humanTags = humanTagsForRecording(recording);
-    const displaysCanonical = [];
-    const displaysAI = [];
-    const displaysHuman = [];
-    const labels = recording.tags.map((tag) => tag.detail);
-    for (const tag of canonicalTags) {
-      const display = displayLabelForClassificationLabel(
-        tag.what,
-        tag.automatic && !tag.human,
-        isAudioMode,
-      );
-      displaysCanonical.push(
-        `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`,
-      );
-    }
-    for (const tag of aiTags) {
-      const display = displayLabelForClassificationLabel(
-        tag.what,
-        tag.automatic && !tag.human,
-        isAudioMode,
-      );
-      displaysAI.push(
-        `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`,
-      );
-    }
-    for (const tag of humanTags) {
-      const display = displayLabelForClassificationLabel(
-        tag.what,
-        tag.automatic && !tag.human,
-        isAudioMode,
-      );
-      displaysHuman.push(
-        `${upperFirst(display)}${tag.count > 1 ? ` (${tag.count})` : ""}`,
-      );
-    }
-    const row = [
-      recording.stationName || "unknown",
-      (recording.location &&
-        `${recording.location?.lat}, ${recording.location?.lng}`) ||
-        "unknown",
-      recording.deviceName,
-      recording.recordingDateTime,
-      (location &&
-        dayAndTimeAtLocation(recording.recordingDateTime, location.location)) ||
-        "unknown",
-      formatDuration(recording.duration * 1000).replace("&nbsp;", " "),
-      displaysCanonical.join(", "),
-      displaysHuman.join(", "),
-      displaysAI.join(", "),
-      labels.join(", "),
-    ];
-    if (isAudioMode) {
-      row.push(
-        ((recording as ApiAudioRecordingResponse).cacophonyIndex || [])
-          .map((index: { index_percent: number }) => index.index_percent)
-          .join(", "),
-      );
-    }
-    csv.push(row);
-  }
-  return arrayToCsv(csv);
 };
 
 const exportTimeElapsed = computed<number>(
@@ -1635,26 +1654,18 @@ const doExport = async () => {
     exportProgress.value = 0;
     if (inVisitsMode.value) {
       // Get all the responses
-      const visitsResponse = await getAllVisitsForProjectBetweenTimes(
+      const visitsResponse = await ClientApi.Visits.getAllVisitsForProject(
         project.id,
         fromDateTime,
         untilDateTime,
         query.locations,
-        query.types as
-          | (
-              | RecordingType.TrailCamVideo
-              | RecordingType.ThermalRaw
-              | RecordingType.TrailCamImage
-            )[]
-          | undefined,
+        7500,
         (progress) => {
           exportProgress.value = progress;
           exportTime.value = performance.now();
         },
       );
-      const csvFileData = createVisitsCsv(
-        visitsResponse.visits as ApiVisitResponse[],
-      );
+      const csvFileData = createVisitsCsv(visitsResponse, locations.value);
       download(
         URL.createObjectURL(
           new Blob([csvFileData], { type: "text/csv;charset=utf-8;" }),
@@ -1664,14 +1675,19 @@ const doExport = async () => {
     } else if (inRecordingsMode.value) {
       query.fromDateTime = fromDateTime;
       query.untilDateTime = untilDateTime;
-      const recordings = await getAllRecordingsForProjectBetweenTimes(
-        project.id,
-        query,
-        () => {
-          exportTime.value = performance.now();
-        },
+      const recordings =
+        await ClientApi.Recordings.getAllRecordingsForProjectBetweenTimes(
+          project.id,
+          query,
+          () => {
+            exportTime.value = performance.now();
+          },
+        );
+      const csvFileData = createRecordingsCsv(
+        recordings,
+        locations.value,
+        searchParams.value.recordingMode === ActivitySearchRecordingMode.Audio,
       );
-      const csvFileData = createRecordingsCsv(recordings);
       download(
         URL.createObjectURL(
           new Blob([csvFileData], { type: "text/csv;charset=utf-8;" }),
@@ -1749,36 +1765,9 @@ const adjustTimespanBackwards = async () => {
   } else {
     searchParams.value.from = fromDateMinusIncrement.value;
     searchParams.value.until = dateRange.value[1] as Date;
-    //
-    // const initialSelectedDateRangeUntil = new Date(selectedDateRange.value[1]);
     customAutomaticallySet.value = true;
-    // selectedDateRange.value = "custom";
-    // if (customDateRange.value) {
-    //   customDateRange.value[0] = fromDateMinusIncrement.value;
-    // } else {
-    //   customDateRange.value = [
-    //     fromDateMinusIncrement.value,
-    //     initialSelectedDateRangeUntil,
-    //   ];
-    //   // NOTE: We need to wait a tick for computed items to resolve.
-    //   await nextTick();
-    //   customDateRange.value = [
-    //     fromDateMinusIncrement.value,
-    //     initialSelectedDateRangeUntil,
-    //   ];
-    // }
   }
-  // console.log("Cursor was", JSON.stringify(currentQueryCursor.value, null, '\t'));
-  //currentQueryCursor.value.fromDateTime = fromDateMinusIncrement.value;
   dateRange.value = [fromDateMinusIncrement.value, dateRange.value[1]];
-  // Reset the key, so that we continue the current search
-  //currentQueryHash.value = getCurrentQueryHash();
-  //console.log("Cursor is now", JSON.stringify(currentQueryCursor.value, null, '\t'));
-
-  // TODO - When we expand a search, we need to issue another count request for the span added, so we
-  // can update the total.
-  // console.log("adjustTimespanBackwards");
-  // await doSearch();
 };
 
 // FIXME: Handle recording closing etc, restoring route.
@@ -1792,55 +1781,67 @@ const selectedRecording = async (recordingId: RecordingId) => {
   });
 };
 
-const selectedVisit = (visit: ApiVisitResponse) => {
+const selectedVisit = (visit: ApiStaticVisitResponse) => {
   currentlySelectedVisit.value = visit;
+};
+
+const prevLocationTimeSet = ref<number>(0);
+const changedHighlightedLocation = (loc: LocationId | null) => {
+  // Some simple debouncing for change of highlight location.
+  if (currentlyHighlightedLocation.value && loc === null) {
+    // Wait.
+    setTimeout(() => {
+      if (performance.now() - prevLocationTimeSet.value > 30) {
+        // Don't set it.
+        currentlyHighlightedLocation.value = null;
+      }
+    }, 10);
+  } else {
+    currentlyHighlightedLocation.value = loc;
+    if (loc) {
+      prevLocationTimeSet.value = performance.now();
+    }
+  }
 };
 
 watch(
   currentlySelectedVisit,
-  (visit: ApiVisitResponse | null, _prevVisit: ApiVisitResponse | null) => {
-    if (visit && route.name === "activity") {
-      // Set route so that modal shows up
-      const recordingIds = visit.recordings.map(({ recId, tracks }) => ({
-        recId,
-        tracks,
-      }));
-      const visitClassification = visit.classification || "";
-      let firstRec = visit.recordings[0];
-      let firstTrack =
-        (firstRec.tracks &&
-          firstRec.tracks.length !== 0 &&
-          firstRec.tracks[0]) ||
-        undefined;
-      if (visitClassification !== "") {
-        // Make sure we set the first recording as one that contains the visit classification.
-        const firstRecordingWithVisitClassification = visit.recordings.find(
-          (rec) =>
-            rec.tracks.some(
-              (track) =>
-                track.tag === visit.classification ||
-                (!track.tag && track.aiTag === visit.classification),
-            ),
-        );
-        if (firstRecordingWithVisitClassification) {
-          firstRec = firstRecordingWithVisitClassification;
-          firstTrack = firstRec.tracks.find(
-            (track) =>
-              track.tag === visit.classification ||
-              (!track.tag && track.aiTag === visit.classification),
-          );
-        }
-      }
+  (
+    visit: ApiStaticVisitResponse | null,
+    prevVisit: ApiStaticVisitResponse | null,
+  ) => {
+    if (visit && !prevVisit) {
+      // This only happens when we select a visit from the visits list.
+      const classificationPath = visitClassificationPath(visit);
       const params: Record<string, string> = {
-        visitLabel: visit.classification || "",
-        currentRecordingId: firstRec.recId.toString(),
-        trackId: (firstTrack && firstTrack.id.toString()) as string,
+        visitLabel:
+          visitClassificationLabelFromPath(classificationPath || "") || "none",
       };
-      if (recordingIds.length) {
-        params.recordingIds = recordingIds.map(({ recId }) => recId).join(",");
+      const recId =
+        visit.humanClassificationRecordingId ||
+        visit.aiClassificationRecordingId ||
+        visit.recordingIds[0];
+      const trackId =
+        visit.humanClassificationTrackId || visit.aiClassificationTrackId;
+      if (recId) {
+        params.currentRecordingId = recId.toString();
       }
+      if (trackId) {
+        params.trackId = trackId.toString();
+      }
+      if (visit.recordingIds.length) {
+        params.recordingIds = visit.recordingIds.join(",");
+      }
+      let nextName = route.name;
+      if (route.name === "activity") {
+        // Set route so that modal shows up
+        nextName = "activity-visit";
+      }
+      // If the deleted Id is at the end of the current visit, we want to go to the previous recording.
+      // If the deleted id is
+
       router.push({
-        name: "activity-visit",
+        name: nextName,
         params,
         query: route.query,
       });
@@ -1859,35 +1860,22 @@ const filteredLoadedRecordingIds = computed<RecordingId[]>(() => {
   return (filteredLoadedRecordings.value || []).map(({ id }) => id);
 });
 
-provide(activeLocations, locationsInSelectedTimespan);
-provide(latLngForActiveLocations, canonicalLatLngForActiveLocations);
-provide("loadedRecordingIds", filteredLoadedRecordingIds);
-provide("loadedRecordings", loadedRecordings);
-provide("currentRecordingCount", currentTotalRecordings);
-provide("canLoadMoreRecordingsInPast", canLoadMoreRecordingsInPast);
-provide("updatedRecording", updatedRecording);
-provide("requestLoadMoreRecordingsInPast", () => loadMoreRecordingsInPast());
-provide("currentlySelectedVisit", currentlySelectedVisit);
-provide("visitsContext", chunkedVisits);
-
-// TODO: Nice to have - allow expanding the current search range when we reach the end of the list of recordings.
-provide("canExpandCurrentQueryInPast", canExpandSearchBackFurther);
-
 const projectHasLocationsWithRecordings = computed<boolean>(() => {
   return locationsForMap.value.length !== 0;
 });
 
 const mapWidthPx = computed<number>(() => {
-  if (windowWidth.value >= 1200) {
-    return Math.min(
-      500,
-      windowWidth.value - (searchContainerLeft.value + 810 + 24),
-    );
-  } else if (windowWidth.value >= 992) {
-    return 250;
-  } else {
+  if (!mapBuffer.value) {
     return 0;
   }
+  const mapBufferWidth = mapBuffer.value.offsetWidth;
+  if (windowWidth.value >= 1920) {
+    return mapBufferWidth + 128;
+  }
+  if (windowWidth.value >= 992) {
+    return mapBufferWidth;
+  }
+  return 0;
 });
 
 const showOffcanvasSearch = ref<boolean>(false);
@@ -1898,24 +1886,41 @@ const shouldShowSearchControlsInline = computed<boolean>(
   () => windowWidth.value >= 768,
 );
 
-const localDateString = (d: Date): string => {
-  return DateTime.fromJSDate(d).toLocaleString({
-    weekday: "short",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-};
-
 const loadActiveAndInactiveDevices = async () => {
   if (!devices.value && currentProject.value) {
-    devices.value = await getDevicesForProject(
+    devices.value = await ClientApi.Projects.getDevicesForProject(
       currentProject.value.id,
       true,
       true,
+    );
+  }
+};
+
+const recordingUpdated = async (
+  recordingId: RecordingId,
+  action: "deleted" | "updated",
+  newClassification?: string,
+  oldClassification?: string,
+) => {
+  console.log("Recording updated", recordingId, action);
+  if (inVisitsMode.value) {
+    let locations: LocationId[] = [];
+    const isAnyLocation = selectedLocations.value.includes("any");
+    if (!isAnyLocation) {
+      locations = selectedLocations.value.map(
+        (loc) => (loc as ApiLocationResponse).id,
+      );
+    }
+    await recordingUpdatedInVisitsContext(
+      recordingId,
+      action,
+      newClassification,
+      oldClassification,
+      currentlySelectedVisit,
+      prefilteredChunkedVisits,
+      route,
+      (currentProject.value as SelectedProject).id,
+      locations,
     );
   }
 };
@@ -1936,10 +1941,23 @@ onBeforeMount(async () => {
   }
   loading.value = false;
 });
+
 onBeforeUnmount(() => {
-  //watchParams();
   watchQuery.value && watchQuery.value();
 });
+
+provide(activeLocations, locationsInSelectedTimespan);
+provide(latLngForActiveLocations, canonicalLatLngForActiveLocations);
+provide("loadedRecordingIds", filteredLoadedRecordingIds);
+provide("loadedRecordings", loadedRecordings);
+provide("currentRecordingCount", currentTotalRecordings);
+provide("canLoadMoreRecordingsInPast", canLoadMoreRecordingsInPast);
+provide("updatedRecording", updatedRecording);
+provide("requestLoadMoreRecordingsInPast", () => loadMoreRecordingsInPast());
+provide("currentlySelectedVisit", currentlySelectedVisit);
+provide("visitsContext", chunkedVisits);
+// TODO: Nice to have - allow expanding the current search range when we reach the end of the list of recordings.
+provide("canExpandCurrentQueryInPast", canExpandSearchBackFurther);
 </script>
 <template>
   <section-header>Activity</section-header>
@@ -1953,25 +1971,60 @@ onBeforeUnmount(() => {
   <!--  </ul>-->
   <div
     v-if="loading"
-    class="d-flex justify-content-center align-items-center centered-overlay"
+    class="d-flex justify-content-center align-items-center flex-fill"
   >
     <b-spinner variant="secondary" />
   </div>
-  <div v-else-if="!projectHasLocationsWithRecordings">
-    This project has no activity yet.
+  <div
+    v-else-if="!projectHasLocationsWithRecordings"
+    class="flex-grow-1 d-flex align-items-center justify-content-center"
+  >
+    <div
+      class="no-results text-body-tertiary d-flex flex-column text-center col col-12 col-md-8 col-lg-6"
+    >
+      <material-symbol
+        name="troubleshoot"
+        size="2.4rem"
+        grade="thin"
+        class="mb-3"
+      />
+      <h4 class="h5 mb-2">This project has no activity yet</h4>
+      <p v-if="!projectHasDevices">
+        This project is likely new or doesn't have any devices associated with
+        it yet. <br class="d-none d-sm-inline" />
+        Use the Sidekick mobile app to add devices to your project.
+      </p>
+
+      <p v-else-if="!projectHasInternetConnectedDevices">
+        The devices of this project may not be connected to the internet.
+        <br class="d-none d-sm-inline" />
+        Use the Sidekick mobile app to offload recordings from devices without
+        connectivity, and sync them later when you have an internet connection
+        on your phone.
+      </p>
+      <p v-else>
+        It looks like none of your devices have uploaded any recordings yet.
+      </p>
+    </div>
   </div>
   <div
     v-else
-    class="d-flex flex-md-row flex-column-reverse flex-fill search-container"
+    class="d-flex flex-md-row flex-column-reverse flex-fill row search-container"
     ref="searchContainer"
   >
     <nav
-      class="navbar navbar-expand-md search-controls-outer me-md-3 d-flex py-md-0 align-items-md-start"
+      class="search-controls-wrapper col col-12 col-md-4 col-lg-3 col-xl-3 col-xxl-3 d-flex py-md-0 align-items-md-start"
       ref="searchControls"
     >
       <div class="search-results-toggle position-fixed d-md-none d-block">
-        <b-button @click="toggleOffcanvasSearch">
-          <font-awesome-icon icon="sliders" />
+        <b-button
+          @click="toggleOffcanvasSearch"
+          class="d-flex align-items-center p-2"
+        >
+          <material-symbol
+            :name="'search_gear' as unknown as IconsProp"
+            size="1.5rem"
+          />
         </b-button>
       </div>
       <b-offcanvas
@@ -1995,23 +2048,25 @@ onBeforeUnmount(() => {
           <b-button @click="showOffcanvasSearch = false">Search</b-button>
         </div>
       </b-offcanvas>
-      <div class="search-controls" v-if="shouldShowSearchControlsInline">
-        <activity-search-parameters
-          :params="searchParams"
-          :locations="ref(locations)"
-          :searching="searching"
-          :custom-set="customAutomaticallySet"
-          @accepted-custom-set="customAutomaticallySet = false"
-          @search-requested="doSearch"
-          @export-requested="doExport"
-        />
+      <div class="search-controls-scroll w-100 h-100 pb-3 me-xxl-3">
+        <div class="search-controls" v-if="shouldShowSearchControlsInline">
+          <activity-search-parameters
+            :params="searchParams"
+            :locations="ref(locations)"
+            :searching="searching"
+            :custom-set="customAutomaticallySet"
+            @accepted-custom-set="customAutomaticallySet = false"
+            @search-requested="doSearch"
+            @export-requested="doExport"
+          />
+        </div>
       </div>
     </nav>
     <div
-      class="search-results flex-grow-1 d-flex justify-content-center pb-3 me-lg-3"
+      class="search-results col col-12 col-md-8 col-lg-6 col-xl-6 col-xxl-6 flex-grow-1 d-flex justify-content-center pb-3"
       ref="searchResults"
     >
-      <div class="search-results-inner d-flex flex-grow-1 flex-column">
+      <div class="search-results-inner d-flex flex-grow-1 flex-column w-100">
         <activity-search-description
           :locations-in-selected-timespan="locationsInSelectedTimespan"
           :selected-locations="selectedLocations"
@@ -2037,9 +2092,8 @@ onBeforeUnmount(() => {
             :location="canonicalLatLngForActiveLocations"
             :highlighted-location="currentlyHighlightedLocation"
             @selected-visit="selectedVisit"
-            @change-highlighted-location="
-              (loc: LocationId | null) => (currentlyHighlightedLocation = loc)
-            "
+            @change-highlighted-location="changedHighlightedLocation"
+            class="mt-2"
           />
         </div>
         <div
@@ -2048,56 +2102,107 @@ onBeforeUnmount(() => {
         >
           <b-spinner variant="secondary" />
         </div>
-        <div
-          v-else-if="completedCurrentQuery && canExpandSearchBackFurther"
-          class="d-flex justify-content-center flex-column"
-        >
-          <span class="text-center mb-2"
-            >No more results for the selected time range.</span
-          >
-          <button
-            @click="adjustTimespanBackwards"
-            type="button"
-            class="btn btn-outline-secondary"
-          >
-            Expand the search start back to
-            {{ relativeTimeIncrementInPast }}
-          </button>
+        <div v-else-if="completedCurrentQuery && canExpandSearchBackFurther">
+          <div class="no-results text-body-tertiary text-center py-3">
+            <!--            <material-symbol
+              name="search_off"
+              size="2.4rem"
+              grade="thin"
+              class="mb-2"
+            />-->
+            <p>
+              No additional results found for the selected time range. <br />
+              Try expanding the search start back to
+              {{ relativeTimeIncrementInPast }}.
+            </p>
+            <button
+              @click="adjustTimespanBackwards"
+              type="button"
+              class="btn btn-outline-secondary"
+            >
+              Expand search
+            </button>
+          </div>
         </div>
         <div
           v-else-if="atMinimumTimeForSelectedLocations"
-          class="d-flex justify-content-center"
+          data-cy="no results"
+          class="flex-grow-1 d-flex align-items-center justify-content-center"
         >
-          <span class="text-center mb-2"
-            >No results for the selected locations before this time.</span
+          <div
+            class="no-results text-body-tertiary text-center d-flex flex-column"
           >
+            <material-symbol
+              name="search_off"
+              size="2.4rem"
+              grade="thin"
+              class="mb-2"
+            />
+            <span
+              v-if="
+                (searchParams.displayMode ===
+                  ActivitySearchDisplayMode.Recordings &&
+                  !filteredLoadedRecordings.length) ||
+                (searchParams.displayMode ===
+                  ActivitySearchDisplayMode.Visits &&
+                  !chunkedVisits.length)
+              "
+              >No results for the current search.</span
+            >
+            <span v-else
+              >No results for the selected locations before this time.</span
+            >
+          </div>
         </div>
         <div
           v-else-if="
-            (searchParams.displayMode === 'recordings' &&
+            (searchParams.displayMode ===
+              ActivitySearchDisplayMode.Recordings &&
               filteredLoadedRecordings.length) ||
-            (searchParams.displayMode === 'visits' && chunkedVisits.length)
+            (searchParams.displayMode === ActivitySearchDisplayMode.Visits &&
+              chunkedVisits.length)
           "
-          class="d-flex justify-content-center"
+          data-cy="no results"
+          class="flex-grow-1 d-flex align-items-center justify-content-center"
         >
-          <span class="text-center mb-2"
-            >No results before this time for the current search.</span
+          <div
+            class="no-results text-body-tertiary text-center d-flex flex-column"
           >
+            <material-symbol
+              name="search_off"
+              size="2.4rem"
+              grade="thin"
+              class="mb-2"
+            />
+            No results before this time for the current search.
+          </div>
         </div>
-        <div v-else class="d-flex justify-content-center">
-          <span class="text-center mb-2"
-            >No results for the current search.</span
+        <div
+          v-else
+          data-cy="no results"
+          class="flex-grow-1 d-flex align-items-center justify-content-center"
+        >
+          <div
+            class="no-results text-body-tertiary text-center d-flex flex-column"
           >
+            <material-symbol
+              name="search_off"
+              size="2.4rem"
+              grade="thin"
+              class="mb-2"
+            />
+            No results for the current search.
+          </div>
         </div>
       </div>
     </div>
     <div
-      class="map-buffer"
+      class="map-buffer d-none d-lg-flex col col-lg-3 col-xl-3 col-xxl-3"
       ref="mapBuffer"
-      :style="{ width: `${mapBufferWidth}px` }"
     ></div>
   </div>
   <map-with-points
+    ref="mapContainer"
     v-if="projectHasLocationsWithRecordings && mapWidthPx !== 0"
     :points="locationsForMap"
     :active-points="locationsInSelectedTimespanForMap"
@@ -2111,6 +2216,7 @@ onBeforeUnmount(() => {
     :fade-in="loadedRouteName === 'activity'"
     :parent-route-name="'activity'"
     @shown="() => (loadedRouteName = 'activity')"
+    @recording-updated="recordingUpdated"
     @close="closedModal"
   />
   <b-modal
@@ -2120,7 +2226,7 @@ onBeforeUnmount(() => {
     title="Exporting data"
     @hidden="() => (exportProgress = 0)"
     no-close-on-backdrop
-    hide-footer
+    no-footer
     hide-header-close
   >
     <activity-search-description
@@ -2132,14 +2238,13 @@ onBeforeUnmount(() => {
     />
     <div v-if="inVisitsMode">
       <b-progress :value="exportProgressZeroOneHundred" />
-      <span class="mt-1"
-        >{{ Math.max(0, exportTimeElapsed / 1000).toFixed(1) }} seconds
-        elapsed</span
-      >
+      <p class="mt-1 mb-0">
+        {{ Math.max(0, exportTimeElapsed / 1000).toFixed(1) }} seconds elapsed
+      </p>
     </div>
     <div class="d-flex align-content-center align-items-center" v-else>
-      <b-spinner variant="secondary" class="me-3" />
-      <span class="mt-1"
+      <b-spinner variant="secondary" small class="me-2" />
+      <span
         >{{ Math.max(0, exportTimeElapsed / 1000).toFixed(1) }} seconds
         elapsed</span
       >
@@ -2147,36 +2252,17 @@ onBeforeUnmount(() => {
   </b-modal>
 </template>
 <style lang="less" scoped>
+@import "../assets/less/breakpoints";
 .search-results-toggle {
-  top: 143px;
+  top: calc(var(--cp-grid-base) * 36); //144px
   right: 0;
-  z-index: 1021;
+  z-index: 1019;
   > .btn {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
   }
 }
-.centered-overlay {
-  height: calc(100svh - 90px);
-}
-.search-results-inner {
-  max-width: calc(100svw - 48px);
-  @media screen and (min-width: 992px) {
-    max-width: 430px;
-    width: 430px;
-  }
-  @media screen and (min-width: 1200px) {
-    max-width: 540px;
-    width: 540px;
-  }
-}
-.box {
-  background: #ccc;
-  min-height: 100px;
-}
 .map {
-  height: 400px !important;
-  position: unset;
   @media screen and (min-width: 768px) {
     position: absolute !important;
     right: 0;
@@ -2184,14 +2270,29 @@ onBeforeUnmount(() => {
     height: 100svh !important;
   }
 }
+.no-results {
+  @media (max-width: @breakpoint-xs-max) {
+    font-size: var(--cp-font-size-sm);
+  }
+}
 </style>
 <style lang="less">
-.search-controls {
-  width: 250px !important;
-  position: sticky;
-  top: 15px;
-}
-.search-controls-outer {
+.search-controls-wrapper {
+  .search-controls-scroll {
+    max-height: 100cqh;
+    overflow-y: auto;
+    position: sticky;
+    top: var(--cp-spacing-md);
+    overflow-x: hidden;
+    // add inner padding and then compensate for it so the focus style of the switch doesn't get truncated
+    padding-left: 4px;
+    padding-right: 4px;
+    margin-left: -4px;
+    margin-right: -4px;
+  }
+  .search-controls {
+    max-width: calc(var(--cp-grid-base) * 64); //256px
+  }
   .b-overlay-wrap .b-overlay {
     z-index: 1040 !important;
   }

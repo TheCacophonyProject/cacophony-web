@@ -1,4 +1,3 @@
-/* tslint:disable */
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export function __wbg_m4areadercontext_free(a: number, b: number): void;

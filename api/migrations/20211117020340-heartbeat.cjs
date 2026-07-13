@@ -1,5 +1,3 @@
-
-
 module.exports = {
   up: async function (queryInterface, Sequelize) {
     await queryInterface.addColumn("Devices", "heartbeat", Sequelize.DATE);

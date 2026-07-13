@@ -1,26 +1,27 @@
 import type { GroupId, StationId } from "@typedefs/api/common.js";
 import type { TrackId } from "@typedefs/api/common.js";
-import {
-  type RecordingProcessingState,
-  type RecordingType,
-  TagMode,
+import type {
+  RecordingProcessingState,
+  RecordingType,
 } from "@typedefs/api/consts.js";
-import type { Recording } from "@models/Recording.js";
-import { queryRecordingsInProject } from "@api/V1/recordingsBulkQueryUtil.js";
+import { Recording } from "@models/Recording.js";
 import {
   getCommonAncestorForTags,
   NON_ANIMAL_TAGS,
   UNIDENTIFIED_TAGS,
-} from "@api/V1/Visits.js";
-import modelsInit from "@models/index.js";
+} from "@api/V1/tagUtil.js";
 import { Op } from "sequelize";
-import type { TrackTag } from "@models/TrackTag.js";
-const models = await modelsInit();
+import { TrackTag } from "@models/TrackTag.js";
+import { Group } from "@models/Group.js";
+import { Track } from "@models/Track.js";
+import { User } from "@models/User.js";
+import { Station } from "@models/Station.js";
+import { TrackTagUserData } from "@models/TrackTagUserData.js";
+import { ApiTrackPosition } from "@typedefs/api/track.js";
 
 const MINUTE = 60;
 const MAX_SECS_BETWEEN_RECORDINGS = 10 * MINUTE;
 const MAX_SECS_VIDEO_LENGTH = 10 * MINUTE;
-const RECORDINGS_LIMIT = 2000;
 const MAX_MINS_AFTER_TIME = 70;
 
 export interface MonitoringPageCriteria2 {
@@ -28,11 +29,7 @@ export interface MonitoringPageCriteria2 {
   group: GroupId;
   searchFrom: Date;
   searchUntil: Date;
-  types?: (
-    | RecordingType.ThermalRaw
-    | RecordingType.TrailCamVideo
-    | RecordingType.TrailCamImage
-  )[];
+  types?: RecordingType[];
 }
 
 export async function generateVisits2(
@@ -193,7 +190,7 @@ async function getRecordings2(
   // TODO: If we got the limit, we need to cull back to the beginning of the earliest visit boundary.
   // Then the user is expected to adjust there from param to the earliest time and make another request, until
   // they exhaust the returned visits.  I guess it's possible that no visits complete in the time specified?
-  return models.Recording.findAll({
+  return Recording.findAll({
     where: {
       // NOTE: use two-pass and recording ids if we want to exclude filtered tracks
       //id: { [Op.in]: recordingIds },
@@ -209,11 +206,11 @@ async function getRecordings2(
     attributes: ["id", "recordingDateTime"],
     include: [
       {
-        model: models.Group,
+        model: Group,
         attributes: ["id", "groupName"],
       },
       {
-        model: models.Track,
+        model: Track,
         required: false,
         attributes: ["id", "startSeconds", "endSeconds"],
         where: {
@@ -225,7 +222,7 @@ async function getRecordings2(
         include: [
           {
             required: false,
-            model: models.TrackTag,
+            model: TrackTag,
             attributes: [
               "what",
               "path",
@@ -236,9 +233,9 @@ async function getRecordings2(
               "model",
             ],
             include: [
-              { model: models.User, attributes: ["userName", "id"] },
+              { model: User, attributes: ["userName", "id"] },
               {
-                model: models.TrackTagUserData,
+                model: TrackTagUserData,
                 required: false,
                 attributes: ["gender", "maturity"],
               },
@@ -253,7 +250,7 @@ async function getRecordings2(
         ],
       },
       {
-        model: models.Station,
+        model: Station,
         attributes: ["name", "id", "location"],
       },
     ],
@@ -275,11 +272,11 @@ interface VisitTrack {
   // e.g. if it was unidentified but grouped under a cat visit
   // assumedTag would be "cat"
   id: TrackId;
-  tag: string;
-  aiTag: string;
+  tag: string | null;
+  aiTag: string | null;
   isAITagged: boolean;
-  start: string;
-  end: string;
+  start: string | number;
+  end: string | number;
   mass: number; // For tie-breaking purposes with AI only visits
   userTagsConflict?: boolean;
 }
@@ -291,12 +288,12 @@ interface VisitDef {
   userTagsConflict?: boolean;
 }
 type TagName = string;
-const getBestGuessFromAi = (
+const _getBestGuessFromAi = (
   tracks: VisitTrack[],
 ): [TagName, VisitTrack[]][] => {
   return getBestGuess2(
     Object.entries(
-      tracks.reduce((acc, track) => {
+      tracks.reduce((acc: Record<string, VisitTrack[]>, track) => {
         const tag = track.aiTag;
         if (tag) {
           acc[tag] = acc[tag] || [];
@@ -395,7 +392,7 @@ const classifyCluster = (
   }
 };
 
-const recordingIsInVisit = (recording: Recording, visit: Visit2): boolean => {
+const recordingIsInVisit = (_recording: Recording, _visit: Visit2): boolean => {
   return false;
 };
 
@@ -422,7 +419,7 @@ const newVisitWithRecording = (recording: Recording): Visit2 => {
   };
 };
 
-function groupRecordingsIntoVisits2(
+function _groupRecordingsIntoVisits2(
   recordings: Recording[],
   start: Date,
   end: Date,
@@ -473,7 +470,7 @@ function groupRecordingsIntoVisits2(
 
 const getBestAiGuess = (allTracks: VisitTrack[]): [TagName, VisitTrack[]][] => {
   const tracks: VisitTrack[] = aiTracks(allTracks);
-  const counts: Record<string, VisitTrack[]> = tracks.reduce((acc, track) => {
+  const counts = tracks.reduce((acc: Record<string, VisitTrack[]>, track) => {
     const tag = track.tag;
     if (tag) {
       acc[tag] = acc[tag] || [];
@@ -485,14 +482,14 @@ const getBestAiGuess = (allTracks: VisitTrack[]): [TagName, VisitTrack[]][] => {
   return getBestGuess2(countBreakdown);
 };
 
-const getBestGuessOverall2 = (
+const _getBestGuessOverall2 = (
   allTracks: VisitTrack[],
   isAi: boolean,
 ): [TagName, VisitTrack[]][] => {
   const tracks: VisitTrack[] = isAi
     ? aiTracks(allTracks)
     : userTracks(allTracks);
-  const counts: Record<string, VisitTrack[]> = tracks.reduce((acc, track) => {
+  const counts = tracks.reduce((acc: Record<string, VisitTrack[]>, track) => {
     const tag = track.tag;
     if (tag) {
       acc[tag] = acc[tag] || [];
@@ -507,7 +504,7 @@ const getBestGuessOverall2 = (
     // We may be able to tie-break best guesses for multiple human tags that have the same ancestor.
     // Add hierarchical tag parents here, so that if a user tags a track with mustelid, and another with
     // stoat, the best guess tag will be the common ancestor.
-    const allTrackTags: any[] = [];
+    const allTrackTags: { id: number; automatic: boolean; what: string }[] = [];
     for (const track of tracks) {
       allTrackTags.push({
         id: track.id,
@@ -553,7 +550,7 @@ const getBestUserGuess = (
   allTracks: VisitTrack[],
 ): [TagName, VisitTrack[]][] => {
   const tracks: VisitTrack[] = userTracks(allTracks);
-  const counts: Record<string, VisitTrack[]> = tracks.reduce((acc, track) => {
+  const counts = tracks.reduce((acc: Record<string, VisitTrack[]>, track) => {
     const tag = track.tag;
     if (tag) {
       acc[tag] = acc[tag] || [];
@@ -568,7 +565,7 @@ const getBestUserGuess = (
     // We may be able to tie-break best guesses for multiple human tags that have the same ancestor.
     // Add hierarchical tag parents here, so that if a user tags a track with mustelid, and another with
     // stoat, the best guess tag will be the common ancestor.
-    const allTrackTags: any[] = [];
+    const allTrackTags: { id: number; automatic: boolean; what: string }[] = [];
     for (const track of tracks) {
       allTrackTags.push({
         id: track.id,
@@ -634,7 +631,10 @@ const calculateTrackTags2 = (recording: Recording): VisitRecording => {
         mass:
           (track.data &&
             track.data.positions &&
-            track.data.positions.reduce((a, { mass }) => a + (mass || 0), 0)) ||
+            (track.data.positions as ApiTrackPosition[]).reduce(
+              (a, { mass }) => a + (mass || 0),
+              0,
+            )) ||
           0,
         ...(isConflictingTag(bestTag) ? { userTagsConflict: true } : {}),
       };
@@ -646,24 +646,27 @@ const clusterRecordings = (
   recordings: Recording[],
 ): Record<StationId, Recording[][]> => {
   // Does reduce have deterministic order?
-  return recordings.reduce((acc, recording) => {
-    acc[recording.StationId] = acc[recording.StationId] || [];
-    const prevCluster = last(acc[recording.StationId]) as Recording[];
-    const prevRecording = prevCluster && last(prevCluster);
-    // We're iterating through the recordings from newest to oldest.
-    if (
-      prevRecording &&
-      (prevRecording as Recording).recordingDateTime <
-        endTimePlusVisitOffset(recording)
-    ) {
-      // Append existing cluster if recording end is less than 10 mins before the beginning of the last one.
-      prevCluster.push(recording);
-    } else {
-      // Start a new cluster
-      acc[recording.StationId].push([recording]);
-    }
-    return acc;
-  }, {});
+  return recordings.reduce(
+    (acc: Record<StationId, Recording[][]>, recording) => {
+      acc[recording.StationId] = acc[recording.StationId] || [];
+      const prevCluster = last(acc[recording.StationId]) as Recording[];
+      const prevRecording = prevCluster && last(prevCluster);
+      // We're iterating through the recordings from newest to oldest.
+      if (
+        prevRecording &&
+        (prevRecording as Recording).recordingDateTime <
+          endTimePlusVisitOffset(recording)
+      ) {
+        // Append existing cluster if recording end is less than 10 mins before the beginning of the last one.
+        prevCluster.push(recording);
+      } else {
+        // Start a new cluster
+        acc[recording.StationId].push([recording]);
+      }
+      return acc;
+    },
+    {},
+  );
 };
 
 const getCanonicalTrackTag2 = (trackTags: TrackTag[]): TrackTag | null => {
@@ -707,9 +710,9 @@ const endTime = (recording: Recording): Date => {
   end.setSeconds(end.getSeconds() + recording.duration);
   return end;
 };
-const calculateTags = (
-  visit: Visit2,
-  ai: string,
+const _calculateTags = (
+  _visit: Visit2,
+  _ai: string,
 ): { split: Visit2 } | undefined => {
   return;
 };

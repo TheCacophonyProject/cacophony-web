@@ -1,6 +1,26 @@
 import { TestGetLocation } from "@commands/api/station";
 import { getCreds, makeAuthorizedRequest, v1ApiPath } from "@commands/server";
 import { uploadFile } from "@commands/fileUpload";
+import { ApiDeviceHistorySettings } from "@shared/api/device";
+import { RecordingProcessingState } from "@typedefs/api/consts";
+
+export const addDays = (startDate: Date, days: number) => {
+  const result = new Date(startDate);
+  result.setDate(result.getDate() + days);
+  return result;
+};
+
+export const addMinutes = (startDate: Date, mins: number) => {
+  const result = new Date(startDate);
+  result.setMinutes(result.getMinutes() + mins);
+  return result;
+};
+
+export const addSeconds = (startDate: Date, secs: number) => {
+  const result = new Date(startDate);
+  result.setSeconds(result.getSeconds() + secs);
+  return result;
+};
 
 describe("Devices historic settings", () => {
   it("A user can add and retrieve a reference image for a device in a location", () => {
@@ -9,18 +29,21 @@ describe("Devices historic settings", () => {
     const user = "Casey";
     const group = "Casey-Team";
     const camera = "Casey-camera";
-    const now = new Date();
-    const oneDayAgo = new Date(new Date().setDate(now.getDate() - 1));
-    const twoDaysAgo = new Date(new Date().setDate(now.getDate() - 2));
-    cy.testCreateUserGroupAndDevice(user, group, camera);
+    const initialDateTime = new Date("2026-01-01T00:00:00Z");
+
+    const oneDayAgo = addDays(initialDateTime, -1);
+    const twoDaysAgo = addDays(initialDateTime, -2);
+    const threeDaysAgo = addDays(initialDateTime, -3);
+    cy.testCreateUserGroupAndDevice(user, group, camera, threeDaysAgo);
 
     cy.testUploadRecording(camera, {
       ...TestGetLocation(1),
       time: twoDaysAgo,
       noTracks: true,
+      processingState: RecordingProcessingState.TrackAndAnalyse,
     }).then(() => {
       let params = new URLSearchParams();
-      params.append("at-time", new Date().toISOString());
+      params.append("at-time", addMinutes(twoDaysAgo, 1).toISOString());
       params.append("type", "pov");
       let queryString = params.toString();
       const referenceImageApiUrl = v1ApiPath(
@@ -51,145 +74,76 @@ describe("Devices historic settings", () => {
             url: `${deviceSettingsApiUrl}?${queryString}`,
           },
           user,
-        ).then((response) => {
-          const settings = response.body.settings;
-          expect(settings).to.exist;
-          const referenceImagePOVExist =
-            settings.hasOwnProperty("referenceImagePOV");
-          const referenceImagePOVFileSizeExist = settings.hasOwnProperty(
-            "referenceImagePOVFileSize",
-          );
-          expect(referenceImagePOVExist).to.be.true;
-          expect(referenceImagePOVFileSizeExist).to.be.true;
+        ).then(
+          (
+            response: Cypress.Response<{
+              settings: ApiDeviceHistorySettings | null;
+            }>,
+          ) => {
+            const settings = response.body.settings;
+            expect(settings).to.exist;
+            expect((settings as ApiDeviceHistorySettings).referenceImagePOV).to
+              .exist;
+            expect(
+              (settings as ApiDeviceHistorySettings).referenceImagePOVFileSize,
+            ).to.exist;
 
-          cy.log("Set low power mode");
-          makeAuthorizedRequest(
-            {
-              method: "POST",
-              url: `${deviceSettingsApiUrl}`,
-              body: {
-                settings: {
-                  thermalRecording: {
-                    useLowPowerMode: true,
-                    updated: new Date().toISOString(),
-                  },
-                },
-              },
-            },
-            user,
-          ).then(() => {
-            cy.log("Check low power mode has been merged");
-            params = new URLSearchParams();
-            params.append("at-time", new Date().toISOString());
-            queryString = params.toString();
+            cy.log("Set low power mode");
             makeAuthorizedRequest(
               {
-                method: "GET",
-                url: `${deviceSettingsApiUrl}?${queryString}`,
+                method: "POST",
+                url: `${deviceSettingsApiUrl}`,
+                body: {
+                  settings: {
+                    thermalRecording: {
+                      useLowPowerMode: true,
+                      updated: addMinutes(twoDaysAgo, 2).toISOString(),
+                    },
+                  },
+                  fromDateTime: addMinutes(twoDaysAgo, 2).toISOString(),
+                },
               },
               user,
-            ).then((response) => {
-              const settings = response.body.settings;
-              expect(settings).to.exist;
-              const referenceImagePOVExist =
-                settings.hasOwnProperty("referenceImagePOV");
-              const referenceImagePOVFileSizeExist = settings.hasOwnProperty(
-                "referenceImagePOVFileSize",
-              );
-              const lowPowerModeSettingExist =
-                settings.hasOwnProperty("thermalRecording");
-              const lowPowerModeSettingExist2 =
-                settings.thermalRecording &&
-                settings.thermalRecording.hasOwnProperty("useLowPowerMode");
-              const syncExists = settings.hasOwnProperty("synced");
-
-              expect(referenceImagePOVExist).to.be.true;
-              expect(referenceImagePOVFileSizeExist).to.be.true;
-              expect(lowPowerModeSettingExist).to.be.true;
-              expect(lowPowerModeSettingExist2).to.be.true;
-              expect(syncExists).to.be.true;
-
-              cy.log(
-                "Upload a second recording at a different location to create a new DeviceHistory entry",
-              );
-              cy.testUploadRecording(camera, {
-                ...TestGetLocation(2),
-                time: oneDayAgo,
-                noTracks: true,
-              }).then(() => {
-                cy.log(
-                  "Make sure the settings have been cleared for the older location.",
-                );
-                params = new URLSearchParams();
-                params.append("at-time", oneDayAgo.toISOString());
-                queryString = params.toString();
-                makeAuthorizedRequest(
-                  {
-                    method: "GET",
-                    url: `${deviceSettingsApiUrl}?${queryString}`,
-                  },
-                  user,
-                ).then((response) => {
-                  const hasSettings =
-                    response.body.settings &&
-                    Object.keys(response.body.settings).length !== 0;
-                  expect(hasSettings).to.be.false;
-                });
-              });
-              cy.log("Upload a new recording 'now' in a new location");
-              cy.testUploadRecording(camera, {
-                ...TestGetLocation(3),
-                time: new Date(),
-                noTracks: true,
-              }).then(() => {
-                cy.log(
-                  "Make sure the location specific settings have been cleared for the new location, while other settings are preserved",
-                );
-                params = new URLSearchParams();
-                params.append("at-time", new Date().toISOString());
-                queryString = params.toString();
-                makeAuthorizedRequest(
-                  {
-                    method: "GET",
-                    url: `${deviceSettingsApiUrl}?${queryString}`,
-                  },
-                  user,
-                ).then((response) => {
+            ).then(() => {
+              cy.log("Check low power mode has been merged");
+              params = new URLSearchParams();
+              params.append("at-time", new Date().toISOString());
+              queryString = params.toString();
+              makeAuthorizedRequest(
+                {
+                  method: "GET",
+                  url: `${deviceSettingsApiUrl}?${queryString}`,
+                },
+                user,
+              ).then(
+                (
+                  response: Cypress.Response<{
+                    settings: ApiDeviceHistorySettings;
+                  }>,
+                ) => {
                   const settings = response.body.settings;
                   expect(settings).to.exist;
-                  const referenceImagePOVExist =
-                    settings.hasOwnProperty("referenceImagePOV");
-                  const referenceImagePOVFileSizeExist =
-                    settings.hasOwnProperty("referenceImagePOVFileSize");
-                  const lowPowerModeSettingExist =
-                    settings.hasOwnProperty("thermalRecording");
-                  const lowPowerModeSettingExist2 =
-                    settings.thermalRecording &&
-                    settings.thermalRecording.hasOwnProperty("useLowPowerMode");
-                  const syncExists = settings.hasOwnProperty("synced");
+                  expect(settings.referenceImagePOV).to.exist;
+                  expect(settings.referenceImagePOVFileSize).to.exist;
+                  expect(settings.thermalRecording).to.exist;
+                  expect(settings.thermalRecording.useLowPowerMode).to.exist;
+                  expect(settings.synced).to.exist;
 
-                  expect(referenceImagePOVExist).to.be.false;
-                  expect(referenceImagePOVFileSizeExist).to.be.false;
-                  expect(lowPowerModeSettingExist).to.be.true;
-                  expect(lowPowerModeSettingExist2).to.be.true;
-                  expect(syncExists).to.be.true;
-                  expect(settings.synced).to.be.false;
-
-                  cy.log("Sync settings with device");
-                  const confirmedSettings = { ...settings };
-                  delete confirmedSettings.synced;
-                  makeAuthorizedRequest(
-                    {
-                      method: "POST",
-                      url: deviceSettingsApiUrl,
-                      body: {
-                        settings: confirmedSettings,
-                      },
-                    },
-                    camera,
-                  ).then(() => {
+                  cy.log("Upload a new recording 'now' in a new location");
+                  cy.testUploadRecording(camera, {
+                    ...TestGetLocation(3),
+                    time: initialDateTime,
+                    noTracks: true,
+                    processingState: RecordingProcessingState.TrackAndAnalyse,
+                  }).then(() => {
+                    cy.log(
+                      "Make sure the location specific settings have been cleared for the new location, while other settings are preserved",
+                    );
                     params = new URLSearchParams();
-                    params.append("at-time", new Date().toISOString());
+                    params.append(
+                      "at-time",
+                      addMinutes(initialDateTime, 2).toISOString(),
+                    );
                     queryString = params.toString();
                     makeAuthorizedRequest(
                       {
@@ -197,69 +151,140 @@ describe("Devices historic settings", () => {
                         url: `${deviceSettingsApiUrl}?${queryString}`,
                       },
                       user,
-                    ).then((response) => {
-                      const settings = response.body.settings;
-                      expect(settings).to.exist;
-                      expect(syncExists).to.be.true;
-                      expect(settings.synced).to.be.true;
-                      cy.log(
-                        "Add new settings and ask for the latest synced settings",
-                      );
-                      makeAuthorizedRequest(
-                        {
-                          method: "POST",
-                          url: `${deviceSettingsApiUrl}`,
-                          body: {
-                            settings: {
-                              thermalRecording: {
-                                useLowPowerMode: false,
-                                updated: new Date().toISOString(),
-                              },
+                    ).then(
+                      (
+                        response: Cypress.Response<{
+                          settings: ApiDeviceHistorySettings;
+                        }>,
+                      ) => {
+                        const settings = response.body.settings;
+                        expect(settings).to.exist;
+                        expect(settings.referenceImagePOV).to.not.exist;
+                        expect(settings.referenceImagePOVFileSize).to.not.exist;
+                        expect(settings.thermalRecording).to.exist;
+                        expect(settings.thermalRecording?.useLowPowerMode).to
+                          .exist;
+                        expect(settings.synced).to.exist;
+                        expect(settings.synced).to.be.false;
+
+                        cy.log("Sync settings with device");
+                        const confirmedSettings = { ...settings };
+                        delete confirmedSettings.synced;
+                        makeAuthorizedRequest(
+                          {
+                            method: "POST",
+                            url: deviceSettingsApiUrl,
+                            body: {
+                              settings: confirmedSettings,
                             },
                           },
-                        },
-                        user,
-                      ).then(() => {
-                        params = new URLSearchParams();
-                        params.append("at-time", new Date().toISOString());
-                        queryString = params.toString();
-                        makeAuthorizedRequest(
-                          {
-                            method: "GET",
-                            url: `${deviceSettingsApiUrl}?${queryString}`,
-                          },
-                          user,
-                        ).then((response) => {
-                          const settings = response.body.settings;
-                          expect(settings).to.exist;
-                          expect(syncExists).to.be.true;
-                          expect(settings.synced).to.be.false;
-                        });
+                          camera,
+                        ).then(() => {
+                          params = new URLSearchParams();
+                          params.append(
+                            "at-time",
+                            addMinutes(initialDateTime, 3).toISOString(),
+                          );
+                          queryString = params.toString();
+                          makeAuthorizedRequest(
+                            {
+                              method: "GET",
+                              url: `${deviceSettingsApiUrl}?${queryString}`,
+                            },
+                            user,
+                          ).then(
+                            (
+                              response: Cypress.Response<{
+                                settings: ApiDeviceHistorySettings;
+                              }>,
+                            ) => {
+                              const settings = response.body.settings;
+                              expect(settings).to.exist;
+                              expect(settings.synced).to.exist;
+                              expect(settings.synced).to.be.true;
+                              cy.log(
+                                "Add new settings and ask for the latest synced settings",
+                              );
+                              makeAuthorizedRequest(
+                                {
+                                  method: "POST",
+                                  url: `${deviceSettingsApiUrl}`,
+                                  body: {
+                                    settings: {
+                                      thermalRecording: {
+                                        useLowPowerMode: false,
+                                        updated: addMinutes(
+                                          initialDateTime,
+                                          4,
+                                        ).toISOString(),
+                                      },
+                                    },
+                                  },
+                                },
+                                user,
+                              ).then(() => {
+                                params = new URLSearchParams();
+                                params.append(
+                                  "at-time",
+                                  new Date().toISOString(),
+                                );
+                                queryString = params.toString();
+                                makeAuthorizedRequest(
+                                  {
+                                    method: "GET",
+                                    url: `${deviceSettingsApiUrl}?${queryString}`,
+                                  },
+                                  user,
+                                ).then(
+                                  (
+                                    response: Cypress.Response<{
+                                      settings: ApiDeviceHistorySettings;
+                                    }>,
+                                  ) => {
+                                    const settings = response.body.settings;
+                                    expect(settings).to.exist;
+                                    expect(settings.synced).to.exist;
+                                    expect(settings.synced).to.be.false;
+                                  },
+                                );
 
-                        params = new URLSearchParams();
-                        params.append("at-time", new Date().toISOString());
-                        params.append("latest-synced", true.toString());
-                        queryString = params.toString();
-                        makeAuthorizedRequest(
-                          {
-                            method: "GET",
-                            url: `${deviceSettingsApiUrl}?${queryString}`,
-                          },
-                          user,
-                        ).then((response) => {
-                          const settings = response.body.settings;
-                          expect(settings).to.exist;
-                          expect(syncExists).to.be.true;
-                          expect(settings.synced).to.be.true;
+                                params = new URLSearchParams();
+                                params.append(
+                                  "at-time",
+                                  new Date().toISOString(),
+                                );
+                                params.append("latest-synced", true.toString());
+                                queryString = params.toString();
+                                makeAuthorizedRequest(
+                                  {
+                                    method: "GET",
+                                    url: `${deviceSettingsApiUrl}?${queryString}`,
+                                  },
+                                  user,
+                                ).then(
+                                  (
+                                    response: Cypress.Response<{
+                                      settings: ApiDeviceHistorySettings;
+                                    }>,
+                                  ) => {
+                                    const settings = response.body.settings;
+                                    expect(settings).to.exist;
+                                    expect(settings.synced).to.exist;
+                                    expect(settings.synced).to.be.true;
+                                  },
+                                );
+                              });
+                            },
+                          );
                         });
-                      });
-                    });
+                      },
+                    );
                   });
-                });
-              });
+                },
+              );
             });
-          });
-        });
+          },
+        );
       });
     });
   });

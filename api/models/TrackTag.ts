@@ -17,13 +17,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import type { TrackId, UserId } from "@typedefs/api/common.js";
-import type Sequelize from "sequelize";
-import type { ModelCommon, ModelStaticCommon } from "./index.js";
-import type { User } from "./User.js";
-import LabelPaths from "../classifications/label_paths.json" assert { type: "json" };
-import type { TrackTagUserData } from "@models/TrackTagUserData.js";
+import Sequelize, {
+  BelongsTo,
+  CreationOptional,
+  DataTypes,
+  ForeignKey,
+  NonAttribute,
+} from "sequelize";
+import { ModelStaticCommon } from "./index.js";
+import LabelPaths from "../classifications/label_paths.json" with { type: "json" };
+import { TrackTagUserData } from "@models/TrackTagUserData.js";
 export const AI_MASTER = "Master";
 export type TrackTagId = number;
+import { Track } from "@models/Track.js";
+import { User } from "@models/User.js";
 
 export interface TrackTagData {
   name: string;
@@ -33,37 +40,87 @@ export interface TrackTagData {
   userTagsConflict?: boolean;
 }
 
-export interface TrackTag extends Sequelize.Model, ModelCommon<TrackTag> {
-  isAdditionalTag: () => boolean;
-  id: TrackTagId;
-  TrackId: TrackId;
-  what: string;
-  automatic: boolean;
-  UserId: UserId;
-  User: User;
-  data?: any;
-  confidence: number;
-  model: string | null;
-  archivedAt: Date;
-  createdAt: Date;
-  updatedAt: Date;
-  path: string;
-  used: boolean;
-  TrackTagUserDatum?: TrackTagUserData;
-}
-export const additionalTags = Object.freeze([
-  "poor tracking",
-  "part",
-  "interesting",
-]);
-export const filteredTags = Object.freeze(["false-positive", "noise"]);
+export class TrackTag extends ModelStaticCommon<TrackTag> {
+  declare id: CreationOptional<TrackTagId>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
 
-export interface TrackTagStatic extends ModelStaticCommon<TrackTag> {}
-export default function (
-  sequelize: Sequelize.Sequelize,
-  DataTypes,
-): TrackTagStatic {
-  const TrackTag = sequelize.define("TrackTag", {
+  declare what: string;
+  declare confidence: number;
+  declare automatic: boolean;
+
+  declare TrackId: ForeignKey<TrackId>;
+  declare UserId?: ForeignKey<UserId>;
+
+  declare archivedAt: CreationOptional<Date>;
+  declare path: CreationOptional<string>;
+  declare used: CreationOptional<boolean>;
+  declare model: CreationOptional<string>;
+
+  declare User?: NonAttribute<User>;
+  declare Track?: NonAttribute<Track>;
+
+  declare static associations: {
+    Track: BelongsTo<Track>;
+    User: BelongsTo<User>;
+  };
+
+  TrackTagUserDatum?: NonAttribute<TrackTagUserData>;
+  data?: NonAttribute<TrackTagData>;
+
+  static additionalTags = Object.freeze([
+    "poor tracking",
+    "part",
+    "interesting",
+  ]);
+
+  static apiSettableFields = Object.freeze(["what", "confidence", "data"]);
+  static userGetAttributes = Object.freeze(
+    TrackTag.apiSettableFields.concat(["id"]),
+  );
+
+  isAdditionalTag() {
+    return TrackTag.additionalTags.includes(this.what);
+  }
+
+  static addPath(trackTag: TrackTag) {
+    if (
+      (trackTag.path === null && trackTag.what) ||
+      (trackTag.path && trackTag.what && !trackTag.path.endsWith(trackTag.what))
+    ) {
+      // All paths are lower case, and spaces are replaced with underscores. eg. all.path_name.example
+      const what = (trackTag.what as string).toLowerCase();
+      const path =
+        what in LabelPaths
+          ? (LabelPaths as Record<string, string>)[what]
+          : `all.${what.replace(" ", "_")}`;
+      this.sequelize.query(
+        `UPDATE "TrackTags"
+           SET "path" = text2ltree(:path)
+           WHERE "id" = :id`,
+        { replacements: { path, id: trackTag.id } },
+      );
+    }
+  }
+
+  static filteredTags = Object.freeze(["false-positive", "noise"]);
+
+  static addAssociations() {
+    this.belongsTo(Track);
+    this.belongsTo(User);
+    this.hasOne(TrackTagUserData);
+  }
+}
+export const init = (sequelizeInstance: Sequelize.Sequelize) => {
+  const attributes = {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE,
+
     what: DataTypes.STRING,
     path: DataTypes.STRING, // ltree path
     confidence: DataTypes.FLOAT,
@@ -78,43 +135,20 @@ export default function (
     model: {
       type: DataTypes.STRING,
       allowNull: true,
-      defaultValue: null,
+      defaultValue: null as string | null,
     },
-  }) as unknown as TrackTagStatic;
-
-  //---------------
-  // CLASS METHODS
-  //---------------
-  TrackTag.addAssociations = function (models) {
-    models.TrackTag.belongsTo(models.Track);
-    models.TrackTag.belongsTo(models.User);
   };
-
-  TrackTag.apiSettableFields = Object.freeze(["what", "confidence", "data"]);
-
-  TrackTag.userGetAttributes = Object.freeze(
-    TrackTag.apiSettableFields.concat(["id"]),
-  );
-  const addPath = (trackTag) => {
-    // All paths are lower case, and spaces are replaced with underscores. eg. all.path_name.example
-    const what = (trackTag.what as string).toLowerCase();
-    const path =
-      what in LabelPaths ? LabelPaths[what] : `all.${what.replace(" ", "_")}`;
-    sequelize.query(
-      `UPDATE "TrackTags" SET "path" = text2ltree(:path) WHERE "id" = :id`,
-      { replacements: { path, id: trackTag.id } },
-    );
-  };
-
-  TrackTag.afterUpdate("Add path", addPath);
-  TrackTag.afterCreate("Add path", addPath);
-
-  //---------------
-  // INSTANCE
-  //---------------
-
-  TrackTag.prototype.isAdditionalTag = function () {
-    return additionalTags.includes(this.what);
-  };
+  TrackTag.init(attributes, {
+    tableName: "TrackTags",
+    name: {
+      singular: "TrackTag",
+      plural: "TrackTags",
+    },
+    sequelize: sequelizeInstance,
+    hooks: {
+      afterUpdate: TrackTag.addPath,
+      afterCreate: TrackTag.addPath,
+    },
+  });
   return TrackTag;
-}
+};

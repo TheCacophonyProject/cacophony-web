@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onBeforeMount, ref, useSlots, type VNode } from "vue";
 import { useMediaQuery } from "@vueuse/core";
+import { BButton, BButtonGroup } from "bootstrap-vue-next";
 
 const selectedStep = ref(0);
 const slots = useSlots();

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SectionHeader from "@/components/SectionHeader.vue";
+import type { ComputedRef, Ref } from "vue";
 import {
   computed,
   inject,
@@ -9,31 +10,27 @@ import {
   ref,
   watch,
 } from "vue";
-import type { Ref, ComputedRef } from "vue";
-import { getAllVisitsForProject } from "@api/Monitoring";
+import { ClientApi } from "@/api";
+import type { SelectedProject } from "@models/LoggedInUser";
 import {
   showUnimplementedModal,
   urlNormalisedCurrentProjectName,
 } from "@models/LoggedInUser";
-import type { SelectedProject } from "@models/LoggedInUser";
-import type { ApiVisitResponse } from "@typedefs/api/monitoring";
 import HorizontalOverflowCarousel from "@/components/HorizontalOverflowCarousel.vue";
 import InlineViewModal from "@/components/InlineViewModal.vue";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
-import { getLocationsForProject } from "@api/Project";
 import ProjectVisitsSummary from "@/components/ProjectVisitsSummary.vue";
 import LocationVisitSummary from "@/components/LocationVisitSummary.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
-import { BSpinner } from "bootstrap-vue-next";
+import { BButton, BSpinner } from "bootstrap-vue-next";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
-import { RouterLink, useRoute, useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useMediaQuery } from "@vueuse/core";
 import {
-  classifications,
-  getClassifications,
   displayLabelForClassificationLabel,
-  getClassificationForLabel,
-} from "@api/Classifications";
+  flatClassifications,
+  getClassifications,
+} from "@api/classificationsUtils.ts";
 import TagImage from "@/components/TagImage.vue";
 import {
   activeLocations,
@@ -41,35 +38,55 @@ import {
   latLngForActiveLocations,
   userProjects,
 } from "@models/provides";
-import type { LoadedResource } from "@api/types";
-import BimodalSwitch from "@/components/BimodalSwitch.vue";
-import { canonicalLatLngForLocations } from "@/helpers/Location";
-import { sortTagPrecedence } from "@models/visitsUtils";
-import type { StationId as LocationId } from "@typedefs/api/common";
+import type { LoadedResource } from "@apiClient/types";
+import {
+  canonicalLatLngForLocations,
+  latLngApproxDistance,
+} from "@/helpers/Location";
+import {
+  sortTagPrecedence,
+  visitClassificationLabel,
+  visitClassificationLabelFromPath,
+  visitClassificationPath,
+} from "@models/visitsUtils";
+import type {
+  LatLng,
+  RecordingId,
+  StationId as LocationId,
+} from "@typedefs/api/common";
 import { DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS } from "@/consts.ts";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import { ActivitySearchDisplayMode } from "@/components/activitySearchUtils.ts";
+import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
+import type { VisitsStaticQueryResult } from "@apiClient/Monitoring.ts";
+import { recordingUpdatedInVisitsContext } from "@/helpers/patch-visits-context.ts";
 
-const selectedVisit = ref<ApiVisitResponse | null>(null);
+const selectedVisit = ref<ApiStaticVisitResponse | null>(null);
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
-const visitsContext = ref<ApiVisitResponse[] | null>(null);
+const visitsContext = ref<ApiStaticVisitResponse[] | null>(null);
 provide("currentlySelectedVisit", selectedVisit);
 provide("currentlyHighlightedLocation", currentlyHighlightedLocation);
 
-const currentVisitsFilter = ref<((visit: ApiVisitResponse) => boolean) | null>(
-  null,
-);
+const currentVisitsFilter = ref<
+  ((visit: ApiStaticVisitResponse) => boolean) | null
+>(null);
 
-const visitIsTombstoned = (visit: ApiVisitResponse): boolean => {
+const visitIsTombstoned = (visit: ApiStaticVisitResponse): boolean => {
   return visit.hasOwnProperty("tombstoned");
 };
 
+const pathForTag = (tag: string): string => {
+  return flatClassifications.value[tag]?.path || tag;
+};
+
 const currentVisitsFilterComputed = computed<
-  (visit: ApiVisitResponse) => boolean
+  (visit: ApiStaticVisitResponse) => boolean
 >(() => {
   if (currentVisitsFilter.value === null) {
     return (visit) => !visitorIsIgnored(visit) && !visitIsTombstoned(visit);
   } else {
     return (visit) =>
-      (currentVisitsFilter.value as (visit: ApiVisitResponse) => boolean)(
+      (currentVisitsFilter.value as (visit: ApiStaticVisitResponse) => boolean)(
         visit,
       ) &&
       !visitIsTombstoned(visit) &&
@@ -77,8 +94,8 @@ const currentVisitsFilterComputed = computed<
   }
 });
 
-const dashboardVisits = computed<ApiVisitResponse[]>(() => {
-  return ((visitsContext.value || []) as ApiVisitResponse[]).filter(
+const dashboardVisits = computed<ApiStaticVisitResponse[]>(() => {
+  return ((visitsContext.value || []) as ApiStaticVisitResponse[]).filter(
     (visit) => !visitorIsIgnored(visit) && !visitIsTombstoned(visit),
   );
 });
@@ -86,9 +103,9 @@ const dashboardVisits = computed<ApiVisitResponse[]>(() => {
 // TODO: Move to provides/inject
 // FIXME: Any time any visit is mutated (tags change etc, we have to recompute this,
 //  which could be very slow for a large list?
-const maybeFilteredVisitsContext = computed<ApiVisitResponse[]>(() => {
+const maybeFilteredVisitsContext = computed<ApiStaticVisitResponse[]>(() => {
   if (visitsContext.value) {
-    return (visitsContext.value as ApiVisitResponse[]).filter(
+    return (visitsContext.value as ApiStaticVisitResponse[]).filter(
       currentVisitsFilterComputed.value,
     );
   }
@@ -107,18 +124,19 @@ const ignoredTags = computed<string[]>(() => {
   return DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS;
 });
 
-const visitorIsIgnored = (visit: ApiVisitResponse): boolean => {
-  if (visit && visit.classification) {
-    if (ignoredTags.value.includes(visit.classification)) {
+const visitorIsIgnored = (visit: ApiStaticVisitResponse): boolean => {
+  const path = visitClassificationPath(visit);
+  if (path === null) {
+    return true;
+  }
+  if (path) {
+    if (ignoredTags.value.includes(visitClassificationLabelFromPath(path))) {
       return true;
     }
-    const classification = getClassificationForLabel(visit.classification);
-    if (classification && typeof classification.path === "string") {
-      const parts = classification.path.split(".");
-      for (const part of parts) {
-        if (ignoredTags.value.includes(part)) {
-          return true;
-        }
+    const parts = path.split(".");
+    for (const part of parts) {
+      if (ignoredTags.value.includes(part)) {
+        return true;
       }
     }
   }
@@ -127,16 +145,14 @@ const visitorIsIgnored = (visit: ApiVisitResponse): boolean => {
 
 const visitHasClassification =
   (tag: string) =>
-  (visit: ApiVisitResponse): boolean => {
-    return (visit &&
-      visit.classification &&
-      visit.classification === tag) as boolean;
+  (visit: ApiStaticVisitResponse): boolean => {
+    return (visitClassificationLabel(visit) === tag) as boolean;
   };
 
 const visitHasLocation =
   (location: LocationId) =>
-  (visit: ApiVisitResponse): boolean => {
-    return (visit && visit.stationId === location) as boolean;
+  (visit: ApiStaticVisitResponse): boolean => {
+    return (visit && visit.locationId === location) as boolean;
   };
 
 const recordingMode = ref<"Thermal" | "Audio">("Thermal");
@@ -162,49 +178,34 @@ const currentProject = inject(currentActiveProject) as ComputedRef<
 
 watch(
   selectedVisit,
-  (visit: ApiVisitResponse | null, prevVisit: ApiVisitResponse | null) => {
+  async (
+    visit: ApiStaticVisitResponse | null,
+    prevVisit: ApiStaticVisitResponse | null,
+  ) => {
     if (visit && !prevVisit) {
       // Set route so that modal shows up
-
-      const recordingIds = visit.recordings.map(({ recId, tracks }) => ({
-        recId,
-        tracks,
-      }));
-      const visitClassification = visit.classification || "";
-      let firstRec = visit.recordings[0];
-      let firstTrack =
-        (firstRec.tracks &&
-          firstRec.tracks.length !== 0 &&
-          firstRec.tracks[0]) ||
-        undefined;
-      if (visitClassification !== "") {
-        // Make sure we set the first recording as one that contains the visit classification.
-        const firstRecordingWithVisitClassification = visit.recordings.find(
-          (rec) =>
-            rec.tracks.some(
-              (track) =>
-                track.tag === visit.classification ||
-                (!track.tag && track.aiTag === visit.classification),
-            ),
-        );
-        if (firstRecordingWithVisitClassification) {
-          firstRec = firstRecordingWithVisitClassification;
-          firstTrack = firstRec.tracks.find(
-            (track) =>
-              track.tag === visit.classification ||
-              (!track.tag && track.aiTag === visit.classification),
-          );
-        }
-      }
+      const classificationPath = visitClassificationPath(visit);
       const params: Record<string, string> = {
-        visitLabel: visit.classification || "",
-        currentRecordingId: firstRec.recId.toString(),
-        trackId: (firstTrack && firstTrack.id.toString()) as string,
+        visitLabel:
+          visitClassificationLabelFromPath(classificationPath || "") || "none",
       };
-      if (recordingIds.length) {
-        params.recordingIds = recordingIds.map(({ recId }) => recId).join(",");
+      const recId =
+        visit.humanClassificationRecordingId ||
+        visit.aiClassificationRecordingId ||
+        visit.recordingIds[0];
+      const trackId =
+        visit.humanClassificationTrackId || visit.aiClassificationTrackId;
+      if (recId) {
+        params.currentRecordingId = recId.toString();
       }
-      router.push({
+      if (trackId) {
+        params.trackId = trackId.toString();
+      }
+      if (visit.recordingIds.length) {
+        params.recordingIds = visit.recordingIds.join(",");
+      }
+
+      await router.push({
         name: "dashboard-visit",
         params,
         query: route.query,
@@ -229,15 +230,21 @@ const visitsOrRecordings = ref<"visits" | "recordings">("visits");
 const speciesOrLocations = ref<"species" | "location">("species");
 const loadingVisitsProgress = ref<number>(0);
 
+const fromTime = computed(() => {
+  const from = new Date();
+  from.setDate(from.getDate() - timePeriodDays.value);
+  return from;
+});
+
 const locations = ref<LoadedResource<ApiLocationResponse[]>>(null);
 
 const speciesSummary = computed<Record<string, number>>(() => {
   return dashboardVisits.value.reduce(
-    (acc: Record<string, number>, currentValue: ApiVisitResponse) => {
-      if (currentValue.classification) {
-        acc[currentValue.classification] =
-          acc[currentValue.classification] || 0;
-        acc[currentValue.classification]++;
+    (acc: Record<string, number>, currentValue: ApiStaticVisitResponse) => {
+      const classification = visitClassificationLabel(currentValue);
+      if (classification) {
+        acc[classification] = acc[classification] || 0;
+        acc[classification]++;
       }
       return acc;
     },
@@ -271,15 +278,17 @@ const earliestDate = computed<Date>(() => {
 const loadVisits = async () => {
   if (currentProject.value) {
     visitsContext.value = null;
-    const allVisits = await getAllVisitsForProject(
+    visitsContext.value = await ClientApi.Visits.getAllVisitsForProject(
       (currentProject.value as SelectedProject).id,
-      timePeriodDays.value,
-      (val) => {
+      fromTime.value,
+      new Date(),
+      [],
+      10000,
+      (val: number) => {
         // TODO - Do we want to display loading progress via the UI?
         loadingVisitsProgress.value = val;
       },
     );
-    visitsContext.value = allVisits.visits;
   }
 };
 
@@ -295,16 +304,25 @@ watch(currentProject, reloadDashboard);
 const loadedRouteName = ref<string>("");
 onBeforeMount(async () => {
   loadedRouteName.value = route.name as string;
-  console.log("Loaded route name", loadedRouteName.value);
   await getClassifications();
 });
-// TODO - Use this to show which stations *could* have had recordings, but may have had no activity.
-const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
-  ApiLocationResponse[]
->(() => {
-  // const visitLocations = dashboardVisits.value.map(
-  //   (visit: ApiVisitResponse) => visit.stationId
-  // );
+
+const cacophonyHq = { lat: -43.5339514, lng: 172.6467213 };
+const locIsInCacophonyHq = (location: LatLng): boolean => {
+  return latLngApproxDistance(cacophonyHq, location) < 2000;
+};
+
+const projectIsAroundCacophonyHq = computed<boolean>(() => {
+  // All locations are around cacophony hq
+  if (validLocations.value) {
+    return validLocations.value.every(
+      ({ location }) => latLngApproxDistance(cacophonyHq, location) < 50000,
+    );
+  }
+  return false;
+});
+
+const validLocations = computed(() => {
   if (locations.value) {
     return (locations.value as ApiLocationResponse[])
       .filter(({ location }) => location.lng !== 0 && location.lat !== 0)
@@ -325,11 +343,20 @@ const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
           );
         }
       });
-    // .filter((location: ApiLocationResponse) =>
-    //   visitLocations.includes(location.id)
-    // );
   }
   return [];
+});
+
+const locationsWithOnlineOrActiveDevicesInSelectedTimeWindow = computed<
+  ApiLocationResponse[]
+>(() => {
+  // NOTE: - Use this to show which stations *could* have had recordings, but may have had no activity.
+  // const visitLocations = dashboardVisits.value.map(
+  //   (visit: ApiVisitResponse) => visit.stationId
+  // );
+  return validLocations.value.filter(({ location }) =>
+    projectIsAroundCacophonyHq.value ? true : !locIsInCacophonyHq(location),
+  );
 });
 
 provide(
@@ -344,7 +371,7 @@ const allLocations = computed<ApiLocationResponse[]>(() => {
 const loadLocations = async () => {
   if (currentProject.value) {
     locations.value = null;
-    locations.value = await getLocationsForProject(
+    locations.value = await ClientApi.Projects.getLocationsForProject(
       (currentProject.value as SelectedProject).id.toString(),
       true,
     );
@@ -360,7 +387,9 @@ provide(latLngForActiveLocations, canonicalLatLngForActiveLocations);
 
 onMounted(async () => {
   if (currentProject.value) {
+    performance.mark("Dashboard starts loading");
     await reloadDashboard(currentProject.value);
+    performance.mark("Dashboard finishes loading");
   }
   // Load visits for time period.
   // Get species summary.
@@ -430,6 +459,27 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   );
 });
 
+const recordingUpdated = async (
+  recordingId: RecordingId,
+  action: "deleted" | "updated",
+  newClassification?: string,
+  oldClassification?: string,
+) => {
+  console.log("Recording updated", recordingId, action);
+  console.assert(visitsContext.value !== null);
+  await recordingUpdatedInVisitsContext(
+    recordingId,
+    action,
+    newClassification,
+    oldClassification,
+    selectedVisit,
+    visitsContext as Ref<ApiStaticVisitResponse[]>, // TODO: Because this is potentially filtered, we might need other tests here
+    route,
+    (currentProject.value as SelectedProject).id,
+    [],
+  );
+};
+
 // TODO: When hovering a visit entry, highlight station on the map.  What's the best way to plumb this reactivity through?
 </script>
 <template>
@@ -443,10 +493,10 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       <!--        v-if="currentSelectedProjectHasAudioAndThermal"-->
       <!--      />-->
       <div
-        class="scope-filters d-flex align-items-sm-center flex-column flex-sm-row mb-3 mb-sm-0"
+        class="scope-filters d-flex align-items-sm-center flex-row mb-3 mb-sm-0"
       >
-        <div class="d-flex flex-row align-items-center justify-content-between">
-          <span>Visits&nbsp;</span>
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-secondary">Visits in the last</span>
           <!--          <select-->
           <!--            class="form-select form-select-sm text-end"-->
           <!--            v-model="visitsOrRecordings"-->
@@ -455,15 +505,17 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
           <!--            <option>recordings</option>-->
           <!--          </select>-->
         </div>
-        <div class="d-flex flex-row align-items-center justify-content-between">
-          <span> in the last </span>
+        <div class="d-flex align-items-center justify-content-between">
           <select
+            id="select-dashboard-timespan"
             class="form-select form-select-sm text-end"
             v-model="timePeriodDays"
           >
-            <option value="7">7 days</option>
             <option value="1">24 hours</option>
             <option value="3">3 days</option>
+            <option value="7">7 days</option>
+            <!--            <option value="30">30 days</option>-->
+            <!--            <option value="60">60 days</option>-->
           </select>
         </div>
         <!--        <div class="d-flex flex-row align-items-center justify-content-between">-->
@@ -483,22 +535,30 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
     Species summary
   </h2>
   <horizontal-overflow-carousel
-    class="species-summary-container mb-sm-5 mb-4"
+    class="species-summary-container mb-4 mb-sm-4 mb-md-5"
     v-if="hasVisitsForSelectedTimePeriod"
   >
-    <div class="card-group species-summary flex-sm-nowrap flex-wrap d-flex">
+    <div class="species-summary flex-sm-nowrap flex-wrap d-flex gap-2 gap-sm-0">
       <div
         v-for="[key, val] in speciesSummarySorted"
         :key="key"
-        class="d-flex flex-row species-summary-item align-items-center"
+        class="species-summary__item d-flex flex-row align-items-center gap-2 gap-sm-3"
         @click="showVisitsForTag(key)"
       >
-        <tag-image :tag="key" width="24" height="24" class="ms-sm-3 ms-1" />
         <div
-          class="d-flex justify-content-evenly flex-sm-column ms-sm-3 ms-2 pe-sm-3 pe-1 align-items-center align-items-sm-start"
+          class="species-summary__item__icon p-1 p-md-2"
+          :class="[...pathForTag(key).split('.')]"
+          :key="`d_${key}`"
         >
-          <div class="species-count pe-sm-0 pe-1 lh-sm">{{ val }}</div>
-          <div class="species-name lh-sm small text-capitalize">
+          <tag-image :tag="key" :key="`i_${key}`" width="24" height="24" />
+        </div>
+        <div
+          class="d-flex justify-content-evenly flex-sm-column align-items-center align-items-sm-start"
+        >
+          <div class="species-summary__item__count lh-sm me-1">
+            {{ val }}
+          </div>
+          <div class="species-summary__item__name lh-sm text-capitalize">
             {{ displayLabelForClassificationLabel(key) }}
           </div>
         </div>
@@ -508,10 +568,10 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
     Visits summary
   </h2>
-  <div class="d-md-flex flex-md-row">
+  <div class="row g-1 g-lg-3 mb-3 mb-sm-4 mb-md-5">
     <project-visits-summary
       v-if="!isMobileView && hasVisitsForSelectedTimePeriod"
-      class="mb-5 flex-md-fill me-md-3"
+      class="mb-3 col-12 col-lg-7 col-xl-8 order-2 order-lg-1"
       :locations="allLocations"
       :active-locations="locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
       :visits="dashboardVisits"
@@ -519,10 +579,13 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
       :loading="isLoading"
     />
     <visits-breakdown-list
+      class="col-12 col-lg-5 col-xl-4 order-1 order-lg-2"
       :visits="dashboardVisits"
       :location="canonicalLatLngForActiveLocations"
       :highlighted-location="currentlyHighlightedLocation"
-      @selected-visit="(visit: ApiVisitResponse) => (selectedVisit = visit)"
+      @selected-visit="
+        (visit: ApiStaticVisitResponse) => (selectedVisit = visit)
+      "
       @change-highlighted-location="
         (loc: LocationId | null) => (currentlyHighlightedLocation = loc)
       "
@@ -533,11 +596,11 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   </h2>
   <horizontal-overflow-carousel
     v-if="hasVisitsForSelectedTimePeriod"
-    class="mb-5"
+    class="locations-summary-wrapper mb-3 mb-lg-4"
   >
     <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
     <div
-      class="card-group species-summary flex-sm-nowrap"
+      class="species-summary d-flex gap-3 flex-sm-nowrap mb-3 mb-sm-0"
       v-if="!isLoading && hasVisitsForSelectedTimePeriod"
     >
       <location-visit-summary
@@ -557,87 +620,80 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   </horizontal-overflow-carousel>
   <div
     v-if="isLoading || !hasVisitsForSelectedTimePeriod"
-    class="d-flex justify-content-sm-center flex-fill flex-column align-items-center justify-content-end mb-5 mb-sm-0"
+    class="d-flex justify-content-sm-center flex-fill flex-column align-items-center justify-content-center mb-5 mb-sm-0"
   >
     <div v-if="isLoading">
       <b-spinner variant="secondary" />
     </div>
     <div v-else class="d-flex justify-content-center flex-column">
-      <div style="text-align: center">
-        <span
-          v-if="
-            locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.length === 0
-          "
+      <div class="text-body-tertiary text-center py-3">
+        <material-symbol
+          name="search_off"
+          size="2.4rem"
+          grade="thin"
+          class="mb-2"
+        />
+        <p>
+          <!-- TODO: cater for no locations, no devices, show different copy? -->
+          <span
+            data-cy="no results"
+            v-if="
+              locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.length ===
+              0
+            "
+          >
+            There were no active locations in the last
+            <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
+            ><span v-else>day</span> for this project.
+          </span>
+          <span v-else data-cy="no results">
+            There were no visits for any target species in any of the active
+            locations in the last
+            <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
+            ><span v-else>day</span> for this project.
+          </span>
+        </p>
+        <b-button
+          variant="outline-secondary"
+          :to="{
+            name: 'activity',
+            params: {
+              projectName: urlNormalisedCurrentProjectName,
+            },
+            query: {
+              displayMode: ActivitySearchDisplayMode.Visits,
+            },
+          }"
+          >View latest visits</b-button
         >
-          There were no active locations in the last
-          <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
-          ><span v-else>day</span> for this project.
-        </span>
-        <span v-else>
-          There were no visits for any target species in any of the active
-          locations in the last
-          <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
-          ><span v-else>day</span> for this project.
-        </span>
       </div>
-      <b-button
-        class="mt-3"
-        :to="{
-          name: 'activity',
-          params: {
-            projectName: urlNormalisedCurrentProjectName,
-          },
-        }"
-        >Take me to the latest visits for this project</b-button
-      >
     </div>
   </div>
   <inline-view-modal
     @close="selectedVisit = null"
+    @recording-updated="recordingUpdated"
     :fade-in="loadedRouteName === 'dashboard'"
     :parent-route-name="'dashboard'"
     @shown="() => (loadedRouteName = 'dashboard')"
   />
 </template>
 <style lang="less" scoped>
-@import "../assets/font-sizes.less";
-
-.group-name {
-  text-transform: uppercase;
-  color: #aaa;
-  font-family: "Roboto Medium", "Roboto Regular", Roboto, sans-serif;
-  font-weight: 500;
-  // font-size: var(--bs-body-font-size);
-  // FIXME - Use modified bs-body-font-size?
-  font-size: 14px;
-}
-h1 {
-  font-family: "Roboto Bold", "Roboto Regular", "Roboto", sans-serif;
-  font-size: 22px;
-  font-weight: 700;
-  color: #444;
-}
-h2 {
-  font-family: "Roboto Medium", "Roboto Regular", "Roboto", sans-serif;
-  font-weight: 500;
-  color: #444;
-  font-size: 17px;
-}
+@import "../assets/less/breakpoints.less";
+@import "../assets/less/typography.less";
+@import "../assets/less/elevation.less";
 .header-container {
-  @media screen and (min-width: 576px) {
+  @media screen and (min-width: @breakpoint-sm) {
     position: relative;
   }
 }
 .dashboard-scope {
-  @media screen and (min-width: 576px) {
+  @media screen and (min-width: @breakpoint-sm) {
     position: absolute;
     top: 0;
     right: 0;
   }
 }
 .scope-filters {
-  font-size: 14px;
-  color: #999;
   .form-select {
     background-color: unset;
     border: 0;
@@ -648,98 +704,111 @@ h2 {
   }
 }
 
+.dashboard-subhead {
+  margin-bottom: var(--cp-spacing-md);
+  font-size: var(--cp-font-size-h4);
+  @media screen and (max-width: @breakpoint-sm-max) {
+    margin-top: var(--cp-spacing-xs);
+  }
+}
+
 .species-summary-container {
-  @media screen and (min-width: 576px) {
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+  border-radius: var(--bs-border-radius);
+  @media screen and (min-width: @breakpoint-sm) {
     background: white;
+    .standard-shadow();
   }
 }
 
 .species-summary {
-  min-height: 68px;
   user-select: none;
-  .species-summary-item {
-    border: 1px solid #ccc;
-    // From card
-    border-radius: unset;
-    //border-width: 0;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
-    @media screen and (min-width: 576px) {
-      box-shadow: unset;
-      border-left-width: 0;
-      border-bottom-width: 0;
-      border-top-width: 0;
-      border-right-width: 1px;
-      margin: unset;
-      &:last-child {
-        border-right-width: 0;
-      }
-    }
-    //
-
-    &:nth-child(even) {
-      margin: 0 0 4px 2px;
-    }
-    &:nth-child(odd) {
-      margin: 0 2px 4px 0;
-    }
-    height: 47px;
-    @media screen and (min-width: 576px) {
-      height: unset;
-      &:nth-child(even) {
-        margin: unset;
-      }
-      &:nth-child(odd) {
-        margin: unset;
-      }
-    }
+  &__item {
+    background: var(--bs-white);
     cursor: pointer;
-    user-select: none;
-    text-decoration: none;
-    color: inherit;
-    padding: 2px;
-    width: calc(50% - 2px);
-    //min-width: 130px; // TODO @media breakpoints
-    transition: background-color 0.2s ease-in-out;
-
+    @media screen and (max-width: @breakpoint-xs-max) {
+      padding: var(--cp-spacing-xs);
+      flex: 0 0 calc(50% - calc(var(--cp-spacing-xs) / 2));
+      border-radius: var(--bs-border-radius-sm);
+      .standard-shadow();
+    }
+    @media screen and (min-width: @breakpoint-sm) {
+      padding: var(--cp-spacing-md);
+      border-right: 1px solid var(--border-color-light);
+      transition: background-color 0.2s ease-in-out;
+      flex: 1 0 auto;
+      &:last-child {
+        border-right: none;
+      }
+      //min-width: 130px; // TODO @media breakpoints
+    }
+    @media screen and (min-width: @breakpoint-xl) {
+      padding: var(--cp-spacing-lg);
+    }
     &:hover {
-      background-color: #ececec;
+      background-color: var(--bs-gray-100);
     }
-    @media screen and (min-width: 576px) {
-      //width: unset;
-      margin: unset;
-    }
-
-    .species-count {
-      font-weight: 500;
-    }
-    .species-name,
-    .species-count {
-      .fs-7();
-    }
-    @media screen and (min-width: 576px) {
-      .species-count {
-        .fs-4();
+    &__icon {
+      background: color-mix(
+        in srgb,
+        var(--cp-tag-no-priority),
+        transparent 88%
+      );
+      border-radius: var(--bs-border-radius-sm);
+      &.mustelid {
+        background: color-mix(
+          in srgb,
+          var(--cp-tag-priority-badge-1),
+          transparent 88%
+        );
       }
-      .species-name {
-        .fs-6();
+      &.possum,
+      &.cat {
+        background: color-mix(
+          in srgb,
+          var(--cp-tag-priority-badge-2),
+          transparent 88%
+        );
+      }
+      &.rodent,
+      &.hedgehog {
+        background: color-mix(
+          in srgb,
+          var(--cp-tag-priority-badge-3),
+          transparent 88%
+        );
       }
     }
-  }
-}
-
-.dashboard-subhead {
-  .fs-6();
-  @media screen and (min-width: 576px) {
-    font-size: unset;
+    &__count {
+      font-weight: var(--cp-font-weight-semilbold);
+      @media screen and (min-width: @breakpoint-sm) {
+        font-size: var(--cp-font-size-h2);
+      }
+    }
+    &__name {
+      @media screen and (min-width: @breakpoint-sm) {
+        font-size: var(--cp-font-size-lg);
+        color: var(--bs-secondary-color);
+      }
+    }
   }
 }
 </style>
 <style lang="less">
-.species-summary-item {
-  > img {
-    min-width: 24px;
-    min-height: 24px;
+@import "../assets/less/breakpoints.less";
+// make sure that the shadow of the species summary displays
+@media screen and (max-width: @breakpoint-xs-max) {
+  .species-summary-container {
+    margin: -2px -2px 0;
+    .inner {
+      padding: 2px 2px 4px;
+    }
+  }
+}
+// make sure that the shadow and hover effect of the location card displays - it won't otherwise because of the overflow hidden property
+.locations-summary-wrapper {
+  margin: -2px -2px 0;
+  .inner {
+    padding: 2px 2px 4px;
   }
 }
 </style>

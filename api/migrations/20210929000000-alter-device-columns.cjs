@@ -1,4 +1,3 @@
-
 module.exports = {
   up: async function (queryInterface, Sequelize) {
     await Promise.all([
@@ -33,7 +32,7 @@ module.exports = {
       queryInterface.removeColumn(
         "Recordings",
         "rawFileSize",
-        Sequelize.INTEGER
+        Sequelize.INTEGER,
       ),
     ]);
     await queryInterface.sequelize.query('drop type "enum_Devices_kind"');
@@ -44,7 +43,7 @@ module.exports = {
       queryInterface.addColumn(
         "Devices",
         "lastConnectionTime",
-        Sequelize.STRING
+        Sequelize.STRING,
       ),
     ]);
   },

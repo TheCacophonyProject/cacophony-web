@@ -11,6 +11,8 @@ import {
   createParser,
   SchemaGenerator,
   ts,
+  CompletedConfig,
+  DEFAULT_CONFIG,
 } from "ts-json-schema-generator";
 import fs from "fs/promises";
 import crypto from "crypto";
@@ -39,14 +41,14 @@ class IntegerFormatter implements SubTypeFormatter {
     return type instanceof IntegerType;
   }
 
-  public getDefinition(type: IntegerType): Definition {
+  public getDefinition(_type: IntegerType): Definition {
     // Return a custom schema for the function property.
     return {
       type: "integer",
     };
   }
 
-  public getChildren(type: IntegerType): BaseType[] {
+  public getChildren(_type: IntegerType): BaseType[] {
     return [];
   }
 }
@@ -56,15 +58,16 @@ class IsoFormattedDateStringFormatter implements SubTypeFormatter {
     return type instanceof IsoFormattedDateStringType;
   }
 
-  public getDefinition(type: IsoFormattedDateStringType): Definition {
+  public getDefinition(_type: IsoFormattedDateStringType): Definition {
     // Return a custom schema for the function property.
     return {
       type: "string",
-      format: "IsoFormattedDateString",
+      format: "date-time",
+      // Is it worth validating minimum and maximum dates here?
     };
   }
 
-  public getChildren(type: IsoFormattedDateStringType): BaseType[] {
+  public getChildren(_type: IsoFormattedDateStringType): BaseType[] {
     return [];
   }
 }
@@ -74,33 +77,32 @@ class FloatZeroOneFormatter implements SubTypeFormatter {
     return type instanceof FloatZeroOneType;
   }
 
-  public getDefinition(type: FloatZeroOneType): Definition {
+  public getDefinition(_type: FloatZeroOneType): Definition {
     // Return a custom schema for the function property.
     return {
       type: "number",
-      format: "FloatZeroOne",
+      minimum: 0.0,
+      maximum: 1.0,
     };
   }
 
-  public getChildren(type: FloatZeroOneType): BaseType[] {
+  public getChildren(_type: FloatZeroOneType): BaseType[] {
     return [];
   }
 }
 
 class TypeAliasParser implements SubNodeParser {
   supportsNode(node: ts.Node): boolean {
-    if (
+    return (
       node.kind === ts.SyntaxKind.TypeAliasDeclaration &&
-      (node as any).name.escapedText === "integer"
-    ) {
-      return true;
-    }
-    return false;
+      (node as unknown as { name: { escapedText: string } }).name
+        .escapedText === "integer"
+    );
   }
   createType(
-    node: ts.Node,
-    context: Context,
-    reference?: ReferenceType,
+    _node: ts.Node,
+    _context: Context,
+    _reference?: ReferenceType,
   ): BaseType {
     return new IntegerType(); // Treat constructors as strings in this example
   }
@@ -108,18 +110,16 @@ class TypeAliasParser implements SubNodeParser {
 
 class FloatZeroOneParser implements SubNodeParser {
   supportsNode(node: ts.Node): boolean {
-    if (
+    return (
       node.kind === ts.SyntaxKind.TypeAliasDeclaration &&
-      (node as any).name.escapedText === "FloatZeroToOne"
-    ) {
-      return true;
-    }
-    return false;
+      (node as unknown as { name: { escapedText: string } }).name
+        .escapedText === "FloatZeroToOne"
+    );
   }
   createType(
-    node: ts.Node,
-    context: Context,
-    reference?: ReferenceType,
+    _node: ts.Node,
+    _context: Context,
+    _reference?: ReferenceType,
   ): BaseType {
     return new FloatZeroOneType(); // Treat constructors as strings in this example
   }
@@ -127,18 +127,16 @@ class FloatZeroOneParser implements SubNodeParser {
 
 class IsoFormattedDateStringParser implements SubNodeParser {
   supportsNode(node: ts.Node): boolean {
-    if (
+    return (
       node.kind === ts.SyntaxKind.TypeAliasDeclaration &&
-      (node as any).name.escapedText === "IsoFormattedDateString"
-    ) {
-      return true;
-    }
-    return false;
+      (node as unknown as { name: { escapedText: string } }).name
+        .escapedText === "IsoFormattedDateString"
+    );
   }
   createType(
-    node: ts.Node,
-    context: Context,
-    reference?: ReferenceType,
+    _node: ts.Node,
+    _context: Context,
+    _reference?: ReferenceType,
   ): BaseType {
     return new IsoFormattedDateStringType(); // Treat constructors as strings in this example
   }
@@ -146,6 +144,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
 
 // We configure the parser an add our custom parser to it.
 (async () => {
+  console.log("Generating schemas");
   const files = await readdir("api");
 
   const schemaDefinitions = files.filter((file) => file.endsWith(".d.ts"));
@@ -153,13 +152,16 @@ class IsoFormattedDateStringParser implements SubNodeParser {
   let changes: Record<string, string> = {};
   try {
     changes = JSON.parse(await fs.readFile("../api/schema-cache.json", "utf8"));
-  } catch (e) {
-    console.log("Cache doesn't exist?", e);
+  } catch (_e) {
+    console.log("Schema cache doesn't exist., recreating all schemas.");
   }
   const updatedSchemas = [];
+  const thisFile = await fs.readFile("./build-schemas.ts", "utf8");
+  schemaDefinitions.sort((a, b) => a.localeCompare(b));
   for (const typedefFile of schemaDefinitions) {
     const file = await fs.readFile(typedefFile);
     const hash = crypto.createHash("sha1");
+    hash.update(thisFile);
     hash.update(file);
     const digest = hash.digest("hex");
     if (
@@ -168,7 +170,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
     ) {
       console.log(`Schema def ${typedefFile} changed, re-compiling`);
       changes[typedefFile] = digest;
-      const exportedNames = [];
+      const exportedNames: string[] = [];
       {
         // Use the typescript compiler to extract all the exported types:
         const program = ts.createProgram([typedefFile], {});
@@ -181,25 +183,18 @@ class IsoFormattedDateStringParser implements SubNodeParser {
             .getTypeChecker()
             .getExportsOfModule(fileSymbol);
           for (const e of exported) {
-            if (e.declarations) {
-              for (const declaration of e.declarations) {
-                if (declaration.modifiers) {
-                  for (const modifier of declaration.modifiers) {
-                    if (modifier.kind === ts.SyntaxKind.ExportKeyword) {
-                      exportedNames.push((declaration as any).name.escapedText);
-                    }
-                  }
-                }
-              }
-            }
+            exportedNames.push(e.name);
           }
         }
       }
       for (const exportedName of exportedNames) {
-        const config = {
+        const config: CompletedConfig = {
+          ...DEFAULT_CONFIG,
           path: typedefFile,
           tsconfig: "./tsconfig.json",
           type: exportedName, // Or <type-name> if you want to generate schema for that one type only
+          topRef: true,
+          additionalProperties: false,
         };
 
         // Get the exported types from each of the schema files that has changed.
@@ -230,7 +225,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
         const p = [];
         try {
           await fs.access(`../api/json-schemas`);
-        } catch (e) {
+        } catch (_e) {
           await fs.mkdir(`../api/json-schemas`);
         }
         if (subdirNames.length) {
@@ -238,7 +233,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
             p.push(subdirNames[p.length]);
             try {
               await fs.access(`../api/json-schemas/${p.join("/")}`);
-            } catch (e) {
+            } catch (_e) {
               await fs.mkdir(`../api/json-schemas/${p.join("/")}`);
             }
           }
@@ -253,7 +248,6 @@ class IsoFormattedDateStringParser implements SubNodeParser {
       }
     } else {
       changes[typedefFile] = digest;
-      //console.log(`Schema def ${typedefFile} unchanged, skipping`);
     }
   }
   if (updatedSchemas.length) {

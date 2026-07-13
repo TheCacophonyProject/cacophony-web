@@ -17,12 +17,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { expectedTypeOf, validateFields } from "../middleware.js";
-import modelsInit from "@models/index.js";
 import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction } from "express";
 import { arrayOf, jsonSchemaOf } from "../schema-validation.js";
-import ApiAlertConditionSchema from "@schemas/api/alerts/ApiAlertCondition.schema.json" assert { type: "json" };
+import ApiAlertConditionSchema from "@schemas/api/alerts/ApiAlertCondition.schema.json" with { type: "json" };
 import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredAlertById,
@@ -31,28 +30,30 @@ import {
   fetchAuthorizedRequiredStationById,
   parseJSONField,
 } from "../extract-middleware.js";
-import { anyOf, idOf, integerOfWithDefault } from "../validation-middleware.js";
+import {
+  atLeastOneOf,
+  idOf,
+  integerOfWithDefault,
+} from "../validation-middleware.js";
 import type {
   DeviceId,
   GroupId,
   Seconds,
   StationId,
+  UserId,
 } from "@typedefs/api/common.js";
 import type {
   ApiAlertCondition,
   ApiAlertResponse,
 } from "@typedefs/api/alerts.js";
-import type { Alert } from "@models/Alert.js";
+import { Alert } from "@models/Alert.js";
 import type { Request, Response } from "express";
 import { AuthorizationError } from "@api/customErrors.js";
 import logger from "@log";
 
-const models = await modelsInit();
-
 const DEFAULT_FREQUENCY = 60 * 30; //30 minutes
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiPostAlertRequestBody {
+export interface ApiPostAlertRequestBody {
   name: string;
   deviceId?: DeviceId;
   stationId?: StationId;
@@ -61,8 +62,7 @@ interface ApiPostAlertRequestBody {
   frequencySeconds?: Seconds; // Defaults to 30 minutes
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiGetAlertsResponse {
+export interface ApiGetAlertsResponse {
   Alerts: ApiAlertResponse[];
 }
 
@@ -70,8 +70,8 @@ const mapAlertResponse = (alert: Alert): ApiAlertResponse => {
   const alertScope = alert.DeviceId
     ? "device"
     : alert.StationId
-    ? "location"
-    : "project";
+      ? "location"
+      : "project";
   return {
     conditions: alert.conditions,
     frequencySeconds: alert.frequencySeconds,
@@ -124,7 +124,7 @@ export default function (app: Application, baseUrl: string) {
         .custom(jsonSchemaOf(arrayOf(ApiAlertConditionSchema))),
       body("name").exists(),
       integerOfWithDefault(body("frequencySeconds"), DEFAULT_FREQUENCY),
-      anyOf(
+      atLeastOneOf(
         idOf(body("deviceId")),
         idOf(body("stationId")),
         idOf(body("projectId")),
@@ -153,23 +153,36 @@ export default function (app: Application, baseUrl: string) {
     },
     parseJSONField(body("conditions")),
     async (request: Request, response: Response, next: NextFunction) => {
-      const alert = {
+      interface AlertCreationOptions {
+        name: string;
+        conditions: ApiAlertCondition[];
+        frequencySeconds?: Seconds;
+        UserId: UserId;
+        DeviceId?: DeviceId;
+        StationId?: StationId;
+        GroupId?: GroupId;
+      }
+
+      const alert: AlertCreationOptions = {
         name: request.body.name,
         conditions: response.locals.conditions,
         frequencySeconds: request.body.frequencySeconds,
         UserId: response.locals.requestUser.id,
+        DeviceId: null,
+        StationId: null,
+        GroupId: null,
       };
       if (response.locals.device) {
-        (alert as any).DeviceId = response.locals.device.id;
+        alert.DeviceId = response.locals.device.id;
       } else if (response.locals.station) {
-        (alert as any).StationId = response.locals.station.id;
+        alert.StationId = response.locals.station.id;
       } else if (response.locals.group) {
-        (alert as any).GroupId = response.locals.group.id;
+        alert.GroupId = response.locals.group.id;
       } else {
         return next(new AuthorizationError("Invalid alert scope"));
       }
       logger.warning("Alert %s", JSON.stringify(alert, null, "\t"));
-      const { id } = await models.Alert.create(alert);
+      const { id } = (await Alert.create(alert)) as Alert;
       return successResponse(response, "Created new Alert.", { id });
     },
   );
@@ -200,7 +213,7 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (_request: Request, response: Response) => {
       const alerts = (
-        await models.Alert.queryUserDevice(
+        await Alert.queryUserDevice(
           response.locals.device.id,
           response.locals.requestUser.id,
           null,
@@ -237,7 +250,7 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredStationById(param("stationId")),
     async (_request: Request, response: Response) => {
       const alerts = (
-        await models.Alert.queryUserStation(
+        await Alert.queryUserStation(
           response.locals.station.id,
           response.locals.requestUser.id,
           null,
@@ -274,7 +287,7 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredGroupById(param("projectId")),
     async (_request: Request, response: Response) => {
       const alerts = (
-        await models.Alert.queryUserProject(
+        await Alert.queryUserProject(
           response.locals.group.id,
           response.locals.requestUser.id,
           null,
@@ -307,12 +320,12 @@ export default function (app: Application, baseUrl: string) {
       let alerts: ApiAlertResponse[];
       if (!response.locals.viewAsSuperUser) {
         alerts = (
-          await models.Alert.findAll({
+          await Alert.findAll({
             where: { UserId: response.locals.requestUser.id },
           })
         ).map(mapAlertResponse);
       } else {
-        alerts = (await models.Alert.findAll()).map(mapAlertResponse);
+        alerts = (await Alert.findAll()).map(mapAlertResponse);
       }
       return successResponse(response, { alerts });
     },

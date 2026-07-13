@@ -33,7 +33,7 @@ module.exports = {
 
     await queryInterface.removeIndex(
       "Recordings",
-      "idx_recordings_deletedat_duration"
+      "idx_recordings_deletedat_duration",
     );
 
     await queryInterface.removeIndex("TrackTags", "idx_tracktags_archivedat");

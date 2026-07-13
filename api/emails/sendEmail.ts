@@ -7,6 +7,7 @@ import type { Recording } from "@models/Recording.js";
 import type { TrackTag } from "@models/TrackTag.js";
 import moment from "moment";
 import type { Alert } from "@models/Alert.js";
+import { urlNormaliseName } from "@/emails/htmlEmailUtils.js";
 
 export function alertBody(
   recording: Recording,
@@ -23,22 +24,22 @@ export function alertBody(
     ? `<b>${camera} has detected a ${tag.what} - ${dateTime}</b>`
     : `<b>${tag.what} detected at station ${station} - ${dateTime}</b>`;
   if (hasThumbnail) {
-    html += `<br> <a href="${config.server.recording_url_base}/${recording.id}/${tag.TrackId}">`;
+    html += `<br> <a href="${config.server.browseUrl}/${urlNormaliseName(recording.Group.groupName)}/recording/${recording.id}/tracks/${tag.TrackId}">`;
     html += `<img width="200" height ="200" src="cid:thumbnail" alt="recording thumbnail"></a><br>`;
   }
 
-  html += `<br><a href="${config.server.recording_url_base}/${recording.id}/${tag.TrackId}">View Recording</a>`;
+  html += `<br><a href="${config.server.browseUrl}/${urlNormaliseName(recording.Group.groupName)}/recording/${recording.id}/tracks/${tag.TrackId}">View Recording</a>`;
   if (station) {
-    html += `<br><br><a href="${config.server.browse_url}/groups/${recording.Group.groupName}/station/${recording.Station.name}/${recording.Station.id}/alerts/${alert.id}">Remove this alert</a>`;
+    html += `<br><br><a href="${config.server.browseUrl}/${urlNormaliseName(recording.Group.groupName)}/my-settings">Remove this alert</a>`;
   }
   html += "<br><p>Thanks,<br> Cacophony Team</p>";
 
   let text = camera
     ? `${camera} has detected a ${tag.what} - ${dateTime}\r\n`
     : `${tag.what} detected at station ${station} - ${dateTime}\r\n`;
-  text += `Go to ${config.server.recording_url_base}/${recording.id}/${tag.TrackId} to view this recording\r\n`;
+  text += `Go to ${config.server.browseUrl}/${urlNormaliseName(recording.Group.groupName)}/recording/${recording.id}/tracks/${tag.TrackId} to view this recording\r\n`;
   if (station) {
-    text += `Go to ${config.server.browse_url}/groups/${recording.Group.groupName}/station/${recording.Station.name}/${recording.Station.id}/alerts/${alert.id} to remove this alert\r\n`;
+    text += `Go to ${config.server.browseUrl}/${urlNormaliseName(recording.Group.groupName)}/my-settings to remove this alert\r\n`;
   }
   text += "Thanks, Cacophony Team";
   return [html, text];
@@ -61,9 +62,10 @@ export async function sendEmail(
       subject,
       from: config.smtpDetails.fromName,
       attachment: [{ data: html, alternative: true }],
+      bcc: [] as string[],
     };
     if (adminEmails && adminEmails.length) {
-      (messageHeaders as any).bcc = adminEmails;
+      messageHeaders.bcc = adminEmails;
     }
     const message = new Message(messageHeaders);
     for (const image of imageAttachments) {

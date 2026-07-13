@@ -9,43 +9,39 @@ import {
 import { successResponse } from "@api/V1/responseUtil.js";
 import { validateFields } from "@api/middleware.js";
 import { body, param, query } from "express-validator";
-import type { Station } from "@models/Station.js";
 import type {
   ApiCreateStationData,
   ApiStationResponse,
-  ApiStationSettings,
 } from "@typedefs/api/station.js";
 import {
   booleanOf,
   idOf,
   integerOfWithDefault,
-  stringOf,
+  optionalDateOf,
 } from "../validation-middleware.js";
 import { jsonSchemaOf } from "@api/schema-validation.js";
-import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json" assert { type: "json" };
+import ApiUpdateStationDataSchema from "@schemas/api/station/ApiUpdateStationData.schema.json" with { type: "json" };
 import { stationLocationHasChanged } from "@models/Group.js";
-import modelsInit from "@models/index.js";
-import util from "@api/V1/util.js";
-import { openS3 } from "@models/util/util.js";
-import { streamS3Object } from "@api/V1/signedUrl.js";
+import { initSequelize } from "@models/index.js";
 import { ClientError } from "@api/customErrors.js";
 import {
   latLngApproxDistance,
   MIN_STATION_SEPARATION_METERS,
 } from "@models/util/locationUtils.js";
-import { Op, QueryTypes } from "sequelize";
+import { Attributes, Op, QueryTypes, Transaction } from "sequelize";
 import { mapDeviceResponse } from "./Device.js";
-import type { Device } from "@/models/Device.js";
+import { Device } from "@/models/Device.js";
+import { Station } from "@models/Station.js";
+import { DeviceHistory } from "@models/DeviceHistory.js";
+import { Recording } from "@models/Recording.js";
 
-const models = await modelsInit();
+const sequelize = await initSequelize();
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiStationsResponseSuccess {
+export interface ApiStationsResponseSuccess {
   stations: ApiStationResponse[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface ApiStationResponseSuccess {
+export interface ApiStationResponseSuccess {
   stations: ApiStationResponse;
 }
 
@@ -54,7 +50,7 @@ export const mapStation = (station: Station): ApiStationResponse => {
     name: station.name,
     id: station.id,
     groupId: station.GroupId,
-    groupName: (station as any).Group.groupName,
+    groupName: (station.Group && station.Group.groupName) || "unknown project",
     createdAt: station.createdAt.toISOString(),
     activeAt: station.activeAt.toISOString(),
     location: station.location,
@@ -77,6 +73,14 @@ export const mapStation = (station: Station): ApiStationResponse => {
   if (station.lastThermalRecordingTime) {
     stationResponse.lastThermalRecordingTime =
       station.lastThermalRecordingTime.toISOString();
+  }
+  if (station.earliestAudioRecordingTime) {
+    stationResponse.earliestAudioRecordingTime =
+      station.earliestAudioRecordingTime.toISOString();
+  }
+  if (station.earliestThermalRecordingTime) {
+    stationResponse.earliestThermalRecordingTime =
+      station.earliestThermalRecordingTime.toISOString();
   }
   if (station.lastActiveAudioTime) {
     stationResponse.lastActiveAudioTime =
@@ -120,7 +124,7 @@ export default function (app: Application, baseUrl: string) {
       query("only-active").default(true).isBoolean().toBoolean(),
     ]),
     fetchAuthorizedRequiredStations,
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, "Got stations", {
         stations: mapStations(response.locals.stations),
       });
@@ -148,7 +152,7 @@ export default function (app: Application, baseUrl: string) {
       query("only-active").default(false).isBoolean().toBoolean(), // NOTE: Don't document this, it shouldn't be changed.
     ]),
     fetchAuthorizedRequiredStationById(param("id")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       return successResponse(response, "Got station", {
         station: mapStation(response.locals.station),
       });
@@ -193,6 +197,7 @@ export default function (app: Application, baseUrl: string) {
           INNER JOIN "GroupUsers" GU ON G."id" = GU."GroupId"
           INNER JOIN "Users" U ON U."id" = GU."UserId" AND U."id" = :userId
           WHERE R."deletedAt" IS NULL
+          AND R."recordingDateTime" is not null        
           GROUP BY R."StationId";`;
 
       const replacements = {
@@ -200,7 +205,7 @@ export default function (app: Application, baseUrl: string) {
         userId: userId,
       };
 
-      const result = await models.sequelize.query<{
+      const result = await sequelize.query<{
         StationId: number;
         count: string;
       }>(sql, {
@@ -237,10 +242,10 @@ export default function (app: Application, baseUrl: string) {
       query("view-mode").optional().equals("user"),
     ]),
     fetchAuthorizedRequiredStationById(param("id")),
-    async (request: Request, response: Response) => {
+    async (_request: Request, response: Response) => {
       const stationdId = response.locals.station.id;
 
-      const count = await models.Recording.count({
+      const count = await Recording.count({
         where: {
           StationId: stationdId,
           deletedAt: null,
@@ -251,127 +256,6 @@ export default function (app: Application, baseUrl: string) {
         count,
       });
     },
-  );
-
-  /**
-   * @api {delete} /api/v1/stations/:id/reference-photo/:fileKey Delete a reference photo for a station given a fileKey
-   * @apiName DeleteReferencePhotoForStation
-   * @apiGroup Station
-   * @apiDescription Delete a reference photo for a station by station id and photo key.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.delete(
-    `${apiUrl}/:id/reference-photo/:fileKey`,
-    extractJwtAuthorizedUser,
-    validateFields([idOf(param("id")), param("fileKey").isString()]),
-    fetchAdminAuthorizedRequiredStationById(param("id")),
-    async (request: Request, response: Response, next: NextFunction) => {
-      // Make sure the fileKey exists in the station settings.
-      let referenceImages =
-        (response.locals.station as Station).settings.referenceImages || [];
-      const fileKey = request.params.fileKey.replace(/_/g, "/");
-      if (!referenceImages.includes(fileKey)) {
-        return next(new ClientError("Reference image not found for station"));
-      }
-      const s3 = openS3();
-      await s3.deleteObject(fileKey);
-      referenceImages = referenceImages.filter(
-        (imageKey) => imageKey !== fileKey,
-      );
-      await response.locals.station.update({
-        settings: {
-          ...(response.locals.station.settings || {}),
-          referenceImages,
-        },
-      });
-      return successResponse(response, "Removed reference image from station");
-    },
-  );
-
-  /**
-   * @api {get} /api/v1/stations/:id/reference-photo/:fileKey Return a reference photo for a station given a fileKey
-   * @apiName GetReferencePhotoForStation
-   * @apiGroup Station
-   * @apiDescription Get a reference photo for a station by station id and photo key.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/:id/reference-photo/:fileKey`,
-    extractJwtAuthorizedUser,
-    validateFields([idOf(param("id")), param("fileKey").isString()]),
-    fetchAuthorizedRequiredStationById(param("id")),
-    async (request: Request, response: Response, next: NextFunction) => {
-      // Make sure the fileKey exists in the station settings.
-      const referenceImages =
-        (response.locals.station as Station).settings.referenceImages || [];
-      const fileKey = request.params.fileKey.replace(/_/g, "/");
-      if (!referenceImages.includes(fileKey)) {
-        return next(new ClientError("Reference image not found for station"));
-      }
-      await streamS3Object(
-        request,
-        response,
-        fileKey,
-        "reference-image.jpg",
-        "image/jpeg",
-        response.locals.requestUser.id,
-        response.locals.station.GroupId,
-      );
-    },
-  );
-
-  /**
-   * @api {post} /api/v1/stations/:id/reference-photo Add a reference photo to a station.
-   * @apiName AddReferencePhotoToStation
-   * @apiGroup Station
-   * @apiDescription Add a reference photo to a station by id.  Must be an admin of the group that owns this station.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiSuccess {string} fileKey Unique fileKey of the newly added reference image.
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.post(
-    `${apiUrl}/:id/reference-photo`,
-    extractJwtAuthorizedUser,
-    fetchAuthorizedRequiredStationById(param("id")),
-    util.multipartUpload(
-      "f",
-      async (
-        uploader,
-        uploadingDevice,
-        uploadingUser,
-        data,
-        keys,
-        uploadedFileDatas,
-        locals,
-      ): Promise<string> => {
-        console.assert(
-          keys.length === 1,
-          "Only expected 1 file-attachment for this end-point",
-        );
-        const key = keys[0];
-        const station = locals.station;
-        const stationSettings: ApiStationSettings = { ...station.settings };
-        stationSettings.referenceImages = [
-          ...(stationSettings.referenceImages || []),
-          key,
-        ];
-        await station.update({
-          settings: stationSettings,
-        });
-        return key;
-      },
-    ),
   );
 
   /**
@@ -430,7 +314,7 @@ export default function (app: Application, baseUrl: string) {
           : existingStation.retiredAt;
 
       const otherActiveStationsInTimeWindow = (
-        await models.Station.activeInGroupDuringTimeRange(
+        await Station.activeInGroupDuringTimeRange(
           existingStation.GroupId,
           activeAt,
           retiredAt,
@@ -532,11 +416,11 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredStationById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
-      const station = response.locals.station;
+      const station = response.locals.station as Station;
       const newName = request.body.name;
-      
+
       // Check if another active station in the group already has this name
-      const existingStation = await models.Station.findOne({
+      const existingStation = await Station.findOne({
         where: {
           GroupId: station.GroupId,
           name: newName,
@@ -556,7 +440,7 @@ export default function (app: Application, baseUrl: string) {
         );
       }
 
-      const updates: any = {
+      const updates: Partial<Attributes<Station>> = {
         name: newName,
         lastUpdatedById: response.locals.requestUser.id,
       };
@@ -570,7 +454,7 @@ export default function (app: Application, baseUrl: string) {
       }
 
       await station.update(updates);
-      
+
       return successResponse(response, "Updated station name");
     },
   );
@@ -598,46 +482,68 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAdminAuthorizedRequiredStationById(param("id")),
     async (request: Request, response: Response) => {
-      // Remove stationId from DeviceHistory entries
-      await models.DeviceHistory.update(
-        {
-          stationId: null,
-        },
-        {
-          where: {
-            stationId: Number(request.params.id),
-          },
-        },
-      );
+      const station = response.locals.station;
+      // NOTE: Due to the cascade on the StationId foreign key in the Visits table,
+      //  deleting the station will also delete all associated visits.
+
       // FIXME(ManageStationsV2): Should we reassign device history entries to another close-by station, or automatically
       //  create a new station for the entry, or should we just delete the entry?
-
       if (request.query["delete-recordings"]) {
-        // Delete this station, and mark delete recordings associated with it as deleted by this user.
-        const recordings = await models.Recording.findAll({
-          where: {
-            StationId: Number(request.params.id),
+        let deletedRecordingCount = 0;
+        await station.sequelize.transaction(
+          async (transaction: Transaction) => {
+            // Remove stationId from DeviceHistory entries
+            await DeviceHistory.update(
+              {
+                stationId: null,
+              },
+              {
+                where: {
+                  stationId: response.locals.station.id,
+                },
+                transaction,
+              },
+            );
+            // Delete this station, and mark delete recordings associated with it as deleted by this user.
+            const [affectedCount] = await Recording.update(
+              {
+                deletedAt: new Date(),
+                deletedBy: response.locals.requestUser.id,
+              },
+              {
+                where: {
+                  StationId: response.locals.station.id,
+                },
+                transaction,
+              },
+            );
+            deletedRecordingCount = affectedCount;
+            await response.locals.station.destroy({ transaction });
           },
-          attributes: ["id"],
-        });
-        const deleteRecordingPromises = [];
-        const deletionTime = new Date();
-        for (const recording of recordings) {
-          deleteRecordingPromises.push(
-            recording.update({
-              deletedAt: deletionTime,
-              deletedBy: response.locals.requestUser.id,
-            }),
-          );
-        }
-        await Promise.all(deleteRecordingPromises);
-        await response.locals.station.destroy();
+        );
+
         return successResponse(
           response,
-          `Deleted station and ${recordings.length} associated recordings`,
+          `Deleted station and ${deletedRecordingCount} associated recordings`,
         );
       } else {
-        await response.locals.station.destroy();
+        await station.sequelize.transaction(
+          async (transaction: Transaction) => {
+            // Remove stationId from DeviceHistory entries
+            await DeviceHistory.update(
+              {
+                stationId: null,
+              },
+              {
+                where: {
+                  stationId: response.locals.station.id,
+                },
+                transaction,
+              },
+            );
+            await response.locals.station.destroy({ transaction });
+          },
+        );
         return successResponse(response, "Deleted station");
       }
     },
@@ -666,146 +572,19 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("stationId")),
-      query("from").isISO8601().toDate().default(new Date()),
+      optionalDateOf(query("from")),
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
       query("only-active").optional().isBoolean().toBoolean(),
     ]),
     fetchAdminAuthorizedRequiredStationById(param("stationId")),
     async (request: Request, response: Response) => {
-      const cacophonyIndex = await models.Station.getCacophonyIndex(
+      const cacophonyIndex = await Station.getCacophonyIndex(
         response.locals.requestUser,
         response.locals.station.id,
         request.query.from as unknown as Date, // Get the current cacophony index
         request.query["window-size"] as unknown as number,
       );
       return successResponse(response, { cacophonyIndex });
-    },
-  );
-
-  /**
-   * @api {get} /api/v1/stations/:stationId/cacophony-index-bulk Get the cacophony index for a station across a give range of times frames
-   * @apiName cacophony-index-Station-bulk
-   * @apiGroup Station
-   * @apiDescription Get multiple Cacophony Index values
-   * for a given station.  These numbers are the averages of all the Cacophony Index values from a
-   * given time (defaulting to 'Now'), within the time frames specified by windowsize and steps.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiParam {Integer} station ID of the device.
-   * @apiQuery {String} [from=now] ISO8601 date string
-   * @apiQuery {Integer} [steps=7] Number of time frames to return [default=7]
-   * @apiQuery {String} [interval=days] description of each time frame size
-   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
-   * @apiSuccess {Object} #TODO
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/:stationId/cacophony-index-bulk`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      idOf(param("stationId")),
-      query("from").isISO8601().toDate().default(new Date()),
-      integerOfWithDefault(query("steps"), 7), // Default to 7 day window
-      stringOf(query("interval")).default("days"),
-      query("only-active").optional().isBoolean().toBoolean(),
-    ]),
-    fetchAdminAuthorizedRequiredStationById(param("stationId")),
-    async (request: Request, response: Response) => {
-      const cacophonyIndexBulk = await models.Station.getCacophonyIndexBulk(
-        response.locals.requestUser,
-        response.locals.station.id,
-        request.query.from as unknown as Date,
-        request.query.steps as unknown as number,
-        request.query.interval as unknown as String,
-      );
-      return successResponse(response, { cacophonyIndexBulk });
-    },
-  );
-
-  /**
-   * @api {get} /api/v1/stations/{:stationsId}/species-count Get the species breakdown for a station
-   * @apiName species-breakdown
-   * @apiGroup Station
-   * @apiDescription Get a species breakdown
-   * for a given station, showing the proportion of recordings that are of each species.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiParam {Integer} stationId ID of the device.
-   * @apiQuery {String} [from=now] ISO8601 date string
-   * @apiQuery {Integer} [window-size=2160] length of window in hours going backwards in time from the `from` param.  Default is 2160 (90 days)
-   * @apiQuery {Boolean} [type=audio] Type of recording to use.  Default is audio
-   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
-   * @apiSuccess {Object} #TODO
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/:stationId/species-count`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      idOf(param("stationId")),
-      query("from").isISO8601().toDate().default(new Date()),
-      integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
-      query("type").optional().isString().default("audio"),
-      query("only-active").optional().isBoolean().toBoolean(),
-    ]),
-    fetchAdminAuthorizedRequiredStationById(param("stationId")),
-    async function (request: Request, response: Response) {
-      const speciesCount = await models.Station.getSpeciesCount(
-        response.locals.requestUser,
-        response.locals.station.id,
-        request.query.from as unknown as Date, // Get the current cacophony index
-        request.query["window-size"] as unknown as number,
-        request.query.type as unknown as string,
-      );
-      return successResponse(response, { speciesCount });
-    },
-  );
-
-  /**
-   * @api {get} /api/v1/stations/{:stationId}/species-count-bulk Get the species breakdown for a station across a given range of time frames
-   * @apiName species-count-Station-bulk
-   * @apiGroup Station
-   * @apiDescription Get a species count
-   * for a given station, showing the count of recordings that are of each species across a give range of time frames
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiParam {Integer} stationId ID of the device.
-   * @apiQuery {String} [from=now] ISO8601 date string
-   * @apiQuery {Integer} [steps=7] Number of time frames to return [default=7]
-   * @apiQuery {String} [interval=days] description of each time frame size
-   * @apiQuery {Boolean} [type=audio] Type of recording to use.  Default is audio
-   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
-   * @apiSuccess {Object} #TODO
-   * @apiUse V1ResponseSuccess
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/:stationId/species-count-bulk`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      idOf(param("stationId")),
-      query("from").isISO8601().toDate().default(new Date()),
-      integerOfWithDefault(query("steps"), 7), // Default to 7 day window
-      stringOf(query("interval")).default("days"),
-      query("type").optional().isString().default("audio"),
-      query("only-active").optional().isBoolean().toBoolean(),
-    ]),
-    fetchAdminAuthorizedRequiredStationById(param("stationId")),
-    async function (request: Request, response: Response) {
-      const speciesCountBulk = await models.Station.getSpeciesCountBulk(
-        response.locals.requestUser,
-        response.locals.station.id,
-        request.query.from as unknown as Date,
-        request.query.steps as unknown as number,
-        request.query.interval as unknown as String,
-        request.query.type as unknown as string,
-      );
-      return successResponse(response, { speciesCountBulk });
     },
   );
 
@@ -861,7 +640,7 @@ export default function (app: Application, baseUrl: string) {
           AND latest."stationId" = :stationId
       `;
 
-      const devicesRaw = await models.sequelize.query(sql, {
+      const devicesRaw = await sequelize.query(sql, {
         replacements: {
           stationId: station.id,
           groupId: station.GroupId,
@@ -869,7 +648,7 @@ export default function (app: Application, baseUrl: string) {
         type: QueryTypes.SELECT,
         mapToModel: true,
         // mapToModel requires we pass the model: Device
-        model: models.Device,
+        model: Device,
       });
 
       // Now `devicesRaw` is an array of Device instances

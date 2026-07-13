@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { BModal } from "bootstrap-vue-next";
+import { BBadge, BModal } from "bootstrap-vue-next";
 import {
   currentSelectedProject,
   showSwitchProject,
@@ -15,24 +15,20 @@ import {
   type Ref,
   watch,
 } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { type RouteLocationRaw, useRoute, useRouter } from "vue-router";
 import { urlNormaliseName } from "@/utils";
 import { currentUser as currentUserInfo } from "@models/provides.ts";
 import { userProjects as currentUserProjects } from "@models/provides.ts";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import { DateTime } from "luxon";
 import Multiselect from "@vueform/multiselect";
-import type { LoadedResource } from "@api/types.ts";
-import { getAllProjects } from "@api/Project.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
-import {
-  list as listUsers,
-  superUserGetProjectsForUserByEmail,
-} from "@api/User.ts";
 import type { DeviceId, UserId } from "@typedefs/api/common";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
-import { getActiveDevicesForCurrentUser } from "@api/Device.ts";
 import DeviceName from "@/components/DeviceName.vue";
+import { ClientApi } from "@/api";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const router = useRouter();
 const currentRoute = useRoute();
@@ -43,7 +39,7 @@ interface MultiSelectElement extends Multiselect {
   $el: HTMLElement;
 }
 
-const nextRoute = (projectName: string) => {
+const nextRoute = (projectName: string): RouteLocationRaw => {
   const newRoute = {
     ...currentRoute,
     name: "dashboard",
@@ -54,7 +50,7 @@ const nextRoute = (projectName: string) => {
   };
   delete (newRoute as never)["path"];
   delete (newRoute as never)["fullPath"];
-  return newRoute;
+  return newRoute as unknown as RouteLocationRaw;
 };
 const currentProjectName = computed<string>(() => {
   return (
@@ -121,7 +117,7 @@ const allProjectsInternal = ref<LoadedResource<ApiProjectResponse[]>>(null);
 const loadAllProjects = async () => {
   if (allProjectsInternal.value === null) {
     // Load projects
-    const response = await getAllProjects(false);
+    const response = await ClientApi.Projects.getAllProjects(false);
     if (response.success) {
       allProjectsInternal.value = response.result.groups;
     }
@@ -241,31 +237,35 @@ const devicesList = ref<LoadedResource<ApiDeviceResponse[]>>(null);
 const userToFilterProjects = ref<UserId | null>(null);
 const deviceToFilterProjects = ref<DeviceId | null>(null);
 const filterUser = computed(() =>
-  (usersList.value || []).find((user) => user.id === userToFilterProjects.value),
+  (usersList.value || []).find(
+    (user) => user.id === userToFilterProjects.value,
+  ),
 );
 const loadAllUsers = async () => {
-  const response = await listUsers();
+  const response = await ClientApi.Users.list();
   if (response.success) {
-    usersList.value = response.result.usersList.sort((a, b) => {
-      const ua = a.userName.toLowerCase();
-      const ub = b.userName.toLowerCase();
-      if (ua > ub) {
-        return 1;
-      } else if (ua === ub) {
-        const uae = a.email.toLowerCase();
-        const ube = b.email.toLowerCase();
-        if (uae > ube) {
+    usersList.value = response.result.usersList
+      .filter((u) => !!u.email)
+      .sort((a, b) => {
+        const ua = a.userName.toLowerCase();
+        const ub = b.userName.toLowerCase();
+        if (ua > ub) {
           return 1;
+        } else if (ua === ub) {
+          const uae = a.email.toLowerCase();
+          const ube = b.email.toLowerCase();
+          if (uae > ube) {
+            return 1;
+          }
         }
-      }
-      return -1;
-    });
+        return -1;
+      });
     return usersList.value;
   }
   return [];
 };
 const loadAllDevices = async () => {
-  const devices = await getActiveDevicesForCurrentUser();
+  const devices = await ClientApi.Devices.getActiveDevicesForCurrentUser();
   if (devices) {
     devicesList.value = devices;
   } else {
@@ -277,21 +277,21 @@ const filterUserProjects = ref<ApiProjectResponse[] | null>(null);
 watch(userToFilterProjects, (userId) => {
   if (userId) {
     if (filterUser.value) {
-      superUserGetProjectsForUserByEmail(filterUser.value.email).then(
-        (projects) => {
-          if (projects) {
-            filterUserProjects.value = projects as ApiProjectResponse[];
-            if (
-              selectedProjectName.value &&
-              !filterUserProjects.value.some(
-                (project) => project.groupName === selectedProjectName.value,
-              )
-            ) {
-              selectedProjectName.value = "";
-            }
+      ClientApi.Users.superUserGetProjectsForUserByEmail(
+        filterUser.value.email,
+      ).then((projects) => {
+        if (projects) {
+          filterUserProjects.value = projects as ApiProjectResponse[];
+          if (
+            selectedProjectName.value &&
+            !filterUserProjects.value.some(
+              (project) => project.groupName === selectedProjectName.value,
+            )
+          ) {
+            selectedProjectName.value = "";
           }
-        },
-      );
+        }
+      });
     }
   } else {
     filterUserProjects.value = null;
@@ -303,7 +303,7 @@ watch(userToFilterProjects, (userId) => {
     title="Switch project"
     v-model="showSwitchProject.visible"
     centered
-    hide-footer
+    no-footer
     @hidden="showSwitchProject.enabled = false"
   >
     <div
@@ -311,7 +311,7 @@ watch(userToFilterProjects, (userId) => {
       class="super-user-overrides"
     >
       <div class="mb-3">
-        Go to any project
+        <label class="mb-2">Go to any project</label>
         <multiselect
           placeholder="Select a project"
           value-prop="groupName"
@@ -327,9 +327,10 @@ watch(userToFilterProjects, (userId) => {
         >
           <template #option="{ option }: { option: ProjectListOption }">
             <span class="d-flex justify-content-between w-100">
-              <span>
-                <span
-                  >{{ option.groupName }} ({{
+              <span class="d-flex align-items-center">
+                <span class="fw-medium">{{ option.groupName }}</span>
+                <span class="ms-1"
+                  >({{
                     lastActiveRelativeToNow(option.latestRecordingTime)
                   }})</span
                 >
@@ -339,61 +340,61 @@ watch(userToFilterProjects, (userId) => {
                   >(selected)</span
                 >
               </span>
-              <span>
-                <font-awesome-icon
-                  color="#999"
-                  icon="camera"
+              <span class="d-flex align-items-center">
+                <material-symbol
+                  name="videocam"
+                  size="1.125rem"
+                  class="text-secondary ms-1"
                   v-if="option.lastThermalRecordingTime"
-                  class="ms-1"
                 />
-                <font-awesome-icon
-                  color="#999"
-                  icon="music"
+                <material-symbol
+                  name="music_note"
+                  size="1.125rem"
+                  class="text-secondary ms-1"
                   v-if="option.lastAudioRecordingTime"
-                  class="ms-1"
                 />
-                <font-awesome-icon
-                  color="#999"
-                  icon="question"
+                <material-symbol
+                  name="question_mark"
+                  size="1.125rem"
+                  class="text-secondary ms-1"
                   v-if="
                     !option.lastAudioRecordingTime &&
                     !option.lastThermalRecordingTime
                   "
-                  class="ms-1"
                 />
               </span>
             </span>
           </template>
           <template #singlelabel="{ value }: { value: ProjectListOption }">
-            <span class="w-100 px-3">
+            <span class="w-100 px-3 d-flex align-items-center">
               <span>
-                <span
-                  >{{ value.groupName }} ({{
-                    lastActiveRelativeToNow(value.latestRecordingTime)
-                  }})</span
-                >
+                <span class="fw-medium">{{ value.groupName }}</span>
+                (<span>{{
+                  lastActiveRelativeToNow(value.latestRecordingTime)
+                }}</span
+                >)
               </span>
-              <span>
-                <font-awesome-icon
-                  color="#999"
-                  icon="camera"
+              <span class="d-flex align-items-center">
+                <material-symbol
+                  name="videocam"
+                  size="1.125rem"
+                  class="text-secondary ms-2"
                   v-if="value.lastThermalRecordingTime"
-                  class="ms-1"
                 />
-                <font-awesome-icon
-                  color="#999"
-                  icon="music"
+                <material-symbol
+                  name="music_note"
+                  size="1.125rem"
+                  class="text-secondary ms-2"
                   v-if="value.lastAudioRecordingTime"
-                  class="ms-1"
                 />
-                <font-awesome-icon
-                  color="#999"
-                  icon="question"
+                <material-symbol
+                  name="question_mark"
+                  size="1.125rem"
+                  class="text-secondary ms-2"
                   v-if="
                     !value.lastAudioRecordingTime &&
                     !value.lastThermalRecordingTime
                   "
-                  class="ms-1"
                 />
               </span>
             </span>
@@ -401,7 +402,7 @@ watch(userToFilterProjects, (userId) => {
         </multiselect>
       </div>
       <div class="mb-3">
-        Filter to projects for user
+        <label class="mb-2">Filter to projects for user</label>
         <multiselect
           placeholder="Select a user"
           value-prop="id"
@@ -416,21 +417,21 @@ watch(userToFilterProjects, (userId) => {
           @close="disableUserSearch"
         >
           <template #option="{ option }: { option: ApiLoggedInUserResponse }">
-            <span>{{ option.userName }}</span
-            >&nbsp;<span>({{ option.email }})</span>
+            <span class="fw-medium">{{ option.userName }}</span>
+            <span class="ms-1">({{ option.email }})</span>
           </template>
           <template
             #singlelabel="{ value }: { value: ApiLoggedInUserResponse }"
           >
             <span class="w-100 px-3">
-              <span>{{ value.userName }}</span
-              >&nbsp;<span>({{ value.email }})</span>
+              <span class="fw-medium">{{ value.userName }}</span>
+              <span class="ms-1">({{ value.email }})</span>
             </span>
           </template>
         </multiselect>
       </div>
       <div class="mb-3">
-        Go to project containing device
+        <label class="mb-2">Go to project containing device</label>
         <multiselect
           placeholder="Select a device"
           value-prop="id"
@@ -456,7 +457,9 @@ watch(userToFilterProjects, (userId) => {
       </div>
     </div>
     <div class="list-group" v-if="sortedUserProjects">
-      <p v-if="currentUser.globalPermission !== 'off'">My projects</p>
+      <p v-if="currentUser.globalPermission !== 'off'" class="mb-2">
+        My projects
+      </p>
       <router-link
         :class="[
           'list-group-item',
@@ -474,41 +477,44 @@ watch(userToFilterProjects, (userId) => {
           index
         ) in sortedUserProjects"
         :key="id"
-        :cy-data="urlNormaliseName(groupName)"
+        :data-cy="urlNormaliseName(groupName)"
         :to="nextRoute(groupName)"
         :aria-disabled="groupName === currentProjectName"
         :tabindex="groupName === currentProjectName ? -1 : index"
         @click="showSwitchProject.visible = false"
       >
-        <span class="d-flex justify-content-between">
+        <span class="d-flex justify-content-between align-items-center">
           <span>
-            <span
-              >{{ groupName }} ({{
-                lastActiveRelativeToNow(latestRecordingTime)
-              }})</span
+            <span class="fw-medium">{{ groupName }}</span>
+            <span class="ms-1"
+              >({{ lastActiveRelativeToNow(latestRecordingTime) }})</span
             >
-            <span v-if="groupName === currentProjectName" class="ms-1"
-              >(selected)</span
+            <b-badge
+              v-if="groupName === currentProjectName"
+              class="ms-1"
+              variant="dark"
             >
+              Selected
+            </b-badge>
           </span>
-          <span>
-            <font-awesome-icon
-              color="#999"
-              icon="camera"
+          <span class="d-flex align-items-center">
+            <material-symbol
+              name="videocam"
+              size="1.125rem"
+              class="text-secondary ms-2"
               v-if="lastThermalRecordingTime"
-              class="ms-1"
             />
-            <font-awesome-icon
-              color="#999"
-              icon="music"
+            <material-symbol
+              name="music_note"
+              size="1.125rem"
+              class="text-secondary ms-2"
               v-if="lastAudioRecordingTime"
-              class="ms-1"
             />
-            <font-awesome-icon
-              color="#999"
-              icon="question"
+            <material-symbol
+              name="question_mark"
+              size="1.125rem"
+              class="text-secondary ms-2"
               v-if="!lastAudioRecordingTime && !lastThermalRecordingTime"
-              class="ms-1"
             />
           </span>
         </span>

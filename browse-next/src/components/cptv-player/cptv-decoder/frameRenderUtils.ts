@@ -110,7 +110,6 @@ export const formatHeaderInfo = (header: CptvHeader | null): string | null => {
       minValue,
       maxValue,
     } = header;
-    console.log(header);
     const headerInfo: Record<
       string,
       string | boolean | number | Record<string, number | string>

@@ -1,17 +1,24 @@
 <script setup lang="ts">
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import { computed, type ComputedRef, inject, ref, watch } from "vue";
-import { addRecordingLabel, removeRecordingLabel } from "@api/Recording";
-import type { SelectedProject } from "@models/LoggedInUser";
-import { CurrentUser, showUnimplementedModal } from "@models/LoggedInUser";
+import { ClientApi } from "@/api";
+import type { LoggedInUser, SelectedProject } from "@models/LoggedInUser";
+import { showUnimplementedModal } from "@models/LoggedInUser";
 import type { ApiRecordingTagResponse } from "@typedefs/api/tag";
 import type { TagId } from "@typedefs/api/common";
-import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import { RecordingType } from "@typedefs/api/consts.ts";
-import { currentSelectedProject } from "@models/provides.ts";
+import { currentSelectedProject, currentUser } from "@models/provides.ts";
 import type { ApiLoggedInUserResponse } from "@typedefs/api/user";
-import type { LoadedResource } from "@api/types.ts";
-import TwoStepActionButtonPopover from "@/components/TwoStepActionButtonPopover.vue";
+import type { LoadedResource } from "@apiClient/types.ts";
+import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
+import {
+  BButton,
+  BDropdown,
+  BDropdownDivider,
+  BDropdownItemButton,
+  BTooltip,
+} from "bootstrap-vue-next";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 
 const props = withDefaults(
   defineProps<{
@@ -24,13 +31,11 @@ const props = withDefaults(
 const currentProject = inject(currentSelectedProject) as ComputedRef<
   SelectedProject | false
 >;
+const CurrentUser = inject(currentUser) as ComputedRef<LoggedInUser | null>;
 
-const currentRecordingType = computed<"cptv" | "image" | "audio">(() => {
+const currentRecordingType = computed<"cptv" | "audio">(() => {
   if (props.recording) {
     switch (props.recording.type) {
-      case RecordingType.TrailCamVideo:
-      case RecordingType.TrailCamImage:
-        return "image";
       case RecordingType.ThermalRaw:
         return "cptv";
       case RecordingType.Audio:
@@ -55,7 +60,10 @@ const removingLabelInProgress = ref<boolean>(false);
 const addLabel = async (label: string) => {
   if (props.recording) {
     addingLabelInProgress.value = true;
-    const addLabelResponse = await addRecordingLabel(props.recording.id, label);
+    const addLabelResponse = await ClientApi.Recordings.addRecordingLabel(
+      props.recording.id,
+      label,
+    );
     if (addLabelResponse.success) {
       // Emit tag change event, patch upstream recording.
       if (CurrentUser.value) {
@@ -80,10 +88,11 @@ const removeLabel = async (label: string) => {
     );
     if (labelToRemove) {
       removingLabelInProgress.value = true;
-      const removeLabelResponse = await removeRecordingLabel(
-        props.recording.id,
-        labelToRemove.id,
-      );
+      const removeLabelResponse =
+        await ClientApi.Recordings.removeRecordingLabel(
+          props.recording.id,
+          labelToRemove.id,
+        );
       if (removeLabelResponse.success) {
         emit("removed-recording-label", labelToRemove.id);
       }
@@ -144,86 +153,98 @@ const notImplemented = () => {
 </script>
 <template>
   <div
-    class="recording-icons d-flex justify-content-between px-sm-2 align-items-center"
+    class="recording-icons d-flex align-items-center gap-2 mt-lg-2"
     :class="props.classes || []"
   >
     <button
       type="button"
-      class="btn btn-square btn-hi"
+      class="btn btn-icon d-flex align-items-center"
+      id="flag"
+      aria-label="Flag record"
       :disabled="
         !recordingReady || addingLabelInProgress || removingLabelInProgress
       "
       @click.prevent="() => flagRecording()"
     >
-      <font-awesome-icon
-        :icon="recordingIsFlagged ? ['fas', 'flag'] : ['far', 'flag']"
-        :color="recordingIsFlagged ? '#ad0707' : '#666'"
+      <material-symbol
+        name="flag"
+        size="1.25rem"
+        :style="recordingIsFlagged ? `color:#ad0707` : ''"
+        :filled="recordingIsFlagged"
       />
     </button>
+    <b-tooltip target="flag"> Flag </b-tooltip>
     <button
       type="button"
-      class="btn btn-square btn-hi"
+      class="btn btn-icon d-flex align-items-center"
+      id="star"
+      aria-label="Star record"
       :disabled="
         !recordingReady || addingLabelInProgress || removingLabelInProgress
       "
       @click.prevent="() => starRecording()"
     >
-      <font-awesome-icon
-        :icon="recordingIsStarred ? ['fas', 'star'] : ['far', 'star']"
-        :color="recordingIsStarred ? 'goldenrod' : '#666'"
+      <material-symbol
+        name="star"
+        size="1.25rem"
+        :style="recordingIsStarred ? `color:goldenrod` : ''"
+        :filled="recordingIsStarred"
       />
     </button>
+    <b-tooltip target="star"> Star </b-tooltip>
     <b-dropdown
-      no-flip
       dropup
       auto-close
       no-caret
-      :center="true"
-      offset="7"
-      variant="link"
-      toggle-class="dropdown-btn btn-square btn-hi"
-      menu-class="dropdown-indicator"
+      center
+      variant="light"
+      id="export"
+      aria-label="Download recording"
+      toggle-class="dropdown-btn btn-icon"
       v-if="currentRecordingType === 'cptv'"
+      strategy="fixed"
     >
       <template #button-content>
-        <font-awesome-icon icon="download" color="#666" />
+        <material-symbol
+          class="d-flex align-items-center justify-content-center"
+          name="download"
+          size="1.25rem"
+        />
       </template>
       <b-dropdown-item-button @click="() => emit('requested-export')">
-        <font-awesome-icon :icon="['far', 'file-video']" />
         Export Video
       </b-dropdown-item-button>
       <b-dropdown-item-button @click="() => emit('requested-advanced-export')">
-        <font-awesome-icon :icon="['far', 'file-video']" />
         Export Video (Advanced)
       </b-dropdown-item-button>
       <b-dropdown-divider />
       <b-dropdown-item-button @click="() => emit('requested-download')">
-        <font-awesome-icon :icon="['far', 'file']" />
-        Download CPTV
+        Download CPTV File
       </b-dropdown-item-button>
     </b-dropdown>
     <button
-      v-else-if="
-        currentRecordingType === 'image' || currentRecordingType === 'audio'
-      "
+      v-else-if="currentRecordingType === 'audio'"
       type="button"
-      class="btn btn-square btn-hi"
+      class="btn btn-icon d-flex align-items-center"
+      id="export"
+      aria-label="Download recording"
       :disabled="!recordingReady"
       @click="() => emit('requested-download')"
     >
-      <font-awesome-icon icon="download" color="#666" />
+      <material-symbol name="download" size="1.25rem" />
     </button>
-    <two-step-action-button-popover
-      :icon="['fas', 'trash-can']"
-      :confirmation-label="'Delete recording'"
-      :classes="['btn-hi', 'btn', 'btn-square', 'p-0']"
-      color="#666"
+    <b-tooltip target="export"> Download </b-tooltip>
+    <two-step-action-button
+      icon="delete"
+      tooltip-label="Delete"
+      aria-label="Delete recording"
+      data-cy="delete recording"
+      confirmation-label="Delete recording"
       :action="() => emit('delete-recording')"
-      :placement="'top'"
+      placement="top"
       v-if="userIsGroupAdmin"
-      :boundary-padding="false"
     >
-    </two-step-action-button-popover>
+    </two-step-action-button>
     <!--    <button-->
     <!--      type="button"-->
     <!--      class="btn btn-square btn-hi"-->
@@ -234,48 +255,4 @@ const notImplemented = () => {
     <!--    </button>-->
   </div>
 </template>
-<style lang="less">
-.dropdown-indicator {
-  position: relative;
-  &::after {
-    content: "";
-    position: absolute;
-    width: 0;
-    height: 0;
-    display: block;
-    bottom: -9px;
-    border-left: 10px solid transparent;
-    border-right: 10px solid transparent;
-    border-top: 10px solid white;
-    left: calc(50% - 10px);
-  }
-  &::before {
-    content: "";
-    position: absolute;
-    width: 0;
-    height: 0;
-    display: block;
-    bottom: -10.5px;
-    border-left: 10.5px solid transparent;
-    border-right: 10.5px solid transparent;
-    border-top: 10.5px solid var(--bs-dropdown-border-color);
-    left: calc(50% - 10.25px);
-  }
-}
-</style>
-<style scoped lang="less">
-.recording-icons {
-  color: #666;
-}
-
-@media screen and (max-width: 320px) {
-  .optional-button {
-    display: none;
-  }
-}
-@media screen and (min-width: 1041px) {
-  .recording-icons {
-    margin-top: 0.5rem;
-  }
-}
-</style>
+<style scoped lang="less"></style>

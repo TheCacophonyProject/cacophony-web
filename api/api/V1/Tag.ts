@@ -18,22 +18,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import { expectedTypeOf, validateFields } from "../middleware.js";
 import { body } from "express-validator";
-import modelsInit from "@models/index.js";
 import { successResponse } from "./responseUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
 import {
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredFlatRecordingById,
-  fetchAuthorizedRequiredLimitedRecordingById,
   parseJSONField,
 } from "../extract-middleware.js";
 import { idOf } from "../validation-middleware.js";
 import { jsonSchemaOf } from "../schema-validation.js";
-import ApiRecordingTagRequest from "@schemas/api/tag/ApiRecordingTagRequest.schema.json" assert { type: "json" };
+import ApiRecordingTagRequest from "@schemas/api/tag/ApiRecordingTagRequest.schema.json" with { type: "json" };
 import { ClientError } from "@api/customErrors.js";
 import { addTag } from "@api/V1/recordingUtil.js";
+import { Tag } from "@models/Tag.js";
 
-const models = await modelsInit();
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/tags`;
 
@@ -78,7 +76,6 @@ export default function (app: Application, baseUrl: string) {
     // Not anyone with only public access
     async function (request: Request, response: Response) {
       const tagInstance = await addTag(
-        models,
         response.locals.requestUser,
         response.locals.recording.id,
         request.body.tag,
@@ -107,10 +104,11 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([idOf(body("tagId"))]),
     async (request: Request, response: Response, next: NextFunction) => {
-      const tag = await models.Tag.findByPk(request.body.tagId);
+      const tag = await Tag.findByPk(request.body.tagId);
       if (tag) {
         response.locals.tag = tag;
-        await fetchAuthorizedRequiredFlatRecordingById(tag.recordingId)(
+        // NOTE: Fetch the associated recording to make sure the calling user has access to this tag
+        await fetchAuthorizedRequiredFlatRecordingById(tag.RecordingId)(
           request,
           response,
           next,

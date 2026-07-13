@@ -13,27 +13,45 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import Sequelize from "sequelize";
-import type { ModelCommon, ModelStaticCommon } from "./index.js";
-import type { GroupId, UserId } from "@typedefs/api/common.js";
+import Sequelize, {
+  BelongsTo,
+  CreationOptional,
+  DataTypes,
+  ForeignKey,
+  NonAttribute,
+} from "sequelize";
+import { ModelStaticCommon } from "./index.js";
+import type {
+  GroupId,
+  GroupInvitationId,
+  UserId,
+} from "@typedefs/api/common.js";
+import { Group } from "@models/Group.js";
 
-export interface GroupInvites
-  extends Sequelize.Model,
-    ModelCommon<GroupInvites> {
-  GroupId: GroupId;
-  email: string;
-  createdAt: Date;
-  invitedBy: UserId;
-  owner: boolean;
-  admin: boolean;
+export class GroupInvites extends ModelStaticCommon<GroupInvites> {
+  declare id: CreationOptional<GroupInvitationId>;
+  declare createdAt: CreationOptional<Date>;
+  declare email: string;
+  declare invitedBy: ForeignKey<UserId>;
+  declare GroupId: ForeignKey<GroupId>;
+  declare owner: CreationOptional<boolean>;
+  declare admin: CreationOptional<boolean>;
+  declare Group?: NonAttribute<Group>;
+  declare static associations: {
+    Group: BelongsTo<Group>;
+  };
+  static addAssociations() {
+    this.belongsTo(Group);
+  }
 }
 
-export interface GroupInvitesStatic extends ModelStaticCommon<GroupInvites> {}
-
-export default function (sequelize: Sequelize.Sequelize): GroupInvitesStatic {
-  const name = "GroupInvites";
-
+export const init = (sequelizeInstance: Sequelize.Sequelize) => {
   const attributes = {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
     email: {
       type: Sequelize.STRING,
       allowNull: false,
@@ -58,19 +76,15 @@ export default function (sequelize: Sequelize.Sequelize): GroupInvitesStatic {
       defaultValue: false,
     },
   };
-
-  const GroupInvites = sequelize.define(name, attributes, {
+  GroupInvites.init(attributes, {
+    tableName: "GroupInvites",
+    name: {
+      singular: "GroupInvite",
+      plural: "GroupInvites",
+    },
+    sequelize: sequelizeInstance,
     freezeTableName: true,
-    createdAt: true, // Don't create createdAt
     updatedAt: false, // Don't create updatedAt
-  }) as unknown as GroupInvitesStatic;
-
-  //---------------
-  // CLASS METHODS
-  //---------------
-  GroupInvites.addAssociations = function (models) {
-    models.GroupInvites.belongsTo(models.Group);
-  };
-
+  });
   return GroupInvites;
-}
+};

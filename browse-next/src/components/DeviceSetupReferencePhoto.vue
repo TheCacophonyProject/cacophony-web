@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { type Ref } from "vue";
 import { computed, inject, nextTick, ref, watch } from "vue";
-import { updateReferenceImageForDeviceAtCurrentLocation } from "@api/Device";
+import { ClientApi } from "@/api";
 import { selectedProjectDevices } from "@models/provides";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { useRoute } from "vue-router";
@@ -10,7 +10,10 @@ import type { DeviceId } from "@typedefs/api/common";
 import { drawSkewedImage } from "@/components/skew-image";
 import { useElementSize } from "@vueuse/core";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import type { LoadedResource } from "@api/types.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
+import SectionCard from "@/components/SectionCard.vue";
+import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import { BAlert, BFormGroup, BFormInput, BSpinner } from "bootstrap-vue-next";
 
 /**
  * Converts an ImageData object to a WebP Blob.
@@ -50,6 +53,7 @@ const emit = defineEmits<{
   (e: "updated-reference-image"): void;
 }>();
 
+// TODO: The whole skew thing might be much simpler with a webgl quad
 const skewContainer = ref<HTMLDivElement>();
 const overlayOpacity = ref<string>("1.0");
 const cptvFrameScale = ref<string>("1.0");
@@ -98,13 +102,13 @@ const editExistingReferenceImage = async () => {
     typeof latestReferenceImageURL.value === "string"
   ) {
     try {
-      await nextTick();
       editingReferenceImage.value = true;
+      await nextTick();
       const resp = await fetch(latestReferenceImageURL.value);
       const blob = await resp.blob();
       referenceImage.value = await createImageBitmap(blob);
-      positionHandles();
       renderSkewedImage();
+      positionHandles();
     } catch (e) {
       console.error("Failed to load existing reference image to edit:", e);
     }
@@ -115,12 +119,13 @@ const onSelectReferenceImage = async (event: Event) => {
   if (event && event.target && (event.target as HTMLInputElement).files) {
     await nextTick();
     editingReferenceImage.value = true;
+    await nextTick();
     const files = (event.target as HTMLInputElement).files as FileList;
     const file = files[0];
     referenceImage.value = await createImageBitmap(file);
-    positionHandles();
-    renderSkewedImage();
     await nextTick();
+    renderSkewedImage();
+    positionHandles();
   }
 };
 
@@ -371,11 +376,24 @@ watch(singleFrameCanvasWidth, () => {
         .parentElement as HTMLDivElement
     ).getBoundingClientRect();
 
-    const sfLeft = singleFrameBounds.left - singleFrameParentBounds.left;
-    const sfTop = singleFrameBounds.top - singleFrameParentBounds.top;
-    const sfRight = sfLeft + singleFrameBounds.width;
-    const sfBottom = sfTop + singleFrameBounds.height;
+    const sfLeft =
+      (singleFrameBounds.left - singleFrameParentBounds.left) /
+      singleFrameParentBounds.width;
+    const sfTop =
+      (singleFrameBounds.top - singleFrameParentBounds.top) /
+      singleFrameParentBounds.height;
+    const sfRight =
+      (singleFrameBounds.left -
+        singleFrameParentBounds.left +
+        singleFrameBounds.width) /
+      singleFrameParentBounds.width;
+    const sfBottom =
+      (singleFrameBounds.top -
+        singleFrameParentBounds.top +
+        singleFrameBounds.height) /
+      singleFrameParentBounds.height;
 
+    // Skew canvas container div
     const parentBounds = (
       handle0.value.parentElement as HTMLDivElement
     ).getBoundingClientRect();
@@ -388,9 +406,9 @@ watch(singleFrameCanvasWidth, () => {
     ]) {
       const h = handle as HTMLDivElement;
       const { left: handleX, top: handleY, width } = h.getBoundingClientRect();
-      const dim = width / 2;
-      let x = handleX - parentBounds.left;
-      let y = handleY - parentBounds.top;
+      const dim = width / 2 / parentBounds.width;
+      let x = (handleX - parentBounds.left) / parentBounds.width;
+      let y = (handleY - parentBounds.top) / parentBounds.height;
 
       if (h === handle0.value) {
         x = Math.min(x, sfLeft - dim);
@@ -405,12 +423,15 @@ watch(singleFrameCanvasWidth, () => {
         x = Math.min(x, sfLeft - dim);
         y = Math.max(y, sfBottom - dim);
       }
-      h.style.left = `${x}px`;
-      h.style.top = `${y}px`;
+      // Maybe make this a percentage?
+      h.style.left = `${x * 100}%`;
+      h.style.top = `${y * 100}%`;
     }
   }
   renderSkewedImage();
 });
+
+// Re-render when the scale slider is moved.
 watch(cptvFrameScale, renderSkewedImage);
 
 const referenceImageIsLandscape = computed<boolean>(() => {
@@ -474,17 +495,19 @@ const moveRevealHandle = (event: PointerEvent) => {
     const target = revealHandle.value;
     const parentBounds = target.parentElement!.getBoundingClientRect();
     const handleBounds = target.getBoundingClientRect();
-    const x = Math.min(
-      Math.max(
-        -(handleBounds.width / 2),
+    const halfHandleWidth = handleBounds.width / 2;
+    const x = Math.max(
+      0,
+      Math.min(
         event.clientX - parentBounds.left - revealGrabOffsetX,
+        parentBounds.width,
       ),
-      parentBounds.width - handleBounds.width / 2,
     );
+    const left = (x / parentBounds.width) * 100;
     if (revealSlider.value) {
-      revealSlider.value.style.width = `${x + handleBounds.width / 2}px`;
+      revealSlider.value.style.width = `${left}%`;
     }
-    target.style.left = `${x}px`;
+    target.style.left = `calc(${left}% - ${halfHandleWidth}px)`;
   }
 };
 
@@ -535,9 +558,10 @@ const saveReferenceImage = async () => {
   renderSkewedImage();
 
   const webp = await convertImageDataToWebP(imageData);
-  const response = await updateReferenceImageForDeviceAtCurrentLocation(
+  const ab = await webp.arrayBuffer();
+  const response = await ClientApi.Devices.addReferenceImageForDeviceAtTime(
     device.value!.id,
-    webp,
+    ab,
   );
   if (response.success) {
     // Create a local blob URL to show the updated image immediately
@@ -554,104 +578,113 @@ const helpInfo = ref(true);
 </script>
 
 <template>
-  <div class="d-flex flex-row justify-content-between">
-    <div class="w-100 d-flex justify-content-center align-items-center">
-      <!-- LOADING SPINNER -->
-      <div
-        v-if="loading"
-        class="d-flex justify-content-center align-items-center"
-        style="min-width: 640px; min-height: 400px"
-      >
-        <b-spinner />
-      </div>
+  <div class="d-flex flex-column flex-fill">
+    <!-- LOADING SPINNER -->
+    <div
+      v-if="loading"
+      class="d-flex flex-fill justify-content-center align-items-center"
+    >
+      <b-spinner />
+    </div>
+
+    <section-card v-else>
+      <template #header-title> Reference photo </template>
+      <p>
+        A reference photo allows you to make sense of a scene captured by a
+        thermal camera. Use the Cacophony Sidekick mobile app to take a photo,
+        and adjust it to match the thermal view.
+      </p>
+      <p class="mb-4">
+        Reference photos can be toggled on and off while viewing the thermal
+        videos. This makes it easier to view where bushes or trees are, and
+        helps understand why animals suddenly appear of disappear from the
+        video.
+      </p>
 
       <!-- NO REFERENCE IMAGE YET -->
-      <div
-        class="d-flex justify-content-center align-items-center align-items-lg-start justify-content-lg-start flex-column reference-image"
-        v-else-if="!latestReferenceImageURL"
-      >
-        <b-alert dismissible v-model="helpInfo">
-          <p>
-            Sometimes it’s hard to make sense of a scene captured by a thermal
-            camera. Try taking or selecting a
-            <strong>reference photo</strong>—for example, using the Sidekick
-            mobile app—then adjust it to match the thermal view.
-          </p>
-          <p>
-            This makes it easier to remember where bushes or trees
-            are—especially helpful when an animal suddenly appears from them!
-          </p>
-        </b-alert>
-
-        <div
-          class="d-flex justify-content-center align-items-center position-relative skew-container mt-3"
-          ref="skewContainer"
+      <div v-if="!latestReferenceImageURL">
+        <b-alert
+          :model-value="!!referenceImage"
+          variant="light"
+          :no-animation="true"
+          class="mb-4"
         >
-          <cptv-single-frame
-            :recording="latestStatusRecording"
-            v-if="latestStatusRecording"
-            :width="cptvFrameWidth"
-            :height="cptvFrameHeight"
-            ref="singleFrameCanvas"
-            @loaded="handleSingleFrameLoaded"
-          />
-          <input
-            type="file"
-            class="form-control select-reference-image"
-            @change="onSelectReferenceImage"
-            v-if="!referenceImage"
-            accept="image/png, image/jpeg, image/heif"
-          />
-          <div class="skew-canvas" v-show="referenceImage">
-            <canvas
-              ref="referenceImageSkew"
-              width="1280"
-              height="960"
-              class="skew-canvas"
-            />
-            <div
-              class="handle"
-              ref="handle0"
-              @touchstart="(e) => e.preventDefault()"
-              @pointerdown="grabHandle"
-              @pointerup="releaseHandle"
-              @pointermove="moveHandle"
-            />
-            <div
-              class="handle"
-              ref="handle1"
-              @touchstart="(e) => e.preventDefault()"
-              @pointerdown="grabHandle"
-              @pointerup="releaseHandle"
-              @pointermove="moveHandle"
-            />
-            <div
-              class="handle"
-              ref="handle2"
-              @touchstart="(e) => e.preventDefault()"
-              @pointerdown="grabHandle"
-              @pointerup="releaseHandle"
-              @pointermove="moveHandle"
-            />
-            <div
-              class="handle"
-              ref="handle3"
-              @touchstart="(e) => e.preventDefault()"
-              @pointerdown="grabHandle"
-              @pointerup="releaseHandle"
-              @pointermove="moveHandle"
-            />
+          <div class="d-flex">
+            <material-symbol name="info" class="me-2" size="1.25rem" />
+            <div>
+              Drag the circles at the corners of the reference image to skew it
+              and adjust its position.
+            </div>
           </div>
-        </div>
+        </b-alert>
+        <div class="row">
+          <div class="col col-12 col-lg-9">
+            <div
+              class="d-flex justify-content-center align-items-center position-relative skew-container"
+              ref="skewContainer"
+            >
+              <cptv-single-frame
+                :recording="latestStatusRecording"
+                v-if="latestStatusRecording"
+                :width="cptvFrameWidth"
+                :height="cptvFrameHeight"
+                ref="singleFrameCanvas"
+                @loaded="handleSingleFrameLoaded"
+              />
+              <input
+                type="file"
+                class="form-control select-reference-image"
+                data-cy="select reference image"
+                @change="onSelectReferenceImage"
+                v-if="!referenceImage"
+                accept="image/png, image/jpeg, image/heif"
+              />
+              <div class="skew-canvas" v-show="referenceImage">
+                <canvas
+                  ref="referenceImageSkew"
+                  width="1280"
+                  height="960"
+                  class="skew-canvas"
+                />
+                <div
+                  class="handle"
+                  ref="handle0"
+                  @touchstart="(e) => e.preventDefault()"
+                  @pointerdown="grabHandle"
+                  @pointerup="releaseHandle"
+                  @pointermove="moveHandle"
+                />
+                <div
+                  class="handle"
+                  ref="handle1"
+                  @touchstart="(e) => e.preventDefault()"
+                  @pointerdown="grabHandle"
+                  @pointerup="releaseHandle"
+                  @pointermove="moveHandle"
+                />
+                <div
+                  class="handle"
+                  ref="handle2"
+                  @touchstart="(e) => e.preventDefault()"
+                  @pointerdown="grabHandle"
+                  @pointerup="releaseHandle"
+                  @pointermove="moveHandle"
+                />
+                <div
+                  class="handle"
+                  ref="handle3"
+                  @touchstart="(e) => e.preventDefault()"
+                  @pointerdown="grabHandle"
+                  @pointerup="releaseHandle"
+                  @pointermove="moveHandle"
+                />
+              </div>
+            </div>
+          </div>
 
-        <div class="d-flex align-items-center mt-3">
-          <div
-            v-if="referenceImage"
-            class="d-flex justify-content-between align-items-center"
-          >
-            <div class="me-5">
-              <div>
-                <label for="opacity">Reference image opacity</label>
+          <div class="col col-12 col-lg-3 mt-3 mt-lg-0">
+            <div v-if="referenceImage">
+              <b-form-group label="Reference image opacity" label-for="opacity">
                 <b-form-input
                   id="opacity"
                   type="range"
@@ -660,34 +693,42 @@ const helpInfo = ref(true);
                   step="0.01"
                   v-model="overlayOpacity"
                 />
-              </div>
-              <div>
-                <label for="opacity">Location view scale</label>
+              </b-form-group>
+
+              <b-form-group
+                label="Location view scale"
+                label-for="scale"
+                class="mt-1"
+              >
                 <b-form-input
-                  id="opacity"
+                  id="scale"
                   type="range"
                   min="0.75"
                   max="1"
                   step="0.01"
                   v-model="cptvFrameScale"
                 />
+              </b-form-group>
+              <div
+                class="d-flex flex-row gap-2 flex-lg-column flex-xl-row justify-content-between mt-3"
+              >
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  @click="() => (referenceImage = null)"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  @click="saveReferenceImage"
+                  data-cy="save reference image"
+                >
+                  Save
+                  <span class="d-xl-none d-xxl-inline-block"> image </span>
+                </button>
               </div>
-            </div>
-            <div class="d-flex flex-column">
-              <button
-                type="button"
-                class="btn btn-outline-warning"
-                @click="() => (referenceImage = null)"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                class="btn btn-secondary mt-2"
-                @click="saveReferenceImage"
-              >
-                Save reference image
-              </button>
             </div>
           </div>
         </div>
@@ -696,185 +737,219 @@ const helpInfo = ref(true);
       <!-- REFERENCE IMAGE EXISTS -->
       <div v-else>
         <!-- EDIT MODE for existing reference image -->
-        <div
-          v-if="editingReferenceImage"
-          class="d-flex justify-content-center align-items-center align-items-lg-start justify-content-lg-start flex-column reference-image"
+        <b-alert
+          :model-value="editingReferenceImage"
+          variant="light"
+          :no-animation="true"
+          class="mb-4"
         >
-          <div
-            class="d-flex justify-content-center align-items-center position-relative skew-container mt-3"
-            ref="skewContainer"
-          >
-            <cptv-single-frame
-              :recording="latestStatusRecording"
-              v-if="latestStatusRecording"
-              :width="cptvFrameWidth"
-              :height="cptvFrameHeight"
-              ref="singleFrameCanvas"
-              @loaded="(el) => (singleFrame = el)"
-            />
-
-            <!-- Same canvas + handles as above -->
-            <div class="skew-canvas" v-if="referenceImage">
-              <canvas
-                ref="referenceImageSkew"
-                width="1280"
-                height="960"
-                class="skew-canvas"
-              />
-              <div
-                class="handle"
-                ref="handle0"
-                @touchstart="(e) => e.preventDefault()"
-                @pointerdown="grabHandle"
-                @pointerup="releaseHandle"
-                @pointermove="moveHandle"
-              />
-              <div
-                class="handle"
-                ref="handle1"
-                @touchstart="(e) => e.preventDefault()"
-                @pointerdown="grabHandle"
-                @pointerup="releaseHandle"
-                @pointermove="moveHandle"
-              />
-              <div
-                class="handle"
-                ref="handle2"
-                @touchstart="(e) => e.preventDefault()"
-                @pointerdown="grabHandle"
-                @pointerup="releaseHandle"
-                @pointermove="moveHandle"
-              />
-              <div
-                class="handle"
-                ref="handle3"
-                @touchstart="(e) => e.preventDefault()"
-                @pointerdown="grabHandle"
-                @pointerup="releaseHandle"
-                @pointermove="moveHandle"
-              />
+          <div class="d-flex">
+            <material-symbol name="info" class="me-2" size="1.25rem" />
+            <div>
+              Drag the circles at the corners of the reference image to skew it
+              and adjust its position.
             </div>
           </div>
-          <div class="d-flex align-items-center mt-3">
-            <div class="d-flex justify-content-between align-items-center">
-              <div class="me-5">
-                <div>
-                  <label for="opacity">Reference image opacity</label>
-                  <b-form-input
-                    id="opacity"
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
-                    v-model="overlayOpacity"
+        </b-alert>
+
+        <div class="row" v-if="editingReferenceImage">
+          <div class="col col-12 col-lg-9">
+            <div
+              class="d-flex justify-content-center align-items-center align-items-lg-start justify-content-lg-start flex-column reference-image"
+            >
+              <div
+                class="d-flex justify-content-center align-items-center position-relative skew-container"
+                ref="skewContainer"
+              >
+                <cptv-single-frame
+                  :recording="latestStatusRecording"
+                  v-if="latestStatusRecording"
+                  :width="cptvFrameWidth"
+                  :height="cptvFrameHeight"
+                  ref="singleFrameCanvas"
+                  @loaded="(el) => (singleFrame = el)"
+                />
+
+                <!-- Same canvas + handles as above -->
+                <div class="skew-canvas" v-if="referenceImage">
+                  <canvas
+                    ref="referenceImageSkew"
+                    width="1280"
+                    height="960"
+                    class="skew-canvas"
                   />
-                </div>
-                <div>
-                  <label for="opacity">Location view scale</label>
-                  <b-form-input
-                    id="opacity"
-                    type="range"
-                    min="0.75"
-                    max="1"
-                    step="0.01"
-                    v-model="cptvFrameScale"
+                  <div
+                    class="handle"
+                    ref="handle0"
+                    @touchstart="(e) => e.preventDefault()"
+                    @pointerdown="grabHandle"
+                    @pointerup="releaseHandle"
+                    @pointermove="moveHandle"
+                  />
+                  <div
+                    class="handle"
+                    ref="handle1"
+                    @touchstart="(e) => e.preventDefault()"
+                    @pointerdown="grabHandle"
+                    @pointerup="releaseHandle"
+                    @pointermove="moveHandle"
+                  />
+                  <div
+                    class="handle"
+                    ref="handle2"
+                    @touchstart="(e) => e.preventDefault()"
+                    @pointerdown="grabHandle"
+                    @pointerup="releaseHandle"
+                    @pointermove="moveHandle"
+                  />
+                  <div
+                    class="handle"
+                    ref="handle3"
+                    @touchstart="(e) => e.preventDefault()"
+                    @pointerdown="grabHandle"
+                    @pointerup="releaseHandle"
+                    @pointermove="moveHandle"
                   />
                 </div>
               </div>
-              <div class="d-flex flex-column">
-                <button
-                  type="button"
-                  class="btn btn-outline-warning"
-                  @click="() => (editingReferenceImage = false)"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-secondary mt-2"
-                  @click="saveReferenceImage"
-                >
-                  Save reference image
-                </button>
-              </div>
+            </div>
+          </div>
+
+          <div class="col col-12 col-lg-3 mt-3 mt-lg-0">
+            <b-form-group label="Reference image opacity" label-for="opacity">
+              <b-form-input
+                id="opacity"
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                v-model="overlayOpacity"
+              />
+            </b-form-group>
+
+            <b-form-group
+              label="Location view scale"
+              label-for="scale"
+              class="mt-1"
+            >
+              <b-form-input
+                id="scale"
+                type="range"
+                min="0.75"
+                max="1"
+                step="0.01"
+                v-model="cptvFrameScale"
+              />
+            </b-form-group>
+            <div
+              class="d-flex flex-row gap-2 flex-lg-column flex-xl-row justify-content-between mt-3"
+            >
+              <button
+                type="button"
+                class="btn btn-secondary"
+                @click="() => (editingReferenceImage = false)"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary"
+                @click="saveReferenceImage"
+              >
+                Save
+                <span class="d-xl-none d-xxl-inline-block"> image </span>
+              </button>
             </div>
           </div>
         </div>
 
         <!-- REVEAL SLIDER MODE (default) -->
-        <div
-          v-else
-          class="d-flex justify-content-center align-items-center flex-column mt-2 mt-lg-0"
-        >
-          <div class="position-relative">
-            <div class="existing-reference-image position-relative">
-              <cptv-single-frame
-                :recording="latestStatusRecording"
-                v-if="latestStatusRecording"
-                ref="singleFrameCanvas"
-                class="position-absolute"
-                @loaded="handleSingleFrameLoaded"
-              />
-              <div class="reveal-slider position-absolute" ref="revealSlider">
-                <img
-                  alt="Current device point-of-view reference photo"
-                  :src="latestReferenceImageURL"
-                />
-              </div>
-            </div>
-            <div
-              class="reveal-handle d-flex align-items-center justify-content-center user-select-none"
-              ref="revealHandle"
-              @pointerdown="grabRevealHandle"
-              @touchstart="(e) => e.preventDefault()"
-            >
-              <font-awesome-icon icon="left-right" />
-            </div>
-          </div>
-        </div>
-        <input
-          ref="fileInputRef"
-          type="file"
-          style="display: none"
-          @change="onSelectReferenceImage"
-          accept="image/png, image/jpeg, image/heif"
-        />
-        <div class="d-flex flex-column align-items-md-center mt-3">
-          <div class="d-flex flex-wrap gap-2">
+        <div v-else class="row">
+          <div class="col-12 d-flex gap-3 mb-4">
             <button
               type="button"
-              class="btn btn-primary"
+              class="btn btn-primary d-flex justify-content-center"
+              data-cy="add new reference image"
               @click="replaceExistingReferenceImage"
             >
-              Choose a new reference image
+              <material-symbol
+                name="add"
+                size="1.25rem"
+                class="me-2"
+              ></material-symbol>
+              Add new reference image
             </button>
             <button
               v-if="!editingReferenceImage"
               type="button"
-              class="btn btn-secondary"
+              data-cy="edit existing reference image"
+              class="btn btn-outline-secondary d-flex justify-content-center"
               @click="editExistingReferenceImage"
             >
-              Edit reference image POV
+              <material-symbol
+                name="edit"
+                size="1.25rem"
+                class="me-2"
+              ></material-symbol>
+              Edit reference image
             </button>
           </div>
+          <div class="col col-12 col-lg-9">
+            <div class="position-relative">
+              <div class="existing-reference-image position-relative">
+                <cptv-single-frame
+                  :recording="latestStatusRecording"
+                  v-if="latestStatusRecording"
+                  ref="singleFrameCanvas"
+                  class="position-absolute"
+                  @loaded="handleSingleFrameLoaded"
+                />
+                <div
+                  class="reveal-slider position-absolute top-0 bottom-0 left-0 right-0"
+                  ref="revealSlider"
+                >
+                  <img
+                    alt="Current device point-of-view reference photo"
+                    :src="latestReferenceImageURL"
+                  />
+                </div>
+              </div>
+              <div
+                class="reveal-handle d-flex align-items-center justify-content-center user-select-none"
+                ref="revealHandle"
+                @pointerdown="grabRevealHandle"
+                @touchstart="(e) => e.preventDefault()"
+              >
+                <material-symbol name="arrow_range" size="2rem" />
+              </div>
+            </div>
+            <input
+              ref="fileInputRef"
+              type="file"
+              style="display: none"
+              @change="onSelectReferenceImage"
+              accept="image/png, image/jpeg, image/heif"
+            />
+          </div>
+
+          <div class="col col-12 col-lg-3 mt-3 mt-lg-0"></div>
         </div>
       </div>
-    </div>
+    </section-card>
   </div>
 </template>
 
 <style scoped lang="less">
-.reference-image {
+/*.reference-image {
   max-width: 640px;
-}
+}*/
 
 @media screen and (min-width: 640px) {
   .existing-reference-image {
-    width: 640px;
-    height: 480px;
+    width: 100%;
+    aspect-ratio: auto 4/3;
     img {
-      width: 640px;
-      height: 480px;
+      height: 100%;
       aspect-ratio: auto 4/3;
     }
   }
@@ -882,37 +957,35 @@ const helpInfo = ref(true);
 
 @media screen and (max-width: 639px) {
   .existing-reference-image {
-    width: 100svw;
+    width: calc(100svw - 56px);
     aspect-ratio: auto 4/3;
     img {
-      width: 100svw;
+      height: 100%;
       aspect-ratio: auto 4/3;
     }
   }
 }
 
 .skew-container {
-  width: 640px;
+  width: 100%;
   aspect-ratio: auto 4/3;
   background: #333;
-  border-radius: 10px;
 }
 
 .skew-canvas {
   position: absolute;
   left: 0;
   top: 0;
-  width: 640px;
+  width: 100%;
   aspect-ratio: auto 4/3;
-  border-radius: 10px;
   z-index: 1;
 }
-@media screen and (max-width: 639px) {
+/*@media screen and (max-width: 639px) {
   .skew-container,
   .skew-canvas {
     width: 100svw;
   }
-}
+}*/
 
 .handle {
   border-radius: 12px;
@@ -942,7 +1015,6 @@ const helpInfo = ref(true);
 }
 
 .existing-reference-image {
-  border-radius: 10px;
   overflow: hidden;
 }
 
@@ -961,7 +1033,6 @@ const helpInfo = ref(true);
   color: rgba(255, 255, 255, 0.85);
   background: rgba(0, 0, 0, 0.5);
   left: calc(50% - 20px);
-  font-size: 20px;
   cursor: grab;
   &.selected {
     cursor: grabbing;

@@ -1,8 +1,9 @@
 import { EventTypes } from "@commands/api/events";
 import { getTestName } from "@commands/names";
 import { getCreds } from "@commands/server";
-import { ApiEventReturned } from "@commands/types";
-import { HttpStatusCode } from "@typedefs/api/consts";
+import { EventEnv, HttpStatusCode } from "@typedefs/api/consts";
+import { DeviceEvent } from "@shared/api/event";
+import { DeviceId } from "@shared/api/common";
 
 describe("Events - query events", () => {
   const EXCL_TIME_ID = ["[].createdAt", "[].id"]; // Do not verify event's id or createdAt values
@@ -24,9 +25,9 @@ describe("Events - query events", () => {
     type: "alert",
     details: { recId: 2, alertId: 3, success: true, trackId: 4 },
   };
-  let expectedEvent1: ApiEventReturned;
-  let expectedEvent2: ApiEventReturned;
-  let expectedEvent3: ApiEventReturned;
+  let expectedEvent1: DeviceEvent;
+  let expectedEvent2: DeviceEvent;
+  let expectedEvent3: DeviceEvent;
   //  let expectedEvent4: ApiEventReturned;
 
   before(() => {
@@ -72,7 +73,7 @@ describe("Events - query events", () => {
       DeviceId: getCreds("eqCamera").id,
       Device: { deviceName: getTestName("eqCamera") },
       EventDetail: eventDetails1,
-      env: "unknown",
+      env: EventEnv.Unknown,
     };
     expectedEvent2 = {
       id: null,
@@ -81,7 +82,7 @@ describe("Events - query events", () => {
       DeviceId: getCreds("eqCamera").id,
       Device: { deviceName: getTestName("eqCamera") },
       EventDetail: eventDetails2,
-      env: "unknown",
+      env: EventEnv.Unknown,
     };
     expectedEvent3 = {
       id: null,
@@ -90,7 +91,7 @@ describe("Events - query events", () => {
       DeviceId: getCreds("eqOtherCamera").id,
       Device: { deviceName: getTestName("eqOtherCamera") },
       EventDetail: eventDetails3,
-      env: "unknown",
+      env: EventEnv.Unknown,
     };
     //   expectedEvent4 = {
     //     id: null,
@@ -351,7 +352,7 @@ describe("Events - query events", () => {
     cy.apiEventsCheck(
       "eqGroupAdmin",
       undefined,
-      { limit: "" },
+      { limit: "" as unknown as number },
       [],
       [],
       HttpStatusCode.Unprocessable,
@@ -359,7 +360,7 @@ describe("Events - query events", () => {
     cy.apiEventsCheck(
       "eqGroupAdmin",
       undefined,
-      { limit: "a" },
+      { limit: "a" as unknown as number },
       [],
       [],
       HttpStatusCode.Unprocessable,
@@ -371,7 +372,7 @@ describe("Events - query events", () => {
     cy.apiEventsCheck(
       "eqGroupAdmin",
       undefined,
-      { limit: 1, offset: "" },
+      { limit: 1, offset: "" as unknown as number },
       [],
       [],
       HttpStatusCode.Unprocessable,
@@ -379,7 +380,7 @@ describe("Events - query events", () => {
     cy.apiEventsCheck(
       "eqGroupAdmin",
       undefined,
-      { limit: 1, offset: "a" },
+      { limit: 1, offset: "a" as unknown as number },
       [],
       [],
       HttpStatusCode.Unprocessable,
@@ -641,7 +642,7 @@ describe("Events - query events", () => {
     cy.apiEventsCheck(
       "eqGroupAdmin",
       undefined,
-      { deviceId: "bad value" },
+      { deviceId: "bad value" as unknown as DeviceId },
       [],
       [],
       HttpStatusCode.Unprocessable,

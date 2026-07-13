@@ -1,8 +1,11 @@
 import { getCreds, makeAuthorizedRequest, v1ApiPath } from "@commands/server";
 import { TestGetLocation } from "@commands/api/station";
-import { ApiMaskRegionsData } from "@typedefs/api/device";
+import {
+  ApiDeviceHistorySettings,
+  ApiMaskRegionsData,
+} from "@typedefs/api/device";
 import { uploadFile } from "@commands/fileUpload";
-import { ApiTrackDataRequest, ApiTrackPosition } from "@typedefs/api/track";
+import { ApiTrackDataRequest } from "@typedefs/api/track";
 
 const testRegions1: ApiMaskRegionsData = {
   maskRegions: {
@@ -65,21 +68,6 @@ const testRegions2: ApiMaskRegionsData = {
     },
   },
 };
-
-const positions1: ApiTrackPosition[] = [
-  {
-    x: 1,
-    y: 2,
-    width: 10,
-    height: 20,
-  },
-  {
-    x: 2,
-    y: 3,
-    width: 11,
-    height: 21,
-  },
-];
 
 // NOTE: This data comes from https://browse.cacophony.org.nz/recording/1717593/3774282
 //  Aviemore dam, with the water masked off, as it is a common source of false triggers
@@ -288,61 +276,59 @@ describe("Device mask regions", () => {
     const user = "Caitlin";
     const group = "Caitlin-Team";
     const camera = "Caitlin-camera";
-    cy.testCreateUserGroupAndDevice(user, group, camera);
+    cy.testCreateUserGroupAndDevice(user, group, camera).then(() => {
+      const location = TestGetLocation(1);
+      cy.testUploadRecording(camera, {
+        ...location,
+        time: new Date(),
+        noTracks: true,
+      }).then(() => {
+        let params = new URLSearchParams();
+        params.append("at-time", new Date().toISOString());
+        params.append("type", "pov");
+        let queryString = params.toString();
 
-    const location = TestGetLocation(1);
-    cy.testUploadRecording(camera, {
-      ...location,
-      time: new Date(),
-      noTracks: true,
-    }).then(() => {
-      let params = new URLSearchParams();
-      params.append("at-time", new Date().toISOString());
-      params.append("type", "pov");
-      let queryString = params.toString();
-      // eslint-disable-next-line no-undef
-      const apiUrl = v1ApiPath(
-        `devices/${getCreds(camera).id}/reference-image`,
-      );
-
-      // Add a reference image.
-      uploadFile(
-        `${apiUrl}?${queryString}`,
-        user,
-        "trailcam-image.jpeg",
-        "image/jpeg",
-        {},
-        "",
-        200,
-      );
-
-      cy.apiDeviceAddMaskRegions(user, camera, testRegions1);
-      const deviceSettingsApiUrl = v1ApiPath(
-        `devices/${getCreds(camera).id}/settings`,
-      );
-
-      params = new URLSearchParams();
-      params.append("at-time", new Date().toISOString());
-      queryString = params.toString();
-
-      makeAuthorizedRequest(
-        {
-          method: "GET",
-          url: `${deviceSettingsApiUrl}?${queryString}`,
-        },
-        user,
-      ).then((response) => {
-        const settings = response.body.settings;
-        expect(settings).to.exist;
-        const maskRegionsExist = settings.hasOwnProperty("maskRegions");
-        const referenceImagePOVExist =
-          settings.hasOwnProperty("referenceImagePOV");
-        const referenceImagePOVFileSizeExist = settings.hasOwnProperty(
-          "referenceImagePOVFileSize",
+        const apiUrl = v1ApiPath(
+          `devices/${getCreds(camera).id}/reference-image`,
         );
-        expect(maskRegionsExist).to.be.true;
-        expect(referenceImagePOVExist).to.be.true;
-        expect(referenceImagePOVFileSizeExist).to.be.true;
+
+        // Add a reference image.
+        uploadFile(
+          `${apiUrl}?${queryString}`,
+          user,
+          "trailcam-image.jpeg",
+          "image/jpeg",
+          {},
+          "",
+          200,
+        );
+
+        cy.apiDeviceAddMaskRegions(user, camera, testRegions1);
+        const deviceSettingsApiUrl = v1ApiPath(
+          `devices/${getCreds(camera).id}/settings`,
+        );
+
+        params = new URLSearchParams();
+        params.append("at-time", new Date().toISOString());
+        queryString = params.toString();
+
+        makeAuthorizedRequest(
+          {
+            method: "GET",
+            url: `${deviceSettingsApiUrl}?${queryString}`,
+          },
+          user,
+        ).then(
+          (
+            response: Cypress.Response<{ settings: ApiDeviceHistorySettings }>,
+          ) => {
+            const settings = response.body.settings;
+            expect(settings).to.exist;
+            expect(settings.maskRegions).to.exist;
+            expect(settings.referenceImagePOV).to.exist;
+            expect(settings.referenceImagePOVFileSize).to.exist;
+          },
+        );
       });
     });
   });
@@ -397,11 +383,93 @@ describe("Device mask regions", () => {
     // Now adding tag to non-existent track should not fail.
     cy.apiTrackTagAdd(user, recording, maskedTrack, "1", {
       what: "possum",
-      confidence: 0.9,
+      confidence: 90,
       automatic: true,
     });
     cy.apiTracksCheck(user, recording, []);
   });
 
-  it.skip("A track that enters a mask region marked 'alertOnEnter' should trigger an email alert to the project member(s)", () => {});
+  it("Mask regions mask out tracks that are entirely contained within the region using bulk api endpoint. ", () => {
+    // - Upload a recording with a location.
+    // - Add a mask region
+    // - Add a track to the recording
+    // - The track should be entirely contained in the region.
+    // - No tracks should actually be created
+    const user = "Mary";
+    const group = "Marys-Team";
+    const camera = "CameraWithMask";
+    const recording = "rec2";
+    const maskedTrack = "maskedTrack2";
+    cy.testCreateUserGroupAndDevice(user, group, camera);
+
+    cy.testUploadRecording(
+      camera,
+      {
+        ...TestGetLocation(1),
+        time: new Date(),
+        noTracks: true,
+      },
+      recording,
+    );
+    cy.apiDeviceAddMaskRegions(user, camera, {
+      maskRegions: {
+        Water: {
+          regionData: [
+            { x: 0, y: 0 },
+            { x: 0.1, y: 0.0 },
+            { x: 0.1, y: 0.1 },
+            { x: 0.0, y: 0.1 },
+            { x: 0, y: 0.0 },
+          ],
+        },
+      },
+    });
+    const superuser = getCreds("superuser")["email"];
+    const suPassword = getCreds("superuser")["password"];
+    cy.apiSignInAs(null, superuser, suPassword);
+
+    cy.log("Look up algorithm and then post tracks");
+    cy.processingApiAlgorithmPost(superuser, {
+      "tracking-format": 42,
+      model_name: "Master",
+    }).then((algorithmId) => {
+      const tracksData = [];
+      tracksData.push({
+        start_s: 1,
+        end_s: 4,
+        positions: [
+          {
+            x: 0,
+            y: 0,
+            width: 5,
+            height: 5,
+            mass: 5,
+            frame_number: 1,
+            pixel_variance: 1.0,
+            blank: false,
+          },
+        ],
+        predictions: [
+          {
+            tag: "possum",
+            confidence: 90,
+            name: "Master",
+            confident: true,
+          },
+        ],
+      });
+      cy.processingApiTracksAndTagsPost(
+        superuser,
+        maskedTrack,
+        recording,
+        tracksData,
+        algorithmId,
+      );
+      cy.apiTracksCheck(user, recording, []);
+    });
+  });
+
+  it.skip("A track that enters a mask region marked 'alertOnEnter' should trigger an email alert to the project member(s)", () => {
+    return;
+  });
 });

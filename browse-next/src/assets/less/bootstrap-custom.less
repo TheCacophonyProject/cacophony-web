@@ -1,0 +1,237 @@
+:root {
+  --bs-body-font-family: var(--cp-font-family);
+  --bs-font-sans-serif: var(--cp-font-family);
+  --bs-body-font-size: var(--cp-font-size-md);
+  --bs-body-font-weight: var(--cp-font-weight-regular);
+
+  --bs-gray-100: #f9faf8;
+  --bs-gray-200: #edefea;
+  --bs-gray-300: #e0e3dd;
+  --bs-gray-400: #d7dad3;
+  --bs-gray-500: #bbbdb7;
+  --bs-gray-600: #787a74;
+  --bs-gray-700: #52554f;
+  --bs-gray-800: #393e37;
+  --bs-gray-900: #20221e;
+
+  --bs-body-color: #252921;
+  --bs-light-text-emphasis: #464c44;
+  --bs-secondary: #757674;
+  --bs-secondary-rgb: 119, 120, 117;
+  --bs-secondary-bg-subtle: #e1e3e1;
+  --bs-tertiary-color: rgba(33, 34, 32, 0.5);
+
+  --bs-border-color: #dbddd8;
+
+  --bs-btn-disabled-border-color: transparent;
+  --bs-btn-focus-border-color: transparent;
+  --bs-btn-active-border-color: transparent;
+  --bs-link-color: var(--cp-color-green-600);
+  --bs-link-color-rgb: 44, 79,1; // same as --color-cp-green-800
+  --bs-link-hover-color: var(--cp-color-green-700);
+  --bs-link-hover-color-rgb: 65, 118, 1; // same as --color-cp-green-700
+  --bs-primary: var(--cp-color-green-600);
+  --bs-body-line-height: 1.6;
+  --bs-primary-rgb: 87, 158, 2; // same as --color-cp-green-600
+  --bs-progress-bar-bg: var(--cp-color-green-600);
+}
+
+b,
+strong {
+  font-weight: var(--cp-font-weight-semilbold);
+}
+
+hr {
+  border-color: var(--bs-gray-500);
+}
+
+.btn {
+  --bs-btn-font-size:  var(--cp-font-size-md);
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--cp-color-green-600);
+  --bs-btn-border-color: transparent;
+  --bs-btn-hover-bg: var(--cp-color-green-700);
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-active-bg: var(--cp-color-green-800);
+  --bs-btn-active-border-color: transparent;
+  --bs-btn-disabled-bg: color-mix(in srgb, var(--cp-color-green-600), var(--bs-gray-600) 60%);
+  --bs-btn-disabled-border-color: transparent;
+  &:disabled {
+    &:hover {
+      cursor: not-allowed;
+    }
+  }
+}
+
+.btn-secondary {
+  --bs-btn-bg: var(--bs-gray-900);
+  --bs-btn-border-color: transparent;
+  --bs-btn-hover-bg: var(--bs-gray-700);
+  --bs-btn-disabled-bg: var(--bs-gray-600)
+}
+
+.btn-outline-secondary {
+  --bs-btn-color: #686a66;
+  --bs-btn-border-color: #c9cdc5;
+  --bs-btn-bg: var(--bs-white);
+  --bs-btn-hover-bg: #767873;
+  &:disabled {
+    border-color: var(--bs-gray-400);
+  }
+}
+
+.btn-icon {
+  --bs-btn-font-weight: 500;
+  //--bs-btn-color: var(--bs-primary);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: transparent;
+  //--bs-btn-hover-color: var(--bs-white);
+  --bs-btn-hover-bg: var(--bs-gray-100);
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-focus-shadow-rgb: 49, 132, 253;
+  --bs-btn-active-color: var(--bs-btn-hover-color);
+  --bs-btn-active-bg: var(--bs-gray-200);
+  --bs-btn-active-border-color: transparent;
+  &:disabled {
+    color: var(--bs-tertiary-color);
+  }
+}
+
+// grouped buttons
+.btn-group {
+  padding: var(--cp-spacing-xxxs);
+  background: var(--bs-secondary-bg-subtle);
+}
+
+.btn-radio-group {
+  --bs-btn-font-weight: 400;
+  --bs-btn-color: var(--bs-gray-700);
+  --bs-btn-bg: transparent;
+  --bs-btn-border-color: transparent;
+  //--bs-btn-hover-color: var(--bs-gray-800); see below, setting it this way doesn't work
+  //--bs-btn-hover-bg: red !important;
+  --bs-btn-hover-border-color: transparent;
+  --bs-btn-focus-shadow-rgb: 49, 132, 253;
+  --bs-btn-active-color: var(--bs-btn-hover-color);
+  --bs-btn-active-bg: var(--bs-white);
+  --bs-btn-active-border-color: transparent;
+  border-radius: var(--bs-border-radius) !important;
+}
+
+// hover color for individual button in grouped buttons
+.btn-check + .btn:hover {
+  //background-color: var(--bs-gray-100);
+  color: var(--bs-gray-900);
+}
+
+// Font size of inputs
+.form-control {
+  font-size: var(--cp-font-size-md);
+  &:focus {
+    border-color: var(--cp-color-green-300);
+    box-shadow: 0 0 0 0.25rem  color-mix(in oklch, var(--cp-color-green-600), transparent 80%);
+  }
+}
+
+.form-select {
+  font-size: var(--cp-font-size-md);
+}
+
+// Switch styles
+.form-check-input {
+  &:checked {
+    background-color: var(--cp-color-green-600);
+    border-color: var(--cp-color-green-600);
+  }
+  &:focus {
+    border-color: var(--cp-color-green-400);
+    outline: 0;
+    box-shadow: 0 0 0 0.25rem  color-mix(in oklch, var(--cp-color-green-600), transparent 80%);
+  }
+}
+
+// select styles
+.form-select {
+  &:focus {
+    border-color: var(--cp-color-green-400);
+    box-shadow: 0 0 0 0.25rem  color-mix(in oklch, var(--cp-color-green-600), transparent 80%);
+  }
+}
+
+// range styles
+.form-range {
+  &::-webkit-slider-thumb {
+    background: var(--cp-color-green-600);
+    &:active {
+      background: var(--cp-color-green-300);
+    }
+  }
+  &::-moz-range-thumb {
+    background: var(--cp-color-green-600);
+    &:active {
+      background: var(--cp-color-green-300);
+    }
+  }
+  &:focus {
+    &::-webkit-slider-thumb {
+      box-shadow: 0 0 0 0.25rem color-mix(in oklch, var(--cp-color-green-600), transparent 80%);
+    }
+    &::-moz-range-thumb {
+      box-shadow: 0 0 0 0.25rem  color-mix(in oklch, var(--cp-color-green-600), transparent 80%);
+    }
+  }
+}
+
+// reset the size of the label of the large switch
+.form-switch {
+  &.form-control-lg {
+    line-height: var(--cp-line-height-sm);
+    .form-check-label {
+      font-size: var(--bs-body-font-size);
+    }
+  }
+}
+
+.dropdown-item:active {
+  background-color: var(--cp-color-green-700);
+}
+
+// nav styles
+.nav-tabs {
+  --bs-nav-tabs-link-active-color: var(--cp-color-green-800);
+}
+
+.nav-underline {
+  border-bottom: 1px solid var(--bs-border-color);
+  .nav-link {
+    color: color-mix(
+      in oklch,
+      var(--cp-color-green-600),
+      var(--bs-gray-700) 50%
+    );
+  }
+  .nav-link.active,
+  .show > .nav-link {
+    font-weight: var(--cp-font-weight-medium);
+    border-bottom-color: var(--cp-color-primary);
+    color: var(--cp-color-green-800);
+  }
+}
+
+// badge
+.badge {
+  --bs-badge-font-size: var(--cp-font-size-sm);
+  --bs-badge-font-weight: 500;
+}
+
+// progress bar
+.progress, .progress-stacked {
+  --bs-progress-bar-bg: var(--cp-color-green-600);
+}
+
+// modal styles
+.modal-title {
+  font-size: var(--cp-font-size-h3);
+}

@@ -2,6 +2,7 @@ import { ApiAlertCondition } from "@typedefs/api/alerts";
 import { RecordingProcessingState, RecordingType } from "@typedefs/api/consts";
 import { CacophonyIndex } from "@typedefs/api/recording";
 import { LatLng, TrackId } from "@typedefs/api/common";
+import { ApiTrackDataRequest } from "@shared/api/track";
 
 // from api/v1/authenticate/token (POST)
 export interface ApiAuthenticateAccess {
@@ -19,9 +20,10 @@ export interface ApiAlert {
   alertName?: string;
   frequencySeconds: number;
   conditions: ApiAlertCondition[];
-  lastAlert: boolean;
-  User: ApiAlertUser;
-  Device: ApiDeviceIdAndName;
+  lastAlert?: boolean;
+  hasLastAlert?: boolean;
+  User?: ApiAlertUser;
+  Device?: ApiDeviceIdAndName;
 }
 
 // from api/v1/alerts (post)
@@ -194,7 +196,7 @@ export interface ApiDeviceUserRelationship {
 // from /api/v1/events (get) and api/v1/events (post)
 export interface ApiEventDetail {
   type?: string;
-  details?: any;
+  details?: object;
 }
 
 // from api/v1/events (post)
@@ -303,14 +305,13 @@ export interface ApiRecordingForProcessing {
   fileKey: string;
   fileMimeType: string;
   processingState: string;
-  processingMeta: any;
+  processingMeta: unknown;
   GroupId: number;
   DeviceId: number;
   StationId: number;
   recordingDateTime: string;
   duration: number;
   location: { type: "Point"; coordinates: number[] } | null;
-  hasAlert: boolean;
   processingStartTime: string;
   processingEndTime: string;
   processing: boolean;
@@ -324,7 +325,7 @@ export interface ApiRecordingSet {
   type: RecordingType;
   fileHash?: string;
   duration?: number;
-  location?: ApiLocation | number[];
+  location?: ApiLocation | number[] | LatLng;
   recordingDateTime?: string;
   relativeToDawn?: number;
   relativeToDusk?: number;
@@ -332,10 +333,12 @@ export interface ApiRecordingSet {
   batteryCharging?: string;
   batteryLevel?: number;
   airplaneModeOn?: boolean;
+  fileMimeType?: string;
   metadata?: ApiRecordingDataMetadata;
   cacophonyIndex?: CacophonyIndex[];
-  additionalMetadata?: ApiThermalAdditionalMetadata | any;
+  additionalMetadata?: ApiThermalAdditionalMetadata | unknown;
   comment?: string;
+  status?: "test" | "startup" | "shutdown";
   processingState?: RecordingProcessingState;
 }
 
@@ -379,7 +382,7 @@ export interface ApiRecordingReturned {
   batteryCharging?: string;
   airplaneModeOn?: boolean;
   type: string;
-  additionalMetadata?: ApiThermalAdditionalMetadata | any;
+  additionalMetadata?: ApiThermalAdditionalMetadata | unknown;
   GroupId: number;
   StationId: number;
   comment?: string;
@@ -436,8 +439,8 @@ export interface ApiRecordingAlgorithm {
 
 // from api/v1/recordings (post)
 export interface ApiRecordingDataMetadata {
-  metadata_source: string;
-  tracks?: ApiTrackSet[];
+  metadata_source?: string;
+  tracks?: ApiTrackDataRequest[];
   models?: ApiRecordingModel[];
   algorithm?: ApiRecordingAlgorithm;
 }
@@ -482,22 +485,20 @@ export interface ApiTrackSet {
   id?: TrackId;
   tracker_version?: number | string;
   num_frames?: number;
-  positions?: any;
+  positions?: unknown;
   start_s: number;
   end_s: number;
   frame_start?: number;
   frame_end?: number;
   minFreq?: number;
   maxFreq?: number;
-  predictions: (
-    | {
-        model_id: number;
-        confident_tag?: string;
-        confidence?: number;
-      }
-    | any
-  )[];
-  all_class_confidences?: any;
+  predictions: {
+    model_id: number;
+    tag: string;
+    confidence?: number;
+    confident: boolean;
+  }[];
+  all_class_confidences?: unknown;
   automatic?: boolean;
 }
 
@@ -509,7 +510,7 @@ export interface ApiRecordingTrackTag {
   confidence?: number;
   UserId?: number;
   data?: string;
-  User?: any;
+  User?: unknown;
 }
 
 // from api/v1/recordings (get)
@@ -526,13 +527,14 @@ export interface TestThermalRecordingInfo {
   duration?: number;
   model?: string;
   type?: RecordingType;
-  tracks?: ApiTrackSet[];
+  tracks?: ApiTrackDataRequest[];
   noTracks?: boolean; // by default there will normally be one track, set to true if you don't want tracks
   minsLater?: number; // minutes that later that the recording is taken
   secsLater?: number; // minutes that later that the recording is taken
   tags?: string[]; // short cut for defining tags for each track
   lat?: number; // Latitude position for the recording
   lng?: number; // Longitude position for the recording
+  location?: LatLng;
 }
 
 /*******************************************************************
@@ -609,7 +611,7 @@ export interface TestVisitSearchParams {
 
 export interface TestVisitsWhere {
   type: string;
-  duration?: any;
+  duration?: unknown;
   DeviceId?: number;
 }
 

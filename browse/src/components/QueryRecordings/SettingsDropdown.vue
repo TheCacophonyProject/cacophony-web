@@ -8,12 +8,6 @@
     <template #button-content>
       <font-awesome-icon icon="cog" />
     </template>
-    <b-dropdown-item variant="secondary" @click="download">
-      <div data-cy="export">
-        <font-awesome-icon icon="download" class="fa-1x" />
-        Export
-      </div>
-    </b-dropdown-item>
     <b-dropdown-item
       v-b-modal.delete-all
       variant="danger"
@@ -27,7 +21,7 @@
         id="delete-all"
         size="sm"
         title="Delete Recordings"
-        hide-footer
+        no-footer
         hide-backdrop
       >
         <p class="text-center">
@@ -75,18 +69,6 @@ export default defineComponent({
     const showBulkDelete = ref(false);
     const route = useRoute();
     const recordingCount = ref(0);
-    const download = async () => {
-      const token = await userapi.token();
-      const params = recordingsapi.makeApiQuery(route.value.query);
-      params.jwt = token;
-      params.offset = 0;
-      params.limit = 100000;
-      params.type = "recordings";
-      const url =
-        `${config.api}/api/v1/recordings/report?` +
-        querystring.stringify(params);
-      window.open(url, "_self");
-    };
     const bulkDelete = () => {
       const query: RecordingQuery = {
         ...route.value.query,
@@ -111,7 +93,7 @@ export default defineComponent({
         recordingCount.value = count.result.count;
       }
     });
-    return { route, download, bulkDelete, showBulkDelete, recordingCount };
+    return { route, bulkDelete, showBulkDelete, recordingCount };
   },
 });
 </script>
