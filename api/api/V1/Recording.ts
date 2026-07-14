@@ -2421,7 +2421,7 @@ export default (app: Application, baseUrl: string) => {
         .isArray({ min: 1 })
         .custom(isIntArray)
         .withMessage(
-          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'",
+          "Must be an id, or an array of ids.  For example, 'devices=32' or 'devices=32&devices=33&devices=34'",
         ),
       query("sub-class-tags").default(true).isBoolean().toBoolean(),
       query("include-deleted").default(false).isBoolean().toBoolean(),
@@ -2467,7 +2467,7 @@ export default (app: Application, baseUrl: string) => {
         .isArray({ min: 1 })
         .custom(isIntArray)
         .withMessage(
-          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'",
+          "Must be an id, or an array of ids.  For example, 'locations=32' or 'locations=32&locations=33&locations=34'",
         ),
       query("types")
         .optional()

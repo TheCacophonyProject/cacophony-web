@@ -284,6 +284,8 @@ const loadVisits = async () => {
       fromTime.value,
       new Date(),
       [],
+      [],
+      [],
       10000,
       (val: number) => {
         // TODO - Do we want to display loading progress via the UI?

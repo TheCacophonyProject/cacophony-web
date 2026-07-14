@@ -690,7 +690,7 @@ test("AI tags in the discarded/filtered list make 'none/null' visits", async ({ 
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   const AdminUser = project.api();
-  const uploads = await uploadRecordingsFromDeviceWithTimesAndDurations(
+  await uploadRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 2),
@@ -709,6 +709,142 @@ test("AI tags in the discarded/filtered list make 'none/null' visits", async ({ 
   )) as ApiStaticVisitResponse[];
   expect(visits.length, "Has empty 'null' visit").toEqual(1);
   expect(visits[0].aiClassification, "ai classification is null").toBeNull();
+});
+
+test("Clients can query visits containing only supplied tags", async ({ oneFrameCptv }) => {
+  const initialDateTime = new Date("2026-05-01T10:00:00Z");
+  const now = new Date();
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const AdminUser = project.api();
+  await uploadRecordingsFromDeviceWithTimesAndDurations(
+    [
+      {
+        recordingDateTime: addMinutes(initialDateTime, 2),
+        durationSeconds: 40,
+        tracks: ["possum"],
+      },
+      {
+        recordingDateTime: addMinutes(initialDateTime, 15),
+        durationSeconds: 40,
+        tracks: ["cat"],
+      },
+    ],
+    project.getDevice(),
+    project.locationBase,
+    oneFrameCptv,
+  );
+  await test.step("Check that we get two visits", async () => {
+    const visits = (await AdminUser.Visits.getVisitsForProject(
+      project.projectHandle.id,
+      initialDateTime,
+      now,
+    )) as ApiStaticVisitResponse[];
+    expect(visits.length, "Has two visits").toEqual(2);
+    expect(visits[0].aiClassification, "latest ai classification is cat").toEqual("all.mammal.cat");
+    expect(visits[1].aiClassification, "earliest ai classification is possum").toEqual(
+      "all.mammal.possum",
+    );
+  });
+  await test.step("Check that we get one visit when filtering by classification path", async () => {
+    const filteredVisits = (await AdminUser.Visits.getVisitsForProject(
+      project.projectHandle.id,
+      initialDateTime,
+      now,
+      [],
+      ["all.mammal.cat"],
+    )) as ApiStaticVisitResponse[];
+    expect(filteredVisits.length, "Has one visit").toEqual(1);
+    expect(filteredVisits[0].aiClassification, "latest ai classification is cat").toEqual(
+      "all.mammal.cat",
+    );
+  });
+  await test.step("Check that we get two visits when filtering by *parent* classification path", async () => {
+    const filteredVisits = (await AdminUser.Visits.getVisitsForProject(
+      project.projectHandle.id,
+      initialDateTime,
+      now,
+      [],
+      ["all.mammal"],
+    )) as ApiStaticVisitResponse[];
+    expect(filteredVisits.length, "Has two visits").toEqual(2);
+    expect(filteredVisits[0].aiClassification, "latest ai classification is cat").toEqual(
+      "all.mammal.cat",
+    );
+    expect(filteredVisits[1].aiClassification, "earliest ai classification is possum").toEqual(
+      "all.mammal.possum",
+    );
+  });
+  await test.step("Add another visit that doesn't inherit from mammal", async () => {
+    await uploadRecordingsFromDeviceWithTimesAndDurations(
+      [
+        {
+          recordingDateTime: addMinutes(initialDateTime, 26),
+          durationSeconds: 40,
+          tracks: ["false-positive"],
+        },
+      ],
+      project.getDevice(),
+      project.locationBase,
+      oneFrameCptv,
+    );
+  });
+  await test.step("Check that we now get three visits", async () => {
+    const visits = (await AdminUser.Visits.getVisitsForProject(
+      project.projectHandle.id,
+      initialDateTime,
+      now,
+    )) as ApiStaticVisitResponse[];
+    expect(visits.length, "Has three visits").toEqual(3);
+    expect(visits[0].aiClassification, "latest ai classification is none").toBeNull();
+    expect(visits[1].aiClassification, "latest ai classification is cat").toEqual("all.mammal.cat");
+    expect(visits[2].aiClassification, "earliest ai classification is possum").toEqual(
+      "all.mammal.possum",
+    );
+  });
+  await test.step("Check that we still get two visits when filtering by *parent* classification path", async () => {
+    const filteredVisits = (await AdminUser.Visits.getVisitsForProject(
+      project.projectHandle.id,
+      initialDateTime,
+      now,
+      [],
+      ["all.mammal"],
+    )) as ApiStaticVisitResponse[];
+    expect(filteredVisits.length, "Has two visits").toEqual(2);
+    expect(filteredVisits[0].aiClassification, "latest ai classification is cat").toEqual(
+      "all.mammal.cat",
+    );
+    expect(filteredVisits[1].aiClassification, "earliest ai classification is possum").toEqual(
+      "all.mammal.possum",
+    );
+  });
+
+  await test.step("Check that we can filter out ignored classification paths", async () => {
+    const filteredVisits = (await AdminUser.Visits.getVisitsForProject(
+      project.projectHandle.id,
+      initialDateTime,
+      now,
+      [],
+      [],
+      ["all.mammal.cat", "all.mammal.possum"],
+    )) as ApiStaticVisitResponse[];
+    expect(filteredVisits.length, "Has one visit").toEqual(1);
+    expect(filteredVisits[0].aiClassification, "latest ai classification is null").toBeNull();
+    expect(filteredVisits[0].humanClassification, "latest human classification is null").toBeNull();
+  });
+
+  await test.step("Check that we can filter out ignored classification parent paths", async () => {
+    const filteredVisits = (await AdminUser.Visits.getVisitsForProject(
+      project.projectHandle.id,
+      initialDateTime,
+      now,
+      [],
+      [],
+      ["all.mammal"],
+    )) as ApiStaticVisitResponse[];
+    expect(filteredVisits.length, "Has one visit").toEqual(1);
+    expect(filteredVisits[0].aiClassification, "latest ai classification is null").toBeNull();
+    expect(filteredVisits[0].humanClassification, "latest human classification is null").toBeNull();
+  });
 });
 
 test("Visits include recordings in the island with no tracks", async () => {

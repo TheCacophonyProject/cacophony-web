@@ -15,17 +15,27 @@ const getVisitsForProject =
     fromDate: Date,
     untilDate: Date,
     locations: LocationId[] = [],
+    taggedWith: string[] = [],
+    notTaggedWith: string[] = [],
     maxResults?: number,
     abortable = false,
   ) => {
     const params = new URLSearchParams();
     params.append("from", fromDate.toISOString());
     params.append("until", untilDate.toISOString());
-    if (locations && locations.length) {
-      for (const location of locations) {
-        params.append("locations", location.toString());
-      }
+
+    for (const location of locations) {
+      params.append("locations", location.toString());
     }
+
+    for (const path of taggedWith) {
+      params.append("tagged-with", path);
+    }
+
+    for (const path of notTaggedWith) {
+      params.append("not-tagged-with", path);
+    }
+
     if (maxResults) {
       params.append("max-results", maxResults.toString());
     }
@@ -79,6 +89,8 @@ const getAllVisitsForProject =
     fromDate: Date,
     untilDate: Date,
     locations: LocationId[] = [],
+    taggedWith: string[] = [],
+    notTaggedWith: string[] = [],
     maxResults = 10000,
     progressUpdater?: (progress: number) => void,
   ) => {
@@ -99,6 +111,8 @@ const getAllVisitsForProject =
         fromDate,
         until,
         locations,
+        taggedWith,
+        notTaggedWith,
         maxResults,
       );
       if (!visitsResponse || visitsResponse.length === 0) {
