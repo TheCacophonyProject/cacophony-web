@@ -22,7 +22,7 @@ import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/st
 import ProjectVisitsSummary from "@/components/ProjectVisitsSummary.vue";
 import LocationVisitSummary from "@/components/LocationVisitSummary.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
-import { BButton, BSpinner } from "bootstrap-vue-next";
+import {BBadge, BButton, BSpinner, BTooltip} from "bootstrap-vue-next";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import { useRoute, useRouter } from "vue-router";
 import { useMediaQuery } from "@vueuse/core";
@@ -61,6 +61,11 @@ import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
 import type { VisitsStaticQueryResult } from "@apiClient/Monitoring.ts";
 import { recordingUpdatedInVisitsContext } from "@/helpers/patch-visits-context.ts";
 import BimodalSwitch from "@/components/BimodalSwitch.vue";
+import LocationName from "@/components/LocationName.vue";
+import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
+import CardTable from "@/components/CardTable.vue";
+import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
+import DeviceName from "@/components/DeviceName.vue";
 
 const selectedVisit = ref<ApiStaticVisitResponse | null>(null);
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
@@ -480,55 +485,134 @@ const recordingUpdated = async (
   );
 };
 
+const audioItems = [
+  {
+    rank: 1,
+    birdName: "Fantail",
+    biostatus: "Endemic",
+    conservationStatus: "Least concern",
+    __conservationStatusCode: "lc",
+    detections: 24,
+    locations: 0.75,
+  },
+  {
+    rank: 2,
+    birdName: "Silvereye",
+    biostatus: "Naturalised",
+    conservationStatus: "Endangered",
+    __conservationStatusCode: "en",
+    detections: 18,
+    locations: 0.60,
+  },
+  {
+    rank: 2,
+    birdName: "Blackbird",
+    biostatus: "Introduced",
+    conservationStatus: "Extinct",
+    __conservationStatusCode: "ex",
+    detections: 10,
+    locations: 0.40,
+  },
+];
+
 // TODO: When hovering a visit entry, highlight station on the map.  What's the best way to plumb this reactivity through?
 </script>
 <template>
   <div class="header-container">
     <section-header>Dashboard</section-header>
-    <div class="dashboard-scope mt-sm-3 d-sm-flex flex-column align-items-end">
-      <bimodal-switch
-        class="justify-content-end"
-        :modes="['Thermal', 'Audio']"
-        v-model="recordingMode"
-        v-if="currentSelectedProjectHasAudioAndThermal"
-      />
-      <div
-        class="scope-filters d-flex align-items-sm-center flex-row mb-3 mb-sm-0"
-      >
-        <div class="d-flex align-items-center justify-content-between">
-          <span class="text-secondary">Visits in the last</span>
-          <!--          <select-->
-          <!--            class="form-select form-select-sm text-end"-->
-          <!--            v-model="visitsOrRecordings"-->
-          <!--          >-->
-          <!--            <option>visits</option>-->
-          <!--            <option>recordings</option>-->
-          <!--          </select>-->
-        </div>
-        <div class="d-flex align-items-center justify-content-between">
-          <select
-            id="select-dashboard-timespan"
-            class="form-select form-select-sm text-end"
-            v-model="timePeriodDays"
+
+    <div class="d-flex align-items-center justify-content-between mb-3 mb-sm-4 mb-md-1 mb-lg-2">
+      <div class="dashboard-scope-type">
+        <div
+          class="btn-group btn-group-md d-flex"
+          role="group"
+          aria-label="Toggle between camera and bird monitor results"
+          v-if="currentSelectedProjectHasAudioAndThermal"
+        >
+          <input
+            type="radio"
+            class="btn-check"
+            name="recording-mode"
+            id="recording-mode-cameras"
+            autocomplete="off"
+            v-model="recordingMode"
+            value="cameras"
+          />
+          <label
+            class="btn btn-radio-group btn-md w-50 d-flex align-items-center justify-content-center px-lg-3"
+            for="recording-mode-cameras"
           >
-            <option value="1">24 hours</option>
-            <option value="3">3 days</option>
-            <option value="7">7 days</option>
-            <!--            <option value="30">30 days</option>-->
-            <!--            <option value="60">60 days</option>-->
-          </select>
+            <material-symbol name="videocam" class="me-2" size="1.25rem" />
+            Thermal
+          </label>
+          <input
+            type="radio"
+            class="btn-check"
+            name="recording-mode"
+            id="recording-mode-audio"
+            autocomplete="off"
+            v-model="recordingMode"
+            value="audio"
+          />
+          <label
+            class="btn btn-radio-group btn-md w-50 d-flex align-items-center justify-content-center px-lg-3"
+            for="recording-mode-audio"
+          >
+            <material-symbol name="music_note" class="me-2" size="1.25rem" />
+            Audio
+          </label>
         </div>
-        <!--        <div class="d-flex flex-row align-items-center justify-content-between">-->
-        <!--          <span> grouped by species</span>-->
-        <!--&lt;!&ndash;          <select&ndash;&gt;-->
-        <!--&lt;!&ndash;            class="form-select form-select-sm text-end"&ndash;&gt;-->
-        <!--&lt;!&ndash;            v-model="speciesOrLocations"&ndash;&gt;-->
-        <!--&lt;!&ndash;          >&ndash;&gt;-->
-        <!--&lt;!&ndash;            <option>species</option>&ndash;&gt;-->
-        <!--&lt;!&ndash;            <option>location</option>&ndash;&gt;-->
-        <!--&lt;!&ndash;          </select>&ndash;&gt;-->
-        <!--        </div>-->
       </div>
+
+      <div class="dashboard-scope-time">
+        <!--      <bimodal-switch
+                class="justify-content-end"
+                :modes="['Thermal', 'Audio']"
+                v-model="recordingMode"
+                v-if="currentSelectedProjectHasAudioAndThermal"
+              />-->
+
+        <div
+          class="filters d-flex align-items-center"
+        >
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="d-inline-block d-lg-none text-secondary">In the last</span>
+            <span class="d-none d-lg-inline-block text-secondary">Visits in the last</span>
+            <!--          <select-->
+            <!--            class="form-select form-select-sm text-end"-->
+            <!--            v-model="visitsOrRecordings"-->
+            <!--          >-->
+            <!--            <option>visits</option>-->
+            <!--            <option>recordings</option>-->
+            <!--          </select>-->
+          </div>
+          <div class="d-flex align-items-center justify-content-between">
+            <select
+              id="select-dashboard-timespan"
+              class="form-select form-select-sm text-end"
+              v-model="timePeriodDays"
+            >
+              <option value="1">24 hours</option>
+              <option value="3">3 days</option>
+              <option value="7">7 days</option>
+              <!--            <option value="30">30 days</option>-->
+              <!--            <option value="60">60 days</option>-->
+            </select>
+          </div>
+          <!--        <div class="d-flex flex-row align-items-center justify-content-between">-->
+          <!--          <span> grouped by species</span>-->
+          <!--&lt;!&ndash;          <select&ndash;&gt;-->
+          <!--&lt;!&ndash;            class="form-select form-select-sm text-end"&ndash;&gt;-->
+          <!--&lt;!&ndash;            v-model="speciesOrLocations"&ndash;&gt;-->
+          <!--&lt;!&ndash;          >&ndash;&gt;-->
+          <!--&lt;!&ndash;            <option>species</option>&ndash;&gt;-->
+          <!--&lt;!&ndash;            <option>location</option>&ndash;&gt;-->
+          <!--&lt;!&ndash;          </select>&ndash;&gt;-->
+          <!--        </div>-->
+        </div>
+
+      </div>
+
     </div>
   </div>
   <div v-if="recordingMode === 'Thermal'">
@@ -536,20 +620,20 @@ const recordingUpdated = async (
       Species summary
     </h2>
     <horizontal-overflow-carousel
-      class="species-summary-container mb-4 mb-sm-4 mb-md-5"
+      class="species-summary-container-thermal mb-4 mb-sm-4 mb-md-5"
       v-if="hasVisitsForSelectedTimePeriod"
     >
       <div
-        class="species-summary flex-sm-nowrap flex-wrap d-flex gap-2 gap-sm-0"
+        class="species-summary-thermal flex-sm-nowrap flex-wrap d-flex gap-2 gap-sm-0"
       >
         <div
           v-for="[key, val] in speciesSummarySorted"
           :key="key"
-          class="species-summary__item d-flex flex-row align-items-center gap-2 gap-sm-3"
+          class="species-summary-thermal__item d-flex flex-row align-items-center gap-2 gap-sm-3"
           @click="showVisitsForTag(key)"
         >
           <div
-            class="species-summary__item__icon p-1 p-md-2"
+            class="species-summary-thermal__item__icon p-1 p-md-2"
             :class="[...pathForTag(key).split('.')]"
             :key="`d_${key}`"
           >
@@ -558,10 +642,12 @@ const recordingUpdated = async (
           <div
             class="d-flex justify-content-evenly flex-sm-column align-items-center align-items-sm-start"
           >
-            <div class="species-summary__item__count lh-sm me-1">
+            <div class="species-summary-thermal__item__count lh-sm me-1">
               {{ val }}
             </div>
-            <div class="species-summary__item__name lh-sm text-capitalize">
+            <div
+              class="species-summary-thermal__item__name lh-sm text-capitalize"
+            >
               {{ displayLabelForClassificationLabel(key) }}
             </div>
           </div>
@@ -605,7 +691,7 @@ const recordingUpdated = async (
     >
       <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
       <div
-        class="species-summary d-flex gap-3 flex-sm-nowrap mb-3 mb-sm-0"
+        class="species-summary-thermal d-flex gap-3 flex-sm-nowrap mb-3 mb-sm-0"
         v-if="!isLoading && hasVisitsForSelectedTimePeriod"
       >
         <location-visit-summary
@@ -675,7 +761,186 @@ const recordingUpdated = async (
       </div>
     </div>
   </div>
-  <div v-else>Audio dashboard!</div>
+  <div v-else>
+    <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+      Species summary
+    </h2>
+    <div class="species-summary-container-audio mb-5">
+      <div class="featured_species_container container-fluid">
+        <div class="row gap-3 mb-3 mb-md-4 mb-lg-5">
+          <div v-for="(bird, index) in audioItems" class="featured-species col d-flex flex-column container p-3 lh-sm rounded-3 shadow-sm bg-white"
+             :class="{
+                'col-12 ': index === 0 && isMobileView,
+                'order-2 ': index === 0 && !isMobileView,
+                'mt-sm-4 order-1': index === 1 && !isMobileView,
+                'mt-sm-5 order-3': index === 2 && !isMobileView}
+          ">
+            <div class="row">
+              <div class="featured-species__rank col-lg-3 col-xxl-2 text-secondary text-opacity-25">
+                <span class="d-block mb-2 mb-lg-0 ms-lg-2 ms-xxl-0">{{ index + 1 }}</span>
+              </div>
+              <div class="col-lg-9 col-xxl-10">
+                <h3 class="mt-1 mb-2" :class="isMobileView ? 'h4': 'h3'">{{bird.birdName}}
+                </h3>
+                <p class="mb-2 d-flex gap-2 align-items-center">
+                  <span>{{bird.detections}} detections</span>
+                  <span class="detections-bar d-block rounded-1" style="width: 20px"></span>
+                </p>
+                <p class="mb-3 d-flex gap-2 align-items-center">
+                  <span>{{bird.locations * 100}}% locations</span>
+                  <span class="locations-chart d-block rounded-5" style="background: conic-gradient(transparent 0deg 45deg, var(--cp-color-green-600) 45deg 360deg);"></span>
+                  </p>
+              </div>
+            </div>
+            <div class="d-flex mt-auto gap-2 justify-content-end align-items-baseline">
+              <b-badge class="biostatus" :class="bird.biostatus.toLowerCase()">{{bird.biostatus}}</b-badge>
+              <b-tooltip>
+                <template #target>
+                  <span class="conservation-status mini d-flex align-items-center justify-content-center rounded-4" :class="bird.__conservationStatusCode">{{bird.__conservationStatusCode}}</span>
+                </template>
+                {{bird.conservationStatus}}
+              </b-tooltip>
+
+            </div>
+          </div>
+        </div>
+      </div>
+      <card-table
+        :items="audioItems"
+        compact
+        :max-card-width="768"
+        class="mb-3 "
+        :standalone="!isMobileView"
+        :class="isMobileView? 'bg-white p-3 shadow-sm rounded-3': ''"
+      >
+        <template #biostatus="{ cell }">
+          <b-badge class="biostatus" :class="cell.toLowerCase()">{{cell}}</b-badge>
+        </template>
+        <template #conservationStatus="{ cell, row }">
+          <b-badge class="conservation-status" :class="row.__conservationStatusCode" >{{cell}}</b-badge>
+        </template>
+        <template #detections="{ cell }">
+          <div class="d-flex gap-2 align-items-center">
+            <span>{{ cell }}</span>
+            <span class="detections-bar d-block rounded-1" style="width: 20px"></span>
+          </div>
+        </template>
+        <template #locations="{ cell }">
+          <div class="d-flex gap-2 align-items-center">
+            {{ cell * 100 }}%
+            <span class="locations-chart d-block rounded-5" style="background: conic-gradient(transparent 0deg 45deg, var(--cp-color-green-600) 45deg 360deg);"></span>
+          </div>
+        </template>
+
+        <template #card="{ card }">
+          <div class="d-flex align-items-baseline">
+            <h3 class="h4 flex-grow-1">{{card.birdName}}</h3>
+            <div class="d-flex gap-2 justify-content-end align-items-baseline">
+              <b-badge class="biostatus" :class="card.biostatus.toLowerCase()">{{card.biostatus}}</b-badge>
+              <b-tooltip>
+                <template #target>
+                  <span class="conservation-status mini d-flex align-items-center justify-content-center rounded-4" :class="card.__conservationStatusCode">{{card.__conservationStatusCode}}</span>
+                </template>
+                {{card.conservationStatus}}
+              </b-tooltip>
+            </div>
+
+          </div>
+          <p class="d-flex gap-2 align-items-center mb-1 fs-6">
+            <span>{{card.detections}} detections</span>
+            <span class="detections-bar d-block rounded-1" style="width: 20px"></span>
+          </p>
+
+          <p class="d-flex gap-2 align-items-center mb-0 fs-6">
+            {{card.locations * 100}}% locations
+            <span class="locations-chart d-block rounded-5" style="background: conic-gradient(transparent 0deg 45deg, var(--cp-color-green-600) 45deg 360deg);"></span>
+          </p>
+
+        </template>
+      </card-table>
+    </div>
+
+    <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+      Locations summary
+    </h2>
+    <horizontal-overflow-carousel
+      v-if="hasVisitsForSelectedTimePeriod"
+      class="locations-summary-wrapper mb-3 mb-lg-4"
+    >
+      <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
+      <div
+        class="species-summary-thermal d-flex gap-3 flex-sm-nowrap mb-3 mb-sm-0"
+        v-if="!isLoading && hasVisitsForSelectedTimePeriod"
+      >
+        <location-visit-summary
+          v-for="(
+            location, index
+          ) in locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
+          :location="location"
+          :active-locations="
+            locationsWithOnlineOrActiveDevicesInSelectedTimeWindow
+          "
+          @click="showVisitsForLocation(location)"
+          :locations="allLocations"
+          :visits="dashboardVisits"
+          :key="index"
+        />
+      </div>
+    </horizontal-overflow-carousel>
+    <div
+      v-if="isLoading || !hasVisitsForSelectedTimePeriod"
+      class="d-flex justify-content-sm-center flex-fill flex-column align-items-center justify-content-center mb-5 mb-sm-0"
+    >
+      <div v-if="isLoading">
+        <b-spinner variant="secondary" />
+      </div>
+      <div v-else class="d-flex justify-content-center flex-column">
+        <div class="text-body-tertiary text-center py-3">
+          <material-symbol
+            name="search_off"
+            size="2.4rem"
+            grade="thin"
+            class="mb-2"
+          />
+          <p>
+            <!-- TODO: cater for no locations, no devices, show different copy? -->
+            <span
+              data-cy="no results"
+              v-if="
+                locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.length ===
+                0
+              "
+            >
+              There were no active locations in the last
+              <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
+              ><span v-else>day</span> for this project.
+            </span>
+            <span v-else data-cy="no results">
+              There were no visits for any target species in any of the active
+              locations in the last
+              <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
+              ><span v-else>day</span> for this project.
+            </span>
+          </p>
+          <b-button
+            variant="outline-secondary"
+            :to="{
+              name: 'activity',
+              params: {
+                projectName: urlNormalisedCurrentProjectName,
+              },
+              query: {
+                displayMode: ActivitySearchDisplayMode.Visits,
+              },
+            }"
+          >View latest visits</b-button
+          >
+        </div>
+      </div>
+    </div>
+
+
+  </div>
   <inline-view-modal
     @close="selectedVisit = null"
     @recording-updated="recordingUpdated"
@@ -693,21 +958,38 @@ const recordingUpdated = async (
     position: relative;
   }
 }
-.dashboard-scope {
-  @media screen and (min-width: @breakpoint-sm) {
+.dashboard-scope-type {
+  @media screen and (min-width: @breakpoint-md) {
     position: absolute;
-    top: 0;
-    right: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: -70px;
+
+  }
+  @media screen and (min-width: @breakpoint-xxl) {
+    margin-top: -84px;
   }
 }
-.scope-filters {
-  .form-select {
-    background-color: unset;
-    border: 0;
-    width: auto;
+
+.dashboard-scope-time {
+  @media screen and (min-width: @breakpoint-md) {
+    position: absolute;
+    right: 0;
+    margin-top: -70px;
   }
-  span {
-    white-space: nowrap;
+  @media screen and (min-width: @breakpoint-xxl) {
+    margin-top: -84px;
+  }
+  .filters {
+    .form-select {
+      background-color: unset;
+      border: 0;
+      width: auto;
+      margin-right: -12px;
+    }
+    span {
+      white-space: nowrap;
+    }
   }
 }
 
@@ -719,15 +1001,17 @@ const recordingUpdated = async (
   }
 }
 
-.species-summary-container {
+.species-summary-container-thermal {
   border-radius: var(--bs-border-radius);
   @media screen and (min-width: @breakpoint-sm) {
-    background: white;
+    background: var(--bs-white);
     .standard-shadow();
   }
 }
 
-.species-summary {
+/****** Thermal *******/
+
+.species-summary-thermal {
   user-select: none;
   &__item {
     background: var(--bs-white);
@@ -799,12 +1083,110 @@ const recordingUpdated = async (
     }
   }
 }
+
+/****** Audio *******/
+
+.species-summary-container-audio {
+  .detections-bar {
+    height: var(--cp-spacing-xs);
+    background: var(--cp-color-green-400);
+  }
+  .locations-chart {
+    width: var(--cp-spacing-md);
+    height: var(--cp-spacing-md);
+  }
+}
+
+.featured_species_container {
+  @media (min-width: @breakpoint-lg-max) {
+    max-width: 84%;
+  }
+}
+
+.featured-species {
+  // See https://en.wikipedia.org/wiki/IUCN_Red_List#Categories
+  // We'll use the same color scheme Wikipedia is using
+  &__rank {
+    display: none;
+    @media (min-width: @breakpoint-xs-max) {
+      display: block;
+      line-height: 0.9;
+    }
+    @media (min-width: @breakpoint-xs-max) and (max-width: @breakpoint-sm-max) {
+      font-size: 3rem;
+    }
+    @media (min-width: @breakpoint-sm-max) {
+      display: block;
+      font-size: 5.5rem;
+      line-height: 0.9;
+    }
+  }
+}
+
+// See https://en.wikipedia.org/wiki/IUCN_Red_List#Categories
+// We'll use the same color scheme Wikipedia is using
+.conservation-status {
+  &.mini {
+    font-size: var(--cp-font-size-sm);
+    font-weight: var(--cp-font-weight-semilbold);
+    width: var(--cp-spacing-xl);
+    height: var(--cp-spacing-xl);
+    text-transform: uppercase;
+  }
+  color: var(--bs-white);
+  // important used because of the badge colors also using it 🙃
+  &.ex {
+    background: var(--bs-black) !important;
+    color: var(--bs-red) !important;
+  }
+  // extinct in the wild
+  &.ew {
+    background: var(--bs-black) !important;
+  }
+  // critically endangered
+  &.cr {
+    background: var(--bs-red) !important;
+  }
+  // endangered
+  &.en {
+    background: #cc6633 !important;
+  }
+  // vulnerable
+  &.vu {
+    background: #cc9900 !important;
+  }
+  // near threatened
+  &.nt {
+    background: #369f00 !important;
+  }
+  // least concern
+  &.lc {
+    background: #057339 !important;
+  }
+}
+
+.biostatus {
+  &.endemic {
+    background: var(--cp-color-green-100) !important;
+    color: var(--cp-color-green-700) !important;
+  }
+  &.naturalised {
+    background: color-mix(in oklch, var(--bs-teal), transparent 80%) !important;
+    color: color-mix(in oklch, var(--bs-teal), #000 30%) !important;
+
+  }
+  &.introduced {
+    background:  color-mix(in oklch, var(--bs-cyan), transparent 80%) !important;
+    color: color-mix(in oklch, var(--bs-cyan), #000 30%) !important;
+  }
+}
+
 </style>
 <style lang="less">
 @import "../assets/less/breakpoints.less";
 // make sure that the shadow of the species summary displays
 @media screen and (max-width: @breakpoint-xs-max) {
-  .species-summary-container {
+  .species-summary-container-thermal {
     margin: -2px -2px 0;
     .inner {
       padding: 2px 2px 4px;
