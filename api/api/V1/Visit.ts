@@ -110,7 +110,7 @@ export default function (app: Application, baseUrl: string) {
         .isArray({ min: 1 })
         .custom(isIntArray)
         .withMessage(
-          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'",
+          "Must be an id, or an array of ids.  For example, 'location=32' or 'location=32&location=33&location=34'",
         ),
     ]),
     fetchAuthorizedRequiredGroupById(param("projectId")),
@@ -179,8 +179,10 @@ order by d.day;
         .isArray({ min: 1 })
         .custom(isIntArray)
         .withMessage(
-          "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'",
+          "Must be an id, or an array of ids.  For example, 'locations=32' or 'locations=32&locations=33&locations=34'",
         ),
+      query("tagged-with").optional().toArray().isArray({ min: 1 }),
+      query("not-tagged-with").optional().toArray().isArray({ min: 1 }),
     ]),
     fetchAuthorizedRequiredGroupById(param("projectId")),
     async (request: Request, response: Response, _next: NextFunction) => {
@@ -192,16 +194,91 @@ order by d.day;
       const locations: LocationId[] = (
         (request.query["locations"] || []) as string[]
       ).map((locationId) => Number(locationId));
+      const taggedWith = (request.query["tagged-with"] || []) as string[];
+      const notTaggedWith = (request.query["not-tagged-with"] ||
+        []) as string[];
+      const whereAnd: WhereOptions = [
+        { startTime: { [Op.lt]: until } },
+        { endTime: { [Op.gte]: from } },
+      ];
+      if (taggedWith.length) {
+        const aiPathConditions = taggedWith.map((path) =>
+          sequelize.literal(
+            `"AiTrackTag"."path" <@ ${sequelize.escape(path)}::ltree`,
+          ),
+        );
+
+        const humanPathConditions = taggedWith.map((path) =>
+          sequelize.literal(
+            `"HumanTrackTag"."path" <@ ${sequelize.escape(path)}::ltree`,
+          ),
+        );
+        whereAnd.push({
+          [Op.or]: [
+            {
+              [Op.and]: [
+                {
+                  [Op.or]: humanPathConditions,
+                },
+                sequelize.where(sequelize.col(`AiTrackTag.path`), {
+                  [Op.eq]: null,
+                }),
+              ],
+            },
+            {
+              [Op.and]: [
+                {
+                  [Op.or]: aiPathConditions,
+                },
+                sequelize.where(sequelize.col(`HumanTrackTag.path`), {
+                  [Op.eq]: null,
+                }),
+              ],
+            },
+          ],
+        });
+      }
+      if (notTaggedWith.length) {
+        const aiPathConditions = notTaggedWith.map((path) =>
+          sequelize.literal(
+            `NOT ("AiTrackTag"."path" <@ ${sequelize.escape(path)}::ltree)`,
+          ),
+        );
+
+        const humanPathConditions = notTaggedWith.map((path) =>
+          sequelize.literal(
+            `NOT ("HumanTrackTag"."path" <@ ${sequelize.escape(path)}::ltree)`,
+          ),
+        );
+        whereAnd.push({
+          [Op.and]: [
+            {
+              [Op.or]: [
+                sequelize.where(sequelize.col("HumanTrackTag.path"), {
+                  [Op.eq]: null,
+                }),
+                { [Op.and]: humanPathConditions },
+              ],
+            },
+            {
+              [Op.or]: [
+                sequelize.where(sequelize.col("AiTrackTag.path"), {
+                  [Op.eq]: null,
+                }),
+                { [Op.and]: aiPathConditions },
+              ],
+            },
+          ],
+        });
+      }
       const whereClause: WhereOptions = {
         GroupId: projectId,
-        [Op.and]: [
-          { startTime: { [Op.lt]: until } },
-          { endTime: { [Op.gte]: from } },
-        ],
+        [Op.and]: whereAnd,
       };
       if (locations.length) {
         whereClause.StationId = { [Op.in]: locations };
       }
+
       if (countOnly) {
         const count = await Visit.count({
           where: whereClause,

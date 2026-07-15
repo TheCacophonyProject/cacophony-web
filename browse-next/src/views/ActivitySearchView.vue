@@ -1492,6 +1492,8 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             endOfDay(maxDateForSelectedLocations.value),
           ),
           query.locations,
+          [],
+          [],
           maxVisitsPerRequest,
           true,
         )) as ApiStaticVisitResponse[];
@@ -1653,6 +1655,8 @@ const doExport = async () => {
         fromDateTime,
         untilDateTime,
         query.locations,
+        [],
+        [],
         7500,
         (progress) => {
           exportProgress.value = progress;
