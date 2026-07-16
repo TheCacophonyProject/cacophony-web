@@ -10,3 +10,5 @@
 /types/schema-cache.json
 /types/api/*.js
 .vscode
+/test-results/.last-run.json
+/test_output.txt

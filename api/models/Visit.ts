@@ -681,7 +681,6 @@ export class Visit extends ModelStaticCommon<Visit> {
         },
         transaction,
       });
-      // FIXME: We're expanding the range again?!
       // 2) Pull recordings in a slightly wider range so that visit boundaries are correct
       // near the edge of [from, until].
       const queryFrom = new Date(from.getTime() - VISIT_GAP_SECONDS * 1000);

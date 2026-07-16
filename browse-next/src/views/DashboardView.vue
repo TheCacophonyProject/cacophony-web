@@ -22,7 +22,7 @@ import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/st
 import ProjectVisitsSummary from "@/components/ProjectVisitsSummary.vue";
 import LocationVisitSummary from "@/components/LocationVisitSummary.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
-import {BBadge, BButton, BSpinner, BTooltip} from "bootstrap-vue-next";
+import { BBadge, BButton, BSpinner, BTooltip } from "bootstrap-vue-next";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import { useRoute, useRouter } from "vue-router";
 import { useMediaQuery } from "@vueuse/core";
@@ -50,26 +50,27 @@ import {
   visitClassificationPath,
 } from "@models/visitsUtils";
 import type {
+  FloatZeroToOne,
   LatLng,
   RecordingId,
   StationId as LocationId,
 } from "@typedefs/api/common";
 import { DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS } from "@/consts.ts";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
-import { ActivitySearchDisplayMode } from "@/components/activitySearchUtils.ts";
+import {
+  ActivitySearchDisplayMode,
+  ActivitySearchRecordingMode,
+} from "@/components/activitySearchUtils.ts";
 import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
-import type { VisitsStaticQueryResult } from "@apiClient/Monitoring.ts";
 import { recordingUpdatedInVisitsContext } from "@/helpers/patch-visits-context.ts";
-import BimodalSwitch from "@/components/BimodalSwitch.vue";
-import LocationName from "@/components/LocationName.vue";
-import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 import CardTable from "@/components/CardTable.vue";
-import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
-import DeviceName from "@/components/DeviceName.vue";
+import type { ApiRecordingResponse } from "@typedefs/api/recording";
+import { RecordingType } from "@typedefs/api/consts.ts";
 
 const selectedVisit = ref<ApiStaticVisitResponse | null>(null);
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
 const visitsContext = ref<ApiStaticVisitResponse[] | null>(null);
+const audioRecordingsContext = ref<ApiRecordingResponse[] | null>(null);
 provide("currentlySelectedVisit", selectedVisit);
 provide("currentlyHighlightedLocation", currentlyHighlightedLocation);
 
@@ -104,6 +105,12 @@ const dashboardVisits = computed<ApiStaticVisitResponse[]>(() => {
   return ((visitsContext.value || []) as ApiStaticVisitResponse[]).filter(
     (visit) => !visitorIsIgnored(visit) && !visitIsTombstoned(visit),
   );
+});
+
+const dashboardAudioRecordings = computed<ApiRecordingResponse[]>(() => {
+  return (
+    (audioRecordingsContext.value || []) as ApiRecordingResponse[]
+  ).filter((recording) => recording);
 });
 
 // TODO: Move to provides/inject
@@ -231,7 +238,7 @@ watch(route, () => {
 // If url is saved and returned to, the best we can do is display the visit, but we can't do next/prev visits.
 
 // TODO - Reload these from user preferences.
-const timePeriodDays = ref<number>(7);
+const timePeriodDays = ref<number>(60);
 const visitsOrRecordings = ref<"visits" | "recordings">("visits");
 const speciesOrLocations = ref<"species" | "location">("species");
 const loadingVisitsProgress = ref<number>(0);
@@ -300,14 +307,49 @@ const loadVisits = async () => {
   }
 };
 
-const reloadDashboard = async (nextProject: SelectedProject | false) => {
-  if (nextProject) {
-    await Promise.all([loadLocations(), loadVisits()]);
+const loadAudioRecordings = async () => {
+  if (currentProject.value) {
+    audioRecordingsContext.value = null;
+    audioRecordingsContext.value =
+      await ClientApi.Recordings.getAllRecordingsForProjectBetweenTimes(
+        (currentProject.value as SelectedProject).id,
+        {
+          fromDateTime: fromTime.value,
+          untilDateTime: new Date(),
+          types: [RecordingType.Audio],
+          taggedWith: ["all.bird"],
+          subClassTags: true,
+          includeFilteredFalsePositivesAndNones: false,
+        },
+      );
   }
 };
 
-watch(timePeriodDays, loadVisits);
+const reloadDashboard = async (nextProject: SelectedProject | false) => {
+  if (nextProject) {
+    if (recordingMode.value === "Thermal") {
+      await Promise.all([loadLocations(), loadVisits()]);
+    } else {
+      await Promise.all([loadLocations(), loadAudioRecordings()]);
+    }
+  }
+};
+
+watch(timePeriodDays, async () => {
+  if (recordingMode.value === "Thermal") {
+    await loadVisits();
+  } else {
+    await loadAudioRecordings();
+  }
+});
 watch(currentProject, reloadDashboard);
+watch(recordingMode, async () => {
+  if (recordingMode.value === "Thermal") {
+    await loadVisits();
+  } else {
+    await loadAudioRecordings();
+  }
+});
 
 const loadedRouteName = ref<string>("");
 onBeforeMount(async () => {
@@ -403,9 +445,20 @@ onMounted(async () => {
   // Get species summary.
 });
 
-const isLoading = computed<boolean>(
-  () => locations.value === null || visitsContext.value === null,
-);
+const isLoading = computed<boolean>(() => {
+  if (locations.value === null) {
+    return true;
+  }
+  if (recordingMode.value === "Thermal" && visitsContext.value === null) {
+    return true;
+  } else if (
+    recordingMode.value === "Audio" &&
+    audioRecordingsContext.value === null
+  ) {
+    return true;
+  }
+  return false;
+});
 
 const currentSelectedProjectHasAudio = computed<boolean>(() => {
   return (
@@ -467,6 +520,13 @@ const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   );
 });
 
+const hasAudioRecordingsForSelectedTimePeriod = computed<boolean>(() => {
+  return (
+    locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value.length !== 0 &&
+    dashboardAudioRecordings.value.length !== 0
+  );
+});
+
 const recordingUpdated = async (
   recordingId: RecordingId,
   action: "deleted" | "updated",
@@ -487,35 +547,75 @@ const recordingUpdated = async (
   );
 };
 
-const audioItems = [
-  {
-    rank: 1,
-    birdName: "Fantail",
-    biostatus: "Endemic",
-    conservationStatus: "Least concern",
-    __conservationStatusCode: "lc",
-    detections: 24,
-    locations: 0.75,
-  },
-  {
-    rank: 2,
-    birdName: "Silvereye",
-    biostatus: "Naturalised",
-    conservationStatus: "Endangered",
-    __conservationStatusCode: "en",
-    detections: 18,
-    locations: 0.60,
-  },
-  {
-    rank: 2,
-    birdName: "Blackbird",
-    biostatus: "Introduced",
-    conservationStatus: "Extinct",
-    __conservationStatusCode: "ex",
-    detections: 10,
-    locations: 0.40,
-  },
-];
+interface BirdDetectionsItem {
+  rank: number;
+  birdName: string;
+  conservationStatus: string;
+  biostatus: string;
+  __conservationStatusCode: string;
+  detections: number;
+  locations: FloatZeroToOne;
+}
+
+const audioItems = computed<BirdDetectionsItem[]>(() => {
+  const recordings = dashboardAudioRecordings.value;
+  // We count a detection as one or more tags in each one minute recording.
+  // We don't count the same tag twice in a given recording
+  const recordingsBySpecies = new Map<string, number>();
+  const locationsPerSpecies = new Map<string, Set<number>>();
+  const numAudioLocations =
+    locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value.length;
+  for (const recording of recordings) {
+    const uniqueTagsInRecording = new Set<string>();
+    for (const track of recording.tracks) {
+      const uniqueTags = new Set(
+        track.tags
+          .filter((tag) => tag.path.startsWith("all.bird."))
+          .map((tag) => tag.path),
+      );
+      for (const tag of uniqueTags) {
+        uniqueTagsInRecording.add(tag);
+      }
+    }
+    for (const path of uniqueTagsInRecording.values()) {
+      const count = recordingsBySpecies.getOrInsert(path, 0);
+      recordingsBySpecies.set(path, count + 1);
+      if (recording.stationId) {
+        locationsPerSpecies
+          .getOrInsert(path, new Set())
+          .add(recording.stationId);
+      }
+    }
+  }
+  const result = [];
+  const species = Array.from(recordingsBySpecies.entries());
+  species.sort((a, b) => {
+    return b[1] - a[1];
+  });
+  for (const [path, count] of species) {
+    result.push({
+      birdName: displayLabelForClassificationLabel(
+        visitClassificationLabelFromPath(path).replaceAll("_", " "),
+        false,
+        true,
+      ),
+      detections: count,
+      biostatus: "Endemic",
+      conservationStatus: "Least concern",
+      __conservationStatusCode: "lc",
+      locations: (locationsPerSpecies.get(path)?.size || 0) / numAudioLocations,
+    });
+  }
+  return result as BirdDetectionsItem[];
+});
+const maxDetections = computed<number>(() => {
+  // return audioItems.value
+  //   .map((item) => item.detections)
+  //   .reduce((acc, n) => {
+  //     return acc + n;
+  //   }, 0);
+  return Math.max(...audioItems.value.map(item => item.detections));
+});
 
 // TODO: When hovering a visit entry, highlight station on the map.  What's the best way to plumb this reactivity through?
 </script>
@@ -523,7 +623,9 @@ const audioItems = [
   <div class="header-container">
     <section-header>Dashboard</section-header>
 
-    <div class="d-flex align-items-center justify-content-between mb-3 mb-sm-4 mb-md-1 mb-lg-2">
+    <div
+      class="d-flex align-items-center justify-content-between mb-3 mb-sm-4 mb-md-1 mb-lg-2"
+    >
       <div class="dashboard-scope-type">
         <div
           class="btn-group btn-group-md d-flex"
@@ -538,7 +640,7 @@ const audioItems = [
             id="recording-mode-cameras"
             autocomplete="off"
             v-model="recordingMode"
-            value="cameras"
+            value="Thermal"
           />
           <label
             class="btn btn-radio-group btn-md w-50 d-flex align-items-center justify-content-center px-lg-3"
@@ -554,7 +656,7 @@ const audioItems = [
             id="recording-mode-audio"
             autocomplete="off"
             v-model="recordingMode"
-            value="audio"
+            value="Audio"
           />
           <label
             class="btn btn-radio-group btn-md w-50 d-flex align-items-center justify-content-center px-lg-3"
@@ -567,26 +669,15 @@ const audioItems = [
       </div>
 
       <div class="dashboard-scope-time">
-        <!--      <bimodal-switch
-                class="justify-content-end"
-                :modes="['Thermal', 'Audio']"
-                v-model="recordingMode"
-                v-if="currentSelectedProjectHasAudioAndThermal"
-              />-->
-
-        <div
-          class="filters d-flex align-items-center"
-        >
+        <div class="filters d-flex align-items-center">
           <div class="d-flex align-items-center justify-content-between">
-            <span class="d-inline-block d-lg-none text-secondary">In the last</span>
-            <span class="d-none d-lg-inline-block text-secondary">Visits in the last</span>
-            <!--          <select-->
-            <!--            class="form-select form-select-sm text-end"-->
-            <!--            v-model="visitsOrRecordings"-->
-            <!--          >-->
-            <!--            <option>visits</option>-->
-            <!--            <option>recordings</option>-->
-            <!--          </select>-->
+            <span class="d-inline-block d-lg-none text-secondary"
+              >In the last</span
+            >
+            <span class="d-none d-lg-inline-block text-secondary"
+              ><span v-if="recordingMode === 'Thermal'">Visits</span
+              ><span v-else>Detections</span> in the last</span
+            >
           </div>
           <div class="d-flex align-items-center justify-content-between">
             <select
@@ -597,24 +688,22 @@ const audioItems = [
               <option value="1">24 hours</option>
               <option value="3">3 days</option>
               <option value="7">7 days</option>
-              <!--            <option value="30">30 days</option>-->
-              <!--            <option value="60">60 days</option>-->
+              <option value="30">30 days</option>
+              <option value="60">60 days</option>
             </select>
           </div>
-          <!--        <div class="d-flex flex-row align-items-center justify-content-between">-->
-          <!--          <span> grouped by species</span>-->
-          <!--&lt;!&ndash;          <select&ndash;&gt;-->
-          <!--&lt;!&ndash;            class="form-select form-select-sm text-end"&ndash;&gt;-->
-          <!--&lt;!&ndash;            v-model="speciesOrLocations"&ndash;&gt;-->
-          <!--&lt;!&ndash;          >&ndash;&gt;-->
-          <!--&lt;!&ndash;            <option>species</option>&ndash;&gt;-->
-          <!--&lt;!&ndash;            <option>location</option>&ndash;&gt;-->
-          <!--&lt;!&ndash;          </select>&ndash;&gt;-->
-          <!--        </div>-->
+          <!--          <div class="d-flex flex-row align-items-center justify-content-between">-->
+          <!--            <span> grouped by species</span>-->
+          <!--            <select-->
+          <!--              class="form-select form-select-sm text-end"-->
+          <!--              v-model="speciesOrLocations"-->
+          <!--            >-->
+          <!--              <option>species</option>-->
+          <!--              <option>location</option>-->
+          <!--            </select>-->
+          <!--          </div>-->
         </div>
-
       </div>
-
     </div>
   </div>
   <div v-if="recordingMode === 'Thermal'">
@@ -764,45 +853,81 @@ const audioItems = [
     </div>
   </div>
   <div v-else>
-    <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+    <h2
+      class="dashboard-subhead"
+      v-if="hasAudioRecordingsForSelectedTimePeriod"
+    >
       Species summary
     </h2>
-    <div class="species-summary-container-audio mb-5">
+    <div
+      class="species-summary-container-audio mb-5"
+      v-if="hasAudioRecordingsForSelectedTimePeriod"
+    >
       <div class="featured_species_container container-fluid">
         <div class="row gap-3 mb-3 mb-md-4 mb-lg-5">
-          <div v-for="(bird, index) in audioItems" class="featured-species col d-flex flex-column container p-3 lh-sm rounded-3 shadow-sm bg-white"
-             :class="{
-                'col-12 ': index === 0 && isMobileView,
-                'order-2 ': index === 0 && !isMobileView,
-                'mt-sm-4 order-1': index === 1 && !isMobileView,
-                'mt-sm-5 order-3': index === 2 && !isMobileView}
-          ">
+          <div
+            v-for="(bird, index) in audioItems.slice(0, 3)"
+            :key="index"
+            class="featured-species col d-flex flex-column container p-3 lh-sm rounded-3 shadow-sm bg-white"
+            :class="{
+              'col-12 ': index === 0 && isMobileView,
+              'order-2 ': index === 0 && !isMobileView,
+              'mt-sm-4 order-1': index === 1 && !isMobileView,
+              'mt-sm-5 order-3': index === 2 && !isMobileView,
+            }"
+          >
             <div class="row">
-              <div class="featured-species__rank col-lg-3 col-xxl-2 text-secondary text-opacity-25">
-                <span class="d-block mb-2 mb-lg-0 ms-lg-2 ms-xxl-0">{{ index + 1 }}</span>
+              <div
+                class="featured-species__rank col-lg-3 col-xxl-2 text-secondary text-opacity-25"
+              >
+                <span class="d-block mb-2 mb-lg-0 ms-lg-2 ms-xxl-0">{{
+                  index + 1
+                }}</span>
               </div>
               <div class="col-lg-9 col-xxl-10">
-                <h3 class="mt-1 mb-2" :class="isMobileView ? 'h4': 'h3'">{{bird.birdName}}
+                <h3
+                  class="mt-1 mb-2 text-capitalize"
+                  :class="isMobileView ? 'h4' : 'h3'"
+                >
+                  {{ bird.birdName }}
                 </h3>
                 <p class="mb-2 d-flex gap-2 align-items-center">
-                  <span>{{bird.detections}} detections</span>
-                  <span class="detections-bar d-block rounded-1" style="width: 20px"></span>
+                  <span>{{ bird.detections }}&nbsp;detections</span>
+                  <span
+                    class="detections-bar d-block rounded-1"
+                    :style="`width: max(4px, ${(bird.detections / maxDetections) * 100}%)`"
+                  ></span>
                 </p>
                 <p class="mb-3 d-flex gap-2 align-items-center">
-                  <span>{{bird.locations * 100}}% locations</span>
-                  <span class="locations-chart d-block rounded-5" style="background: conic-gradient(transparent 0deg 45deg, var(--cp-color-green-600) 45deg 360deg);"></span>
-                  </p>
+                  <span>{{ bird.locations * 100 }}% locations</span>
+                  <span
+                    class="locations-chart d-block rounded-5"
+                    :style="`background: conic-gradient(
+                        transparent 0deg ${360 - bird.locations * 360}deg,
+                        var(--cp-color-green-600) ${360 - bird.locations * 360}deg 360deg
+                      );`"
+                  ></span>
+                </p>
               </div>
             </div>
-            <div class="d-flex mt-auto gap-2 justify-content-end align-items-baseline">
-              <b-badge class="biostatus" :class="bird.biostatus.toLowerCase()">{{bird.biostatus}}</b-badge>
+            <div
+              class="d-flex mt-auto gap-2 justify-content-end align-items-baseline"
+            >
+              <b-badge
+                class="biostatus"
+                :class="bird.biostatus.toLowerCase()"
+                >{{ bird.biostatus }}</b-badge
+              >
               <b-tooltip>
                 <template #target>
-                  <span class="conservation-status mini d-flex align-items-center justify-content-center rounded-4" :class="bird.__conservationStatusCode">{{bird.__conservationStatusCode}}</span>
+                  <span
+                    class="conservation-status mini d-flex align-items-center justify-content-center rounded-4"
+                    :class="bird.__conservationStatusCode"
+                    >{{ bird.__conservationStatusCode }}</span
+                  >
                 </template>
-                {{bird.conservationStatus}}
+                {{ bird.conservationStatus }}
               </b-tooltip>
-
             </div>
           </div>
         </div>
@@ -811,69 +936,106 @@ const audioItems = [
         :items="audioItems"
         compact
         :max-card-width="768"
-        class="mb-3 "
+        class="mb-3"
         :standalone="!isMobileView"
-        :class="isMobileView? 'bg-white p-3 shadow-sm rounded-3': ''"
+        :class="isMobileView ? 'bg-white p-3 shadow-sm rounded-3' : ''"
       >
+        <template #birdName="{ cell }">
+          <span class="text-capitalize">{{ cell }}</span>
+        </template>
         <template #biostatus="{ cell }">
-          <b-badge class="biostatus" :class="cell.toLowerCase()">{{cell}}</b-badge>
+          <b-badge class="biostatus" :class="cell.toLowerCase()">{{
+            cell
+          }}</b-badge>
         </template>
         <template #conservationStatus="{ cell, row }">
-          <b-badge class="conservation-status" :class="row.__conservationStatusCode" >{{cell}}</b-badge>
+          <b-badge
+            class="conservation-status"
+            :class="row.__conservationStatusCode"
+            >{{ cell }}</b-badge
+          >
         </template>
         <template #detections="{ cell }">
           <div class="d-flex gap-2 align-items-center">
             <span>{{ cell }}</span>
-            <span class="detections-bar d-block rounded-1" style="width: 20px"></span>
+            <span
+              class="detections-bar d-block rounded-1"
+              :style="`width: max(4px, ${(cell / maxDetections) * 100}%)`"
+            ></span>
           </div>
         </template>
         <template #locations="{ cell }">
           <div class="d-flex gap-2 align-items-center">
             {{ cell * 100 }}%
-            <span class="locations-chart d-block rounded-5" style="background: conic-gradient(transparent 0deg 45deg, var(--cp-color-green-600) 45deg 360deg);"></span>
+            <span
+              class="locations-chart d-block rounded-5"
+              :style="`background: conic-gradient(
+                        transparent 0deg ${360 - cell * 360}deg,
+                        var(--cp-color-green-600) ${360 - cell * 360}deg 360deg
+                      );`"
+            ></span>
           </div>
         </template>
 
         <template #card="{ card }">
           <div class="d-flex align-items-baseline">
-            <h3 class="h4 flex-grow-1">{{card.birdName}}</h3>
+            <h3 class="h4 flex-grow-1 text-capitalize">{{ card.birdName }}</h3>
             <div class="d-flex gap-2 justify-content-end align-items-baseline">
-              <b-badge class="biostatus" :class="card.biostatus.toLowerCase()">{{card.biostatus}}</b-badge>
+              <b-badge
+                class="biostatus"
+                :class="card.biostatus.toLowerCase()"
+                >{{ card.biostatus }}</b-badge
+              >
               <b-tooltip>
                 <template #target>
-                  <span class="conservation-status mini d-flex align-items-center justify-content-center rounded-4" :class="card.__conservationStatusCode">{{card.__conservationStatusCode}}</span>
+                  <span
+                    class="conservation-status mini d-flex align-items-center justify-content-center rounded-4"
+                    :class="card.__conservationStatusCode"
+                    >{{ card.__conservationStatusCode }}</span
+                  >
                 </template>
-                {{card.conservationStatus}}
+                {{ card.conservationStatus }}
               </b-tooltip>
             </div>
-
           </div>
           <p class="d-flex gap-2 align-items-center mb-1 fs-6">
-            <span>{{card.detections}} detections</span>
-            <span class="detections-bar d-block rounded-1" style="width: 20px"></span>
+            <span>{{ card.detections }}&nbsp;detections</span>
+            <span
+              class="detections-bar d-block rounded-1"
+              :style="`width: max(4px, ${(card.detections / maxDetections) * 100}%)`"
+            ></span>
           </p>
 
           <p class="d-flex gap-2 align-items-center mb-0 fs-6">
-            {{card.locations * 100}}% locations
-            <span class="locations-chart d-block rounded-5" style="background: conic-gradient(transparent 0deg 45deg, var(--cp-color-green-600) 45deg 360deg);"></span>
+            {{ card.locations * 100 }}% locations
+            <span
+              class="locations-chart d-block rounded-5"
+              :style="`background: conic-gradient(
+                        transparent 0deg ${360 - card.locations * 360}deg,
+                        var(--cp-color-green-600) ${360 - card.locations * 360}deg 360deg
+                      );`"
+            ></span>
           </p>
-
         </template>
       </card-table>
     </div>
 
-    <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+    <h2
+      class="dashboard-subhead"
+      v-if="hasAudioRecordingsForSelectedTimePeriod"
+    >
       Locations summary
     </h2>
     <horizontal-overflow-carousel
-      v-if="hasVisitsForSelectedTimePeriod"
+      v-if="hasAudioRecordingsForSelectedTimePeriod"
       class="locations-summary-wrapper mb-3 mb-lg-4"
     >
       <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
       <div
         class="species-summary-thermal d-flex gap-3 flex-sm-nowrap mb-3 mb-sm-0"
-        v-if="!isLoading && hasVisitsForSelectedTimePeriod"
+        v-if="!isLoading && hasAudioRecordingsForSelectedTimePeriod"
       >
+        <!--        FIXME: Need to filter to just locations that were recording birds during the period -->
         <location-visit-summary
           v-for="(
             location, index
@@ -890,7 +1052,7 @@ const audioItems = [
       </div>
     </horizontal-overflow-carousel>
     <div
-      v-if="isLoading || !hasVisitsForSelectedTimePeriod"
+      v-if="isLoading || !hasAudioRecordingsForSelectedTimePeriod"
       class="d-flex justify-content-sm-center flex-fill flex-column align-items-center justify-content-center mb-5 mb-sm-0"
     >
       <div v-if="isLoading">
@@ -932,16 +1094,15 @@ const audioItems = [
                 projectName: urlNormalisedCurrentProjectName,
               },
               query: {
-                displayMode: ActivitySearchDisplayMode.Visits,
+                displayMode: ActivitySearchDisplayMode.Recordings,
+                recordingMode: ActivitySearchRecordingMode.Audio,
               },
             }"
-          >View latest visits</b-button
+            >View latest bird detections</b-button
           >
         </div>
       </div>
     </div>
-
-
   </div>
   <inline-view-modal
     @close="selectedVisit = null"
@@ -966,7 +1127,6 @@ const audioItems = [
     left: 50%;
     transform: translateX(-50%);
     margin-top: -70px;
-
   }
   @media screen and (min-width: @breakpoint-xxl) {
     margin-top: -84px;
@@ -1175,14 +1335,12 @@ const audioItems = [
   &.naturalised {
     background: color-mix(in oklch, var(--bs-teal), transparent 80%) !important;
     color: color-mix(in oklch, var(--bs-teal), #000 30%) !important;
-
   }
   &.introduced {
-    background:  color-mix(in oklch, var(--bs-cyan), transparent 80%) !important;
+    background: color-mix(in oklch, var(--bs-cyan), transparent 80%) !important;
     color: color-mix(in oklch, var(--bs-cyan), #000 30%) !important;
   }
 }
-
 </style>
 <style lang="less">
 @import "../assets/less/breakpoints.less";

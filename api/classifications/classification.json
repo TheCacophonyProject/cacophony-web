@@ -1618,6 +1618,7 @@
         },
         {
           "label": "silvereye",
+          "status": "lc",
           "children": [
             {
               "label": "norfolk silvereye"
