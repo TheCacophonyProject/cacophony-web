@@ -156,6 +156,7 @@
                       (tag.path && tag.path.split('.')) ||
                       (pathForTag(tag.what) || '').split('.')
                     "
+                    :data-cy="`${tag.what} tag`"
                     :key="tag.what"
                     v-for="tag in canonicalTagsForRecording(item.data)"
                     ><span class="me-1">{{
