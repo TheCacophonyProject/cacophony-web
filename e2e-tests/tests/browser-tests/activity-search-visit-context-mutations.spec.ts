@@ -945,10 +945,9 @@ test("Double clicking a tag button should resolve visits correctly", async () =>
 });
 
 test("Next and prev recordings inside a visit go in the correct order", async () => {
-   // TODO
+  // TODO
 });
 
 test("Next and prev visits inside a visit context go in the correct order", async () => {
-   // TODO
+  // TODO
 });
-

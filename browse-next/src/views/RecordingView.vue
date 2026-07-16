@@ -1084,14 +1084,10 @@ const deleteRecording = async () => {
         const targetRecording = (loadedRecordings.value || []).find(
           (rec) => rec.id === recordingIdToDelete,
         );
-        if (targetRecording) {
-          (targetRecording as MaybeDeletedRecording).tombstoned = true;
-        }
         const hasNextRec = hasNextRecording.value;
         const hasNextVis = hasNextVisit.value;
         const hasPrevRec = hasPreviousRecording.value;
         const hasPrevVis = hasPreviousVisit.value;
-
         if (hasNextRec || hasNextVis || hasPrevRec || hasPrevVis) {
           if (hasNextRec || hasNextVis) {
             await gotoNextRecordingOrVisit();
@@ -1102,6 +1098,10 @@ const deleteRecording = async () => {
           // Close the modal if there are no other recordings to move to.
           console.log("No recordings to advance to, close modal automatically");
           emit("close");
+        }
+        // NOTE: It's important that this mutation happens after navigation is resolved.
+        if (targetRecording) {
+          (targetRecording as MaybeDeletedRecording).tombstoned = true;
         }
       }
     }
