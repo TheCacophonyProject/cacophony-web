@@ -31,6 +31,7 @@ import { useMediaQuery } from "@vueuse/core";
 import {
   displayLabelForClassificationLabel,
   flatClassifications,
+  getClassificationForLabel,
   getClassifications,
 } from "@api/classificationsUtils.ts";
 import TagImage from "@/components/TagImage.vue";
@@ -626,29 +627,51 @@ const audioItems = computed<BirdDetectionsItem[]>(() => {
   });
   let i = 1;
   for (const [path, count] of species) {
+    const label = displayLabelForClassificationLabel(
+      visitClassificationLabelFromPath(path).replaceAll("_", " "),
+      false,
+      true,
+    );
+    const classification = getClassificationForLabel(label);
+    const conservationStatus = getConservationStatusForCode(
+      classification?.status,
+    );
     result.push({
       rank: i,
-      birdName: displayLabelForClassificationLabel(
-        visitClassificationLabelFromPath(path).replaceAll("_", " "),
-        false,
-        true,
-      ),
+      birdName: label,
       detections: count,
-      biostatus: "Endemic",
-      conservationStatus: "Least concern",
-      __conservationStatusCode: "lc",
+      biostatus: classification?.biostatus || "",
+      conservationStatus,
+      __conservationStatusCode: classification?.status || "",
       locations: (locationsPerSpecies.get(path)?.size || 0) / numAudioLocations,
     });
     i++;
   }
   return result as BirdDetectionsItem[];
 });
+
+const getConservationStatusForCode = (classification?: string) => {
+  if (!classification) {
+    return "unknown";
+  }
+  switch (classification) {
+    case "lc":
+      return "least concern";
+    case "vu":
+      return "vulnerable";
+    case "nt":
+      return "near threatened";
+    case "en":
+      return "endangered";
+    case "cr":
+      return "critically endangered";
+    case "ew":
+      return "extinct in the wild";
+  }
+  return classification;
+};
+
 const maxDetections = computed<number>(() => {
-  // return audioItems.value
-  //   .map((item) => item.detections)
-  //   .reduce((acc, n) => {
-  //     return acc + n;
-  //   }, 0);
   return Math.max(...audioItems.value.map((item) => item.detections));
 });
 
@@ -741,7 +764,7 @@ const maxDetections = computed<number>(() => {
       </div>
     </div>
   </div>
-  <div v-if="recordingMode === 'Thermal'">
+  <div v-if="recordingMode === 'Thermal'" class="d-flex flex-fill flex-column">
     <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
       Species summary
     </h2>
@@ -887,7 +910,7 @@ const maxDetections = computed<number>(() => {
       </div>
     </div>
   </div>
-  <div v-else>
+  <div v-else class="d-flex flex-fill flex-column">
     <h2
       class="dashboard-subhead"
       v-if="hasAudioRecordingsForSelectedTimePeriod"
@@ -933,15 +956,18 @@ const maxDetections = computed<number>(() => {
                       >s</span
                     ></span
                   >
-                  <span
-                    class="detections-bar d-block rounded-1"
-                    :style="`width: max(4px, ${(bird.detections / maxDetections) * 100}%)`"
-                  ></span>
+                  <span class="d-inline-flex flex-grow-1">
+                    <span
+                      class="detections-bar d-block rounded-1"
+                      :style="`width: max(4px, ${(bird.detections / maxDetections) * 100}%)`"
+                    ></span>
+                  </span>
                 </p>
                 <p class="mb-3 d-flex gap-2 align-items-center">
                   <span
                     >{{ (bird.locations * 100).toFixed(1) }}% locations</span
                   >
+
                   <span
                     class="locations-chart d-block rounded-5"
                     :style="`background: conic-gradient(

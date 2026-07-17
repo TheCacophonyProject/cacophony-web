@@ -9,6 +9,8 @@ interface ClassificationInfo {
   label: string;
   display: string;
   path: string;
+  biostatus?: string;
+  status?: string;
   node: Classification;
   displayAudio: string;
 }
@@ -21,13 +23,19 @@ const flattenNodes = (
     const path = `${(parent && parent.path) || node.path || node.label}.${
       child.label
     }`;
-    const childInfo = {
+    const childInfo: ClassificationInfo = {
       label: child.label,
       display: child.display || child.label,
       displayAudio: child.displayAudio || child.display || child.label,
       node: child,
       path,
     };
+    if (child.biostatus) {
+      childInfo.biostatus = child.biostatus;
+    }
+    if (child.status) {
+      childInfo.status = child.status;
+    }
     acc[child.label] = childInfo;
     if (child.aliases) {
       for (const alias of child.aliases) {

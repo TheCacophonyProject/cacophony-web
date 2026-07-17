@@ -1,6 +1,6 @@
 {
   "label": "all",
-  "version": "a06febdf-cfdc-49e8-a2c1-8b99174b431a",
+  "version": "a06febdf-cfdc-49e8-a2c1-8b99174b433b",
   "children": [
     {
       "label": "mammal",
@@ -302,16 +302,22 @@
           "label": "bandicoot"
         },
         {
-          "label": "bellbird"
+          "label": "bellbird",
+          "status": "lc",
+          "biostatus": "endemic"
         },
         {
           "label": "bittern",
           "children": [
             {
-              "label": "australasian bittern"
+              "label": "australasian bittern",
+              "status": "vu",
+              "biostatus": "native"
             },
             {
-              "label": "little bittern"
+              "label": "little bittern",
+              "biostatus": "native",
+              "status": "lc"
             }
           ]
         },
@@ -320,10 +326,10 @@
         },
         {
           "label": "blackbird",
-          "children": [
-            {
-              "label": "eurasian blackbird"
-            }
+          "status": "lc",
+          "biostatus": "introduced",
+          "aliases": [
+            "eurasian blackbird"
           ]
         },
         {
@@ -360,13 +366,18 @@
           "label": "butcherbird"
         },
         {
-          "label": "chaffinch"
+          "label": "chaffinch",
+          "biostatus": "introduced",
+          "status": "lc"
         },
         {
           "label": "chatham island taiko"
         },
         {
-          "label": "chicken"
+          "label": "chicken",
+          "aliases": ["rooster"],
+          "biostatus": "introduced",
+          "status": "lc"
         },
         {
           "label": "chestnut-breasted shelduck"
@@ -406,7 +417,10 @@
           "label": "creeper",
           "children": [
             {
-              "label": "brown creeper"
+              "label": "brown creeper",
+              "aliases": ["pīpipi"],
+              "status": "lc",
+              "biostatus": "endemic"
             }
           ]
         },
@@ -423,7 +437,9 @@
               "label": "fan-tailed cuckoo"
             },
             {
-              "label": "long-tailed cuckoo"
+              "label": "long-tailed cuckoo",
+              "status": "lc",
+              "biostatus": "endemic"
             },
             {
               "label": "oriental cuckoo"
@@ -432,7 +448,9 @@
               "label": "pallid cuckoo"
             },
             {
-              "label": "shining cuckoo"
+              "label": "shining cuckoo",
+              "biostatus": "native",
+              "status": "lc"
             }
           ]
         },
@@ -468,13 +486,17 @@
           "label": "dotterel",
           "children": [
             {
-              "label": "banded dotterel"
+              "label": "banded dotterel",
+              "biostatus": "endemic",
+              "status": "nt"
             },
             {
               "label": "black-fronted dotterel"
             },
             {
-              "label": "new zealand dotterel"
+              "label": "new zealand dotterel",
+              "biostatus": "endemic",
+              "status": "cr"
             },
             {
               "label": "oriental dotterel"
@@ -536,7 +558,9 @@
           "label": "dunlin"
         },
         {
-          "label": "dunnock"
+          "label": "dunnock",
+          "status": "lc",
+          "biostatus": "introduced"
         },
         {
           "label": "dusky woodswallow"
@@ -567,20 +591,29 @@
           "label": "falcon",
           "children": [
             {
-              "label": "new zealand falcon"
+              "label": "new zealand falcon",
+              "status": "lc",
+              "biostatus": "endemic",
+              "aliases": ["kārearea"]
             }
           ]
         },
         {
           "label": "fantail",
+          "status": "lc",
           "children": [
             {
-              "label": "new zealand fantail"
+              "label": "new zealand fantail",
+              "aliases": ["pīwakawaka"],
+              "status": "lc",
+              "biostatus": "endemic"
             }
           ]
         },
         {
-          "label": "fernbird"
+          "label": "fernbird",
+          "status": "lc",
+          "biostatus": "endemic"
         },
         {
           "label": "flycatcher",
@@ -645,17 +678,17 @@
         },
         {
           "label": "goldfinch",
-          "children": [
-            {
-              "label": "european goldfinch"
-            }
-          ]
+          "aliases": ["european goldfinch"],
+          "biostatus": "introduced",
+          "status": "lc"
         },
         {
           "label": "goose",
           "children": [
             {
-              "label": "canada goose"
+              "label": "canada goose",
+              "status": "lc",
+              "biostatus": "introduced"
             },
             {
               "label": "cape barren goose"
@@ -681,11 +714,9 @@
         },
         {
           "label": "greenfinch",
-          "children": [
-            {
-              "label": "european greenfinch"
-            }
-          ]
+          "aliases": ["european greenfinch"],
+          "biostatus": "introduced",
+          "status": "lc"
         },
         {
           "label": "greenshank",
@@ -722,7 +753,9 @@
               "label": "red-billed gull"
             },
             {
-              "label": "southern black-backed gull"
+              "label": "southern black-backed gull",
+              "biostatus": "native",
+              "status": "lc"
             }
           ]
         },
@@ -772,16 +805,24 @@
           ]
         },
         {
-          "label": "kaka"
+          "label": "kaka",
+          "aliases": ["kākā"],
+          "biostatus": "endemic",
+          "status": "vu"
         },
         {
           "label": "kakapo"
         },
         {
-          "label": "kea"
+          "label": "kea",
+          "biostatus": "endemic",
+          "status": "en"
         },
         {
-          "label": "kereru"
+          "label": "kereru",
+          "aliases": ["kererū"],
+          "biostatus": "endemic",
+          "status": "lc"
         },
         {
           "label": "kestrel",
@@ -793,9 +834,11 @@
         },
         {
           "label": "kingfisher",
+          "status": "lc",
           "children": [
             {
-              "label": "sacred kingfisher"
+              "label": "sacred kingfisher",
+              "status": "lc"
             }
           ]
         },
@@ -809,24 +852,39 @@
         },
         {
           "label": "kiwi",
+          "biostatus": "endemic",
           "aliases": [
             "bird/kiwi"
           ],
           "children": [
             {
-              "label": "great spotted kiwi"
+              "label": "great spotted kiwi",
+              "aliases": ["roroa", "roa"],
+              "biostatus": "endemic",
+              "status": "vu"
             },
             {
-              "label": "little spotted kiwi"
+              "label": "little spotted kiwi",
+              "biostatus": "endemic",
+              "aliases": ["kiwi pukupuku"],
+              "status": "nt"
             },
             {
-              "label": "north island brown kiwi"
+              "label": "north island brown kiwi",
+              "status": "vu",
+              "biostatus": "endemic"
             },
             {
-              "label": "okarito brown kiwi"
+              "label": "okarito brown kiwi",
+              "aliases": ["rowi"],
+              "biostatus": "endemic",
+              "status": "vu"
             },
             {
-              "label": "southern brown kiwi"
+              "label": "southern brown kiwi",
+              "aliases": ["tokoeka"],
+              "biostatus": "endemic",
+              "status": "vu"
             }
           ]
         },
@@ -843,12 +901,20 @@
         },
         {
           "label": "kokako",
+          "status": "lc",
+          "biostatus": "endemic",
           "children": [
             {
-              "label": "north island kokako"
+              "label": "north island kokako",
+              "status": "lc",
+              "biostatus": "endemic",
+              "aliases": ["kōkako"]
             },
             {
-              "label": "south island kokako"
+              "label": "south island kokako",
+              "status": "cr",
+              "biostatus": "endemic",
+              "aliases": ["kōkā"]
             }
           ]
         },
@@ -867,7 +933,9 @@
           "label": "magpie",
           "children": [
             {
-              "label": "australian magpie"
+              "label": "australian magpie",
+              "biostatus": "introduced",
+              "status": "lc"
             },
             {
               "label": "magpie-lark"
@@ -941,6 +1009,9 @@
         },
         {
           "label": "morepork",
+          "aliases": ["ruru"],
+          "biostatus": "native",
+          "status": "lc",
           "children": [
             {
               "label": "norfolk morepork"
@@ -951,7 +1022,9 @@
           "label": "myna",
           "children": [
             {
-              "label": "common myna"
+              "label": "common myna",
+              "status": "lc",
+              "biostatus": "introduced"
             }
           ]
         },
@@ -978,13 +1051,15 @@
           ]
         },
         {
-          "label": "norfolk gerygone"
+          "label": "norfolk gerygone",
+          "status": "lc"
         },
         {
           "label": "whistler",
           "children": [
             {
-              "label": "golden whistler"
+              "label": "golden whistler",
+              "status": "lc"
             },
             {
               "label": "norfolk golden whistler"
@@ -1004,7 +1079,9 @@
               "label": "barn owl"
             },
             {
-              "label": "little owl"
+              "label": "little owl",
+              "biostatus": "introduced",
+              "status": "lc"
             }
           ]
         },
@@ -1012,18 +1089,29 @@
           "label": "oystercatcher",
           "children": [
             {
-              "label": "chatham island oystercatcher"
+              "label": "chatham island oystercatcher",
+              "aliases": ["tōrea tai"],
+              "biostatus": "endemic",
+              "status": "en"
             },
             {
-              "label": "south island pied oystercatcher"
+              "label": "south island pied oystercatcher",
+              "aliases": ["tōrea"],
+              "biostatus": "endemic",
+              "status": "lc"
             },
             {
-              "label": "variable oystercatcher"
+              "label": "variable oystercatcher",
+              "biostatus": "endemic",
+              "aliases": ["tōrea pango"],
+              "status": "lc"
             }
           ]
         },
         {
-          "label": "paradise shelduck"
+          "label": "paradise shelduck",
+          "status": "lc",
+          "biostatus": "endemic"
         },
         {
           "label": "parakeet",
@@ -1035,10 +1123,15 @@
               "label": "forbes' parakeet"
             },
             {
-              "label": "orange-fronted parakeet"
+              "label": "orange-fronted parakeet",
+              "status": "cr",
+              "biostatus": "endemic"
+
             },
             {
-              "label": "red-crowned parakeet"
+              "label": "red-crowned parakeet",
+              "status": "lc",
+              "biostatus": "endemic"
             },
             {
               "label": "reischek's parakeet"
@@ -1047,7 +1140,9 @@
               "label": "rose-ringed parakeet"
             },
             {
-              "label": "yellow-crowned parakeet"
+              "label": "yellow-crowned parakeet",
+              "status": "nt",
+              "biostatus": "endemic"
             }
           ]
         },
@@ -1068,7 +1163,9 @@
           ]
         },
         {
-          "label": "peafowl"
+          "label": "peafowl",
+          "biostatus": "introduced",
+          "status": "lc"
         },
         {
           "label": "pelican",
@@ -1271,7 +1368,9 @@
           "label": "pheasant",
           "children": [
             {
-              "label": "common pheasant"
+              "label": "common pheasant",
+              "status": "lc",
+              "biostatus": "introduced"
             }
           ]
         },
@@ -1298,7 +1397,9 @@
           "label": "pipit",
           "children": [
             {
-              "label": "new zealand pipit"
+              "label": "new zealand pipit",
+              "status": "lc",
+              "biostatus": "endemic"
             }
           ]
         },
@@ -1330,7 +1431,9 @@
               "label": "shore plover"
             },
             {
-              "label": "spur-winged plover"
+              "label": "spur-winged plover",
+              "status": "lc",
+              "biostatus": "native"
             }
           ]
         },
@@ -1363,7 +1466,9 @@
           ]
         },
         {
-          "label": "pukeko"
+          "label": "pukeko",
+          "biostatus": "native",
+          "status": "lc"
         },
         {
           "label": "purple swamphens"
@@ -1375,7 +1480,9 @@
               "label": "brown quail"
             },
             {
-              "label": "california quail"
+              "label": "california quail",
+              "status": "lc",
+              "biostatus": "introduced"
             }
           ]
         },
@@ -1398,14 +1505,17 @@
         },
         {
           "label": "redpoll",
-          "children": [
-            {
-              "label": "common redpoll"
-            }
-          ]
+          "aliases": ["common redpoll"],
+          "status": "lc",
+          "biostatus": "introduced"
         },
         {
-          "label": "rifleman"
+          "label": "rifleman",
+          "status": "lc",
+          "biostatus": "endemic",
+          "aliases": [
+            "tītitipounamu"
+          ]
         },
         {
           "label": "robin",
@@ -1414,10 +1524,14 @@
               "label": "black robin"
             },
             {
-              "label": "norfolk robin"
+              "label": "norfolk robin",
+              "status": "en"
             },
             {
-              "label": "north island robin"
+              "label": "north island robin",
+              "aliases": ["toutouwai"],
+              "status": "lc",
+              "biostatus": "endemic"
             },
             {
               "label": "south island robin"
@@ -1431,16 +1545,15 @@
           "label": "rook"
         },
         {
-          "label": "rooster"
-        },
-        {
           "label": "rosella",
           "children": [
             {
               "label": "crimson rosella"
             },
             {
-              "label": "eastern rosella"
+              "label": "eastern rosella",
+              "status": "lc",
+              "biostatus": "introduced"
             }
           ]
         },
@@ -1618,6 +1731,8 @@
         },
         {
           "label": "silvereye",
+          "aliases": ["tauhou"],
+          "biostatus": "native",
           "status": "lc",
           "children": [
             {
@@ -1649,7 +1764,9 @@
           "label": "skylark",
           "children": [
             {
-              "label": "eurasian skylark"
+              "label": "eurasian skylark",
+              "biostatus": "introduced",
+              "status": "lc"
             }
           ]
         },
@@ -1678,9 +1795,13 @@
         },
         {
           "label": "sparrow",
+          "status": "lc",
+          "biostatus": "introduced",
           "children": [
             {
-              "label": "house sparrow"
+              "label": "house sparrow",
+              "status": "lc",
+              "biostatus": "introduced"
             }
           ]
         },
@@ -1699,7 +1820,10 @@
           "label": "starling",
           "children": [
             {
-              "label": "common starling"
+              "label": "common starling",
+              "aliases": ["european starling"],
+              "status": "lc",
+              "biostatus": "introduced"
             }
           ]
         },
@@ -1710,7 +1834,9 @@
               "label": "black stilt"
             },
             {
-              "label": "pied stilt"
+              "label": "pied stilt",
+              "status": "lc",
+              "biostatus": "native"
             }
           ]
         },
@@ -1743,7 +1869,9 @@
           "label": "swan",
           "children": [
             {
-              "label": "black swan"
+              "label": "black swan",
+              "biostatus": "native",
+              "status": "lc"
             },
             {
               "label": "mute swan"
@@ -1834,7 +1962,9 @@
               "label": "little tern"
             },
             {
-              "label": "sooty tern"
+              "label": "sooty tern",
+              "biostatus": "native",
+              "status": "lc"
             },
             {
               "label": "whiskered tern"
@@ -1854,7 +1984,9 @@
           "label": "thrush",
           "children": [
             {
-              "label": "song thrush"
+              "label": "song thrush",
+              "status": "lc",
+              "biostatus": "introduced"
             },
             {
               "label": "grey shrikethrush",
@@ -1868,7 +2000,9 @@
           ]
         },
         {
-          "label": "tomtit"
+          "label": "tomtit",
+          "status": "lc",
+          "biostatus": "endemic"
         },
         {
           "label": "triller",
@@ -1890,7 +2024,10 @@
           ]
         },
         {
-          "label": "tui"
+          "label": "tui",
+          "aliases": ["tūī"],
+          "biostatus": "endemic",
+          "status": "lc"
         },
         {
           "label": "turkey"
@@ -1913,15 +2050,19 @@
         },
         {
           "label": "warbler",
+          "status": "lc",
           "children": [
             {
-              "label": "australian reed warbler"
+              "label": "australian reed warbler",
+              "status": "lc"
             },
             {
-              "label": "chatham island warbler"
+              "label": "chatham island warbler",
+              "status": "lc"
             },
             {
-              "label": "grey warbler"
+              "label": "grey warbler",
+              "status": "lc"
             }
           ]
         },
@@ -1934,7 +2075,9 @@
           ]
         },
         {
-          "label": "weka"
+          "label": "weka",
+          "biostatus": "endemic",
+          "status": "vu"
         },
         {
           "label": "whimbrel",
@@ -1965,10 +2108,14 @@
           "label": "wrybill"
         },
         {
-          "label": "yellowhammer"
+          "label": "yellowhammer",
+          "status": "lc",
+          "biostatus": "introduced"
         },
         {
-          "label": "yellowhead"
+          "label": "yellowhead",
+          "biostaus": "endemic",
+          "status": "nt"
         }
       ]
     }

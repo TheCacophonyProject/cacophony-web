@@ -62,6 +62,8 @@ export type ApiTrackTag =
 export interface Classification {
   label: string;
   aliases?: string[];
+  status?: string;
+  biostatus?: string;
   display?: string;
   displayAudio?: string;
   children?: Classification[];
