@@ -1112,7 +1112,10 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         @click="persistVisitsDisplayMode"
         :value="'visits'"
       />
-      <label class="btn btn-radio-group btn-sm w-50" for="display-mode-visits"
+      <label
+        class="btn btn-radio-group btn-sm w-50"
+        for="display-mode-visits"
+        data-cy="visits search"
         >Visits</label
       >
       <input
@@ -1126,6 +1129,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         :value="'recordings'"
       />
       <label
+        data-cy="recordings search"
         class="btn btn-radio-group btn-sm w-50"
         for="display-mode-recordings"
         >Recordings</label
@@ -1198,6 +1202,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         switch
         :disabled="showUntaggedOnly"
         size="lg"
+        data-cy="include false triggers"
       >
         <span class="d-flex justify-content-center">
           <span

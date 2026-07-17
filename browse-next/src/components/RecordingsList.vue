@@ -21,6 +21,10 @@
       @mouseenter="() => highlightedLocation(item)"
       @mouseleave="() => unhighlightedLocation(item)"
       class="list-item"
+      :class="{
+        'd-none': item.data.hasOwnProperty('tombstoned'),
+      }"
+      :data-cy="`recording ${index}`"
     >
       <div
         v-if="!item.data.hasOwnProperty('tombstoned')"
@@ -41,6 +45,7 @@
           <span
             v-if="item.type === 'recording'"
             class="pb-1 fs-6 text-secondary lh-sm"
+            data-cy="recording time"
             >{{
               timeAtLocation(item.data.recordingDateTime, canonicalLocation)
             }}</span
@@ -49,6 +54,7 @@
             timeAtLocation(item.data, canonicalLocation)
           }}</span>
           <span
+            data-cy="recording duration"
             class="duration fs-6 text-secondary"
             v-if="
               item.type === 'recording' &&
@@ -150,6 +156,7 @@
                       (tag.path && tag.path.split('.')) ||
                       (pathForTag(tag.what) || '').split('.')
                     "
+                    :data-cy="`${tag.what} tag`"
                     :key="tag.what"
                     v-for="tag in canonicalTagsForRecording(item.data)"
                     ><span class="me-1">{{
