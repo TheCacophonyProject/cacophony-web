@@ -35,6 +35,7 @@ declare module 'vue' {
     JoinExistingProjectModal: typeof import('./src/components/JoinExistingProjectModal.vue')['default']
     LayeredDropdown: typeof import('./src/components/LayeredDropdown.vue')['default']
     LeaveProjectModal: typeof import('./src/components/LeaveProjectModal.vue')['default']
+    LocationItemSummary: typeof import('./src/components/LocationItemSummary.vue')['default']
     LocationName: typeof import('./src/components/LocationName.vue')['default']
     LocationPicker: typeof import('./src/components/LocationPicker.vue')['default']
     LocationsOverviewTable: typeof import('./src/components/LocationsOverviewTable.vue')['default']

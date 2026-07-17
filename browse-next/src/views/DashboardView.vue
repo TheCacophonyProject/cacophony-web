@@ -20,7 +20,9 @@ import HorizontalOverflowCarousel from "@/components/HorizontalOverflowCarousel.
 import InlineViewModal from "@/components/InlineViewModal.vue";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import ProjectVisitsSummary from "@/components/ProjectVisitsSummary.vue";
-import LocationVisitSummary from "@/components/LocationVisitSummary.vue";
+import LocationItemSummary, {
+  type LocationSummaryItem,
+} from "@/components/LocationItemSummary.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
 import { BBadge, BButton, BSpinner, BTooltip } from "bootstrap-vue-next";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
@@ -107,10 +109,40 @@ const dashboardVisits = computed<ApiStaticVisitResponse[]>(() => {
   );
 });
 
+const dashboardLocationItems = computed<LocationSummaryItem[]>(() => {
+  return ((visitsContext.value || []) as ApiStaticVisitResponse[])
+    .filter((visit) => !visitorIsIgnored(visit) && !visitIsTombstoned(visit))
+    .map((item) => ({
+      locationId: item.locationId,
+      path: item.humanClassification || item.aiClassification || "none ",
+    }));
+});
+
 const dashboardAudioRecordings = computed<ApiRecordingResponse[]>(() => {
   return (
     (audioRecordingsContext.value || []) as ApiRecordingResponse[]
   ).filter((recording) => recording);
+});
+
+const audioDetectionsAtLocations = computed<LocationSummaryItem[]>(() => {
+  return (audioRecordingsContext.value || []).flatMap((recording) => {
+    const tagsForRecording = new Set(
+      recording.tracks.flatMap((track) => {
+        return track.tags
+          .filter((tag) => tag.path.startsWith("all.bird."))
+          .flatMap((tag) => {
+            return visitClassificationLabelFromPath(tag.path).replaceAll(
+              "_",
+              " ",
+            );
+          });
+      }),
+    );
+    return Array.from(tagsForRecording).map((path) => ({
+      path,
+      locationId: recording.stationId,
+    }));
+  }) as LocationSummaryItem[];
 });
 
 // TODO: Move to provides/inject
@@ -592,8 +624,10 @@ const audioItems = computed<BirdDetectionsItem[]>(() => {
   species.sort((a, b) => {
     return b[1] - a[1];
   });
+  let i = 1;
   for (const [path, count] of species) {
     result.push({
+      rank: i,
       birdName: displayLabelForClassificationLabel(
         visitClassificationLabelFromPath(path).replaceAll("_", " "),
         false,
@@ -605,6 +639,7 @@ const audioItems = computed<BirdDetectionsItem[]>(() => {
       __conservationStatusCode: "lc",
       locations: (locationsPerSpecies.get(path)?.size || 0) / numAudioLocations,
     });
+    i++;
   }
   return result as BirdDetectionsItem[];
 });
@@ -614,7 +649,7 @@ const maxDetections = computed<number>(() => {
   //   .reduce((acc, n) => {
   //     return acc + n;
   //   }, 0);
-  return Math.max(...audioItems.value.map(item => item.detections));
+  return Math.max(...audioItems.value.map((item) => item.detections));
 });
 
 // TODO: When hovering a visit entry, highlight station on the map.  What's the best way to plumb this reactivity through?
@@ -682,7 +717,7 @@ const maxDetections = computed<number>(() => {
           <div class="d-flex align-items-center justify-content-between">
             <select
               id="select-dashboard-timespan"
-              class="form-select form-select-sm text-end"
+              class="form-select form-select-sm"
               v-model="timePeriodDays"
             >
               <option value="1">24 hours</option>
@@ -780,12 +815,11 @@ const maxDetections = computed<number>(() => {
       v-if="hasVisitsForSelectedTimePeriod"
       class="locations-summary-wrapper mb-3 mb-lg-4"
     >
-      <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
       <div
         class="species-summary-thermal d-flex gap-3 flex-sm-nowrap mb-3 mb-sm-0"
         v-if="!isLoading && hasVisitsForSelectedTimePeriod"
       >
-        <location-visit-summary
+        <location-item-summary
           v-for="(
             location, index
           ) in locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
@@ -795,7 +829,8 @@ const maxDetections = computed<number>(() => {
           "
           @click="showVisitsForLocation(location)"
           :locations="allLocations"
-          :visits="dashboardVisits"
+          :items="dashboardLocationItems"
+          item-type="visits"
           :key="index"
         />
       </div>
@@ -892,20 +927,27 @@ const maxDetections = computed<number>(() => {
                   {{ bird.birdName }}
                 </h3>
                 <p class="mb-2 d-flex gap-2 align-items-center">
-                  <span>{{ bird.detections }}&nbsp;detections</span>
+                  <span
+                    >{{ bird.detections }}&nbsp;detection<span
+                      v-if="bird.detections > 1"
+                      >s</span
+                    ></span
+                  >
                   <span
                     class="detections-bar d-block rounded-1"
                     :style="`width: max(4px, ${(bird.detections / maxDetections) * 100}%)`"
                   ></span>
                 </p>
                 <p class="mb-3 d-flex gap-2 align-items-center">
-                  <span>{{ bird.locations * 100 }}% locations</span>
+                  <span
+                    >{{ (bird.locations * 100).toFixed(1) }}% locations</span
+                  >
                   <span
                     class="locations-chart d-block rounded-5"
                     :style="`background: conic-gradient(
-                        transparent 0deg ${360 - bird.locations * 360}deg,
+                        #eee 0deg ${360 - bird.locations * 360}deg,
                         var(--cp-color-green-600) ${360 - bird.locations * 360}deg 360deg
-                      );`"
+                      ); border: 1px solid #ddd`"
                   ></span>
                 </p>
               </div>
@@ -933,7 +975,7 @@ const maxDetections = computed<number>(() => {
         </div>
       </div>
       <card-table
-        :items="audioItems"
+        :items="audioItems.slice(3)"
         compact
         :max-card-width="768"
         class="mb-3"
@@ -966,13 +1008,13 @@ const maxDetections = computed<number>(() => {
         </template>
         <template #locations="{ cell }">
           <div class="d-flex gap-2 align-items-center">
-            {{ cell * 100 }}%
+            {{ (cell * 100).toFixed(1) }}%
             <span
               class="locations-chart d-block rounded-5"
               :style="`background: conic-gradient(
-                        transparent 0deg ${360 - cell * 360}deg,
+                        #eee 0deg ${360 - cell * 360}deg,
                         var(--cp-color-green-600) ${360 - cell * 360}deg 360deg
-                      );`"
+                      ); border: 1px solid #ddd`"
             ></span>
           </div>
         </template>
@@ -999,7 +1041,12 @@ const maxDetections = computed<number>(() => {
             </div>
           </div>
           <p class="d-flex gap-2 align-items-center mb-1 fs-6">
-            <span>{{ card.detections }}&nbsp;detections</span>
+            <span
+              >{{ card.detections }}&nbsp;detection<span
+                v-if="card.detections > 1"
+                >s</span
+              ></span
+            >
             <span
               class="detections-bar d-block rounded-1"
               :style="`width: max(4px, ${(card.detections / maxDetections) * 100}%)`"
@@ -1007,13 +1054,13 @@ const maxDetections = computed<number>(() => {
           </p>
 
           <p class="d-flex gap-2 align-items-center mb-0 fs-6">
-            {{ card.locations * 100 }}% locations
+            {{ (card.locations * 100).toFixed(1) }}% locations
             <span
               class="locations-chart d-block rounded-5"
               :style="`background: conic-gradient(
-                        transparent 0deg ${360 - card.locations * 360}deg,
+                        #eee 0deg ${360 - card.locations * 360}deg,
                         var(--cp-color-green-600) ${360 - card.locations * 360}deg 360deg
-                      );`"
+                      ); border: 1px solid #ddd`"
             ></span>
           </p>
         </template>
@@ -1030,13 +1077,11 @@ const maxDetections = computed<number>(() => {
       v-if="hasAudioRecordingsForSelectedTimePeriod"
       class="locations-summary-wrapper mb-3 mb-lg-4"
     >
-      <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
       <div
         class="species-summary-thermal d-flex gap-3 flex-sm-nowrap mb-3 mb-sm-0"
         v-if="!isLoading && hasAudioRecordingsForSelectedTimePeriod"
       >
-        <!--        FIXME: Need to filter to just locations that were recording birds during the period -->
-        <location-visit-summary
+        <location-item-summary
           v-for="(
             location, index
           ) in locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
@@ -1046,7 +1091,8 @@ const maxDetections = computed<number>(() => {
           "
           @click="showVisitsForLocation(location)"
           :locations="allLocations"
-          :visits="dashboardVisits"
+          :items="audioDetectionsAtLocations"
+          item-type="detections"
           :key="index"
         />
       </div>
