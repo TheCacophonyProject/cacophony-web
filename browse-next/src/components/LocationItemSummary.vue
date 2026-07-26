@@ -39,7 +39,7 @@ const itemTypeProcessed = computed<string>(() => {
   if (itemCount.value > 1) {
     return props.itemType;
   }
-  return props.itemType.substring(0, props.itemType.length - 2);
+  return props.itemType.substring(0, props.itemType.length - 1);
 });
 
 const itemsForLocation = computed<LocationSummaryItem[]>(() => {
