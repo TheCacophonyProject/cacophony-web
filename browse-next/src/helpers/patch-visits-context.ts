@@ -200,7 +200,11 @@ export const recordingUpdatedInVisitsContext = async (
       visitLabel: visitClassificationLabel(nextVisit) || "none",
       recordingIds: nextVisit.recordingIds.join(","),
       currentRecordingId: nextRecordingId!.toString(),
+      projectName: route.params.projectName.toString(),
     };
+    if (route.params.detail) {
+      params.detail = "detail";
+    }
     if (nextRecordingId === nextVisit.humanClassificationRecordingId) {
       params.trackId = nextVisit.humanClassificationTrackId!.toString();
     } else if (nextRecordingId === nextVisit.aiClassificationRecordingId) {

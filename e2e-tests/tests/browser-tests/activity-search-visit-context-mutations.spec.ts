@@ -8,6 +8,8 @@ import {
   waitToNavigateToProject,
   waitToNavigateToProjectPage,
 } from "@/helpers/browse-helpers";
+import { Locator } from "@playwright/test";
+import { elementIsClipped } from "@/helpers/dom-helpers";
 
 test("Human classifying recordings correctly updates visits context", async ({
   page,
@@ -378,6 +380,7 @@ test("Human tagging two different tracks in two different recordings with differ
 
     await test.step(`Wait to go to next recording (#${recordingIds[2]})`, async () => {
       // The number of recordings in the url should go down to one
+      await recordingView.getByTestId("goto next recording").click();
       await waitToNavigateToProjectPage(
         page,
         projectName,
@@ -933,6 +936,167 @@ test("Deleting a single visit recording that was the only one in the list remove
     await expect(visit1).not.toBeAttached();
 
     // TODO: Empty activity
+  });
+});
+
+test("Closing the recording modal should keep the current visit set expanded in the visit results", async ({
+  page,
+  oneFrameCptv,
+}) => {
+  const aiClassification = "possum";
+  const { recordingIds, projectName } =
+    await test.step("Init project with classified recordings, sign in user", async () => {
+      const now = new Date();
+      now.setHours(11, 16, 0);
+      const initialDateTime = addDays(now, -5);
+      const project = await createProjectWithUserAndDevice({ initialDateTime });
+      const adminUser = project.getAdminUser();
+      const projectName = project.projectHandle.testId;
+      const uploads = await uploadRecordingsFromDeviceWithTimesAndDurations(
+        [
+          {
+            recordingDateTime: addMinutes(initialDateTime, 2),
+            durationSeconds: 40,
+            tracks: [{ tag: aiClassification, weight: 7 }],
+          },
+        ],
+        project.getDevice(),
+        project.locationBase,
+        oneFrameCptv,
+      );
+      await test.step("Sign in user", async () => {
+        await confirmEmailAddressViaApi(adminUser);
+        // Log in user.
+        await signInExistingUser(page, adminUser.testId);
+        await waitToNavigateToProject(page, projectName);
+      });
+      const recordingIds = uploads.map((r) => r.recordingId);
+      return { recordingIds, projectName };
+    });
+
+  await test.step("Go to activity view", async () => {
+    await page.getByTestId("activity search").click();
+    await waitToNavigateToProjectPage(page, projectName, "activity");
+  });
+
+  const group0 = await test.step("Locate and expand the first day visit group", async () => {
+    const group0 = page.getByTestId("visit group 0");
+    const speciesCount1 = group0
+      .getByTestId(`visit species ${aiClassification}`)
+      .getByTestId("visit count");
+    await expect(speciesCount1).toBeVisible();
+    await expect(speciesCount1, `correct number of ${aiClassification} visits`).toHaveText("1", {
+      timeout: 10,
+    });
+    // Expand group
+    await group0.click();
+    return group0;
+  });
+
+  const recordingView =
+    await test.step("Select the single visit, open recording modal", async () => {
+      await group0.getByTestId(`visit 1`).click();
+      await waitToNavigateToProjectPage(
+        page,
+        projectName,
+        `activity/visit/${aiClassification}/${recordingIds[0]}/**`,
+      );
+      const recordingView = page.getByTestId("recording view");
+      await expect(recordingView, "recording selected").toBeVisible();
+      await expect(recordingView.getByTestId("track 0"), "tracks loaded").toBeVisible();
+      return recordingView;
+    });
+
+  await test.step("Close recording modal", async () => {
+    await recordingView.getByTestId("close recording view").click();
+    await waitToNavigateToProjectPage(page, projectName, `activity`);
+  });
+
+  await expect(group0.getByTestId(`visit 1`), "visit group did not collapse").toBeAttached();
+});
+
+test("Selected track tagging interface stays expanded after tagging", async ({
+  page,
+  oneFrameCptv,
+}) => {
+  const aiClassification = "possum";
+  const { recordingIds, projectName } =
+    await test.step("Init project with classified recordings, sign in user", async () => {
+      const now = new Date();
+      now.setHours(11, 16, 0);
+      const initialDateTime = addDays(now, -5);
+      const project = await createProjectWithUserAndDevice({ initialDateTime });
+      const adminUser = project.getAdminUser();
+      const projectName = project.projectHandle.testId;
+      const uploads = await uploadRecordingsFromDeviceWithTimesAndDurations(
+        [
+          {
+            recordingDateTime: addMinutes(initialDateTime, 2),
+            durationSeconds: 40,
+            tracks: [{ tag: aiClassification, weight: 7 }],
+          },
+        ],
+        project.getDevice(),
+        project.locationBase,
+        oneFrameCptv,
+      );
+      await test.step("Sign in user", async () => {
+        await confirmEmailAddressViaApi(adminUser);
+        // Log in user.
+        await signInExistingUser(page, adminUser.testId);
+        await waitToNavigateToProject(page, projectName);
+      });
+      const recordingIds = uploads.map((r) => r.recordingId);
+      return { recordingIds, projectName };
+    });
+
+  await test.step("Go to activity view", async () => {
+    await page.getByTestId("activity search").click();
+    await waitToNavigateToProjectPage(page, projectName, "activity");
+  });
+
+  const group0 = await test.step("Locate and expand the first day visit group", async () => {
+    const group0 = page.getByTestId("visit group 0");
+    const speciesCount1 = group0
+      .getByTestId(`visit species ${aiClassification}`)
+      .getByTestId("visit count");
+    await expect(speciesCount1).toBeVisible();
+    await expect(speciesCount1, `correct number of ${aiClassification} visits`).toHaveText("1", {
+      timeout: 10,
+    });
+    // Expand group
+    await group0.click();
+    return group0;
+  });
+
+  const recordingView =
+    await test.step("Select the single visit, open recording modal", async () => {
+      await group0.getByTestId(`visit 1`).click();
+      await waitToNavigateToProjectPage(
+        page,
+        projectName,
+        `activity/visit/${aiClassification}/${recordingIds[0]}/**`,
+      );
+      const recordingView = page.getByTestId("recording view");
+      await expect(recordingView, "recording selected").toBeVisible();
+      await expect(recordingView.getByTestId("track 0"), "tracks loaded").toBeVisible();
+      return recordingView;
+    });
+
+  await test.step("Select first track and expand tagging interface", async () => {
+    await recordingView.getByTestId("track 0").click();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(
+      await elementIsClipped(recordingView.getByTestId("classification button possum")),
+      "buttons expanded",
+    ).toBe(false);
+
+    await recordingView.getByTestId("classification button rodent").click();
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    expect(
+      await elementIsClipped(recordingView.getByTestId("classification button possum")),
+      "buttons expanded",
+    ).toBe(false);
   });
 });
 
