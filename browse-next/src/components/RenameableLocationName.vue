@@ -159,6 +159,7 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
         size="sm"
         @click.stop.prevent="exitEditMode"
         class="d-flex"
+        tabindex="0"
       >
         <material-symbol name="close" size="1.25rem" class="d-sm-none" />
         <span class="d-none d-sm-inline">Cancel</span>
@@ -168,6 +169,7 @@ const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
         @click.stop.prevent="saveLocationName"
         size="sm"
         class="d-flex"
+        tabindex="0"
       >
         <material-symbol name="check" size="1.25rem" class="d-sm-none" />
         <span class="d-none d-sm-inline">Save</span></b-button
