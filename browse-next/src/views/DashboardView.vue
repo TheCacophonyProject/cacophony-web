@@ -31,6 +31,7 @@ import { useMediaQuery } from "@vueuse/core";
 import {
   displayLabelForClassificationLabel,
   flatClassifications,
+  flatClassificationsByPath,
   getClassificationForLabel,
   getClassifications,
 } from "@api/classificationsUtils.ts";
@@ -69,16 +70,56 @@ import { recordingUpdatedInVisitsContext } from "@/helpers/patch-visits-context.
 import CardTable from "@/components/CardTable.vue";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import { RecordingType } from "@typedefs/api/consts.ts";
+import type { Classification } from "@typedefs/api/trackTag";
 
 const selectedVisit = ref<ApiStaticVisitResponse | null>(null);
+const selectedRecording = ref<ApiRecordingResponse | null>(null);
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
 const visitsContext = ref<ApiStaticVisitResponse[] | null>(null);
 const audioRecordingsContext = ref<ApiRecordingResponse[] | null>(null);
+
+const router = useRouter();
+const route = useRoute();
+const maybeFilteredVisitsContext = computed<ApiStaticVisitResponse[]>(() => {
+  if (visitsContext.value) {
+    return (visitsContext.value as ApiStaticVisitResponse[]).filter(
+      currentVisitsFilterComputed.value,
+    );
+  }
+  return [];
+});
+
+const maybeFilteredAudioRecordingsContext = computed<ApiRecordingResponse[]>(
+  () => {
+    if (audioRecordingsContext.value) {
+      if (currentAudioRecordingsFilter.value) {
+        return audioRecordingsContext.value.filter(
+          currentAudioRecordingsFilter.value,
+        );
+      }
+      return audioRecordingsContext.value;
+    }
+    return [];
+  },
+);
+
+const maybeFilteredRecordingIds = computed<RecordingId[]>(() => {
+  return maybeFilteredAudioRecordingsContext.value.map((r) => r.id);
+});
+
 provide("currentlySelectedVisit", selectedVisit);
+provide("currentlySelectedRecording", selectedRecording);
 provide("currentlyHighlightedLocation", currentlyHighlightedLocation);
+provide("visitsContext", maybeFilteredVisitsContext);
+provide("loadedRecordings", maybeFilteredAudioRecordingsContext);
+provide("loadedRecordingIds", maybeFilteredRecordingIds);
 
 const currentVisitsFilter = ref<
   ((visit: ApiStaticVisitResponse) => boolean) | null
+>(null);
+
+const currentAudioRecordingsFilter = ref<
+  ((recording: ApiRecordingResponse) => boolean) | null
 >(null);
 
 const visitIsTombstoned = (visit: ApiStaticVisitResponse): boolean => {
@@ -146,20 +187,6 @@ const audioDetectionsAtLocations = computed<LocationSummaryItem[]>(() => {
   }) as LocationSummaryItem[];
 });
 
-// TODO: Move to provides/inject
-// FIXME: Any time any visit is mutated (tags change etc, we have to recompute this,
-//  which could be very slow for a large list?
-const maybeFilteredVisitsContext = computed<ApiStaticVisitResponse[]>(() => {
-  if (visitsContext.value) {
-    return (visitsContext.value as ApiStaticVisitResponse[]).filter(
-      currentVisitsFilterComputed.value,
-    );
-  }
-  return [];
-});
-
-provide("visitsContext", maybeFilteredVisitsContext);
-
 const ignoredTags = computed<string[]>(() => {
   if (currentProject.value) {
     return (
@@ -201,11 +228,27 @@ const visitHasLocation =
     return (visit && visit.locationId === location) as boolean;
   };
 
-const recordingMode = ref<"Thermal" | "Audio">("Thermal");
+const recordingMode = ref<"Thermal" | "Audio">(
+  ((route.name && route.name.toString()) || "dashboard").includes("audio")
+    ? "Audio"
+    : "Thermal",
+);
+
+watch(recordingMode, (newValue, oldValue) => {
+  console.log("recordingMode", newValue);
+  if (newValue === "Thermal") {
+    router.push({
+      name: "dashboard-thermal",
+    });
+  } else if (newValue === "Audio") {
+    router.push({
+      name: "dashboard-audio",
+    });
+  }
+});
+
 const audioMode = computed<boolean>(() => recordingMode.value === "Audio");
 
-const router = useRouter();
-const route = useRoute();
 const isMobileView = useMediaQuery("(max-width: 639px)");
 const availableProjects = inject(userProjects) as Ref<
   LoadedResource<ApiProjectResponse[]>
@@ -252,7 +295,7 @@ watch(
       }
 
       await router.push({
-        name: "dashboard-visit",
+        name: "dashboard-thermal-visit",
         params,
         query: route.query,
       });
@@ -263,7 +306,7 @@ watch(
   },
 );
 
-watch(route, () => {
+watch(route, (nextRoute) => {
   loadedRouteName.value = "dashboard";
 });
 
@@ -271,7 +314,7 @@ watch(route, () => {
 // If url is saved and returned to, the best we can do is display the visit, but we can't do next/prev visits.
 
 // TODO - Reload these from user preferences.
-const timePeriodDays = ref<number>(60);
+const timePeriodDays = ref<number>(recordingMode.value === "Thermal" ? 7 : 60);
 const visitsOrRecordings = ref<"visits" | "recordings">("visits");
 const speciesOrLocations = ref<"species" | "location">("species");
 const loadingVisitsProgress = ref<number>(0);
@@ -358,6 +401,13 @@ const loadAudioRecordings = async () => {
   }
 };
 
+const parentRouteName = computed<string>(() => {
+  if (recordingMode.value === "Audio") {
+    return "dashboard-audio";
+  }
+  return "dashboard-thermal";
+});
+
 const reloadDashboard = async (nextProject: SelectedProject | false) => {
   if (nextProject) {
     if (recordingMode.value === "Thermal") {
@@ -378,8 +428,10 @@ watch(timePeriodDays, async () => {
 watch(currentProject, reloadDashboard);
 watch(recordingMode, async () => {
   if (recordingMode.value === "Thermal") {
+    timePeriodDays.value = Math.min(timePeriodDays.value, 7);
     await loadVisits();
   } else {
+    timePeriodDays.value = Math.min(timePeriodDays.value, 60);
     await loadAudioRecordings();
   }
 });
@@ -519,6 +571,7 @@ const _hasSelectedVisit = computed<boolean>({
   set: (value: boolean) => {
     if (!value) {
       // Return to dashboard from modal.
+      console.log("Return to dashboard");
       router.push({
         name: "dashboard",
         params: { projectName: route.params.projectName },
@@ -543,6 +596,40 @@ const showVisitsForLocation = (location: ApiLocationResponse) => {
   currentVisitsFilter.value = visitHasLocation(location.id);
   if (maybeFilteredVisitsContext.value.length) {
     selectedVisit.value = maybeFilteredVisitsContext.value[0];
+  }
+};
+
+const showRecordingsForClassification = async (
+  classification: Classification,
+) => {
+  currentAudioRecordingsFilter.value = (recording: ApiRecordingResponse) =>
+    recording.tracks.some((track) =>
+      track.tags.some((tag) => tag.path === classification.path),
+    );
+  if (maybeFilteredAudioRecordingsContext.value.length) {
+    selectedRecording.value = maybeFilteredAudioRecordingsContext.value[0];
+    await router.push({
+      name: "dashboard-audio-recording",
+      params: {
+        currentRecordingId: selectedRecording.value.id,
+      },
+      query: route.query,
+    });
+  }
+};
+
+const showRecordingsForLocation = async (location: ApiLocationResponse) => {
+  currentAudioRecordingsFilter.value = (recording: ApiRecordingResponse) =>
+    recording.stationId === location.id;
+  if (maybeFilteredAudioRecordingsContext.value.length) {
+    selectedRecording.value = maybeFilteredAudioRecordingsContext.value[0];
+    await router.push({
+      name: "dashboard-audio-recording",
+      params: {
+        currentRecordingId: selectedRecording.value.id,
+      },
+      query: route.query,
+    });
   }
 };
 
@@ -586,6 +673,7 @@ interface BirdDetectionsItem {
   conservationStatus: string;
   biostatus: string;
   __conservationStatusCode: string;
+  __classification: Classification;
   detections: number;
   locations: FloatZeroToOne;
 }
@@ -632,7 +720,7 @@ const audioItems = computed<BirdDetectionsItem[]>(() => {
       false,
       true,
     );
-    const classification = getClassificationForLabel(label);
+    const classification = flatClassificationsByPath.value[path];
     const conservationStatus = getConservationStatusForCode(
       classification?.status,
     );
@@ -642,6 +730,7 @@ const audioItems = computed<BirdDetectionsItem[]>(() => {
       detections: count,
       biostatus: classification?.biostatus || "",
       conservationStatus,
+      __classification: classification,
       __conservationStatusCode: classification?.status || "",
       locations: (locationsPerSpecies.get(path)?.size || 0) / numAudioLocations,
     });
@@ -674,6 +763,11 @@ const getConservationStatusForCode = (classification?: string) => {
 const maxDetections = computed<number>(() => {
   return Math.max(...audioItems.value.map((item) => item.detections));
 });
+
+const closedModal = () => {
+  selectedVisit.value = null;
+  selectedRecording.value = null;
+};
 
 // TODO: When hovering a visit entry, highlight station on the map.  What's the best way to plumb this reactivity through?
 </script>
@@ -746,8 +840,12 @@ const maxDetections = computed<number>(() => {
               <option value="1">24 hours</option>
               <option value="3">3 days</option>
               <option value="7">7 days</option>
-              <option value="30">30 days</option>
-              <option value="60">60 days</option>
+              <option value="30" v-if="recordingMode === 'Audio'">
+                30 days
+              </option>
+              <option value="60" v-if="recordingMode === 'Audio'">
+                60 days
+              </option>
             </select>
           </div>
           <!--          <div class="d-flex flex-row align-items-center justify-content-between">-->
@@ -927,6 +1025,7 @@ const maxDetections = computed<number>(() => {
             v-for="(bird, index) in audioItems.slice(0, 3)"
             :key="index"
             class="featured-species col d-flex flex-column container p-3 lh-sm rounded-3 shadow-sm bg-white"
+            @click="showRecordingsForClassification(bird.__classification)"
             :class="{
               'col-12 ': index === 0 && isMobileView,
               'order-2 ': index === 0 && !isMobileView,
@@ -934,7 +1033,7 @@ const maxDetections = computed<number>(() => {
               'mt-sm-5 order-3': index === 2 && !isMobileView,
             }"
           >
-            <div class="row">
+            <div class="row pointer-events-none">
               <div
                 class="featured-species__rank col-lg-3 col-xxl-2 text-secondary text-opacity-25"
               >
@@ -1006,6 +1105,12 @@ const maxDetections = computed<number>(() => {
         :max-card-width="768"
         class="mb-3"
         :standalone="!isMobileView"
+        @select-item="
+          (item) =>
+            showRecordingsForClassification(
+              (item as BirdDetectionsItem).__classification,
+            )
+        "
         :class="isMobileView ? 'bg-white p-3 shadow-sm rounded-3' : ''"
       >
         <template #birdName="{ cell }">
@@ -1115,7 +1220,7 @@ const maxDetections = computed<number>(() => {
           :active-locations="
             locationsWithOnlineOrActiveDevicesInSelectedTimeWindow
           "
-          @click="showVisitsForLocation(location)"
+          @click="showRecordingsForLocation(location)"
           :locations="allLocations"
           :items="audioDetectionsAtLocations"
           item-type="detections"
@@ -1177,11 +1282,19 @@ const maxDetections = computed<number>(() => {
     </div>
   </div>
   <inline-view-modal
-    @close="selectedVisit = null"
     @recording-updated="recordingUpdated"
-    :fade-in="loadedRouteName === 'dashboard'"
-    :parent-route-name="'dashboard'"
-    @shown="() => (loadedRouteName = 'dashboard')"
+    :fade-in="
+      loadedRouteName === 'dashboard-thermal' ||
+      loadedRouteName === 'dashboard-audio'
+    "
+    :parent-route-name="parentRouteName"
+    @shown="
+      () =>
+        (loadedRouteName = selectedRecording
+          ? 'dashboard-audio'
+          : 'dashboard-thermal')
+    "
+    @close="closedModal"
   />
 </template>
 <style lang="less" scoped>
@@ -1225,6 +1338,10 @@ const maxDetections = computed<number>(() => {
       white-space: nowrap;
     }
   }
+}
+
+.pointer-events-none {
+  pointer-events: none;
 }
 
 .dashboard-subhead {

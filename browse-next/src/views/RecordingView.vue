@@ -237,6 +237,15 @@ const previousVisit = computed<ApiStaticVisitResponse | null>(() => {
 });
 
 const previousRecordingId = computed<RecordingId | null>(() => {
+  if (recordingViewContext === "dashboard-audio-recording") {
+    if (previousRecordingIndex.value !== null) {
+      return allRecordingIds.value[
+        allRecordingIds.value.length - (previousRecordingIndex.value + 1)
+      ];
+    }
+    return null;
+  }
+
   if (previousRecordingIndex.value !== null) {
     return allRecordingIds.value[previousRecordingIndex.value];
   }
@@ -244,6 +253,15 @@ const previousRecordingId = computed<RecordingId | null>(() => {
 });
 
 const nextRecordingId = computed<RecordingId | null>(() => {
+  if (recordingViewContext === "dashboard-audio-recording") {
+    if (nextRecordingIndex.value !== null) {
+      return allRecordingIds.value[
+        allRecordingIds.value.length - (nextRecordingIndex.value + 1)
+      ];
+    }
+    return null;
+  }
+
   if (nextRecordingIndex.value !== null) {
     return allRecordingIds.value[nextRecordingIndex.value];
   }
@@ -266,6 +284,16 @@ const nextRecordingIndex = computed<number | null>(() => {
       }
       return currentRecordingIndex.value - 1;
     }
+  } else if (recordingViewContext === "dashboard-audio-recording") {
+    // We have the newest recording at index 0
+    const total = loadedRecordingIds.value.length;
+    if (
+      currentRecordingIndex.value === 0 ||
+      currentRecordingIndex.value === null
+    ) {
+      return null;
+    }
+    return Math.min(total - currentRecordingIndex.value, total - 1);
   } else {
     const total = recordingIds.value.length;
     if (currentRecordingIndex.value !== null) {
@@ -286,6 +314,17 @@ const previousRecordingIndex = computed<number | null>(() => {
         return null;
       }
       return currentRecordingIndex.value + 1;
+    }
+  } else if (recordingViewContext === "dashboard-audio-recording") {
+    // Newest recording at index 0
+    const total = loadedRecordingIds.value.length;
+    if (currentRecordingIndex.value !== null) {
+      const current = total - (currentRecordingIndex.value + 1);
+      const prev = current - 1;
+      if (prev === -1) {
+        return null;
+      }
+      return prev;
     }
   } else {
     if (currentRecordingIndex.value !== null) {
@@ -1056,14 +1095,18 @@ const prevRecordingType = ref<RecordingType | null>(null);
 const recordingType = computed<RecordingType | null>(() => {
   if (recording.value && !!recording.value) {
     return (recording.value as ApiRecordingResponse).type;
-  } else if (prevRecordingType.value) {
-    return prevRecordingType.value;
+  } else if (route.name && route.name.toString().includes("audio")) {
+    return RecordingType.Audio;
+  } else if (route.name && route.name.toString().includes("thermal")) {
+    return RecordingType.ThermalRaw;
   } else if (route.query["recording-mode"]) {
     if (route.query["recording-mode"] === "audio") {
       return RecordingType.Audio;
     } else {
       return RecordingType.ThermalRaw;
     }
+  } else if (prevRecordingType.value) {
+    return prevRecordingType.value;
   }
   return null;
 });
@@ -1134,8 +1177,7 @@ const locationName = (
     class="recording-view d-flex flex-column"
     data-cy="recording view"
     :class="{
-      'recording-type-audio':
-        recordingType && recordingType === RecordingType.Audio,
+      'recording-type-audio': recordingType === RecordingType.Audio,
     }"
   >
     <div v-if="inlineModal" class="dimmed">
