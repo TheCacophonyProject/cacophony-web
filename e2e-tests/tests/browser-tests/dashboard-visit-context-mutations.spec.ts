@@ -1,6 +1,6 @@
 import { expect, test } from "@/helpers/upload-tests";
 import { createProjectWithUserAndDevice } from "@/helpers/create-test-entities";
-import { uploadRecordingsFromDeviceWithTimesAndDurations } from "@/helpers/recording-uploads";
+import { uploadThermalRecordingsFromDeviceWithTimesAndDurations } from "@/helpers/recording-uploads";
 import { addDays, addMinutes } from "@/helpers/date-helpers";
 import { confirmEmailAddressViaApi } from "@/helpers/email-utils";
 import {
@@ -22,18 +22,19 @@ test("Human classifying recordings correctly updates visits context", async ({
       const project = await createProjectWithUserAndDevice({ initialDateTime });
       const adminUser = project.getAdminUser();
       const projectName = project.projectHandle.testId;
-      const [{ recordingId, tracks }] = await uploadRecordingsFromDeviceWithTimesAndDurations(
-        [
-          {
-            recordingDateTime: addMinutes(initialDateTime, 2),
-            durationSeconds: 40,
-            tracks: [aiClassification],
-          },
-        ],
-        project.getDevice(),
-        project.locationBase,
-        oneFrameCptv,
-      );
+      const [{ recordingId, tracks }] =
+        await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
+          [
+            {
+              recordingDateTime: addMinutes(initialDateTime, 2),
+              durationSeconds: 40,
+              tracks: [aiClassification],
+            },
+          ],
+          project.getDevice(),
+          project.locationBase,
+          oneFrameCptv,
+        );
       await test.step("Sign in user", async () => {
         await confirmEmailAddressViaApi(adminUser);
         // Log in user.
@@ -98,7 +99,7 @@ test("Deleting a recording in the middle of a visit splits original visit in vis
       const project = await createProjectWithUserAndDevice({ initialDateTime });
       const adminUser = project.getAdminUser();
       const projectName = project.projectHandle.testId;
-      const uploads = await uploadRecordingsFromDeviceWithTimesAndDurations(
+      const uploads = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
         [
           {
             recordingDateTime: addMinutes(initialDateTime, 2),
@@ -277,7 +278,7 @@ test("Deleting a recording at the end of a visit shortens the length in the visi
       const project = await createProjectWithUserAndDevice({ initialDateTime });
       const adminUser = project.getAdminUser();
       const projectName = project.projectHandle.testId;
-      const uploads = await uploadRecordingsFromDeviceWithTimesAndDurations(
+      const uploads = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
         [
           {
             recordingDateTime: addMinutes(initialDateTime, 2),
@@ -392,7 +393,7 @@ test("Deleting a recording at the start of a visit moves start time forwards in 
       const project = await createProjectWithUserAndDevice({ initialDateTime });
       const adminUser = project.getAdminUser();
       const projectName = project.projectHandle.testId;
-      const uploads = await uploadRecordingsFromDeviceWithTimesAndDurations(
+      const uploads = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
         [
           {
             recordingDateTime: addMinutes(initialDateTime, 2),
@@ -529,7 +530,7 @@ test("Deleting a single recording visit cleanly removes it from the visit contex
       const project = await createProjectWithUserAndDevice({ initialDateTime });
       const adminUser = project.getAdminUser();
       const projectName = project.projectHandle.testId;
-      const uploads = await uploadRecordingsFromDeviceWithTimesAndDurations(
+      const uploads = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
         [
           {
             recordingDateTime: addMinutes(initialDateTime, 2),
@@ -652,7 +653,7 @@ test("Deleting a single visit recording that was the only one in the list remove
       const project = await createProjectWithUserAndDevice({ initialDateTime });
       const adminUser = project.getAdminUser();
       const projectName = project.projectHandle.testId;
-      const uploads = await uploadRecordingsFromDeviceWithTimesAndDurations(
+      const uploads = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
         [
           {
             recordingDateTime: addMinutes(initialDateTime, 2),

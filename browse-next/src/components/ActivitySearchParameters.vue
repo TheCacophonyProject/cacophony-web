@@ -1066,6 +1066,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         v-model="recordingMode"
         @click="persistCameraMode"
         value="cameras"
+        data-cy="thermal dashboard"
       />
       <label
         class="btn btn-radio-group btn-md w-50 d-flex align-items-center justify-content-center pt-2 pb-2"
@@ -1083,6 +1084,7 @@ const scrolledToStickyPosition = computed<boolean>(() => {
         v-model="recordingMode"
         @click="persistAudioMode"
         value="audio"
+        data-cy="audio dashboard"
       />
       <label
         class="btn btn-radio-group btn-md w-50 d-flex align-items-center justify-content-center pt-2 pb-2"

@@ -6,7 +6,7 @@ import {
 } from "@/helpers/create-test-entities";
 import {
   checkVisitClassification,
-  uploadRecordingsFromDeviceWithTimesAndDurations,
+  uploadThermalRecordingsFromDeviceWithTimesAndDurations,
 } from "@/helpers/recording-uploads";
 import { addMinutes } from "@/helpers/date-helpers";
 import { ApiVisitResponse } from "@shared/api/monitoring";
@@ -34,7 +34,7 @@ test("A single recording, single tag server-side visit is computed the same as c
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   const projectHandle = project.projectHandle;
   const User = project.api();
-  const [{ recordingId }] = await uploadRecordingsFromDeviceWithTimesAndDurations(
+  const [{ recordingId }] = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         durationSeconds: 30,
@@ -89,7 +89,7 @@ test("A single recording, with multiple animal tags chooses the correct overall 
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   const projectHandle = project.projectHandle;
   const User = project.api();
-  await uploadRecordingsFromDeviceWithTimesAndDurations(
+  await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 1),
@@ -113,7 +113,7 @@ test("A single recording, with two conflicting animal tags chooses the best one"
   const initialDateTime = new Date("2026-05-01T10:00:00Z");
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
-  await uploadRecordingsFromDeviceWithTimesAndDurations(
+  await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 1),
@@ -136,7 +136,7 @@ test("Multiple recordings with only AI classifications", async ({ oneFrameCptv }
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   // Add and tag a recording.
-  await uploadRecordingsFromDeviceWithTimesAndDurations(
+  await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 1),
@@ -169,7 +169,7 @@ test("Multiple recordings with only AI classifications, or no tracks", async ({ 
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   // Add and tag a recording.
-  await uploadRecordingsFromDeviceWithTimesAndDurations(
+  await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 1),
@@ -204,7 +204,7 @@ test("A single recording with a mixture of AI and human classifications", async 
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   const User = project.api();
-  const [{ recordingId, tracks }] = await uploadRecordingsFromDeviceWithTimesAndDurations(
+  const [{ recordingId, tracks }] = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 1),
@@ -246,7 +246,7 @@ test("A single recording with AI and human classifications; user removing tag re
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   const User = project.api();
-  const [{ recordingId, tracks }] = await uploadRecordingsFromDeviceWithTimesAndDurations(
+  const [{ recordingId, tracks }] = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 2),
@@ -292,7 +292,7 @@ test("Multiple recordings with a mixture of AI and human classifications", async
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   const User = project.api();
-  const [{ recordingId, tracks }] = await uploadRecordingsFromDeviceWithTimesAndDurations(
+  const [{ recordingId, tracks }] = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 2),
@@ -343,7 +343,7 @@ test("Multiple recordings with a mixture of AI and human classifications, multip
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   const User = project.api();
-  const [visitA, visitB] = await uploadRecordingsFromDeviceWithTimesAndDurations(
+  const [visitA, visitB] = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 2),
@@ -402,7 +402,7 @@ test("AI visit classification can't be false-positive", async ({ oneFrameCptv })
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   const AdminUser = project.api();
-  const _upload = await uploadRecordingsFromDeviceWithTimesAndDurations(
+  const _upload = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 2),
@@ -431,7 +431,7 @@ test("Replace AI tag with false-positive human tag", async ({ oneFrameCptv }) =>
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   const User = project.api();
-  const [{ recordingId, tracks }] = await uploadRecordingsFromDeviceWithTimesAndDurations(
+  const [{ recordingId, tracks }] = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 2),
@@ -473,7 +473,7 @@ test.skip("Multiple recordings with a mixture of AI and human classifications, c
   const secondUser = await createUser("second user");
   await addUserToProject(project, secondUser);
   const UserB = project.api(secondUser);
-  const [visitA, visitB] = await uploadRecordingsFromDeviceWithTimesAndDurations(
+  const [visitA, visitB] = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 2),
@@ -540,7 +540,7 @@ test("Visit computation only happens when all current pending recordings for pro
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   const AdminUser = project.api();
-  const _uploads = await uploadRecordingsFromDeviceWithTimesAndDurations(
+  const _uploads = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 2),
@@ -569,7 +569,7 @@ test("Calculating visit islands", async ({ oneFrameCptv }) => {
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   // NOTE: These get all uploaded, and then all processed sequentially, to avoid race-conditions that emerge
   // non-deterministically especially in a test enviroment, and that's not really what we're trying to test here.
-  const _uploads = await uploadRecordingsFromDeviceWithTimesAndDurations(
+  const _uploads = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 2),
@@ -605,7 +605,7 @@ test("Deleting a recording which would split a visit", async ({ oneFrameCptv }) 
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   const AdminUser = project.api();
-  const uploads = await uploadRecordingsFromDeviceWithTimesAndDurations(
+  const uploads = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 2),
@@ -647,7 +647,7 @@ test("Deleting the classification recording at the end of a visit", async ({ one
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   const AdminUser = project.api();
-  const uploads = await uploadRecordingsFromDeviceWithTimesAndDurations(
+  const uploads = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 2),
@@ -690,7 +690,7 @@ test("AI tags in the discarded/filtered list make 'none/null' visits", async ({ 
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   const AdminUser = project.api();
-  await uploadRecordingsFromDeviceWithTimesAndDurations(
+  const uploads = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 2),
@@ -716,7 +716,7 @@ test("Clients can query visits containing only supplied tags", async ({ oneFrame
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   const AdminUser = project.api();
-  await uploadRecordingsFromDeviceWithTimesAndDurations(
+  await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 2),
@@ -775,7 +775,7 @@ test("Clients can query visits containing only supplied tags", async ({ oneFrame
     );
   });
   await test.step("Add another visit that doesn't inherit from mammal", async () => {
-    await uploadRecordingsFromDeviceWithTimesAndDurations(
+    await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
       [
         {
           recordingDateTime: addMinutes(initialDateTime, 26),

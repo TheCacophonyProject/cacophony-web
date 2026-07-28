@@ -39,6 +39,7 @@ declare module 'vue' {
     LocationName: typeof import('./src/components/LocationName.vue')['default']
     LocationPicker: typeof import('./src/components/LocationPicker.vue')['default']
     LocationsOverviewTable: typeof import('./src/components/LocationsOverviewTable.vue')['default']
+    LocationVisitSummary: typeof import('./src/components/LocationVisitSummary.vue')['default']
     MapWithPoints: typeof import('./src/components/MapWithPoints.vue')['default']
     NetworkConnectionAlertModal: typeof import('./src/components/NetworkConnectionAlertModal.vue')['default']
     OverflowingTabList: typeof import('./src/components/OverflowingTabList.vue')['default']

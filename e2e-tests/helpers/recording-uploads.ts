@@ -174,6 +174,7 @@ export const uploadAudioRecordingFromDevice = async (options: {
   isTestRecording?: true;
   recordingDateTime: Date;
   uploadTime?: Date;
+  duration?: number;
 }): Promise<RecordingId> => {
   return uploadRecordingFromDevice({
     ...options,
@@ -193,30 +194,31 @@ export const uploadAudioTestRecordingFromDevice = async (options: {
   });
 };
 
-export interface VisitRecordingSpec {
+export interface RecordingUploadSpec {
   durationSeconds?: number;
   recordingDateTime: Date;
   tracks: (string | { tag: string; weight: number })[]; // TODO: Does current visit logic care about track length, or just recording duration?
 }
 
-export const uploadRecordingsFromDeviceWithTimesAndDurations = async (
-  visitRecordingSpecs: VisitRecordingSpec[],
+const uploadRecordingsFromDeviceWithTimesAndDurations = async (
+  recordingSpecs: RecordingUploadSpec[],
   deviceHandle: TestDeviceHandle,
   location: LatLng,
   file: ArrayBuffer,
   shouldProcess = true,
   sequentially = false,
+  uploader: typeof uploadAudioRecordingFromDevice | typeof uploadThermalRecordingFromDevice,
 ): Promise<{ recordingId: RecordingId; tracks: TrackId[] }[]> => {
   // Upload multiple recordings at offset times with different durations to help testing visit islands.
   return test.step("Upload recordings and processing classifications", async () => {
     if (!sequentially) {
       return Promise.all(
-        visitRecordingSpecs.map((rec) => {
+        recordingSpecs.map((rec) => {
           const uploadTime = new Date(rec.recordingDateTime);
           const durationSeconds = rec.durationSeconds || 30;
           uploadTime.setSeconds(uploadTime.getSeconds() + durationSeconds);
           return new Promise<{ recordingId: RecordingId; tracks: TrackId[] }>((resolve, reject) => {
-            uploadThermalRecordingFromDevice({
+            uploader({
               file,
               recordingDateTime: rec.recordingDateTime,
               location,
@@ -240,12 +242,12 @@ export const uploadRecordingsFromDeviceWithTimesAndDurations = async (
     } else {
       const recordingIds = [];
       const results = [];
-      for (const rec of visitRecordingSpecs) {
+      for (const rec of recordingSpecs) {
         const uploadTime = new Date(rec.recordingDateTime);
         const durationSeconds = rec.durationSeconds || 30;
         uploadTime.setSeconds(uploadTime.getSeconds() + durationSeconds);
         recordingIds.push(
-          await uploadThermalRecordingFromDevice({
+          await uploader({
             file,
             recordingDateTime: rec.recordingDateTime,
             location,
@@ -256,7 +258,7 @@ export const uploadRecordingsFromDeviceWithTimesAndDurations = async (
         );
       }
       const zip = <A, B>(a: A[], b: B[]) => a.map((k, i) => [k, b[i]] as [A, B]);
-      for (const [recordingId, rec] of zip(recordingIds, visitRecordingSpecs)) {
+      for (const [recordingId, rec] of zip(recordingIds, recordingSpecs)) {
         if (shouldProcess) {
           const trackIds = await processRecordingWithTracksAndTags(
             recordingId,
@@ -272,6 +274,42 @@ export const uploadRecordingsFromDeviceWithTimesAndDurations = async (
     }
   });
 };
+
+export const uploadAudioRecordingsFromDeviceWithTimesAndDurations = async (
+  recordingSpecs: RecordingUploadSpec[],
+  deviceHandle: TestDeviceHandle,
+  location: LatLng,
+  file: ArrayBuffer,
+  shouldProcess = true,
+  sequentially = false,
+): Promise<{ recordingId: RecordingId; tracks: TrackId[] }[]> =>
+  uploadRecordingsFromDeviceWithTimesAndDurations(
+    recordingSpecs,
+    deviceHandle,
+    location,
+    file,
+    shouldProcess,
+    sequentially,
+    uploadAudioRecordingFromDevice,
+  );
+
+export const uploadThermalRecordingsFromDeviceWithTimesAndDurations = async (
+  recordingSpecs: RecordingUploadSpec[],
+  deviceHandle: TestDeviceHandle,
+  location: LatLng,
+  file: ArrayBuffer,
+  shouldProcess = true,
+  sequentially = false,
+): Promise<{ recordingId: RecordingId; tracks: TrackId[] }[]> =>
+  uploadRecordingsFromDeviceWithTimesAndDurations(
+    recordingSpecs,
+    deviceHandle,
+    location,
+    file,
+    shouldProcess,
+    sequentially,
+    uploadThermalRecordingFromDevice,
+  );
 
 export const checkVisitClassification = async (project: ProjectBundle, from: Date, until: Date) => {
   return await test.step("Check visit classification", async () => {
