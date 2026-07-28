@@ -2,8 +2,8 @@ import { embedImage } from "@/emails/htmlEmailUtils.js";
 import {
   createEmailWithTemplate,
   urlNormaliseName,
+  type EmailImageAttachment,
 } from "@/emails/htmlEmailUtils.js";
-import type { EmailImageAttachment } from "@/scripts/emailUtil.js";
 import { sendEmail } from "@/emails/sendEmail.js";
 import config from "@config";
 import logger from "@/logging.js";

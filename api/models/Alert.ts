@@ -25,7 +25,6 @@ import { CreationOptional } from "sequelize";
 import type { Recording } from "./Recording.js";
 import type { Track } from "./Track.js";
 import type { TrackTag } from "./TrackTag.js";
-import type { EmailImageAttachment } from "@/scripts/emailUtil.js";
 import type {
   DeviceId,
   GroupId,
@@ -41,6 +40,7 @@ import { User } from "@models/User.js";
 import { ModelStaticCommon } from "@models/index.js";
 import { Event } from "./Event.js";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
+import { EmailImageAttachment } from "@/emails/htmlEmailUtils.js";
 
 export type AlertId = number;
 const Op = Sequelize.Op;

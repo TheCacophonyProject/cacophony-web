@@ -5,8 +5,10 @@ import type { Client as PgClient, QueryResult } from "pg";
 import pkg from "pg";
 const { Client } = pkg;
 import { sendPlatformUsageEmail } from "@/emails/transactionalEmails.js";
-import type { EmailImageAttachment } from "@/scripts/emailUtil.js";
-import { embedImage } from "@/emails/htmlEmailUtils.js";
+import {
+  embedImage,
+  type EmailImageAttachment,
+} from "@/emails/htmlEmailUtils.js";
 import os from "os";
 
 const CACOPHONY_GROUPS = config.cacophonyGroupIds || [];

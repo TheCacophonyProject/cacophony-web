@@ -3,11 +3,7 @@ import type { User } from "@models/User.js";
 import { getPasswordResetToken } from "@api/auth.js";
 import { sendEmail } from "@/emails/sendEmail.js";
 
-export interface EmailImageAttachment {
-  buffer: Buffer;
-  cid: string;
-  mimeType: "image/png" | "image/jpeg";
-}
+// NOTE: This is still required by browse-old, remove once browse-old is removed.
 
 function resetBody(userTitle: string, token: string): string[] {
   const resetUrl = `${config.server.browseUrl}/new-password/?token=${token}`;

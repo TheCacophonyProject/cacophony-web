@@ -235,7 +235,6 @@ const recordingMode = ref<"Thermal" | "Audio">(
 );
 
 watch(recordingMode, (newValue, oldValue) => {
-  console.log("recordingMode", newValue);
   if (newValue === "Thermal") {
     router.push({
       name: "dashboard-thermal",
@@ -562,23 +561,6 @@ const currentSelectedProjectHasAudioAndThermal = computed<boolean>(() => {
     currentSelectedProjectHasAudio.value &&
     currentSelectedProjectHasCameras.value
   );
-});
-
-const _hasSelectedVisit = computed<boolean>({
-  get: () =>
-    (route.name as string).startsWith("dashboard-visit") ||
-    (route.name as string).startsWith("dashboard-recording"),
-  set: (value: boolean) => {
-    if (!value) {
-      // Return to dashboard from modal.
-      console.log("Return to dashboard");
-      router.push({
-        name: "dashboard",
-        params: { projectName: route.params.projectName },
-      });
-      selectedVisit.value = null;
-    }
-  },
 });
 
 const showVisitsForTag = (tag: string) => {

@@ -60,7 +60,7 @@ test("Human classifying recordings correctly updates visits context", async ({
     await waitToNavigateToProjectPage(
       page,
       projectName,
-      `visit/${aiClassification}/${recordingId}/**`,
+      `thermal/visit/${aiClassification}/${recordingId}/**`,
     );
     const recordingView = page.getByTestId("recording view");
     await expect(recordingView, "recording selected").toBeVisible();
@@ -73,7 +73,7 @@ test("Human classifying recordings correctly updates visits context", async ({
     const rodentTag = track0.getByTestId(`classification button rodent`);
     await expect(rodentTag, "classifications expanded").toBeVisible();
     await rodentTag.click();
-    await waitToNavigateToProjectPage(page, projectName, `visit/rodent/${recordingId}/**`);
+    await waitToNavigateToProjectPage(page, projectName, `thermal/visit/rodent/${recordingId}/**`);
   });
   await test.step("Close recording modal", async () => {
     await recordingView.getByTestId("close recording view").click();
@@ -162,7 +162,7 @@ test("Deleting a recording in the middle of a visit splits original visit in vis
         await waitToNavigateToProjectPage(
           page,
           projectName,
-          `visit/${aiClassification}/${recordingIds[2]}/**`,
+          `thermal/visit/${aiClassification}/${recordingIds[2]}/**`,
         );
         const recordingView = page.getByTestId("recording view");
         await expect(recordingView, "recording selected").toBeVisible();
@@ -177,7 +177,7 @@ test("Deleting a recording in the middle of a visit splits original visit in vis
       await waitToNavigateToProjectPage(
         page,
         projectName,
-        `visit/${aiClassification}/${recordingIds[1]}/**`,
+        `thermal/visit/${aiClassification}/${recordingIds[1]}/**`,
       );
       await expect(recordingView.getByTestId("track 0"), "tracks loaded").toBeVisible();
     });
@@ -192,7 +192,7 @@ test("Deleting a recording in the middle of a visit splits original visit in vis
       await waitToNavigateToProjectPage(
         page,
         projectName,
-        `visit/${aiClassification}/${recordingIds[2]}/${recordingIds[2]}/**`,
+        `thermal/visit/${aiClassification}/${recordingIds[2]}/${recordingIds[2]}/**`,
       );
       await expect(recordingView.getByTestId("visit duration")).toContainText(
         "11:30 AM (40 seconds)",
@@ -221,7 +221,7 @@ test("Deleting a recording in the middle of a visit splits original visit in vis
       await waitToNavigateToProjectPage(
         page,
         projectName,
-        `visit/${aiClassification}/${recordingIds[0]}/${recordingIds[0]}/**`,
+        `thermal/visit/${aiClassification}/${recordingIds[0]}/${recordingIds[0]}/**`,
       );
       await expect(recordingView.getByTestId("visit duration")).toContainText(
         "11:18 AM (40 seconds)",
@@ -340,7 +340,7 @@ test("Deleting a recording at the end of a visit shortens the length in the visi
       await waitToNavigateToProjectPage(
         page,
         projectName,
-        `visit/${aiClassification}/${recordingIds[2]}/**`,
+        `thermal/visit/${aiClassification}/${recordingIds[2]}/**`,
       );
       const recordingView = page.getByTestId("recording view");
       await expect(recordingView, "recording selected").toBeVisible();
@@ -357,7 +357,7 @@ test("Deleting a recording at the end of a visit shortens the length in the visi
     await waitToNavigateToProjectPage(
       page,
       projectName,
-      `visit/${aiClassification}/${recordingIds[1]}/**`,
+      `thermal/visit/${aiClassification}/${recordingIds[1]}/**`,
     );
     await expect(recordingView.getByTestId("visit duration")).toContainText("11:23");
   });
@@ -455,7 +455,7 @@ test("Deleting a recording at the start of a visit moves start time forwards in 
       await waitToNavigateToProjectPage(
         page,
         projectName,
-        `visit/${aiClassification}/${recordingIds[2]}/**`,
+        `thermal/visit/${aiClassification}/${recordingIds[2]}/**`,
       );
       const recordingView = page.getByTestId("recording view");
       await expect(recordingView, "recording selected").toBeVisible();
@@ -468,13 +468,13 @@ test("Deleting a recording at the start of a visit moves start time forwards in 
     await waitToNavigateToProjectPage(
       page,
       projectName,
-      `visit/${aiClassification}/${recordingIds[1]}/**`,
+      `thermal/visit/${aiClassification}/${recordingIds[1]}/**`,
     );
     await recordingView.getByTestId("goto previous recording").click();
     await waitToNavigateToProjectPage(
       page,
       projectName,
-      `visit/${aiClassification}/${recordingIds[0]}/**`,
+      `thermal/visit/${aiClassification}/${recordingIds[0]}/**`,
     );
   });
 
@@ -487,7 +487,7 @@ test("Deleting a recording at the start of a visit moves start time forwards in 
     await waitToNavigateToProjectPage(
       page,
       projectName,
-      `visit/${aiClassification}/${recordingIds[1]}/**`,
+      `thermal/visit/${aiClassification}/${recordingIds[1]}/**`,
     );
     await expect(recordingView.getByTestId("visit duration")).toContainText(
       "11:23–11:30 AM (7 minutes 40 seconds)",
@@ -603,7 +603,7 @@ test("Deleting a single recording visit cleanly removes it from the visit contex
       await waitToNavigateToProjectPage(
         page,
         projectName,
-        `visit/${aiClassification1}/${recordingIds[0]}/**`,
+        `thermal/visit/${aiClassification1}/${recordingIds[0]}/**`,
       );
       const recordingView = page.getByTestId("recording view");
       await expect(recordingView, "recording selected").toBeVisible();
@@ -620,7 +620,7 @@ test("Deleting a single recording visit cleanly removes it from the visit contex
     await waitToNavigateToProjectPage(
       page,
       projectName,
-      `visit/${aiClassification2}/${recordingIds[1]}/**`,
+      `thermal/visit/${aiClassification2}/${recordingIds[1]}/**`,
     );
     await expect(recordingView.getByTestId("visit duration")).toContainText("11:30");
   });
@@ -705,7 +705,7 @@ test("Deleting a single visit recording that was the only one in the list remove
       await waitToNavigateToProjectPage(
         page,
         projectName,
-        `visit/${aiClassification}/${recordingIds[0]}/**`,
+        `thermal/visit/${aiClassification}/${recordingIds[0]}/**`,
       );
       const recordingView = page.getByTestId("recording view");
       await expect(recordingView, "recording selected").toBeVisible();

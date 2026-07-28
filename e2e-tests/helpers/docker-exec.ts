@@ -6,10 +6,12 @@ const exec = util.promisify(child_process.exec);
 export const dockerExecNodeScript = async (
   scriptFile: string,
   args: string[] = [],
+  detached: boolean = false,
 ): Promise<{ stdout: string; stderr: string }> => {
   return await test.step(`Execute script in docker: '${scriptFile}${args.length ? " " + args.join(" ") : ""}'`, async () => {
+    const detach = detached ? " -d" : "";
     const result = await exec(
-      `cd ../api && docker exec cacophony-web bash -lc "cd api && node --no-warnings --disable-warning=ExperimentalWarning --loader esm-module-alias/loader --experimental-json-modules ./scripts/${scriptFile} ${args.join(" ")}"`,
+      `cd ../api && docker exec${detach} cacophony-web bash -lc "cd api && node --no-warnings --disable-warning=ExperimentalWarning --loader esm-module-alias/loader --experimental-json-modules ./scripts/${scriptFile} ${args.join(" ")}"`,
     );
     expect(result.stderr, "command executed without raising error").toEqual("");
     return result;
@@ -19,6 +21,7 @@ export const dockerExecNodeScript = async (
 export const dockerExecNodeTestScript = async (
   scriptFile: string,
   args: string[] = [],
+  detached: boolean = false,
 ): Promise<{ stdout: string; stderr: string }> => {
-  return dockerExecNodeScript(`test-scripts/${scriptFile}`, args);
+  return dockerExecNodeScript(`test-scripts/${scriptFile}`, args, detached);
 };
