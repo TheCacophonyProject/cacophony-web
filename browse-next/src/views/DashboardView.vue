@@ -309,7 +309,17 @@ watch(
 );
 
 watch(route, (nextRoute) => {
-  loadedRouteName.value = "dashboard";
+  if (nextRoute && nextRoute.name) {
+    if ((nextRoute.name as string).startsWith("dashboard-thermal")) {
+      loadedRouteName.value = "dashboard-thermal";
+      recordingMode.value = "Thermal";
+    } else if ((nextRoute.name as string).startsWith("dashboard-audio")) {
+      loadedRouteName.value = "dashboard-audio";
+      recordingMode.value = "Audio";
+    }
+  } else {
+    loadedRouteName.value = "dashboard";
+  }
 });
 
 // Use provide to provide selected visit context to loaded modal.
