@@ -19,6 +19,7 @@ import type {
   StationId as LocationId,
   TagId,
   TrackId,
+  TrackTagId,
 } from "@typedefs/api/common";
 import {
   formatDuration,
@@ -86,6 +87,9 @@ const emit = defineEmits<{
     action: "deleted" | "updated",
     newClassification?: string,
     oldClassification?: string,
+    trackAction?: "add" | "remove",
+    trackId?: TrackId,
+    trackTagId?: TrackTagId,
   ): void;
 }>();
 const inlineModalEl = ref<HTMLDivElement>();
@@ -499,6 +503,7 @@ const trackTagChanged = async ({
   newId?: TrackId;
   action: "add" | "remove";
 }) => {
+  const trackId = track.id;
   if (recording.value) {
     let trackToPatch = (recording.value as ApiRecordingResponse).tracks.find(
       ({ id }) => id === track.id,
@@ -529,6 +534,9 @@ const trackTagChanged = async ({
             "updated",
             tag,
             changedTag.what,
+            action,
+            trackId,
+            changedTag.id,
           );
         } else {
           console.error("Failed to find changed tag", tag);
@@ -537,12 +545,16 @@ const trackTagChanged = async ({
           await selectedTrack(-1, true);
         }
       } else if (action === "remove") {
+        const changedTag = trackToPatch.tags.find(({ what }) => what === tag);
         emit(
           "recording-updated",
           recording.value.id,
           "updated",
           undefined,
           tag,
+          action,
+          trackId,
+          changedTag?.id,
         );
       }
       if (!isInVisitContext.value) {
@@ -1122,6 +1134,23 @@ const deleteRecording = async () => {
       await ClientApi.Recordings.deleteRecording(recordingIdToDelete);
     if (deleteResponse.success) {
       if (isInVisitContext.value) {
+        emit("recording-updated", recordingIdToDelete, "deleted");
+      } else if (
+        route.name &&
+        (route.name as string).startsWith("dashboard-audio")
+      ) {
+        const hasNextRec = hasNextRecording.value;
+        const hasPrevRec = hasPreviousRecording.value;
+        if (hasNextRec || hasPrevRec) {
+          if (hasNextRec) {
+            await gotoNextRecordingOrVisit();
+          } else if (hasPrevRec) {
+            await gotoPreviousRecordingOrVisit();
+          }
+        } else {
+          // Close the modal if there are no other recordings to move to.
+          emit("close");
+        }
         emit("recording-updated", recordingIdToDelete, "deleted");
       } else {
         const targetRecording = (loadedRecordings.value || []).find(

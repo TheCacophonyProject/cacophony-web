@@ -4,11 +4,7 @@ import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
 import type { Ref } from "vue";
 import { visitClassificationLabel } from "@models/visitsUtils.ts";
 import router from "@/router";
-import type {
-  RouteLocation,
-  RouteLocationRaw,
-  RouteParamsRawGeneric,
-} from "vue-router";
+import type { RouteLocation, RouteLocationRaw } from "vue-router";
 
 export const recordingUpdatedInVisitsContext = async (
   recordingId: RecordingId,

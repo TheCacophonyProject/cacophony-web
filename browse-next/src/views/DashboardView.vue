@@ -58,6 +58,8 @@ import type {
   LatLng,
   RecordingId,
   StationId as LocationId,
+  TrackId,
+  TrackTagId,
 } from "@typedefs/api/common";
 import { DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS } from "@/consts.ts";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
@@ -70,7 +72,8 @@ import { recordingUpdatedInVisitsContext } from "@/helpers/patch-visits-context.
 import CardTable from "@/components/CardTable.vue";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import { RecordingType } from "@typedefs/api/consts.ts";
-import type { Classification } from "@typedefs/api/trackTag";
+import type { ApiTrackTag, Classification } from "@typedefs/api/trackTag";
+import type { ApiTrackResponse } from "@typedefs/api/track";
 
 const selectedVisit = ref<ApiStaticVisitResponse | null>(null);
 const selectedRecording = ref<ApiRecordingResponse | null>(null);
@@ -170,7 +173,7 @@ const audioDetectionsAtLocations = computed<LocationSummaryItem[]>(() => {
   return (audioRecordingsContext.value || []).flatMap((recording) => {
     const tagsForRecording = new Set(
       recording.tracks.flatMap((track) => {
-        return track.tags
+        return canonicalTrackTags(track)
           .filter((tag) => tag.path.startsWith("all.bird."))
           .flatMap((tag) => {
             return visitClassificationLabelFromPath(tag.path).replaceAll(
@@ -581,12 +584,20 @@ const showVisitsForLocation = (location: ApiLocationResponse) => {
   }
 };
 
+const canonicalTrackTags = (track: ApiTrackResponse): ApiTrackTag[] => {
+  const humanTags = track.tags.filter((tag) => !tag.automatic);
+  if (humanTags.length) {
+    return humanTags;
+  }
+  return track.tags;
+};
+
 const showRecordingsForClassification = async (
   classification: Classification,
 ) => {
   currentAudioRecordingsFilter.value = (recording: ApiRecordingResponse) =>
     recording.tracks.some((track) =>
-      track.tags.some((tag) => tag.path === classification.path),
+      canonicalTrackTags(track).some((tag) => tag.path === classification.path),
     );
   if (maybeFilteredAudioRecordingsContext.value.length) {
     selectedRecording.value = maybeFilteredAudioRecordingsContext.value[0];
@@ -634,19 +645,65 @@ const recordingUpdated = async (
   action: "deleted" | "updated",
   newClassification?: string,
   oldClassification?: string,
+  trackAction?: "add" | "remove",
+  trackId?: TrackId,
+  trackTagId?: TrackTagId,
 ) => {
-  console.assert(visitsContext.value !== null);
-  await recordingUpdatedInVisitsContext(
-    recordingId,
-    action,
-    newClassification,
-    oldClassification,
-    selectedVisit,
-    visitsContext as Ref<ApiStaticVisitResponse[]>, // TODO: Because this is potentially filtered, we might need other tests here
-    route,
-    (currentProject.value as SelectedProject).id,
-    [],
-  );
+  if (recordingMode.value === "Thermal") {
+    console.assert(visitsContext.value !== null);
+    await recordingUpdatedInVisitsContext(
+      recordingId,
+      action,
+      newClassification,
+      oldClassification,
+      selectedVisit,
+      visitsContext as Ref<ApiStaticVisitResponse[]>, // TODO: Because this is potentially filtered, we might need other tests here
+      route,
+      (currentProject.value as SelectedProject).id,
+      [],
+    );
+  } else if (recordingMode.value === "Audio") {
+    // Remove the deleted recording from the dashboardAudioRecordings list
+    if (action === "deleted") {
+      const index = (audioRecordingsContext.value || []).findIndex(
+        (item) => item.id === recordingId,
+      );
+      (audioRecordingsContext.value || []).splice(index, 1);
+    } else if (action === "updated") {
+      const targetRecording = (audioRecordingsContext.value || []).find(
+        (rec) => rec.id === recordingId,
+      );
+      if (targetRecording) {
+        const targetTrack = targetRecording.tracks.find(
+          (track) => track.id === trackId,
+        );
+        if (targetTrack) {
+          if (trackAction === "add" && newClassification && trackTagId) {
+            // Get rid of "all.animal" part, since this is just for birds
+            const path = (
+              getClassificationForLabel(newClassification)?.path || ""
+            ).replace(".animal", "");
+            const newUserTag = {
+              confidence: 0.85,
+              id: trackTagId,
+              automatic: false,
+              what: newClassification,
+              path,
+              model: null,
+            };
+            targetTrack.tags.push(newUserTag);
+          } else if (trackAction === "remove" && trackTagId) {
+            const targetTrackTag = targetTrack.tags.findIndex(
+              (t) => t.id === trackId,
+            );
+            if (targetTrackTag) {
+              targetTrack.tags.splice(targetTrackTag, 1);
+            }
+          }
+        }
+      }
+    }
+  }
 };
 
 interface BirdDetectionsItem {
@@ -672,7 +729,7 @@ const audioItems = computed<BirdDetectionsItem[]>(() => {
     const uniqueTagsInRecording = new Set<string>();
     for (const track of recording.tracks) {
       const uniqueTags = new Set(
-        track.tags
+        canonicalTrackTags(track)
           .filter((tag) => tag.path.startsWith("all.bird."))
           .map((tag) => tag.path),
       );
@@ -779,6 +836,7 @@ const closedModal = () => {
           <label
             class="btn btn-radio-group btn-md w-50 d-flex align-items-center justify-content-center px-lg-3"
             for="recording-mode-cameras"
+            data-cy="thermal dashboard"
           >
             <material-symbol name="videocam" class="me-2" size="1.25rem" />
             Thermal
@@ -795,6 +853,7 @@ const closedModal = () => {
           <label
             class="btn btn-radio-group btn-md w-50 d-flex align-items-center justify-content-center px-lg-3"
             for="recording-mode-audio"
+            data-cy="audio dashboard"
           >
             <material-symbol name="music_note" class="me-2" size="1.25rem" />
             Audio
@@ -942,7 +1001,7 @@ const closedModal = () => {
       v-if="isLoading || !hasVisitsForSelectedTimePeriod"
       class="d-flex justify-content-sm-center flex-fill flex-column align-items-center justify-content-center mb-5 mb-sm-0"
     >
-      <div v-if="isLoading">
+      <div v-if="isLoading" data-cy="thermal dashboard loading">
         <b-spinner variant="secondary" />
       </div>
       <div v-else class="d-flex justify-content-center flex-column">
@@ -1006,6 +1065,7 @@ const closedModal = () => {
           <div
             v-for="(bird, index) in audioItems.slice(0, 3)"
             :key="index"
+            :data-cy="`species ${bird.birdName}`"
             class="featured-species col d-flex flex-column container p-3 lh-sm rounded-3 shadow-sm bg-white"
             @click="showRecordingsForClassification(bird.__classification)"
             :class="{
@@ -1031,7 +1091,7 @@ const closedModal = () => {
                   {{ bird.birdName }}
                 </h3>
                 <p class="mb-2 d-flex gap-2 align-items-center">
-                  <span
+                  <span data-cy="species count"
                     >{{ bird.detections }}&nbsp;detection<span
                       v-if="bird.detections > 1"
                       >s</span
@@ -1096,7 +1156,9 @@ const closedModal = () => {
         :class="isMobileView ? 'bg-white p-3 shadow-sm rounded-3' : ''"
       >
         <template #birdName="{ cell }">
-          <span class="text-capitalize">{{ cell }}</span>
+          <span class="text-capitalize" :data-cy="`species ${cell}`">{{
+            cell
+          }}</span>
         </template>
         <template #biostatus="{ cell }">
           <b-badge class="biostatus" :class="cell.toLowerCase()">{{
@@ -1112,7 +1174,7 @@ const closedModal = () => {
         </template>
         <template #detections="{ cell }">
           <div class="d-flex gap-2 align-items-center">
-            <span>{{ cell }}</span>
+            <span data-cy="species count">{{ cell }}</span>
             <span
               class="detections-bar d-block rounded-1"
               :style="`width: max(4px, ${(cell / maxDetections) * 100}%)`"
@@ -1214,7 +1276,7 @@ const closedModal = () => {
       v-if="isLoading || !hasAudioRecordingsForSelectedTimePeriod"
       class="d-flex justify-content-sm-center flex-fill flex-column align-items-center justify-content-center mb-5 mb-sm-0"
     >
-      <div v-if="isLoading">
+      <div v-if="isLoading" data-cy="audio dashboard loading">
         <b-spinner variant="secondary" />
       </div>
       <div v-else class="d-flex justify-content-center flex-column">

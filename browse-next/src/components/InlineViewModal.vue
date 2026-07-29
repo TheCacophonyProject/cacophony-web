@@ -5,7 +5,7 @@ import type { RouteRecordName } from "vue-router";
 import { useRoute, useRouter } from "vue-router";
 import { BModal } from "bootstrap-vue-next";
 import { urlNormalisedCurrentSelectedProjectName } from "@models/provides";
-import type { RecordingId } from "@typedefs/api/common";
+import type { RecordingId, TrackId, TrackTagId } from "@typedefs/api/common";
 import { RecordingType } from "@typedefs/api/consts.ts";
 
 const route = useRoute();
@@ -19,6 +19,9 @@ const emit = defineEmits<{
     action: "deleted" | "updated",
     newClassification?: string,
     oldClassification?: string,
+    trackAction?: "add" | "remove",
+    trackId?: TrackId,
+    trackTagId?: TrackTagId,
   ): void;
 }>();
 
@@ -83,6 +86,9 @@ const updatedRecording = (
   action: "deleted" | "updated",
   newClassification?: string,
   oldClassification?: string,
+  trackAction?: "add" | "remove",
+  trackId?: TrackId,
+  trackTagId?: TrackTagId,
 ) => {
   emit(
     "recording-updated",
@@ -90,6 +96,9 @@ const updatedRecording = (
     action,
     newClassification,
     oldClassification,
+    trackAction,
+    trackId,
+    trackTagId,
   );
 };
 const loadedRecording = (type: RecordingType) => {
