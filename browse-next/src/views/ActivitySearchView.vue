@@ -649,6 +649,13 @@ const syncSearchQuery = async (
       delete query.until;
       delete searchParams.value.until;
     }
+    if (query["display-mode"] === ActivitySearchDisplayMode.Visits) {
+      delete query["tag-mode"];
+      delete query["labelled-with"];
+      delete query["no-false-positives"];
+      delete query["include-descendant-tags"];
+      delete query["recording-mode"];
+    }
     await router.replace({
       query,
     });
