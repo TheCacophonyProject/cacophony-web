@@ -1598,7 +1598,7 @@ const closedModal = () => {
     background: var(--cp-color-green-100) !important;
     color: var(--cp-color-green-700) !important;
   }
-  &.naturalised {
+  &.native {
     background: color-mix(in oklch, var(--bs-teal), transparent 80%) !important;
     color: color-mix(in oklch, var(--bs-teal), #000 30%) !important;
   }

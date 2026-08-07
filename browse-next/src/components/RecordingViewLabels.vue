@@ -163,7 +163,6 @@ const doAddLabel = async (labelToAdd: string) => {
         }
       }
       updateRecentlyUsedLabels(recentlyUsedLabels);
-      console.log("new recently used", recentlyUsedLabels);
       selectedLabel.value = "";
     }
     addingLabel.value = false;
