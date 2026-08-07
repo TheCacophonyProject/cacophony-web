@@ -31,6 +31,7 @@ const props = withDefaults(
     withAudioContext?: boolean;
     pinnedItems?: string[];
     openOnMount?: boolean;
+    openOnClick?: boolean;
     disabledTags?: string[];
     modelValue?: string[];
   }>(),
@@ -43,6 +44,7 @@ const props = withDefaults(
     canBePinned: false,
     pinnedItems: () => [],
     openOnMount: true,
+    openOnClick: true,
     disabledTags: () => [],
     modelValue: () => [],
   },

@@ -8,7 +8,15 @@ import type {
   TrackTagData,
 } from "@typedefs/api/trackTag";
 import type { Ref } from "vue";
-import { computed, inject, nextTick, onMounted, ref, watch } from "vue";
+import {
+  computed,
+  inject,
+  nextTick,
+  onMounted,
+  ref,
+  useTemplateRef,
+  watch,
+} from "vue";
 import type { LoggedInUser, SelectedProject } from "@models/LoggedInUser";
 import { persistUserProjectSettings } from "@models/LoggedInUser";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
@@ -37,7 +45,7 @@ import {
   getClassificationForLabel,
   getClassifications,
 } from "@api/classificationsUtils.ts";
-import { BSpinner } from "bootstrap-vue-next";
+import { BSpinner, BTooltip } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import { useElementSize } from "@vueuse/core";
 
@@ -68,7 +76,6 @@ const emit = defineEmits<{
 const expandedInternal = ref<boolean>(false);
 const showClassificationSearch = ref<boolean>(false);
 const showTaggerDetails = ref<boolean>(false);
-const tagSelect = ref<typeof HierarchicalTagSelect>();
 const trackDetails = ref<HTMLDivElement>();
 
 const { width: trackDetailWidth } = useElementSize(trackDetails);
@@ -123,7 +130,7 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
         ),
         confidence: tag.automatic
           ? mapConfidences(tag.confidence).toString() + "%"
-          : "",
+          : "&mdash;",
       };
       if (userIsGroupAdmin.value) {
         item._deleteAction = {
@@ -182,25 +189,10 @@ const resizeElementToContents = (el?: HTMLElement) => {
     el.style.height = `${bottom - top}px`;
   }
 };
-const closedHierarchicalTagSelect = () => {
-  showClassificationSearch.value = false;
-  emit("text-edit-mode-change", false);
-};
 
-const resizeDetails = (why?: unknown) => {
+const resizeDetails = () => {
   nextTick(() => {
     trackDetails.value && resizeElementToContents(trackDetails.value);
-    if (why === "options-changed") {
-      setTimeout(() => {
-        // Scroll 'add tag' picker into view
-        const picker = document.getElementById("hierarchical-tag-picker");
-        if (picker) {
-          picker.scrollIntoView({
-            behavior: "smooth",
-          });
-        }
-      }, 200);
-    }
   });
 };
 
@@ -471,6 +463,9 @@ const toggleTag = (tag: string) => {
       tag === (thisUserTag.value as ApiHumanTrackTagResponse).what
     ) {
       showClassificationSearch.value = false;
+      if (!showTaggerDetails.value) {
+        resizeDetails();
+      }
     } else if (
       !thisUserTag.value ||
       (thisUserTag.value &&
@@ -504,6 +499,10 @@ const rejectAiSuggestedTag = () => {
 };
 
 const pinCustomTag = async (classification: Classification) => {
+  await pinCustomTagByLabel(classification.label);
+};
+
+const pinCustomTagByLabel = async (label: string) => {
   if (currentSelectedProject.value) {
     const currentDisplayMode =
       route.query["display-mode"] === "recordings" ? "recordings" : "visits";
@@ -515,23 +514,19 @@ const pinCustomTag = async (classification: Classification) => {
     };
     if (props.isAudioRecording) {
       const tags = userProjectSettings.audioTags || [];
-      if (tags.includes(classification.label)) {
-        userProjectSettings.audioTags = tags.filter(
-          (tag) => tag !== classification.label,
-        );
+      if (tags.includes(label)) {
+        userProjectSettings.audioTags = tags.filter((tag) => tag !== label);
       } else {
         userProjectSettings.audioTags = userProjectSettings.audioTags || [];
-        userProjectSettings.audioTags.push(classification.label);
+        userProjectSettings.audioTags.push(label);
       }
     } else {
       const tags = userProjectSettings.tags || [];
-      if (tags.includes(classification.label)) {
-        userProjectSettings.tags = tags.filter(
-          (tag) => tag !== classification.label,
-        );
+      if (tags.includes(label)) {
+        userProjectSettings.tags = tags.filter((tag) => tag !== label);
       } else {
         userProjectSettings.tags = userProjectSettings.tags || [];
-        userProjectSettings.tags.push(classification.label);
+        userProjectSettings.tags.push(label);
       }
     }
     await persistUserProjectSettings(userProjectSettings);
@@ -547,8 +542,7 @@ const currentlySelectedTagCanBePinned = computed<boolean>(() => {
   );
 });
 const addCustomTag = () => {
-  showClassificationSearch.value = true;
-  tagSelect.value && (tagSelect.value as typeof HierarchicalTagSelect).open();
+  showCustomTagSelection.value = true;
   emit("text-edit-mode-change", true);
 };
 
@@ -603,9 +597,49 @@ onMounted(async () => {
   }
   handleExpansion(expanded.value);
 });
+
+const showCustomTagSelection = ref<boolean>(false);
+const selectionPopover = useTemplateRef<HTMLDivElement>("selectionPopover");
+const cancelledCustomTagSelection = async () => {
+  selectionPopover.value?.classList.add("removed");
+  showCustomTagSelection.value = false;
+  emit("text-edit-mode-change", false);
+  setTimeout(async () => {
+    showCustomTagSelection.value = false;
+  }, 300);
+};
+const confirmTagSelection = (e: unknown[]) => {
+  if (e.length) {
+    showClassificationSearch.value = true;
+  }
+  cancelledCustomTagSelection();
+};
+
+const singleSelectionIsPinned = computed<boolean>(
+  () =>
+    selectedUserTagLabel.value.length === 1 &&
+    userDefinedTagLabels.value.includes(selectedUserTagLabel.value[0]),
+);
 </script>
 <template>
   <div class="track-item" :class="{ selected, expanded }">
+    <div
+      class="class-selection-popover-background"
+      @click.prevent.stop="() => {}"
+      v-if="showCustomTagSelection"
+    ></div>
+    <div
+      class="class-selection-popover main"
+      v-if="showCustomTagSelection"
+      ref="selectionPopover"
+    >
+      <hierarchical-tag-select
+        @deselected="cancelledCustomTagSelection"
+        @change="confirmTagSelection"
+        @options-change="resizeDetails"
+        v-model="selectedUserTagLabel"
+      />
+    </div>
     <div
       class="track p-1 ps-2 p-sm-2 d-flex align-items-center justify-content-between"
       ref="row"
@@ -896,18 +930,26 @@ onMounted(async () => {
           <span class="fs-6">Add tag</span>
         </button>
       </div>
-      <div v-if="showClassificationSearch" class="mt-2 d-flex">
-        <hierarchical-tag-select
-          v-if="currentlySelectedTagCanBePinned || showClassificationSearch"
-          class="flex-grow-1"
-          @pin="pinCustomTag"
-          @options-change="() => resizeDetails('options-changed')"
-          @deselected="closedHierarchicalTagSelect"
-          ref="tagSelect"
-          v-model="selectedUserTagLabel"
-          :can-be-pinned="currentlySelectedTagCanBePinned"
-          :pinned-items="userDefinedTagLabels"
-        />
+      <div
+        v-if="showClassificationSearch || currentlySelectedTagCanBePinned"
+        class="mt-2"
+      >
+        <button
+          type="button"
+          class="btn d-flex align-items-center justify-content-center btn-outline-secondary gap-2 w-100"
+          :class="{ pinned: singleSelectionIsPinned }"
+          v-if="currentlySelectedTagCanBePinned"
+          id="pin-btn"
+          @click.prevent="pinCustomTagByLabel(selectedUserTagLabel[0])"
+          :aria-label="singleSelectionIsPinned ? 'Unpin tag' : 'Pin tag'"
+        >
+          <span v-if="singleSelectionIsPinned">Unpin selected tag</span
+          ><span v-else>Pin selected tag</span>
+          <material-symbol
+            :name="singleSelectionIsPinned ? 'keep_off' : 'keep'"
+            size="1.25rem"
+          />
+        </button>
       </div>
       <div class="tagger-details mt-2">
         <button

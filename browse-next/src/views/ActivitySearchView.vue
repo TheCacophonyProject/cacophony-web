@@ -532,7 +532,7 @@ const deserialiseAndValidateRouteValue = (
         }
       }
     } else {
-      console.log("Invalid timespan?", value);
+      console.warn("Invalid timespan?", value);
     }
   } else if (key === "devices") {
     value = value || [];
@@ -702,10 +702,19 @@ const mapLocationForMap = (location: ApiLocationResponse): NamedPoint => {
   };
 };
 
+const locationHasAnyRecordings = (location: ApiLocationResponse) => {
+  return (
+    locationHasCameraRecordings(location) ||
+    locationHasAudioRecordings(location)
+  );
+};
+
 const locationHasRecordings = (location: ApiLocationResponse) => {
-  if (searchParams.value.recordingMode === "audio") {
+  if (searchParams.value.recordingMode === ActivitySearchRecordingMode.Audio) {
     return locationHasAudioRecordings(location);
-  } else if (searchParams.value.recordingMode === "cameras") {
+  } else if (
+    searchParams.value.recordingMode === ActivitySearchRecordingMode.Cameras
+  ) {
     return locationHasCameraRecordings(location);
   }
   return (
@@ -718,7 +727,7 @@ const validLocations = computed(() => {
   if (locations.value) {
     return (locations.value as ApiLocationResponse[]).filter(
       (location) =>
-        locationHasRecordings(location) &&
+        locationHasAnyRecordings(location) &&
         location.location &&
         (location.location.lat !== 0 || location.location.lng !== 0),
     );
@@ -1352,16 +1361,11 @@ const resetQuery = (
   currentQueryHash.value = newQueryHash;
   currentQueryLoaded.value = 0;
   completedCurrentQuery.value = false;
-  // NOTE: If it's the first load for a given query, lazily get the count as a separate query.
-  // TODO Also, make it abortable if we change queries.
   currentQueryCount.value = undefined;
   currentQueryCursor.value = {
     fromDateTime: new Date(fromDateTime),
     untilDateTime: new Date(untilDateTime),
   };
-  console.log(
-    `Current query cursor ${(currentQueryCursor.value.fromDateTime as Date).toISOString()} -- ${(currentQueryCursor.value.untilDateTime as Date).toISOString()}`,
-  );
 };
 
 const displayMode = computed<ActivitySearchDisplayMode>(
@@ -1504,6 +1508,8 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             endOfDay(maxDateForSelectedLocations.value),
           ),
           query.locations,
+          [],
+          [],
           maxVisitsPerRequest,
           true,
         )) as ApiStaticVisitResponse[];
@@ -1579,7 +1585,6 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           );*/
           if (loadedFewerItemsThanRequested) {
             if (reachedMinDateForSelectedLocations || inVisitsMode.value) {
-              console.log("Cancel observer");
               currentObserver && currentObserver.stop();
               currentObserver = null;
               // We're at the limit
@@ -1666,6 +1671,8 @@ const doExport = async () => {
         fromDateTime,
         untilDateTime,
         query.locations,
+        [],
+        [],
         7500,
         (progress) => {
           exportProgress.value = progress;
@@ -1909,7 +1916,6 @@ const recordingUpdated = async (
   newClassification?: string,
   oldClassification?: string,
 ) => {
-  console.log("Recording updated", recordingId, action);
   if (inVisitsMode.value) {
     let locations: LocationId[] = [];
     const isAnyLocation = selectedLocations.value.includes("any");

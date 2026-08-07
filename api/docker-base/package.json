@@ -45,7 +45,6 @@
     "mime": "^2.4.4",
     "moment": "^2.29.1",
     "moment-timezone": "^0.5.28",
-    "multiparty": "^4.2.3",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pechkin": "^2.2.0",

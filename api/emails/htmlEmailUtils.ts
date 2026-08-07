@@ -3,11 +3,16 @@ import Handlebars from "handlebars";
 import { JSDOM } from "jsdom";
 import path from "path";
 import { fileURLToPath } from "url";
-import type { EmailImageAttachment } from "@/scripts/emailUtil.js";
 import type { ResizeOptions } from "sharp";
 import sharp from "sharp";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+export interface EmailImageAttachment {
+  buffer: Buffer;
+  cid: string;
+  mimeType: "image/png" | "image/jpeg";
+}
 
 const SEPARATOR_LINE = "-----------";
 

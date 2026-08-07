@@ -4,7 +4,7 @@ import { confirmEmailAddressViaApi, waitForEmail } from "@/helpers/email-utils";
 import { expect } from "@playwright/test";
 import { createProjectWithUserAndDevice } from "@/helpers/create-test-entities";
 import { addDays, addMinutes } from "@/helpers/date-helpers";
-import { uploadRecordingsFromDeviceWithTimesAndDurations } from "@/helpers/recording-uploads";
+import { uploadThermalRecordingsFromDeviceWithTimesAndDurations } from "@/helpers/recording-uploads";
 import { AudioRecordingMode } from "@shared/api/consts";
 import { ApiRecordingResponse } from "@shared/api/recording";
 import { ApiDeviceHistorySettings } from "@shared/api/device";
@@ -33,7 +33,7 @@ test("Project activity digest email sent successfully for weekly and daily diges
       weeklyDigest: true,
     },
   });
-  await uploadRecordingsFromDeviceWithTimesAndDurations(
+  await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         tracks: ["rodent"],
@@ -84,7 +84,7 @@ test("'Rat threshold' script runs and doesn't disrupt device settings", async ({
     },
     timeA,
   );
-  const [{ recordingId }] = await uploadRecordingsFromDeviceWithTimesAndDurations(
+  const [{ recordingId }] = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         tracks: ["rodent"],

@@ -5,6 +5,7 @@ import { computed, inject, onBeforeMount, ref, watch } from "vue";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { ClientApi } from "@/api";
 import {
+  currentUserIsSuperUser,
   DevicesForCurrentProject,
   projectDevicesLoaded,
   type SelectedProject,
@@ -33,7 +34,6 @@ import {
   allHistoricLocations,
   currentSelectedProject,
   selectedProjectDevices,
-  userIsProjectAdmin,
 } from "@models/provides";
 import {
   deviceScheduledPowerOffTime,
@@ -58,7 +58,6 @@ const activeProjectDevices = inject(selectedProjectDevices) as Ref<
 >;
 const allProjectDevices = ref<LoadedResource<ApiDeviceResponse[]>>(null);
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
-const isProjectAdmin = inject(userIsProjectAdmin) as ComputedRef<boolean>;
 const allLocations = inject(allHistoricLocations) as Ref<
   LoadedResource<ApiStationResponse[]>
 >;
@@ -776,7 +775,7 @@ const iconForPowerStatus = (powerStatus: DeviceStatus): IconsProp => {
         </template>
         <template #_deleteAction="{ cell }">
           <div
-            v-if="isProjectAdmin && cell.value.active"
+            v-if="currentUserIsSuperUser && cell.value.active"
             class="d-flex align-items-center"
           >
             <b-badge
@@ -807,7 +806,7 @@ const iconForPowerStatus = (powerStatus: DeviceStatus): IconsProp => {
               :boundary-padding="false"
             />
           </div>
-          <div v-else-if="isProjectAdmin && !cell.value.active">
+          <div v-else-if="currentUserIsSuperUser && !cell.value.active">
             <two-step-action-button
               :action="() => unarchiveDevice(cell.value.id)"
               icon="add_circle"
@@ -851,7 +850,10 @@ const iconForPowerStatus = (powerStatus: DeviceStatus): IconsProp => {
                 <span v-html="card.lastSeen"></span>
               </div>
             </div>
-            <div class="d-flex align-items-center" v-if="isProjectAdmin">
+            <div
+              class="d-flex align-items-center"
+              v-if="currentUserIsSuperUser"
+            >
               <two-step-action-button
                 v-if="card.__active"
                 :action="

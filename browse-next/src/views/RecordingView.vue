@@ -19,6 +19,7 @@ import type {
   StationId as LocationId,
   TagId,
   TrackId,
+  TrackTagId,
 } from "@typedefs/api/common";
 import {
   formatDuration,
@@ -86,6 +87,9 @@ const emit = defineEmits<{
     action: "deleted" | "updated",
     newClassification?: string,
     oldClassification?: string,
+    trackAction?: "add" | "remove",
+    trackId?: TrackId,
+    trackTagId?: TrackTagId,
   ): void;
 }>();
 const inlineModalEl = ref<HTMLDivElement>();
@@ -237,6 +241,15 @@ const previousVisit = computed<ApiStaticVisitResponse | null>(() => {
 });
 
 const previousRecordingId = computed<RecordingId | null>(() => {
+  if (recordingViewContext === "dashboard-audio-recording") {
+    if (previousRecordingIndex.value !== null) {
+      return allRecordingIds.value[
+        allRecordingIds.value.length - (previousRecordingIndex.value + 1)
+      ];
+    }
+    return null;
+  }
+
   if (previousRecordingIndex.value !== null) {
     return allRecordingIds.value[previousRecordingIndex.value];
   }
@@ -244,6 +257,15 @@ const previousRecordingId = computed<RecordingId | null>(() => {
 });
 
 const nextRecordingId = computed<RecordingId | null>(() => {
+  if (recordingViewContext === "dashboard-audio-recording") {
+    if (nextRecordingIndex.value !== null) {
+      return allRecordingIds.value[
+        allRecordingIds.value.length - (nextRecordingIndex.value + 1)
+      ];
+    }
+    return null;
+  }
+
   if (nextRecordingIndex.value !== null) {
     return allRecordingIds.value[nextRecordingIndex.value];
   }
@@ -266,6 +288,16 @@ const nextRecordingIndex = computed<number | null>(() => {
       }
       return currentRecordingIndex.value - 1;
     }
+  } else if (recordingViewContext === "dashboard-audio-recording") {
+    // We have the newest recording at index 0
+    const total = loadedRecordingIds.value.length;
+    if (
+      currentRecordingIndex.value === 0 ||
+      currentRecordingIndex.value === null
+    ) {
+      return null;
+    }
+    return Math.min(total - currentRecordingIndex.value, total - 1);
   } else {
     const total = recordingIds.value.length;
     if (currentRecordingIndex.value !== null) {
@@ -286,6 +318,17 @@ const previousRecordingIndex = computed<number | null>(() => {
         return null;
       }
       return currentRecordingIndex.value + 1;
+    }
+  } else if (recordingViewContext === "dashboard-audio-recording") {
+    // Newest recording at index 0
+    const total = loadedRecordingIds.value.length;
+    if (currentRecordingIndex.value !== null) {
+      const current = total - (currentRecordingIndex.value + 1);
+      const prev = current - 1;
+      if (prev === -1) {
+        return null;
+      }
+      return prev;
     }
   } else {
     if (currentRecordingIndex.value !== null) {
@@ -460,6 +503,7 @@ const trackTagChanged = async ({
   newId?: TrackId;
   action: "add" | "remove";
 }) => {
+  const trackId = track.id;
   if (recording.value) {
     let trackToPatch = (recording.value as ApiRecordingResponse).tracks.find(
       ({ id }) => id === track.id,
@@ -490,6 +534,9 @@ const trackTagChanged = async ({
             "updated",
             tag,
             changedTag.what,
+            action,
+            trackId,
+            changedTag.id,
           );
         } else {
           console.error("Failed to find changed tag", tag);
@@ -498,12 +545,16 @@ const trackTagChanged = async ({
           await selectedTrack(-1, true);
         }
       } else if (action === "remove") {
+        const changedTag = trackToPatch.tags.find(({ what }) => what === tag);
         emit(
           "recording-updated",
           recording.value.id,
           "updated",
           undefined,
           tag,
+          action,
+          trackId,
+          changedTag?.id,
         );
       }
       if (!isInVisitContext.value) {
@@ -1056,14 +1107,18 @@ const prevRecordingType = ref<RecordingType | null>(null);
 const recordingType = computed<RecordingType | null>(() => {
   if (recording.value && !!recording.value) {
     return (recording.value as ApiRecordingResponse).type;
-  } else if (prevRecordingType.value) {
-    return prevRecordingType.value;
+  } else if (route.name && route.name.toString().includes("audio")) {
+    return RecordingType.Audio;
+  } else if (route.name && route.name.toString().includes("thermal")) {
+    return RecordingType.ThermalRaw;
   } else if (route.query["recording-mode"]) {
     if (route.query["recording-mode"] === "audio") {
       return RecordingType.Audio;
     } else {
       return RecordingType.ThermalRaw;
     }
+  } else if (prevRecordingType.value) {
+    return prevRecordingType.value;
   }
   return null;
 });
@@ -1079,6 +1134,23 @@ const deleteRecording = async () => {
       await ClientApi.Recordings.deleteRecording(recordingIdToDelete);
     if (deleteResponse.success) {
       if (isInVisitContext.value) {
+        emit("recording-updated", recordingIdToDelete, "deleted");
+      } else if (
+        route.name &&
+        (route.name as string).startsWith("dashboard-audio")
+      ) {
+        const hasNextRec = hasNextRecording.value;
+        const hasPrevRec = hasPreviousRecording.value;
+        if (hasNextRec || hasPrevRec) {
+          if (hasNextRec) {
+            await gotoNextRecordingOrVisit();
+          } else if (hasPrevRec) {
+            await gotoPreviousRecordingOrVisit();
+          }
+        } else {
+          // Close the modal if there are no other recordings to move to.
+          emit("close");
+        }
         emit("recording-updated", recordingIdToDelete, "deleted");
       } else {
         const targetRecording = (loadedRecordings.value || []).find(
@@ -1096,7 +1168,6 @@ const deleteRecording = async () => {
           }
         } else {
           // Close the modal if there are no other recordings to move to.
-          console.log("No recordings to advance to, close modal automatically");
           emit("close");
         }
         // NOTE: It's important that this mutation happens after navigation is resolved.
@@ -1135,8 +1206,7 @@ const locationName = (
     class="recording-view d-flex flex-column"
     data-cy="recording view"
     :class="{
-      'recording-type-audio':
-        recordingType && recordingType === RecordingType.Audio,
+      'recording-type-audio': recordingType === RecordingType.Audio,
     }"
   >
     <div v-if="inlineModal" class="dimmed">
@@ -1759,6 +1829,60 @@ const locationName = (
 
 <style lang="less">
 @import "../assets/less/breakpoints.less";
+
+.class-selection-popover-background {
+  position: absolute;
+  background: black;
+  opacity: 0.5;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  transition: opacity 0.3s;
+  &.removed {
+    opacity: 0;
+  }
+}
+.class-selection-popover {
+  position: absolute;
+  width: 300px;
+  left: calc(50% - 150px);
+  top: 20px;
+  z-index: 1000;
+  &.main {
+    z-index: 10000;
+    top: 140px;
+  }
+  border-radius: var(--bs-border-radius);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  animation: add-animate-in 0.2s ease-in-out;
+  &.removed {
+    animation: remove-animate-out 0.2s ease-in-out forwards;
+  }
+}
+
+@keyframes add-animate-in {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes remove-animate-out {
+  from {
+    transform: translateY(0px);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-200px);
+    opacity: 0;
+  }
+}
 
 .player-and-tagging {
   overscroll-behavior-y: none;

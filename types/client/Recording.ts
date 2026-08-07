@@ -130,7 +130,7 @@ const createDummyTrack =
     }) as Promise<FetchResult<{ trackId: TrackId }>>;
 
 const deleteTrack =
-  (api: CacophonyApiClient, authKey: TestHandle | null = null) =>
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (recording: ApiRecordingResponse, trackId: TrackId) =>
     api.delete(
       authKey,

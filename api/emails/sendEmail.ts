@@ -2,12 +2,14 @@ import { Message, SMTPClient } from "emailjs";
 import config from "@config";
 import log from "@log";
 import { Readable } from "stream";
-import type { EmailImageAttachment } from "@/scripts/emailUtil.js";
 import type { Recording } from "@models/Recording.js";
 import type { TrackTag } from "@models/TrackTag.js";
 import moment from "moment";
 import type { Alert } from "@models/Alert.js";
-import { urlNormaliseName } from "@/emails/htmlEmailUtils.js";
+import {
+  urlNormaliseName,
+  type EmailImageAttachment,
+} from "@/emails/htmlEmailUtils.js";
 
 export function alertBody(
   recording: Recording,

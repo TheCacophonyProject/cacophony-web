@@ -27,15 +27,14 @@ const recordingType = computed<RecordingType | null>(() => {
     return (props.recording as ApiRecordingResponse).type;
   }
   if (
-    ["dashboard-visit", "activity-visit"].includes(
+    ["dashboard-thermal-visit", "activity-visit"].includes(
       route.meta.context as string,
     ) ||
     route.query["recording-mode"] === "cameras"
   ) {
     return RecordingType.ThermalRaw;
-  } else {
-    return RecordingType.Audio;
   }
+  return RecordingType.Audio;
 });
 
 const currentLocationName = computed<string>(() => {

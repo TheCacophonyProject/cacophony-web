@@ -4,7 +4,12 @@ import { computed, inject } from "vue";
 import type { Ref } from "vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import type { LatLng } from "leaflet";
-import { visitsByLocation, visitsCountBySpecies } from "@models/visitsUtils";
+import {
+  itemCountBySpecies,
+  itemsByLocation,
+  visitsByLocation,
+  visitsCountBySpecies,
+} from "@models/visitsUtils";
 import type { NamedPoint } from "@models/mapUtils";
 import { displayLabelForClassificationLabel } from "@api/classificationsUtils.ts";
 import type { StationId as LocationId } from "@typedefs/api/common";
@@ -14,27 +19,40 @@ const currentlyHighlightedLocation = inject(
   "currentlyHighlightedLocation",
 ) as Ref<LocationId | null>;
 
+export interface LocationSummaryItem {
+  locationId: LocationId;
+  path: string;
+}
+
 const props = withDefaults(
   defineProps<{
     location: ApiLocationResponse;
     locations: ApiLocationResponse[] | null;
     activeLocations: ApiLocationResponse[];
-    visits: ApiStaticVisitResponse[];
+    items: LocationSummaryItem[];
+    itemType: string;
   }>(),
   { locations: null },
 );
 
-const visitsForLocation = computed<ApiStaticVisitResponse[]>(() => {
-  return props.visits.filter((visit) => visit.locationId === props.location.id);
+const itemTypeProcessed = computed<string>(() => {
+  if (itemCount.value > 1) {
+    return props.itemType;
+  }
+  return props.itemType.substring(0, props.itemType.length - 1);
 });
 
-const visitCount = computed<number>(() => visitsForLocation.value.length);
+const itemsForLocation = computed<LocationSummaryItem[]>(() => {
+  return props.items.filter((visit) => visit.locationId === props.location.id);
+});
 
-const maxVisitsForAnySpeciesInAnyStation = computed<number>(() => {
+const itemCount = computed<number>(() => itemsForLocation.value.length);
+
+const maxItemsForAnySpeciesInAnyStation = computed<number>(() => {
   // The summary bars get scaled by this amount.
   let max = 0;
-  for (const locationVisits of Object.values(visitsByLocation(props.visits))) {
-    const visitsCount = visitsCountBySpecies(locationVisits);
+  for (const locationItems of Object.values(itemsByLocation(props.items))) {
+    const visitsCount = itemCountBySpecies(locationItems);
     max = Math.max(...visitsCount.map(([_label, _path, count]) => count), max);
   }
   return max;
@@ -69,7 +87,7 @@ const thisLocationPoint = computed<NamedPoint>(() => ({
 }));
 
 const speciesSummary = computed<[string, string, number][]>(() =>
-  visitsCountBySpecies(visitsForLocation.value),
+  itemCountBySpecies(itemsForLocation.value),
 );
 
 const highlightedPoint = computed<NamedPoint | null>(() => {
@@ -90,7 +108,7 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
 </script>
 
 <template>
-  <div class="location-visit-summary mb-3 mb-sm-0" v-if="visitCount !== 0">
+  <div class="location-visit-summary mb-3 mb-sm-0" v-if="itemCount !== 0">
     <div class="map-container">
       <map-with-points
         :highlighted-point="highlightedPoint"
@@ -110,7 +128,7 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
           {{ location.name }}
         </div>
         <div class="visit-count lh-base text-muted">
-          {{ visitCount }} visits
+          {{ itemCount }} {{ itemTypeProcessed }}
         </div>
       </div>
     </div>
@@ -130,10 +148,10 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
       <div class="values flex-fill">
         <div
           v-for="([species, path, count], index) in speciesSummary"
-          :class="[species, 'species-value', ...path.split('.')]"
+          :class="[species, 'species-value', itemType, ...path.split('.')]"
           :style="{
             width: `calc(max(5px, ${
-              (count / maxVisitsForAnySpeciesInAnyStation) * 100
+              (count / maxItemsForAnySpeciesInAnyStation) * 100
             }%))`,
           }"
           :key="index"
@@ -180,6 +198,12 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
       top: 9px;
       width: 100%;
       border-radius: var(--bs-border-radius-sm);
+    }
+    &.detections {
+      // For bid summaries, make all the bars green
+      &::before {
+        background: var(--cp-color-green-400);
+      }
     }
     &.mustelid {
       &::before {

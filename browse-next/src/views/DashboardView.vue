@@ -20,15 +20,19 @@ import HorizontalOverflowCarousel from "@/components/HorizontalOverflowCarousel.
 import InlineViewModal from "@/components/InlineViewModal.vue";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import ProjectVisitsSummary from "@/components/ProjectVisitsSummary.vue";
-import LocationVisitSummary from "@/components/LocationVisitSummary.vue";
+import LocationItemSummary, {
+  type LocationSummaryItem,
+} from "@/components/LocationItemSummary.vue";
 import VisitsBreakdownList from "@/components/VisitsBreakdownList.vue";
-import { BButton, BSpinner } from "bootstrap-vue-next";
+import { BBadge, BButton, BSpinner, BTooltip } from "bootstrap-vue-next";
 import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 import { useRoute, useRouter } from "vue-router";
 import { useMediaQuery } from "@vueuse/core";
 import {
   displayLabelForClassificationLabel,
   flatClassifications,
+  flatClassificationsByPath,
+  getClassificationForLabel,
   getClassifications,
 } from "@api/classificationsUtils.ts";
 import TagImage from "@/components/TagImage.vue";
@@ -50,25 +54,75 @@ import {
   visitClassificationPath,
 } from "@models/visitsUtils";
 import type {
+  FloatZeroToOne,
   LatLng,
   RecordingId,
   StationId as LocationId,
+  TrackId,
+  TrackTagId,
 } from "@typedefs/api/common";
 import { DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS } from "@/consts.ts";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
-import { ActivitySearchDisplayMode } from "@/components/activitySearchUtils.ts";
+import {
+  ActivitySearchDisplayMode,
+  ActivitySearchRecordingMode,
+} from "@/components/activitySearchUtils.ts";
 import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
-import type { VisitsStaticQueryResult } from "@apiClient/Monitoring.ts";
 import { recordingUpdatedInVisitsContext } from "@/helpers/patch-visits-context.ts";
+import CardTable from "@/components/CardTable.vue";
+import type { ApiRecordingResponse } from "@typedefs/api/recording";
+import { RecordingType } from "@typedefs/api/consts.ts";
+import type { ApiTrackTag, Classification } from "@typedefs/api/trackTag";
+import type { ApiTrackResponse } from "@typedefs/api/track";
 
 const selectedVisit = ref<ApiStaticVisitResponse | null>(null);
+const selectedRecording = ref<ApiRecordingResponse | null>(null);
 const currentlyHighlightedLocation = ref<LocationId | null>(null);
 const visitsContext = ref<ApiStaticVisitResponse[] | null>(null);
+const audioRecordingsContext = ref<ApiRecordingResponse[] | null>(null);
+
+const router = useRouter();
+const route = useRoute();
+const maybeFilteredVisitsContext = computed<ApiStaticVisitResponse[]>(() => {
+  if (visitsContext.value) {
+    return (visitsContext.value as ApiStaticVisitResponse[]).filter(
+      currentVisitsFilterComputed.value,
+    );
+  }
+  return [];
+});
+
+const maybeFilteredAudioRecordingsContext = computed<ApiRecordingResponse[]>(
+  () => {
+    if (audioRecordingsContext.value) {
+      if (currentAudioRecordingsFilter.value) {
+        return audioRecordingsContext.value.filter(
+          currentAudioRecordingsFilter.value,
+        );
+      }
+      return audioRecordingsContext.value;
+    }
+    return [];
+  },
+);
+
+const maybeFilteredRecordingIds = computed<RecordingId[]>(() => {
+  return maybeFilteredAudioRecordingsContext.value.map((r) => r.id);
+});
+
 provide("currentlySelectedVisit", selectedVisit);
+provide("currentlySelectedRecording", selectedRecording);
 provide("currentlyHighlightedLocation", currentlyHighlightedLocation);
+provide("visitsContext", maybeFilteredVisitsContext);
+provide("loadedRecordings", maybeFilteredAudioRecordingsContext);
+provide("loadedRecordingIds", maybeFilteredRecordingIds);
 
 const currentVisitsFilter = ref<
   ((visit: ApiStaticVisitResponse) => boolean) | null
+>(null);
+
+const currentAudioRecordingsFilter = ref<
+  ((recording: ApiRecordingResponse) => boolean) | null
 >(null);
 
 const visitIsTombstoned = (visit: ApiStaticVisitResponse): boolean => {
@@ -100,19 +154,41 @@ const dashboardVisits = computed<ApiStaticVisitResponse[]>(() => {
   );
 });
 
-// TODO: Move to provides/inject
-// FIXME: Any time any visit is mutated (tags change etc, we have to recompute this,
-//  which could be very slow for a large list?
-const maybeFilteredVisitsContext = computed<ApiStaticVisitResponse[]>(() => {
-  if (visitsContext.value) {
-    return (visitsContext.value as ApiStaticVisitResponse[]).filter(
-      currentVisitsFilterComputed.value,
-    );
-  }
-  return [];
+const dashboardLocationItems = computed<LocationSummaryItem[]>(() => {
+  return ((visitsContext.value || []) as ApiStaticVisitResponse[])
+    .filter((visit) => !visitorIsIgnored(visit) && !visitIsTombstoned(visit))
+    .map((item) => ({
+      locationId: item.locationId,
+      path: item.humanClassification || item.aiClassification || "none ",
+    }));
 });
 
-provide("visitsContext", maybeFilteredVisitsContext);
+const dashboardAudioRecordings = computed<ApiRecordingResponse[]>(() => {
+  return (
+    (audioRecordingsContext.value || []) as ApiRecordingResponse[]
+  ).filter((recording) => recording);
+});
+
+const audioDetectionsAtLocations = computed<LocationSummaryItem[]>(() => {
+  return (audioRecordingsContext.value || []).flatMap((recording) => {
+    const tagsForRecording = new Set(
+      recording.tracks.flatMap((track) => {
+        return canonicalTrackTags(track)
+          .filter((tag) => tag.path.startsWith("all.bird."))
+          .flatMap((tag) => {
+            return visitClassificationLabelFromPath(tag.path).replaceAll(
+              "_",
+              " ",
+            );
+          });
+      }),
+    );
+    return Array.from(tagsForRecording).map((path) => ({
+      path,
+      locationId: recording.stationId,
+    }));
+  }) as LocationSummaryItem[];
+});
 
 const ignoredTags = computed<string[]>(() => {
   if (currentProject.value) {
@@ -155,11 +231,28 @@ const visitHasLocation =
     return (visit && visit.locationId === location) as boolean;
   };
 
-const recordingMode = ref<"Thermal" | "Audio">("Thermal");
+const recordingMode = ref<"Thermal" | "Audio">(
+  ((route.name && route.name.toString()) || "dashboard").includes("audio")
+    ? "Audio"
+    : "Thermal",
+);
+
+watch(recordingMode, (newValue, oldValue) => {
+  if (newValue === "Thermal") {
+    localStorage.setItem("dashboard-type", RecordingType.ThermalRaw);
+    router.push({
+      name: "dashboard-thermal",
+    });
+  } else if (newValue === "Audio") {
+    localStorage.setItem("dashboard-type", RecordingType.Audio);
+    router.push({
+      name: "dashboard-audio",
+    });
+  }
+});
+
 const audioMode = computed<boolean>(() => recordingMode.value === "Audio");
 
-const router = useRouter();
-const route = useRoute();
 const isMobileView = useMediaQuery("(max-width: 639px)");
 const availableProjects = inject(userProjects) as Ref<
   LoadedResource<ApiProjectResponse[]>
@@ -206,7 +299,7 @@ watch(
       }
 
       await router.push({
-        name: "dashboard-visit",
+        name: "dashboard-thermal-visit",
         params,
         query: route.query,
       });
@@ -217,15 +310,52 @@ watch(
   },
 );
 
-watch(route, () => {
-  loadedRouteName.value = "dashboard";
+watch(route, (nextRoute) => {
+  if (nextRoute && nextRoute.name) {
+    if ((nextRoute.name as string).startsWith("dashboard-thermal")) {
+      loadedRouteName.value = "dashboard-thermal";
+      recordingMode.value = "Thermal";
+    } else if ((nextRoute.name as string).startsWith("dashboard-audio")) {
+      loadedRouteName.value = "dashboard-audio";
+      recordingMode.value = "Audio";
+    }
+  } else {
+    loadedRouteName.value = "dashboard";
+  }
 });
 
 // Use provide to provide selected visit context to loaded modal.
 // If url is saved and returned to, the best we can do is display the visit, but we can't do next/prev visits.
+// const timePeriodDays = computed<number>(() => {
+//   if (recordingMode.value === "Thermal") {
+//     return Number(localStorage.getItem("dashboard-thermal-time-period-days")) || 7;
+//   }
+//   return Number(localStorage.getItem("dashboard-audio-time-period-days")) || 60;
+// });
 
-// TODO - Reload these from user preferences.
-const timePeriodDays = ref<number>(7);
+const timePeriodDays = computed<number>({
+  get() {
+    if (recordingMode.value === "Thermal") {
+      return (
+        Number(localStorage.getItem("dashboard-thermal-time-period-days")) || 7
+      );
+    }
+    return (
+      Number(localStorage.getItem("dashboard-audio-time-period-days")) || 60
+    );
+  },
+  set(value: number) {
+    if (recordingMode.value === "Thermal") {
+      localStorage.setItem(
+        "dashboard-thermal-time-period-days",
+        value.toString(),
+      );
+    }
+    localStorage.setItem("dashboard-audio-time-period-days", value.toString());
+    return value;
+  },
+});
+
 const visitsOrRecordings = ref<"visits" | "recordings">("visits");
 const speciesOrLocations = ref<"species" | "location">("species");
 const loadingVisitsProgress = ref<number>(0);
@@ -283,6 +413,8 @@ const loadVisits = async () => {
       fromTime.value,
       new Date(),
       [],
+      [],
+      [],
       10000,
       (val: number) => {
         // TODO - Do we want to display loading progress via the UI?
@@ -292,16 +424,60 @@ const loadVisits = async () => {
   }
 };
 
-const reloadDashboard = async (nextProject: SelectedProject | false) => {
-  if (nextProject) {
-    await Promise.all([loadLocations(), loadVisits()]);
+const loadAudioRecordings = async () => {
+  if (currentProject.value) {
+    audioRecordingsContext.value = null;
+    audioRecordingsContext.value =
+      await ClientApi.Recordings.getAllRecordingsForProjectBetweenTimes(
+        (currentProject.value as SelectedProject).id,
+        {
+          fromDateTime: fromTime.value,
+          untilDateTime: new Date(),
+          types: [RecordingType.Audio],
+          taggedWith: ["all.bird"],
+          subClassTags: true,
+          includeFilteredFalsePositivesAndNones: false,
+        },
+      );
   }
 };
 
-watch(timePeriodDays, loadVisits);
+const parentRouteName = computed<string>(() => {
+  if (recordingMode.value === "Audio") {
+    return "dashboard-audio";
+  }
+  return "dashboard-thermal";
+});
+
+const reloadDashboard = async (nextProject: SelectedProject | false) => {
+  if (nextProject) {
+    if (recordingMode.value === "Thermal") {
+      await Promise.all([loadLocations(), loadVisits()]);
+    } else {
+      await Promise.all([loadLocations(), loadAudioRecordings()]);
+    }
+  }
+};
+
+watch(timePeriodDays, async () => {
+  if (recordingMode.value === "Thermal") {
+    await loadVisits();
+  } else {
+    await loadAudioRecordings();
+  }
+});
 watch(currentProject, reloadDashboard);
+watch(recordingMode, async () => {
+  if (recordingMode.value === "Thermal") {
+    await loadVisits();
+  } else {
+    await loadAudioRecordings();
+  }
+});
 
 const loadedRouteName = ref<string>("");
+const audioTimespanDays = ref<number>(60);
+const thermalTimespanDays = ref<number>(7);
 onBeforeMount(async () => {
   loadedRouteName.value = route.name as string;
   await getClassifications();
@@ -395,9 +571,20 @@ onMounted(async () => {
   // Get species summary.
 });
 
-const isLoading = computed<boolean>(
-  () => locations.value === null || visitsContext.value === null,
-);
+const isLoading = computed<boolean>(() => {
+  if (locations.value === null) {
+    return true;
+  }
+  if (recordingMode.value === "Thermal" && visitsContext.value === null) {
+    return true;
+  } else if (
+    recordingMode.value === "Audio" &&
+    audioRecordingsContext.value === null
+  ) {
+    return true;
+  }
+  return false;
+});
 
 const currentSelectedProjectHasAudio = computed<boolean>(() => {
   return (
@@ -418,22 +605,6 @@ const currentSelectedProjectHasAudioAndThermal = computed<boolean>(() => {
   );
 });
 
-const _hasSelectedVisit = computed<boolean>({
-  get: () =>
-    (route.name as string).startsWith("dashboard-visit") ||
-    (route.name as string).startsWith("dashboard-recording"),
-  set: (value: boolean) => {
-    if (!value) {
-      // Return to dashboard from modal.
-      router.push({
-        name: "dashboard",
-        params: { projectName: route.params.projectName },
-      });
-      selectedVisit.value = null;
-    }
-  },
-});
-
 const showVisitsForTag = (tag: string) => {
   // set the selected visit to the last visit with the tag,
   // and set the filter for the context to the tag.
@@ -452,10 +623,59 @@ const showVisitsForLocation = (location: ApiLocationResponse) => {
   }
 };
 
+const canonicalTrackTags = (track: ApiTrackResponse): ApiTrackTag[] => {
+  const humanTags = track.tags.filter((tag) => !tag.automatic);
+  if (humanTags.length) {
+    return humanTags;
+  }
+  return track.tags;
+};
+
+const showRecordingsForClassification = async (
+  classification: Classification,
+) => {
+  currentAudioRecordingsFilter.value = (recording: ApiRecordingResponse) =>
+    recording.tracks.some((track) =>
+      canonicalTrackTags(track).some((tag) => tag.path === classification.path),
+    );
+  if (maybeFilteredAudioRecordingsContext.value.length) {
+    selectedRecording.value = maybeFilteredAudioRecordingsContext.value[0];
+    await router.push({
+      name: "dashboard-audio-recording",
+      params: {
+        currentRecordingId: selectedRecording.value.id,
+      },
+      query: route.query,
+    });
+  }
+};
+
+const showRecordingsForLocation = async (location: ApiLocationResponse) => {
+  currentAudioRecordingsFilter.value = (recording: ApiRecordingResponse) =>
+    recording.stationId === location.id;
+  if (maybeFilteredAudioRecordingsContext.value.length) {
+    selectedRecording.value = maybeFilteredAudioRecordingsContext.value[0];
+    await router.push({
+      name: "dashboard-audio-recording",
+      params: {
+        currentRecordingId: selectedRecording.value.id,
+      },
+      query: route.query,
+    });
+  }
+};
+
 const hasVisitsForSelectedTimePeriod = computed<boolean>(() => {
   return (
     locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value.length !== 0 &&
     dashboardVisits.value.length !== 0
+  );
+});
+
+const hasAudioRecordingsForSelectedTimePeriod = computed<boolean>(() => {
+  return (
+    locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value.length !== 0 &&
+    dashboardAudioRecordings.value.length !== 0
   );
 });
 
@@ -464,20 +684,167 @@ const recordingUpdated = async (
   action: "deleted" | "updated",
   newClassification?: string,
   oldClassification?: string,
+  trackAction?: "add" | "remove",
+  trackId?: TrackId,
+  trackTagId?: TrackTagId,
 ) => {
-  console.log("Recording updated", recordingId, action);
-  console.assert(visitsContext.value !== null);
-  await recordingUpdatedInVisitsContext(
-    recordingId,
-    action,
-    newClassification,
-    oldClassification,
-    selectedVisit,
-    visitsContext as Ref<ApiStaticVisitResponse[]>, // TODO: Because this is potentially filtered, we might need other tests here
-    route,
-    (currentProject.value as SelectedProject).id,
-    [],
-  );
+  if (recordingMode.value === "Thermal") {
+    console.assert(visitsContext.value !== null);
+    await recordingUpdatedInVisitsContext(
+      recordingId,
+      action,
+      newClassification,
+      oldClassification,
+      selectedVisit,
+      visitsContext as Ref<ApiStaticVisitResponse[]>, // TODO: Because this is potentially filtered, we might need other tests here
+      route,
+      (currentProject.value as SelectedProject).id,
+      [],
+    );
+  } else if (recordingMode.value === "Audio") {
+    // Remove the deleted recording from the dashboardAudioRecordings list
+    if (action === "deleted") {
+      const index = (audioRecordingsContext.value || []).findIndex(
+        (item) => item.id === recordingId,
+      );
+      (audioRecordingsContext.value || []).splice(index, 1);
+    } else if (action === "updated") {
+      const targetRecording = (audioRecordingsContext.value || []).find(
+        (rec) => rec.id === recordingId,
+      );
+      if (targetRecording) {
+        const targetTrack = targetRecording.tracks.find(
+          (track) => track.id === trackId,
+        );
+        if (targetTrack) {
+          if (trackAction === "add" && newClassification && trackTagId) {
+            // Get rid of "all.animal" part, since this is just for birds
+            const path = (
+              getClassificationForLabel(newClassification)?.path || ""
+            ).replace(".animal", "");
+            const newUserTag = {
+              confidence: 0.85,
+              id: trackTagId,
+              automatic: false,
+              what: newClassification,
+              path,
+              model: null,
+            };
+            targetTrack.tags.push(newUserTag);
+          } else if (trackAction === "remove" && trackTagId) {
+            const targetTrackTag = targetTrack.tags.findIndex(
+              (t) => t.id === trackId,
+            );
+            if (targetTrackTag) {
+              targetTrack.tags.splice(targetTrackTag, 1);
+            }
+          }
+        }
+      }
+    }
+  }
+};
+
+interface BirdDetectionsItem {
+  rank: number;
+  birdName: string;
+  conservationStatus: string;
+  biostatus: string;
+  __conservationStatusCode: string;
+  __classification: Classification;
+  detections: number;
+  locations: FloatZeroToOne;
+}
+
+const audioItems = computed<BirdDetectionsItem[]>(() => {
+  const recordings = dashboardAudioRecordings.value;
+  // We count a detection as one or more tags in each one minute recording.
+  // We don't count the same tag twice in a given recording
+  const recordingsBySpecies = new Map<string, number>();
+  const locationsPerSpecies = new Map<string, Set<number>>();
+  const numAudioLocations =
+    locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.value.length;
+  for (const recording of recordings) {
+    const uniqueTagsInRecording = new Set<string>();
+    for (const track of recording.tracks) {
+      const uniqueTags = new Set(
+        canonicalTrackTags(track)
+          .filter((tag) => tag.path.startsWith("all.bird."))
+          .map((tag) => tag.path),
+      );
+      for (const tag of uniqueTags) {
+        uniqueTagsInRecording.add(tag);
+      }
+    }
+    for (const path of uniqueTagsInRecording.values()) {
+      const count = recordingsBySpecies.getOrInsert(path, 0);
+      recordingsBySpecies.set(path, count + 1);
+      if (recording.stationId) {
+        locationsPerSpecies
+          .getOrInsert(path, new Set())
+          .add(recording.stationId);
+      }
+    }
+  }
+  const result = [];
+  const species = Array.from(recordingsBySpecies.entries());
+  species.sort((a, b) => {
+    return b[1] - a[1];
+  });
+  let i = 1;
+  for (const [path, count] of species) {
+    const label = displayLabelForClassificationLabel(
+      visitClassificationLabelFromPath(path).replaceAll("_", " "),
+      false,
+      true,
+    );
+    const classification = flatClassificationsByPath.value[path];
+    const conservationStatus = getConservationStatusForCode(
+      classification?.status,
+    );
+    result.push({
+      rank: i,
+      birdName: label,
+      detections: count,
+      biostatus: classification?.biostatus || "",
+      conservationStatus,
+      __classification: classification,
+      __conservationStatusCode: classification?.status || "",
+      locations: (locationsPerSpecies.get(path)?.size || 0) / numAudioLocations,
+    });
+    i++;
+  }
+  return result as BirdDetectionsItem[];
+});
+
+const getConservationStatusForCode = (classification?: string) => {
+  if (!classification) {
+    return "unknown";
+  }
+  switch (classification) {
+    case "lc":
+      return "least concern";
+    case "vu":
+      return "vulnerable";
+    case "nt":
+      return "near threatened";
+    case "en":
+      return "endangered";
+    case "cr":
+      return "critically endangered";
+    case "ew":
+      return "extinct in the wild";
+  }
+  return classification;
+};
+
+const maxDetections = computed<number>(() => {
+  return Math.max(...audioItems.value.map((item) => item.detections));
+});
+
+const closedModal = () => {
+  selectedVisit.value = null;
+  selectedRecording.value = null;
 };
 
 // TODO: When hovering a visit entry, highlight station on the map.  What's the best way to plumb this reactivity through?
@@ -485,196 +852,532 @@ const recordingUpdated = async (
 <template>
   <div class="header-container">
     <section-header>Dashboard</section-header>
-    <div class="dashboard-scope mt-sm-3 d-sm-flex flex-column align-items-end">
-      <!--      <bimodal-switch-->
-      <!--        class="justify-content-end"-->
-      <!--        :modes="['Thermal', 'Audio']"-->
-      <!--        v-model="recordingMode"-->
-      <!--        v-if="currentSelectedProjectHasAudioAndThermal"-->
-      <!--      />-->
-      <div
-        class="scope-filters d-flex align-items-sm-center flex-row mb-3 mb-sm-0"
-      >
-        <div class="d-flex align-items-center justify-content-between">
-          <span class="text-secondary">Visits in the last</span>
-          <!--          <select-->
-          <!--            class="form-select form-select-sm text-end"-->
-          <!--            v-model="visitsOrRecordings"-->
-          <!--          >-->
-          <!--            <option>visits</option>-->
-          <!--            <option>recordings</option>-->
-          <!--          </select>-->
-        </div>
-        <div class="d-flex align-items-center justify-content-between">
-          <select
-            id="select-dashboard-timespan"
-            class="form-select form-select-sm text-end"
-            v-model="timePeriodDays"
-          >
-            <option value="1">24 hours</option>
-            <option value="3">3 days</option>
-            <option value="7">7 days</option>
-            <!--            <option value="30">30 days</option>-->
-            <!--            <option value="60">60 days</option>-->
-          </select>
-        </div>
-        <!--        <div class="d-flex flex-row align-items-center justify-content-between">-->
-        <!--          <span> grouped by species</span>-->
-        <!--&lt;!&ndash;          <select&ndash;&gt;-->
-        <!--&lt;!&ndash;            class="form-select form-select-sm text-end"&ndash;&gt;-->
-        <!--&lt;!&ndash;            v-model="speciesOrLocations"&ndash;&gt;-->
-        <!--&lt;!&ndash;          >&ndash;&gt;-->
-        <!--&lt;!&ndash;            <option>species</option>&ndash;&gt;-->
-        <!--&lt;!&ndash;            <option>location</option>&ndash;&gt;-->
-        <!--&lt;!&ndash;          </select>&ndash;&gt;-->
-        <!--        </div>-->
-      </div>
-    </div>
-  </div>
-  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
-    Species summary
-  </h2>
-  <horizontal-overflow-carousel
-    class="species-summary-container mb-4 mb-sm-4 mb-md-5"
-    v-if="hasVisitsForSelectedTimePeriod"
-  >
-    <div class="species-summary flex-sm-nowrap flex-wrap d-flex gap-2 gap-sm-0">
-      <div
-        v-for="[key, val] in speciesSummarySorted"
-        :key="key"
-        class="species-summary__item d-flex flex-row align-items-center gap-2 gap-sm-3"
-        @click="showVisitsForTag(key)"
-      >
-        <div
-          class="species-summary__item__icon p-1 p-md-2"
-          :class="[...pathForTag(key).split('.')]"
-          :key="`d_${key}`"
-        >
-          <tag-image :tag="key" :key="`i_${key}`" width="24" height="24" />
-        </div>
-        <div
-          class="d-flex justify-content-evenly flex-sm-column align-items-center align-items-sm-start"
-        >
-          <div class="species-summary__item__count lh-sm me-1">
-            {{ val }}
-          </div>
-          <div class="species-summary__item__name lh-sm text-capitalize">
-            {{ displayLabelForClassificationLabel(key) }}
-          </div>
-        </div>
-      </div>
-    </div>
-  </horizontal-overflow-carousel>
-  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
-    Visits summary
-  </h2>
-  <div class="row g-1 g-lg-3 mb-3 mb-sm-4 mb-md-5">
-    <project-visits-summary
-      v-if="!isMobileView && hasVisitsForSelectedTimePeriod"
-      class="mb-3 col-12 col-lg-7 col-xl-8 order-2 order-lg-1"
-      :locations="allLocations"
-      :active-locations="locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
-      :visits="dashboardVisits"
-      :start-date="earliestDate"
-      :loading="isLoading"
-    />
-    <visits-breakdown-list
-      class="col-12 col-lg-5 col-xl-4 order-1 order-lg-2"
-      :visits="dashboardVisits"
-      :location="canonicalLatLngForActiveLocations"
-      :highlighted-location="currentlyHighlightedLocation"
-      @selected-visit="
-        (visit: ApiStaticVisitResponse) => (selectedVisit = visit)
-      "
-      @change-highlighted-location="
-        (loc: LocationId | null) => (currentlyHighlightedLocation = loc)
-      "
-    />
-  </div>
-  <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
-    Locations summary
-  </h2>
-  <horizontal-overflow-carousel
-    v-if="hasVisitsForSelectedTimePeriod"
-    class="locations-summary-wrapper mb-3 mb-lg-4"
-  >
-    <!--   TODO - Media breakpoint at which the carousel stops being a carousel? -->
+
     <div
-      class="species-summary d-flex gap-3 flex-sm-nowrap mb-3 mb-sm-0"
-      v-if="!isLoading && hasVisitsForSelectedTimePeriod"
+      class="d-flex align-items-center justify-content-between mb-3 mb-sm-4 mb-md-1 mb-lg-2"
     >
-      <location-visit-summary
-        v-for="(
-          location, index
-        ) in locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
-        :location="location"
+      <div class="dashboard-scope-type">
+        <div
+          class="btn-group btn-group-md d-flex"
+          role="group"
+          aria-label="Toggle between camera and bird monitor results"
+          v-if="currentSelectedProjectHasAudioAndThermal"
+        >
+          <input
+            type="radio"
+            class="btn-check"
+            name="recording-mode"
+            id="recording-mode-cameras"
+            autocomplete="off"
+            v-model="recordingMode"
+            value="Thermal"
+          />
+          <label
+            class="btn btn-radio-group btn-md w-50 d-flex align-items-center justify-content-center px-lg-3"
+            for="recording-mode-cameras"
+            data-cy="thermal dashboard"
+          >
+            <material-symbol name="videocam" class="me-2" size="1.25rem" />
+            Thermal
+          </label>
+          <input
+            type="radio"
+            class="btn-check"
+            name="recording-mode"
+            id="recording-mode-audio"
+            autocomplete="off"
+            v-model="recordingMode"
+            value="Audio"
+          />
+          <label
+            class="btn btn-radio-group btn-md w-50 d-flex align-items-center justify-content-center px-lg-3"
+            for="recording-mode-audio"
+            data-cy="audio dashboard"
+          >
+            <material-symbol name="music_note" class="me-2" size="1.25rem" />
+            Audio
+          </label>
+        </div>
+      </div>
+
+      <div class="dashboard-scope-time">
+        <div class="filters d-flex align-items-center">
+          <div class="d-flex align-items-center justify-content-between">
+            <span class="d-inline-block d-lg-none text-secondary"
+              >In the last</span
+            >
+            <span class="d-none d-lg-inline-block text-secondary"
+              ><span v-if="recordingMode === 'Thermal'">Visits</span
+              ><span v-else>Detections</span> in the last</span
+            >
+          </div>
+          <div class="d-flex align-items-center justify-content-between">
+            <select
+              id="select-dashboard-timespan"
+              class="form-select form-select-sm"
+              v-model="timePeriodDays"
+            >
+              <option value="1">24 hours</option>
+              <option value="3">3 days</option>
+              <option value="7">7 days</option>
+              <option value="30" v-if="recordingMode === 'Audio'">
+                30 days
+              </option>
+              <option value="60" v-if="recordingMode === 'Audio'">
+                60 days
+              </option>
+            </select>
+          </div>
+          <!--          <div class="d-flex flex-row align-items-center justify-content-between">-->
+          <!--            <span> grouped by species</span>-->
+          <!--            <select-->
+          <!--              class="form-select form-select-sm text-end"-->
+          <!--              v-model="speciesOrLocations"-->
+          <!--            >-->
+          <!--              <option>species</option>-->
+          <!--              <option>location</option>-->
+          <!--            </select>-->
+          <!--          </div>-->
+        </div>
+      </div>
+    </div>
+  </div>
+  <div v-if="recordingMode === 'Thermal'" class="d-flex flex-fill flex-column">
+    <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+      Species summary
+    </h2>
+    <horizontal-overflow-carousel
+      class="species-summary-container-thermal mb-4 mb-sm-4 mb-md-5"
+      v-if="hasVisitsForSelectedTimePeriod"
+    >
+      <div
+        class="species-summary-thermal flex-sm-nowrap flex-wrap d-flex gap-2 gap-sm-0"
+      >
+        <div
+          v-for="[key, val] in speciesSummarySorted"
+          :key="key"
+          class="species-summary-thermal__item d-flex flex-row align-items-center gap-2 gap-sm-3"
+          @click="showVisitsForTag(key)"
+        >
+          <div
+            class="species-summary-thermal__item__icon p-1 p-md-2"
+            :class="[...pathForTag(key).split('.')]"
+            :key="`d_${key}`"
+          >
+            <tag-image :tag="key" :key="`i_${key}`" width="24" height="24" />
+          </div>
+          <div
+            class="d-flex justify-content-evenly flex-sm-column align-items-center align-items-sm-start"
+          >
+            <div class="species-summary-thermal__item__count lh-sm me-1">
+              {{ val }}
+            </div>
+            <div
+              class="species-summary-thermal__item__name lh-sm text-capitalize"
+            >
+              {{ displayLabelForClassificationLabel(key) }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </horizontal-overflow-carousel>
+    <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+      Visits summary
+    </h2>
+    <div class="row g-1 g-lg-3 mb-3 mb-sm-4 mb-md-5">
+      <project-visits-summary
+        v-if="!isMobileView && hasVisitsForSelectedTimePeriod"
+        class="mb-3 col-12 col-lg-7 col-xl-8 order-2 order-lg-1"
+        :locations="allLocations"
         :active-locations="
           locationsWithOnlineOrActiveDevicesInSelectedTimeWindow
         "
-        @click="showVisitsForLocation(location)"
-        :locations="allLocations"
         :visits="dashboardVisits"
-        :key="index"
+        :start-date="earliestDate"
+        :loading="isLoading"
+      />
+      <visits-breakdown-list
+        class="col-12 col-lg-5 col-xl-4 order-1 order-lg-2"
+        :visits="dashboardVisits"
+        :location="canonicalLatLngForActiveLocations"
+        :highlighted-location="currentlyHighlightedLocation"
+        @selected-visit="
+          (visit: ApiStaticVisitResponse) => (selectedVisit = visit)
+        "
+        @change-highlighted-location="
+          (loc: LocationId | null) => (currentlyHighlightedLocation = loc)
+        "
       />
     </div>
-  </horizontal-overflow-carousel>
-  <div
-    v-if="isLoading || !hasVisitsForSelectedTimePeriod"
-    class="d-flex justify-content-sm-center flex-fill flex-column align-items-center justify-content-center mb-5 mb-sm-0"
-  >
-    <div v-if="isLoading">
-      <b-spinner variant="secondary" />
-    </div>
-    <div v-else class="d-flex justify-content-center flex-column">
-      <div class="text-body-tertiary text-center py-3">
-        <material-symbol
-          name="search_off"
-          size="2.4rem"
-          grade="thin"
-          class="mb-2"
+    <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
+      Locations summary
+    </h2>
+    <horizontal-overflow-carousel
+      v-if="hasVisitsForSelectedTimePeriod"
+      class="locations-summary-wrapper mb-3 mb-lg-4"
+    >
+      <div
+        class="species-summary-thermal d-flex gap-3 flex-sm-nowrap mb-3 mb-sm-0"
+        v-if="!isLoading && hasVisitsForSelectedTimePeriod"
+      >
+        <location-item-summary
+          v-for="(
+            location, index
+          ) in locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
+          :location="location"
+          :active-locations="
+            locationsWithOnlineOrActiveDevicesInSelectedTimeWindow
+          "
+          @click="showVisitsForLocation(location)"
+          :locations="allLocations"
+          :items="dashboardLocationItems"
+          item-type="visits"
+          :key="index"
         />
-        <p>
-          <!-- TODO: cater for no locations, no devices, show different copy? -->
-          <span
-            data-cy="no results"
-            v-if="
-              locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.length ===
-              0
-            "
+      </div>
+    </horizontal-overflow-carousel>
+    <div
+      v-if="isLoading || !hasVisitsForSelectedTimePeriod"
+      class="d-flex justify-content-sm-center flex-fill flex-column align-items-center justify-content-center mb-5 mb-sm-0"
+    >
+      <div v-if="isLoading" data-cy="thermal dashboard loading">
+        <b-spinner variant="secondary" />
+      </div>
+      <div v-else class="d-flex justify-content-center flex-column">
+        <div class="text-body-tertiary text-center py-3">
+          <material-symbol
+            name="search_off"
+            size="2.4rem"
+            grade="thin"
+            class="mb-2"
+          />
+          <p>
+            <!-- TODO: cater for no locations, no devices, show different copy? -->
+            <span
+              data-cy="no results"
+              v-if="
+                locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.length ===
+                0
+              "
+            >
+              There were no active locations in the last
+              <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
+              ><span v-else>day</span> for this project.
+            </span>
+            <span v-else data-cy="no results">
+              There were no visits for any target species in any of the active
+              locations in the last
+              <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
+              ><span v-else>day</span> for this project.
+            </span>
+          </p>
+          <b-button
+            variant="outline-secondary"
+            :to="{
+              name: 'activity',
+              params: {
+                projectName: urlNormalisedCurrentProjectName,
+              },
+              query: {
+                'display-mode': ActivitySearchDisplayMode.Visits,
+              },
+            }"
+            >View latest visits</b-button
           >
-            There were no active locations in the last
-            <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
-            ><span v-else>day</span> for this project.
-          </span>
-          <span v-else data-cy="no results">
-            There were no visits for any target species in any of the active
-            locations in the last
-            <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
-            ><span v-else>day</span> for this project.
-          </span>
-        </p>
-        <b-button
-          variant="outline-secondary"
-          :to="{
-            name: 'activity',
-            params: {
-              projectName: urlNormalisedCurrentProjectName,
-            },
-            query: {
-              displayMode: ActivitySearchDisplayMode.Visits,
-            },
-          }"
-          >View latest visits</b-button
-        >
+        </div>
+      </div>
+    </div>
+  </div>
+  <div v-else class="d-flex flex-fill flex-column">
+    <h2
+      class="dashboard-subhead"
+      v-if="hasAudioRecordingsForSelectedTimePeriod"
+    >
+      Species summary
+    </h2>
+    <div
+      class="species-summary-container-audio mb-5"
+      v-if="hasAudioRecordingsForSelectedTimePeriod"
+    >
+      <div class="featured_species_container container-fluid">
+        <div class="row gap-3 mb-3 mb-md-4 mb-lg-5">
+          <div
+            v-for="(bird, index) in audioItems.slice(0, 3)"
+            :key="index"
+            :data-cy="`species ${bird.birdName}`"
+            class="featured-species col d-flex flex-column container p-3 lh-sm rounded-3 shadow-sm bg-white"
+            @click="showRecordingsForClassification(bird.__classification)"
+            :class="{
+              'col-12 ': index === 0 && isMobileView,
+              'order-2 ': index === 0 && !isMobileView,
+              'mt-sm-4 order-1': index === 1 && !isMobileView,
+              'mt-sm-5 order-3': index === 2 && !isMobileView,
+            }"
+          >
+            <div class="row pointer-events-none">
+              <div
+                class="featured-species__rank col-lg-3 col-xxl-2 text-secondary text-opacity-25"
+              >
+                <span class="d-block mb-2 mb-lg-0 ms-lg-2 ms-xxl-0">{{
+                  index + 1
+                }}</span>
+              </div>
+              <div class="col-lg-9 col-xxl-10">
+                <h3
+                  class="mt-1 mb-2 text-capitalize"
+                  :class="isMobileView ? 'h4' : 'h3'"
+                >
+                  {{ bird.birdName }}
+                </h3>
+                <p class="mb-2 d-flex gap-2 align-items-center">
+                  <span data-cy="species count"
+                    >{{ bird.detections }}&nbsp;detection<span
+                      v-if="bird.detections > 1"
+                      >s</span
+                    ></span
+                  >
+                  <span class="d-inline-flex flex-grow-1">
+                    <span
+                      class="detections-bar d-block rounded-1"
+                      :style="`width: max(4px, ${(bird.detections / maxDetections) * 100}%)`"
+                    ></span>
+                  </span>
+                </p>
+                <p class="mb-3 d-flex gap-2 align-items-center">
+                  <span
+                    >{{ (bird.locations * 100).toFixed(1) }}% locations</span
+                  >
+
+                  <span
+                    class="locations-chart d-block rounded-5"
+                    :style="`background: conic-gradient(
+                        #eee 0deg ${360 - bird.locations * 360}deg,
+                        var(--cp-color-green-600) ${360 - bird.locations * 360}deg 360deg
+                      ); border: 1px solid #ddd`"
+                  ></span>
+                </p>
+              </div>
+            </div>
+            <div
+              class="d-flex mt-auto gap-2 justify-content-end align-items-baseline"
+            >
+              <b-badge
+                class="biostatus"
+                :class="bird.biostatus.toLowerCase()"
+                >{{ bird.biostatus }}</b-badge
+              >
+              <b-tooltip>
+                <template #target>
+                  <span
+                    class="conservation-status mini d-flex align-items-center justify-content-center rounded-4"
+                    :class="bird.__conservationStatusCode"
+                    >{{ bird.__conservationStatusCode }}</span
+                  >
+                </template>
+                {{ bird.conservationStatus }}
+              </b-tooltip>
+            </div>
+          </div>
+        </div>
+      </div>
+      <card-table
+        :items="audioItems.slice(3)"
+        compact
+        :max-card-width="768"
+        class="mb-3"
+        :standalone="!isMobileView"
+        @select-item="
+          (item) =>
+            showRecordingsForClassification(
+              (item as BirdDetectionsItem).__classification,
+            )
+        "
+        :class="isMobileView ? 'bg-white p-3 shadow-sm rounded-3' : ''"
+      >
+        <template #birdName="{ cell }">
+          <span class="text-capitalize" :data-cy="`species ${cell}`">{{
+            cell
+          }}</span>
+        </template>
+        <template #biostatus="{ cell }">
+          <b-badge class="biostatus" :class="cell.toLowerCase()">{{
+            cell
+          }}</b-badge>
+        </template>
+        <template #conservationStatus="{ cell, row }">
+          <b-badge
+            class="conservation-status"
+            :class="row.__conservationStatusCode"
+            >{{ cell }}</b-badge
+          >
+        </template>
+        <template #detections="{ cell }">
+          <div class="d-flex gap-2 align-items-center">
+            <span data-cy="species count">{{ cell }}</span>
+            <span
+              class="detections-bar d-block rounded-1"
+              :style="`width: max(4px, ${(cell / maxDetections) * 100}%)`"
+            ></span>
+          </div>
+        </template>
+        <template #locations="{ cell }">
+          <div class="d-flex gap-2 align-items-center">
+            {{ (cell * 100).toFixed(1) }}%
+            <span
+              class="locations-chart d-block rounded-5"
+              :style="`background: conic-gradient(
+                        #eee 0deg ${360 - cell * 360}deg,
+                        var(--cp-color-green-600) ${360 - cell * 360}deg 360deg
+                      ); border: 1px solid #ddd`"
+            ></span>
+          </div>
+        </template>
+
+        <template #card="{ card }">
+          <div class="d-flex align-items-baseline">
+            <h3 class="h4 flex-grow-1 text-capitalize">{{ card.birdName }}</h3>
+            <div class="d-flex gap-2 justify-content-end align-items-baseline">
+              <b-badge
+                class="biostatus"
+                :class="card.biostatus.toLowerCase()"
+                >{{ card.biostatus }}</b-badge
+              >
+              <b-tooltip>
+                <template #target>
+                  <span
+                    class="conservation-status mini d-flex align-items-center justify-content-center rounded-4"
+                    :class="card.__conservationStatusCode"
+                    >{{ card.__conservationStatusCode }}</span
+                  >
+                </template>
+                {{ card.conservationStatus }}
+              </b-tooltip>
+            </div>
+          </div>
+          <p class="d-flex gap-2 align-items-center mb-1 fs-6">
+            <span
+              >{{ card.detections }}&nbsp;detection<span
+                v-if="card.detections > 1"
+                >s</span
+              ></span
+            >
+            <span
+              class="detections-bar d-block rounded-1"
+              :style="`width: max(4px, ${(card.detections / maxDetections) * 100}%)`"
+            ></span>
+          </p>
+
+          <p class="d-flex gap-2 align-items-center mb-0 fs-6">
+            {{ (card.locations * 100).toFixed(1) }}% locations
+            <span
+              class="locations-chart d-block rounded-5"
+              :style="`background: conic-gradient(
+                        #eee 0deg ${360 - card.locations * 360}deg,
+                        var(--cp-color-green-600) ${360 - card.locations * 360}deg 360deg
+                      ); border: 1px solid #ddd`"
+            ></span>
+          </p>
+        </template>
+      </card-table>
+    </div>
+
+    <h2
+      class="dashboard-subhead"
+      v-if="hasAudioRecordingsForSelectedTimePeriod"
+    >
+      Locations summary
+    </h2>
+    <horizontal-overflow-carousel
+      v-if="hasAudioRecordingsForSelectedTimePeriod"
+      class="locations-summary-wrapper mb-3 mb-lg-4"
+    >
+      <div
+        class="species-summary-thermal d-flex gap-3 flex-sm-nowrap mb-3 mb-sm-0"
+        v-if="!isLoading && hasAudioRecordingsForSelectedTimePeriod"
+      >
+        <location-item-summary
+          v-for="(
+            location, index
+          ) in locationsWithOnlineOrActiveDevicesInSelectedTimeWindow"
+          :location="location"
+          :active-locations="
+            locationsWithOnlineOrActiveDevicesInSelectedTimeWindow
+          "
+          @click="showRecordingsForLocation(location)"
+          :locations="allLocations"
+          :items="audioDetectionsAtLocations"
+          item-type="detections"
+          :key="index"
+        />
+      </div>
+    </horizontal-overflow-carousel>
+    <div
+      v-if="isLoading || !hasAudioRecordingsForSelectedTimePeriod"
+      class="d-flex justify-content-sm-center flex-fill flex-column align-items-center justify-content-center mb-5 mb-sm-0"
+    >
+      <div v-if="isLoading" data-cy="audio dashboard loading">
+        <b-spinner variant="secondary" />
+      </div>
+      <div v-else class="d-flex justify-content-center flex-column">
+        <div class="text-body-tertiary text-center py-3">
+          <material-symbol
+            name="search_off"
+            size="2.4rem"
+            grade="thin"
+            class="mb-2"
+          />
+          <p>
+            <!-- TODO: cater for no locations, no devices, show different copy? -->
+            <span
+              data-cy="no results"
+              v-if="
+                locationsWithOnlineOrActiveDevicesInSelectedTimeWindow.length ===
+                0
+              "
+            >
+              There were no active locations in the last
+              <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
+              ><span v-else>day</span> for this project.
+            </span>
+            <span v-else data-cy="no results">
+              There were no visits for any target species in any of the active
+              locations in the last
+              <span v-if="timePeriodDays > 1">{{ timePeriodDays }} days</span
+              ><span v-else>day</span> for this project.
+            </span>
+          </p>
+          <b-button
+            variant="outline-secondary"
+            :to="{
+              name: 'activity',
+              params: {
+                projectName: urlNormalisedCurrentProjectName,
+              },
+              query: {
+                'display-mode': ActivitySearchDisplayMode.Recordings,
+                'recording-mode': ActivitySearchRecordingMode.Audio,
+              },
+            }"
+            >View latest bird detections</b-button
+          >
+        </div>
       </div>
     </div>
   </div>
   <inline-view-modal
-    @close="selectedVisit = null"
     @recording-updated="recordingUpdated"
-    :fade-in="loadedRouteName === 'dashboard'"
-    :parent-route-name="'dashboard'"
-    @shown="() => (loadedRouteName = 'dashboard')"
+    :fade-in="
+      loadedRouteName === 'dashboard-thermal' ||
+      loadedRouteName === 'dashboard-audio'
+    "
+    :parent-route-name="parentRouteName"
+    @shown="
+      () =>
+        (loadedRouteName = selectedRecording
+          ? 'dashboard-audio'
+          : 'dashboard-thermal')
+    "
+    @close="closedModal"
   />
 </template>
 <style lang="less" scoped>
@@ -686,22 +1389,42 @@ const recordingUpdated = async (
     position: relative;
   }
 }
-.dashboard-scope {
-  @media screen and (min-width: @breakpoint-sm) {
+.dashboard-scope-type {
+  @media screen and (min-width: @breakpoint-md) {
     position: absolute;
-    top: 0;
-    right: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: -70px;
+  }
+  @media screen and (min-width: @breakpoint-xxl) {
+    margin-top: -84px;
   }
 }
-.scope-filters {
-  .form-select {
-    background-color: unset;
-    border: 0;
-    width: auto;
+
+.dashboard-scope-time {
+  @media screen and (min-width: @breakpoint-md) {
+    position: absolute;
+    right: 0;
+    margin-top: -70px;
   }
-  span {
-    white-space: nowrap;
+  @media screen and (min-width: @breakpoint-xxl) {
+    margin-top: -84px;
   }
+  .filters {
+    .form-select {
+      background-color: unset;
+      border: 0;
+      width: auto;
+      margin-right: -12px;
+    }
+    span {
+      white-space: nowrap;
+    }
+  }
+}
+
+.pointer-events-none {
+  pointer-events: none;
 }
 
 .dashboard-subhead {
@@ -712,15 +1435,17 @@ const recordingUpdated = async (
   }
 }
 
-.species-summary-container {
+.species-summary-container-thermal {
   border-radius: var(--bs-border-radius);
   @media screen and (min-width: @breakpoint-sm) {
-    background: white;
+    background: var(--bs-white);
     .standard-shadow();
   }
 }
 
-.species-summary {
+/****** Thermal *******/
+
+.species-summary-thermal {
   user-select: none;
   &__item {
     background: var(--bs-white);
@@ -792,12 +1517,108 @@ const recordingUpdated = async (
     }
   }
 }
+
+/****** Audio *******/
+
+.species-summary-container-audio {
+  .detections-bar {
+    height: var(--cp-spacing-xs);
+    background: var(--cp-color-green-400);
+  }
+  .locations-chart {
+    width: var(--cp-spacing-md);
+    height: var(--cp-spacing-md);
+  }
+}
+
+.featured_species_container {
+  @media (min-width: @breakpoint-lg-max) {
+    max-width: 84%;
+  }
+}
+
+.featured-species {
+  // See https://en.wikipedia.org/wiki/IUCN_Red_List#Categories
+  // We'll use the same color scheme Wikipedia is using
+  &__rank {
+    display: none;
+    @media (min-width: @breakpoint-xs-max) {
+      display: block;
+      line-height: 0.9;
+    }
+    @media (min-width: @breakpoint-xs-max) and (max-width: @breakpoint-sm-max) {
+      font-size: 3rem;
+    }
+    @media (min-width: @breakpoint-sm-max) {
+      display: block;
+      font-size: 5.5rem;
+      line-height: 0.9;
+    }
+  }
+}
+
+// See https://en.wikipedia.org/wiki/IUCN_Red_List#Categories
+// We'll use the same color scheme Wikipedia is using
+.conservation-status {
+  &.mini {
+    font-size: var(--cp-font-size-sm);
+    font-weight: var(--cp-font-weight-semilbold);
+    width: var(--cp-spacing-xl);
+    height: var(--cp-spacing-xl);
+    text-transform: uppercase;
+  }
+  color: var(--bs-white);
+  // important used because of the badge colors also using it 🙃
+  &.ex {
+    background: var(--bs-black) !important;
+    color: var(--bs-red) !important;
+  }
+  // extinct in the wild
+  &.ew {
+    background: var(--bs-black) !important;
+  }
+  // critically endangered
+  &.cr {
+    background: var(--bs-red) !important;
+  }
+  // endangered
+  &.en {
+    background: #cc6633 !important;
+  }
+  // vulnerable
+  &.vu {
+    background: #cc9900 !important;
+  }
+  // near threatened
+  &.nt {
+    background: #369f00 !important;
+  }
+  // least concern
+  &.lc {
+    background: #057339 !important;
+  }
+}
+
+.biostatus {
+  &.endemic {
+    background: var(--cp-color-green-100) !important;
+    color: var(--cp-color-green-700) !important;
+  }
+  &.naturalised {
+    background: color-mix(in oklch, var(--bs-teal), transparent 80%) !important;
+    color: color-mix(in oklch, var(--bs-teal), #000 30%) !important;
+  }
+  &.introduced {
+    background: color-mix(in oklch, var(--bs-cyan), transparent 80%) !important;
+    color: color-mix(in oklch, var(--bs-cyan), #000 30%) !important;
+  }
+}
 </style>
 <style lang="less">
 @import "../assets/less/breakpoints.less";
 // make sure that the shadow of the species summary displays
 @media screen and (max-width: @breakpoint-xs-max) {
-  .species-summary-container {
+  .species-summary-container-thermal {
     margin: -2px -2px 0;
     .inner {
       padding: 2px 2px 4px;

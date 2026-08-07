@@ -10,6 +10,7 @@ import {
 import type { Classification } from "@typedefs/api/trackTag";
 import { RecordingProcessingState } from "@typedefs/api/consts.ts";
 import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
+import type { LocationSummaryItem } from "@/components/LocationItemSummary.vue";
 
 export const MINUTES_BEFORE_DUSK_AND_AFTER_DAWN = 60;
 
@@ -59,6 +60,16 @@ export const visitsByLocation = (
     {} as Record<number, ApiStaticVisitResponse[]>,
   );
 
+export const itemsByLocation = (items: LocationSummaryItem[]) =>
+  items.reduce(
+    (acc, item) => {
+      acc[item.locationId] = acc[item.locationId] || [];
+      acc[item.locationId].push(item);
+      return acc;
+    },
+    {} as Record<number, LocationSummaryItem[]>,
+  );
+
 export const sortTagPrecedence = (a: string, b: string): number => {
   const aPriority = tagPrecedence.indexOf(a);
   const bPriority = tagPrecedence.indexOf(b);
@@ -105,11 +116,53 @@ export const visitsBySpecies = (
   return Object.entries(summary).sort(([a], [b]) => sortTagPrecedence(a, b));
 };
 
+export const itemsBySpecies = (
+  items: { path: string }[],
+): [string, { path: string }[]][] => {
+  const summary = items.reduce(
+    (
+      acc: Record<string, { path: string }[]>,
+      currentValue: { path: string },
+    ) => {
+      let classification = currentValue.path;
+      if (classification) {
+        if (classification === "all.other.falsepositive") {
+          classification = "all.other.false-positive";
+        }
+        acc[classification] = acc[classification] || [];
+        acc[classification].push(currentValue);
+      }
+      return acc;
+    },
+    {},
+  );
+  // NOTE: Order by "badness" of predator
+  return Object.entries(summary).sort(([a], [b]) => sortTagPrecedence(a, b));
+};
+
 export const visitsCountBySpecies = (
   visits: ApiStaticVisitResponse[],
 ): [string, string, number][] =>
   (
     visitsBySpecies(visits).map(([classification, visits]) => [
+      classification.split(".").pop(),
+      classification || "",
+      visits.length,
+    ]) as [string, string, number][]
+  ).sort((a, b) => {
+    // Sort by count and break ties by name alphabetically
+    const order = b[2] - a[2];
+    if (order === 0) {
+      return a[0] > b[0] ? 1 : -1;
+    }
+    return order;
+  });
+
+export const itemCountBySpecies = (
+  items: { path: string }[],
+): [string, string, number][] =>
+  (
+    itemsBySpecies(items).map(([classification, visits]) => [
       classification.split(".").pop(),
       classification || "",
       visits.length,

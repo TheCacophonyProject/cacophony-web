@@ -9,6 +9,8 @@ interface ClassificationInfo {
   label: string;
   display: string;
   path: string;
+  biostatus?: string;
+  status?: string;
   node: Classification;
   displayAudio: string;
 }
@@ -21,13 +23,19 @@ const flattenNodes = (
     const path = `${(parent && parent.path) || node.path || node.label}.${
       child.label
     }`;
-    const childInfo = {
+    const childInfo: ClassificationInfo = {
       label: child.label,
       display: child.display || child.label,
       displayAudio: child.displayAudio || child.display || child.label,
       node: child,
       path,
     };
+    if (child.biostatus) {
+      childInfo.biostatus = child.biostatus;
+    }
+    if (child.status) {
+      childInfo.status = child.status;
+    }
     acc[child.label] = childInfo;
     if (child.aliases) {
       for (const alias of child.aliases) {
@@ -35,6 +43,49 @@ const flattenNodes = (
       }
     }
     flattenNodes(acc, child);
+  }
+  return acc;
+};
+
+const flattenNodesByPath = (
+  acc: Record<string, ClassificationInfo>,
+  node: Classification,
+) => {
+  const stack = [{ node, path: "" }];
+  while (stack.length > 0) {
+    const { node, path } = stack.pop() as {
+      node: Classification;
+      path: string;
+    };
+    const pathLabel = node.label.replaceAll(" ", "_");
+    const newPath = path ? `${path}.${pathLabel}` : pathLabel;
+    const childInfo: ClassificationInfo = {
+      label: node.label,
+      display: node.display || node.label,
+      displayAudio: node.displayAudio || node.display || node.label,
+      node,
+      path: newPath,
+    };
+    if (node.biostatus) {
+      childInfo.biostatus = node.biostatus;
+    }
+    if (node.status) {
+      childInfo.status = node.status;
+    }
+    acc[newPath] = childInfo;
+    if (node.aliases) {
+      for (const alias of node.aliases) {
+        const pathLabel = alias.replaceAll(" ", "_");
+        const newPath = path ? `${path}.${pathLabel}` : pathLabel;
+        acc[newPath] = childInfo;
+      }
+    }
+    if (node.children && node.children.length > 0) {
+      // Push children in REVERSE order to maintain left-to-right DFS traversal
+      for (let i = node.children.length - 1; i >= 0; i--) {
+        stack.push({ node: node.children[i], path: newPath });
+      }
+    }
   }
   return acc;
 };
@@ -52,6 +103,19 @@ export const flatClassifications = computed<Record<string, ClassificationInfo>>(
     return {};
   },
 );
+
+export const flatClassificationsByPath = computed<
+  Record<string, ClassificationInfo>
+>(() => {
+  if (classifications.value) {
+    const nodes = flattenNodesByPath({}, classifications.value);
+    if (nodes["all.other.unknown"]) {
+      nodes["all.other.unidentified"] = nodes["all.other.unknown"];
+    }
+    return nodes;
+  }
+  return {};
+});
 
 const getFreshClassifications = async (): Promise<Classification> => {
   const res = await ClientApi.Classifications.apiGetClassifications();

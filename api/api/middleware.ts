@@ -116,32 +116,6 @@ export function modelTypeNamePlural(
   return modelType.options.name.plural.toLowerCase();
 }
 
-const ID_OR_ID_ARRAY_REGEXP = /^\[[0-9,]+\]$|^[0-9]+$/;
-const ID_OR_ID_ARRAY_MESSAGE =
-  "Must be an id, or an array of ids.  For example, '32' or '[32, 33, 34]'";
-
-export const toIdArray = function (fieldName: string): ValidationChain {
-  return query(fieldName, ID_OR_ID_ARRAY_MESSAGE)
-    .matches(ID_OR_ID_ARRAY_REGEXP)
-    .customSanitizer((value) => convertToIdArray(value));
-};
-
-export const convertToIdArray = function (idsAsString: string): number[] {
-  if (idsAsString) {
-    try {
-      const val = JSON.parse(idsAsString);
-      if (Array.isArray(val)) {
-        return val;
-      } else {
-        return [val];
-      }
-    } catch (_error) {
-      return [];
-    }
-  }
-  return [];
-};
-
 export const isDateArray = function (
   fieldName: string,
   customError: FieldMessageFactory | ErrorMessage,

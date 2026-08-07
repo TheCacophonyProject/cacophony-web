@@ -251,6 +251,10 @@ const credentialsResolvers = {
     if (apiRoot === "CURRENT_HOST") {
       // In production, use whatever the current host is, since it should be proxying the api
       apiRoot = "";
+    } else if (apiRoot === "local") {
+      apiRoot = import.meta.env.VITE_API_LOCAL;
+    } else if (apiRoot === "remote") {
+      apiRoot = import.meta.env.VITE_API_REMOTE;
     }
     return apiRoot;
   },
