@@ -1830,6 +1830,60 @@ const locationName = (
 <style lang="less">
 @import "../assets/less/breakpoints.less";
 
+.class-selection-popover-background {
+  position: absolute;
+  background: black;
+  opacity: 0.5;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  transition: opacity 0.3s;
+  &.removed {
+    opacity: 0;
+  }
+}
+.class-selection-popover {
+  position: absolute;
+  width: 300px;
+  left: calc(50% - 150px);
+  top: 20px;
+  z-index: 1000;
+  &.main {
+    z-index: 10000;
+    top: 140px;
+  }
+  border-radius: var(--bs-border-radius);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  animation: add-animate-in 0.2s ease-in-out;
+  &.removed {
+    animation: remove-animate-out 0.2s ease-in-out forwards;
+  }
+}
+
+@keyframes add-animate-in {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes remove-animate-out {
+  from {
+    transform: translateY(0px);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-200px);
+    opacity: 0;
+  }
+}
+
 .player-and-tagging {
   overscroll-behavior-y: none;
   .video-container {

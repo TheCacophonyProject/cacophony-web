@@ -29,16 +29,20 @@ import {
 } from "@/models/LoggedInUser";
 // import { getEUAVersion } from "@api/User";
 // import { getDevicesForProject, getLocationsForProject } from "@api/Project";
-import { nextTick } from "vue";
+import { computed, nextTick } from "vue";
 import { urlNormaliseName } from "@/utils";
 import type { ApiGroupResponse } from "@typedefs/api/group";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
-import { DeviceType } from "@typedefs/api/consts.ts";
+import { DeviceType, RecordingType } from "@typedefs/api/consts.ts";
 import { DEFAULT_AUTH_ID, type LoadedResource } from "@apiClient/types.ts";
 import { ClientApi, CurrentUser } from "@/api";
 import { decodeJWT } from "@apiClient/utils.ts";
 import { CurrentViewAbortController } from "@apiClient/api.ts";
+import {
+  ActivitySearchDisplayMode,
+  ActivitySearchRecordingMode,
+} from "@/components/activitySearchUtils.ts";
 // import { CurrentViewAbortController } from "@api/fetch.ts";
 
 const cancelPendingRequests = (
@@ -110,6 +114,18 @@ const recordingModalChildren = (parent: string) => [
   },
 ];
 
+const someLocationsHaveAudioRecordings = computed<boolean>(() => {
+  return (
+    LocationsForCurrentProject.value || ([] as ApiLocationResponse[])
+  ).some((loc) => !!loc.earliestAudioRecordingTime);
+});
+
+const someLocationsHaveThermalRecordings = computed<boolean>(() => {
+  return (
+    LocationsForCurrentProject.value || ([] as ApiLocationResponse[])
+  ).some((loc) => !!loc.earliestThermalRecordingTime);
+});
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -163,16 +179,49 @@ const router = createRouter({
       name: "dashboard",
       meta: { title: ":projectName Dashboard", requiresLogin: true },
       component: () => import("@/views/DashboardView.vue"),
-      beforeEnter: cancelPendingRequests,
-      redirect: { name: "dashboard-thermal" },
-      children: recordingModalChildren("dashboard-thermal") as RouteRecordRaw[],
+      beforeEnter: (
+        to: RouteLocationNormalized,
+        _from: RouteLocationNormalized,
+        next: NavigationGuardNext,
+      ) => {
+        CurrentViewAbortController.newView();
+        if (
+          localStorage.getItem("dashboard-type") === RecordingType.Audio &&
+          someLocationsHaveAudioRecordings.value
+        ) {
+          return next({
+            ...to,
+            name: "dashboard-audio",
+          } as RouteLocationNormalized);
+        }
+        return next({
+          ...to,
+          name: "dashboard-thermal",
+        } as RouteLocationNormalized);
+      },
     },
     {
       path: "/:projectName/thermal",
       name: "dashboard-thermal",
       meta: { title: ":projectName Thermal Dashboard", requiresLogin: true },
       component: () => import("@/views/DashboardView.vue"),
-      beforeEnter: cancelPendingRequests,
+      beforeEnter: (
+        to: RouteLocationNormalized,
+        _from: RouteLocationNormalized,
+        next: NavigationGuardNext,
+      ) => {
+        CurrentViewAbortController.newView();
+        if (
+          !someLocationsHaveThermalRecordings.value &&
+          someLocationsHaveAudioRecordings.value
+        ) {
+          return next({
+            ...to,
+            name: "dashboard-audio",
+          } as RouteLocationNormalized);
+        }
+        return next();
+      },
       children: recordingModalChildren("dashboard-thermal") as RouteRecordRaw[],
     },
     {
@@ -184,7 +233,23 @@ const router = createRouter({
         context: "dashboard-recording",
       },
       component: () => import("@/views/DashboardView.vue"),
-      beforeEnter: cancelPendingRequests,
+      beforeEnter: (
+        to: RouteLocationNormalized,
+        _from: RouteLocationNormalized,
+        next: NavigationGuardNext,
+      ) => {
+        CurrentViewAbortController.newView();
+        if (
+          !someLocationsHaveAudioRecordings.value &&
+          someLocationsHaveThermalRecordings.value
+        ) {
+          return next({
+            ...to,
+            name: "dashboard-thermal",
+          } as RouteLocationNormalized);
+        }
+        return next();
+      },
       children: recordingModalChildren("dashboard-audio") as RouteRecordRaw[],
     },
     {
@@ -202,7 +267,54 @@ const router = createRouter({
       name: "activity",
       meta: { requiresLogin: true, title: "Activity in :projectName" },
       component: () => import("@/views/ActivitySearchView.vue"),
-      beforeEnter: cancelPendingRequests,
+      beforeEnter: (
+        to: RouteLocationNormalized,
+        _from: RouteLocationNormalized,
+        next: NavigationGuardNext,
+      ) => {
+        CurrentViewAbortController.newView();
+        if (to.query["display-mode"] === ActivitySearchDisplayMode.Recordings) {
+          if (
+            to.query["recording-mode"] === ActivitySearchRecordingMode.Audio &&
+            !someLocationsHaveAudioRecordings.value
+          ) {
+            return next({
+              ...to,
+              query: {
+                ...to.query,
+                "recording-mode": ActivitySearchRecordingMode.Cameras,
+              },
+            });
+          } else if (
+            to.query["recording-mode"] ===
+              ActivitySearchRecordingMode.Cameras &&
+            !someLocationsHaveThermalRecordings.value
+          ) {
+            return next({
+              ...to,
+              query: {
+                ...to.query,
+                "recording-mode": ActivitySearchRecordingMode.Audio,
+              },
+            });
+          }
+        } else if (
+          to.query["display-mode"] === ActivitySearchDisplayMode.Visits &&
+          !(
+            LocationsForCurrentProject.value || ([] as ApiLocationResponse[])
+          ).some((loc) => !!loc.earliestThermalRecordingTime)
+        ) {
+          return next({
+            ...to,
+            query: {
+              ...to.query,
+              "display-mode": ActivitySearchDisplayMode.Recordings,
+              "recording-mode": ActivitySearchRecordingMode.Audio,
+            },
+          });
+        }
+        return next();
+      },
       children: recordingModalChildren("activity") as RouteRecordRaw[],
     },
     {

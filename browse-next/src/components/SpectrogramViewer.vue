@@ -1712,44 +1712,6 @@ const isMobileView = computed<boolean>(() => {
   </div>
 </template>
 <style lang="less">
-.class-selection-popover {
-  position: absolute;
-  width: 300px;
-  left: calc(50% - 150px);
-  top: 20px;
-  /* background: #333;
-  padding: 12px;*/
-  border-radius: var(--bs-border-radius);
-  z-index: 1000;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-  animation: add-animate-in 0.2s ease-in-out;
-  &.removed {
-    animation: remove-animate-out 0.2s ease-in-out forwards;
-  }
-}
-
-@keyframes add-animate-in {
-  from {
-    transform: scale(0);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes remove-animate-out {
-  from {
-    transform: translateY(0px);
-    opacity: 1;
-  }
-  to {
-    transform: translateY(-200px);
-    opacity: 0;
-  }
-}
-
 .spectrogram {
   // 360px for spectrogram only
   //min-height: 404px;

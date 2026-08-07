@@ -6,11 +6,7 @@ import type {
 } from "@typedefs/api/device";
 import { provide, type Ref } from "vue";
 import { computed, inject, onBeforeMount, ref } from "vue";
-import {
-  currentUserIsSuperUser,
-  projectDevicesLoaded,
-  userProjectsLoaded,
-} from "@models/LoggedInUser";
+import { projectDevicesLoaded, userProjectsLoaded } from "@models/LoggedInUser";
 import type { DeviceId } from "@typedefs/api/common";
 import { selectedProjectDevices } from "@models/provides";
 import { DeviceType } from "@typedefs/api/consts.ts";
@@ -55,11 +51,6 @@ const loadDevice = async (deviceId: DeviceId) => {
       }
     }
   }
-
-  // TODO: Get the device station
-  // TODO: Get the device events
-  // TODO: Get the device software version info.
-  // TODO: Get the device schedules
   deviceLoading.value = false;
 };
 
@@ -108,41 +99,12 @@ const activeTabPath = computed(() => {
   return route.matched.map((item) => item.name);
 });
 const navLinkClasses = ["nav-item", "nav-link"];
-
-const _deviceType = computed<string>(() => {
-  if (device.value) {
-    switch ((device.value as ApiDeviceResponse).type) {
-      case DeviceType.Thermal:
-        return "Thermal camera";
-      case DeviceType.Hybrid:
-        return "Thermal camera + Bird monitor";
-      case DeviceType.Audio:
-        return "Bird monitor";
-      case DeviceType.TrapIrCam:
-        return "Trap IR camera";
-    }
-  }
-  return "Device";
-});
 </script>
 <template>
   <div class="device-view d-flex flex-column flex-fill">
     <overflowing-tab-list v-if="!deviceLoading">
-      <!--      <router-link-->
-      <!--        v-if="currentUserIsSuperAdminAndNotViewingAsNonSuperAdmin && [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes((device as ApiDeviceResponse).type)"-->
-      <!--        :class="[-->
-      <!--          ...navLinkClasses,-->
-      <!--          { active: activeTabPath.includes('device-events') },-->
-      <!--        ]"-->
-      <!--        title="Events"-->
-      <!--        :to="{-->
-      <!--          name: 'device-events',-->
-      <!--        }"-->
-      <!--        >Events</router-link-->
-      <!--      >-->
       <router-link
         v-if="
-          currentUserIsSuperUser &&
           device?.active &&
           [DeviceType.Thermal, DeviceType.Hybrid, DeviceType.Audio].includes(
             (device as ApiDeviceResponse).type,

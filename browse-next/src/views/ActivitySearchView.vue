@@ -702,10 +702,19 @@ const mapLocationForMap = (location: ApiLocationResponse): NamedPoint => {
   };
 };
 
+const locationHasAnyRecordings = (location: ApiLocationResponse) => {
+  return (
+    locationHasCameraRecordings(location) ||
+    locationHasAudioRecordings(location)
+  );
+};
+
 const locationHasRecordings = (location: ApiLocationResponse) => {
-  if (searchParams.value.recordingMode === "audio") {
+  if (searchParams.value.recordingMode === ActivitySearchRecordingMode.Audio) {
     return locationHasAudioRecordings(location);
-  } else if (searchParams.value.recordingMode === "cameras") {
+  } else if (
+    searchParams.value.recordingMode === ActivitySearchRecordingMode.Cameras
+  ) {
     return locationHasCameraRecordings(location);
   }
   return (
@@ -718,7 +727,7 @@ const validLocations = computed(() => {
   if (locations.value) {
     return (locations.value as ApiLocationResponse[]).filter(
       (location) =>
-        locationHasRecordings(location) &&
+        locationHasAnyRecordings(location) &&
         location.location &&
         (location.location.lat !== 0 || location.location.lng !== 0),
     );

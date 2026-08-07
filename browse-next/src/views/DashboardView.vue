@@ -239,10 +239,12 @@ const recordingMode = ref<"Thermal" | "Audio">(
 
 watch(recordingMode, (newValue, oldValue) => {
   if (newValue === "Thermal") {
+    localStorage.setItem("dashboard-type", RecordingType.ThermalRaw);
     router.push({
       name: "dashboard-thermal",
     });
   } else if (newValue === "Audio") {
+    localStorage.setItem("dashboard-type", RecordingType.Audio);
     router.push({
       name: "dashboard-audio",
     });
@@ -324,9 +326,36 @@ watch(route, (nextRoute) => {
 
 // Use provide to provide selected visit context to loaded modal.
 // If url is saved and returned to, the best we can do is display the visit, but we can't do next/prev visits.
+// const timePeriodDays = computed<number>(() => {
+//   if (recordingMode.value === "Thermal") {
+//     return Number(localStorage.getItem("dashboard-thermal-time-period-days")) || 7;
+//   }
+//   return Number(localStorage.getItem("dashboard-audio-time-period-days")) || 60;
+// });
 
-// TODO - Reload these from user preferences.
-const timePeriodDays = ref<number>(recordingMode.value === "Thermal" ? 7 : 60);
+const timePeriodDays = computed<number>({
+  get() {
+    if (recordingMode.value === "Thermal") {
+      return (
+        Number(localStorage.getItem("dashboard-thermal-time-period-days")) || 7
+      );
+    }
+    return (
+      Number(localStorage.getItem("dashboard-audio-time-period-days")) || 60
+    );
+  },
+  set(value: number) {
+    if (recordingMode.value === "Thermal") {
+      localStorage.setItem(
+        "dashboard-thermal-time-period-days",
+        value.toString(),
+      );
+    }
+    localStorage.setItem("dashboard-audio-time-period-days", value.toString());
+    return value;
+  },
+});
+
 const visitsOrRecordings = ref<"visits" | "recordings">("visits");
 const speciesOrLocations = ref<"species" | "location">("species");
 const loadingVisitsProgress = ref<number>(0);
@@ -440,15 +469,15 @@ watch(timePeriodDays, async () => {
 watch(currentProject, reloadDashboard);
 watch(recordingMode, async () => {
   if (recordingMode.value === "Thermal") {
-    timePeriodDays.value = Math.min(timePeriodDays.value, 7);
     await loadVisits();
   } else {
-    timePeriodDays.value = Math.min(timePeriodDays.value, 60);
     await loadAudioRecordings();
   }
 });
 
 const loadedRouteName = ref<string>("");
+const audioTimespanDays = ref<number>(60);
+const thermalTimespanDays = ref<number>(7);
 onBeforeMount(async () => {
   loadedRouteName.value = route.name as string;
   await getClassifications();
@@ -1050,7 +1079,7 @@ const closedModal = () => {
                 projectName: urlNormalisedCurrentProjectName,
               },
               query: {
-                displayMode: ActivitySearchDisplayMode.Visits,
+                'display-mode': ActivitySearchDisplayMode.Visits,
               },
             }"
             >View latest visits</b-button
@@ -1325,8 +1354,8 @@ const closedModal = () => {
                 projectName: urlNormalisedCurrentProjectName,
               },
               query: {
-                displayMode: ActivitySearchDisplayMode.Recordings,
-                recordingMode: ActivitySearchRecordingMode.Audio,
+                'display-mode': ActivitySearchDisplayMode.Recordings,
+                'recording-mode': ActivitySearchRecordingMode.Audio,
               },
             }"
             >View latest bird detections</b-button
