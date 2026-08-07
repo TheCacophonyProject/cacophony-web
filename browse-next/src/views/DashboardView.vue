@@ -326,23 +326,17 @@ watch(route, (nextRoute) => {
 
 // Use provide to provide selected visit context to loaded modal.
 // If url is saved and returned to, the best we can do is display the visit, but we can't do next/prev visits.
-// const timePeriodDays = computed<number>(() => {
-//   if (recordingMode.value === "Thermal") {
-//     return Number(localStorage.getItem("dashboard-thermal-time-period-days")) || 7;
-//   }
-//   return Number(localStorage.getItem("dashboard-audio-time-period-days")) || 60;
-// });
-
+const tpdInternal = ref<number>(0);
 const timePeriodDays = computed<number>({
   get() {
     if (recordingMode.value === "Thermal") {
-      return (
-        Number(localStorage.getItem("dashboard-thermal-time-period-days")) || 7
-      );
+      tpdInternal.value =
+        Number(localStorage.getItem("dashboard-thermal-time-period-days")) || 7;
+    } else {
+      tpdInternal.value =
+        Number(localStorage.getItem("dashboard-audio-time-period-days")) || 60;
     }
-    return (
-      Number(localStorage.getItem("dashboard-audio-time-period-days")) || 60
-    );
+    return tpdInternal.value;
   },
   set(value: number) {
     if (recordingMode.value === "Thermal") {
@@ -350,10 +344,25 @@ const timePeriodDays = computed<number>({
         "dashboard-thermal-time-period-days",
         value.toString(),
       );
+    } else {
+      localStorage.setItem(
+        "dashboard-audio-time-period-days",
+        value.toString(),
+      );
     }
-    localStorage.setItem("dashboard-audio-time-period-days", value.toString());
+    tpdInternal.value = value;
     return value;
   },
+});
+
+watch(tpdInternal, (newValue, oldValue) => {
+  if (newValue !== oldValue) {
+    if (recordingMode.value === "Thermal") {
+      loadVisits();
+    } else {
+      loadAudioRecordings();
+    }
+  }
 });
 
 const visitsOrRecordings = ref<"visits" | "recordings">("visits");
@@ -459,13 +468,6 @@ const reloadDashboard = async (nextProject: SelectedProject | false) => {
   }
 };
 
-watch(timePeriodDays, async () => {
-  if (recordingMode.value === "Thermal") {
-    await loadVisits();
-  } else {
-    await loadAudioRecordings();
-  }
-});
 watch(currentProject, reloadDashboard);
 watch(recordingMode, async () => {
   if (recordingMode.value === "Thermal") {
