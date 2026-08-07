@@ -26,6 +26,7 @@ import {
 } from "@/helpers/Project.ts";
 import { currentUser } from "@models/provides.ts";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+
 const CurrentUser = inject(currentUser) as Ref<LoggedInUser | null>;
 const props = withDefaults(
   defineProps<{
@@ -137,28 +138,74 @@ const removeLabel = async (id: TagId) => {
   }
 };
 
-const doAddLabel = async () => {
-  if (props.recording && selectedLabel.value) {
+const doAddLabel = async (labelToAdd: string) => {
+  if (props.recording && labelToAdd.length > 0) {
     addingLabelInProgress.value = true;
     const addLabelResponse = await ClientApi.Recordings.addRecordingLabel(
       props.recording.id,
-      selectedLabel.value,
+      labelToAdd,
     );
     if (addLabelResponse.success && CurrentUser.value) {
       // Emit tag change event, patch upstream recording.
       emit("added-recording-label", {
         id: addLabelResponse.result.tagId,
-        detail: selectedLabel.value,
+        detail: labelToAdd,
         confidence: 0.9,
         taggerName: CurrentUser.value.userName,
         taggerId: CurrentUser.value.id,
         createdAt: new Date().toISOString(),
       });
+      const recentlyUsedLabels = getRecentlyUsedLabels();
+      if (!recentlyUsedLabels.find((label) => label === labelToAdd)) {
+        recentlyUsedLabels.unshift(labelToAdd);
+        if (recentlyUsedLabels.length > 3) {
+          recentlyUsedLabels.pop();
+        }
+      }
+      updateRecentlyUsedLabels(recentlyUsedLabels);
+      console.log("new recently used", recentlyUsedLabels);
       selectedLabel.value = "";
     }
     addingLabel.value = false;
     addingLabelInProgress.value = false;
   }
+};
+
+const getRecentlyUsedLabels = () => {
+  const recordingType = props.recording?.type || RecordingType.ThermalRaw;
+  if (recordingType === RecordingType.ThermalRaw) {
+    return JSON.parse(
+      localStorage.getItem("recently-used-thermal-labels") || "[]",
+    ) as string[];
+  }
+  return JSON.parse(
+    localStorage.getItem("recently-used-audio-labels") || "[]",
+  ) as string[];
+};
+
+const updateRecentlyUsedLabels = (recentlyUsedLabels: string[]) => {
+  const recordingType = props.recording?.type || RecordingType.ThermalRaw;
+  if (recordingType === RecordingType.ThermalRaw) {
+    localStorage.setItem(
+      "recently-used-thermal-labels",
+      JSON.stringify(recentlyUsedLabels),
+    );
+  } else {
+    localStorage.setItem(
+      "recently-used-audio-labels",
+      JSON.stringify(recentlyUsedLabels),
+    );
+  }
+};
+
+const recentlyUsedLabels = (): RecordingLabel[] => {
+  const recentLabels = getRecentlyUsedLabels();
+  return recentLabels
+    .filter(
+      (label) => !!unusedLabels.value.find((item) => item.value === label),
+    )
+    .map((label) => labels.value.find((l) => l.value === label))
+    .filter((i) => i !== undefined);
 };
 </script>
 <template>
@@ -203,6 +250,27 @@ const doAddLabel = async () => {
         </div>
       </template>
     </card-table>
+    <div class="mb-3" v-if="recentlyUsedLabels().length">
+      <div
+        class="d-flex flex-inline align-items-center gap-1 mb-1"
+        style="color: var(--cp-tag-no-priority)"
+      >
+        <span><material-symbol name="lightbulb_2" class="fs-4" /></span
+        ><span class="h5">Recent labels</span>
+      </div>
+      <div class="d-flex flex-wrap align-items-start flex-md-wrap gap-2">
+        <b-button
+          v-for="label in recentlyUsedLabels()"
+          :key="label.value"
+          :pill="true"
+          variant="light"
+          @click="() => doAddLabel(label.value || '')"
+          class="d-flex flex-shrink-1 fs-6"
+        >
+          {{ label.text }}
+        </b-button>
+      </div>
+    </div>
     <button
       type="button"
       class="add-label-btn btn btn-outline-secondary position-sticky align-self-end d-flex align-items-center"
@@ -264,7 +332,7 @@ const doAddLabel = async () => {
         </b-button>
         <b-button
           variant="primary"
-          @click="doAddLabel"
+          @click="() => doAddLabel(selectedLabel)"
           :disabled="labelToAdd === null"
         >
           Add label

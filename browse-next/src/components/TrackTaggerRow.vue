@@ -130,7 +130,7 @@ const taggerDetails = computed<CardTableRows<string | ApiTrackTagResponse>>(
         ),
         confidence: tag.automatic
           ? mapConfidences(tag.confidence).toString() + "%"
-          : "",
+          : "&mdash;",
       };
       if (userIsGroupAdmin.value) {
         item._deleteAction = {
