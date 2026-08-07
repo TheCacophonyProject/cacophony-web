@@ -326,41 +326,32 @@ watch(route, (nextRoute) => {
 
 // Use provide to provide selected visit context to loaded modal.
 // If url is saved and returned to, the best we can do is display the visit, but we can't do next/prev visits.
-const tpdInternal = ref<number>(0);
-const timePeriodDays = computed<number>({
-  get() {
-    if (recordingMode.value === "Thermal") {
-      tpdInternal.value =
-        Number(localStorage.getItem("dashboard-thermal-time-period-days")) || 7;
-    } else {
-      tpdInternal.value =
-        Number(localStorage.getItem("dashboard-audio-time-period-days")) || 60;
-    }
-    return tpdInternal.value;
-  },
-  set(value: number) {
+
+const initialTimePeriodDays = computed<number>(() => {
+  if (recordingMode.value === "Thermal") {
+    return (
+      Number(localStorage.getItem("dashboard-thermal-time-period-days")) || 7
+    );
+  }
+  return Number(localStorage.getItem("dashboard-audio-time-period-days")) || 60;
+});
+
+const timePeriodDays = ref<number>(initialTimePeriodDays.value);
+
+watch(timePeriodDays, async (newValue, oldValue) => {
+  if (newValue !== oldValue) {
     if (recordingMode.value === "Thermal") {
       localStorage.setItem(
         "dashboard-thermal-time-period-days",
-        value.toString(),
+        newValue.toString(),
       );
+      await loadVisits();
     } else {
       localStorage.setItem(
         "dashboard-audio-time-period-days",
-        value.toString(),
+        newValue.toString(),
       );
-    }
-    tpdInternal.value = value;
-    return value;
-  },
-});
-
-watch(tpdInternal, (newValue, oldValue) => {
-  if (newValue !== oldValue) {
-    if (recordingMode.value === "Thermal") {
-      loadVisits();
-    } else {
-      loadAudioRecordings();
+      await loadAudioRecordings();
     }
   }
 });
@@ -470,6 +461,7 @@ const reloadDashboard = async (nextProject: SelectedProject | false) => {
 
 watch(currentProject, reloadDashboard);
 watch(recordingMode, async () => {
+  timePeriodDays.value = initialTimePeriodDays.value;
   if (recordingMode.value === "Thermal") {
     await loadVisits();
   } else {
