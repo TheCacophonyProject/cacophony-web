@@ -1479,7 +1479,6 @@ export default (app: Application, baseUrl: string) => {
         const fileKey = recording.fileKey;
         const thumbKey = `${rawFileKey}-thumb`;
         const trackIds = (await recording.getTracks()).map(({ id }) => id);
-
         for (const trackId of trackIds) {
           const trackTags = await TrackTag.findAll({
             where: {
@@ -2414,7 +2413,6 @@ export default (app: Application, baseUrl: string) => {
         .isFloat()
         .toFloat()
         .withMessage(expectedTypeOf("float")),
-      query("include-false-positives").default(false).isBoolean().toBoolean(),
       query("devices")
         .optional()
         .toArray()
@@ -2423,10 +2421,12 @@ export default (app: Application, baseUrl: string) => {
         .withMessage(
           "Must be an id, or an array of ids.  For example, 'devices=32' or 'devices=32&devices=33&devices=34'",
         ),
-      query("sub-class-tags").default(true).isBoolean().toBoolean(),
-      query("include-deleted").default(false).isBoolean().toBoolean(),
-      query("time-sensitive").default(false).isBoolean().toBoolean(),
-      query("status-recordings").default(false).isBoolean().toBoolean(),
+      booleanOf(query("include-false-positives"), false),
+      booleanOf(query("sub-class-tags"), true),
+      booleanOf(query("include-deleted"), false),
+      booleanOf(query("time-sensitive"), false),
+      booleanOf(query("status-recordings"), false),
+      booleanOf(query("count-only"), false),
       query("tag-mode")
         .default(TagMode.Any)
         .isString()
@@ -2508,6 +2508,7 @@ export default (app: Application, baseUrl: string) => {
         }
         const labelledWith = (query["labelled-with"] as string[]) || [];
         const subClassTags = query["sub-class-tags"] as unknown as boolean;
+        const countOnly = query["count-only"] as unknown as boolean;
         const types = ((query["types"] as string[]) || []).map((x) => {
           if (x === "thermal") {
             return "thermalRaw";
@@ -2726,6 +2727,12 @@ export default (app: Application, baseUrl: string) => {
             // Reached limit, won't match on "recordingDateTime" ?= fromDateTime && "recordingDateTime" < untilDateTime
             break;
           }
+        }
+        if (countOnly) {
+          return successResponse(response, "Got recording count", {
+            recordings: [],
+            count: accumulatedRecordingIds.length,
+          });
         }
         // NOTE: Finally, just query for the recordings we want by their ids.
         let fullRecordings: Recording[] = [];

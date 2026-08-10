@@ -47,6 +47,7 @@ export interface QueryRecordingsOptions {
   includeFilteredFalsePositivesAndNones?: boolean;
   subClassTags?: boolean;
   queryIsTimeSensitive?: boolean;
+  countOnly?: boolean;
 
   durationMinSecs?: number;
   durationMaxSecs?: number;
@@ -237,6 +238,9 @@ const queryRecordingsInProjectNew =
     }
     if (options.limit) {
       params.append("max-results", options.limit.toString());
+    }
+    if (options.countOnly) {
+      params.append("count-only", options.countOnly.toString());
     }
     params.append("duration", "0");
     // Do we want this, or do we want to show processing recordings?

@@ -813,7 +813,7 @@ const audioItems = computed<BirdDetectionsItem[]>(() => {
 
 const getConservationStatusForCode = (classification?: string) => {
   if (!classification) {
-    return "unknown";
+    return "";
   }
   switch (classification) {
     case "lc":
@@ -1139,7 +1139,7 @@ const closedModal = () => {
                 </p>
                 <p class="mb-3 d-flex gap-2 align-items-center">
                   <span
-                    >{{ (bird.locations * 100).toFixed(1) }}% locations</span
+                    >{{ (bird.locations * 100).toFixed(0) }}% locations</span
                   >
 
                   <span
@@ -1216,7 +1216,7 @@ const closedModal = () => {
         </template>
         <template #locations="{ cell }">
           <div class="d-flex gap-2 align-items-center">
-            {{ (cell * 100).toFixed(1) }}%
+            {{ (cell * 100).toFixed(0) }}%
             <span
               class="locations-chart d-block rounded-5"
               :style="`background: conic-gradient(
@@ -1262,7 +1262,7 @@ const closedModal = () => {
           </p>
 
           <p class="d-flex gap-2 align-items-center mb-0 fs-6">
-            {{ (card.locations * 100).toFixed(1) }}% locations
+            {{ (card.locations * 100).toFixed(0) }}% locations
             <span
               class="locations-chart d-block rounded-5"
               :style="`background: conic-gradient(
@@ -1352,7 +1352,7 @@ const closedModal = () => {
                 'recording-mode': ActivitySearchRecordingMode.Audio,
               },
             }"
-            >View latest bird detections</b-button
+            >View latest audio recordings</b-button
           >
         </div>
       </div>
@@ -1554,6 +1554,9 @@ const closedModal = () => {
 // See https://en.wikipedia.org/wiki/IUCN_Red_List#Categories
 // We'll use the same color scheme Wikipedia is using
 .conservation-status {
+  background: var(--bs-light) !important;
+  color: var(--bs-dark) !important;
+
   &.mini {
     font-size: var(--cp-font-size-sm);
     font-weight: var(--cp-font-weight-semilbold);
@@ -1561,7 +1564,6 @@ const closedModal = () => {
     height: var(--cp-spacing-xl);
     text-transform: uppercase;
   }
-  color: var(--bs-white);
   // important used because of the badge colors also using it 🙃
   &.ex {
     background: var(--bs-black) !important;
@@ -1570,26 +1572,32 @@ const closedModal = () => {
   // extinct in the wild
   &.ew {
     background: var(--bs-black) !important;
+    color: var(--bs-white) !important;
   }
   // critically endangered
   &.cr {
     background: var(--bs-red) !important;
+    color: var(--bs-white) !important;
   }
   // endangered
   &.en {
     background: #cc6633 !important;
+    color: var(--bs-white) !important;
   }
   // vulnerable
   &.vu {
     background: #cc9900 !important;
+    color: var(--bs-white) !important;
   }
   // near threatened
   &.nt {
     background: #369f00 !important;
+    color: var(--bs-white) !important;
   }
   // least concern
   &.lc {
     background: #057339 !important;
+    color: var(--bs-white) !important;
   }
 }
 
