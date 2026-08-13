@@ -698,6 +698,9 @@ watch(dateRange, (next, prev) => {
     }
   }
   if (next[0] !== null && next[1] !== null) {
+    estimatedRecordingCount.value = 0;
+    estimatingCount.value = false;
+    gotEstimatedCount.value = false;
     doSearch();
   }
 });
