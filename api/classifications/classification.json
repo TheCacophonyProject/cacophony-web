@@ -1,6 +1,6 @@
 {
   "label": "all",
-  "version": "a06febdf-cfdc-49e8-a2c1-8b99174b433b",
+  "version": "a06febdf-cffc-49e8-a2c1-8b99174b433b",
   "children": [
     {
       "label": "mammal",
@@ -189,7 +189,12 @@
           "label": "noise"
         },
         {
-          "label": "frog"
+          "label": "frog",
+          "children": [
+            {
+              "label": "hochstetter's frog"
+            }
+          ]
         },
         {
           "label": "insect",
