@@ -89,7 +89,6 @@ export class Alert extends ModelStaticCommon<Alert> {
     const [html, text] = alertBody(
       recording,
       tag,
-      this,
       !!thumbnail,
       alertOn === "device" ? recording.Device?.deviceName : undefined,
       ["project", "station"].includes(alertOn)

@@ -1483,20 +1483,16 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         | LoadedResource<ApiStaticVisitResponse[]>;
       const maxVisitsPerRequest = 1000;
       if (inRecordingsMode.value) {
-        // NOTE: Not sure we need to ever get the total count for this query for the
-        //  purposes of this UI?
         CurrentViewAbortController.newView();
-
         if (!gotEstimatedCount.value) {
           // One-time recording count query, we don't really care when it returns
           estimatingCount.value = true;
-          ClientApi.Recordings.queryRecordingsInProjectNew(project.id, {
+          ClientApi.Recordings.queryRecordingCountInProject(project.id, {
             ...query,
             limit: 1000,
             fromDateTime: dateRange.value[0],
             untilDateTime: dateRange.value[1],
             queryIsTimeSensitive: false,
-            countOnly: true,
             types: typesForRecordingMode.value as (
               | RecordingType.ThermalRaw
               | RecordingType.Audio
@@ -1514,7 +1510,7 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
           });
         }
         // Get total for query:
-        response = await ClientApi.Recordings.queryRecordingsInProjectNew(
+        response = await ClientApi.Recordings.queryRecordingsInProject(
           project.id,
           {
             ...query,
@@ -2420,7 +2416,7 @@ const scrollToTopButtonLeft = computed<number>(() => {
             </span>
             <span v-else-if="gotEstimatedCount"
               >{{ estimatedRecordingCount
-              }}<span v-if="estimatedRecordingCount === 100">+</span
+              }}<span v-if="estimatedRecordingCount === 1000">+</span
               >&nbsp;results</span
             ></b-badge
           >
