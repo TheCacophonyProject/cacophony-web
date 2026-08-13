@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "vite --force --host",
     "build": "vite build",
-    "build-for-tests": "vite build --mode development",
+    "build-for-tests": "vite build --mode e2e && vite preview --port 5050",
     "preview": "vite build --mode development && vite preview --port 5050",
     "typecheck": "vue-tsc --noEmit",
     "lint": "./node_modules/.bin/eslint ./ --fix --ignore-pattern \"/public/\" --ignore-pattern \"**/*.d.ts\" --ignore-pattern \"**/*.js\""

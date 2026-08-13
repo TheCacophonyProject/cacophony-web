@@ -2175,6 +2175,7 @@ const scrollToTopButtonLeft = computed<number>(() => {
       no-close-on-backdrop
       hide-header-close
       :no-footer="bulkDeleteInProgress"
+      data-cy="bulk delete modal"
     >
       <div
         v-if="!readyToBulkDelete"
@@ -2215,11 +2216,15 @@ const scrollToTopButtonLeft = computed<number>(() => {
       </div>
       <template #footer>
         <div class="d-flex gap-2">
-          <b-button variant="outline-secondary" @click="cancelBulkDelete"
+          <b-button
+            variant="outline-secondary"
+            @click="cancelBulkDelete"
+            data-cy="cancel bulk delete"
             >Cancel</b-button
           >
           <b-button
             variant="danger"
+            data-cy="start bulk delete"
             class="d-flex align-items-center gap-1"
             @click="startBulkDelete"
             :disabled="bulkDeleteInProgress"
@@ -2232,6 +2237,7 @@ const scrollToTopButtonLeft = computed<number>(() => {
     </b-modal>
     <template #extra>
       <two-step-action-button
+        data-cy="bulk delete button"
         class="align-self-start d-none d-md-block"
         v-if="displayMode === ActivitySearchDisplayMode.Recordings"
         :action="bulkDelete"
@@ -2407,14 +2413,21 @@ const scrollToTopButtonLeft = computed<number>(() => {
         </div>
         <div
           class="search-count d-flex justify-content-end"
-          v-if="displayMode === ActivitySearchDisplayMode.Recordings"
+          data-cy="search results estimate"
+          v-if="
+            displayMode === ActivitySearchDisplayMode.Recordings &&
+            (!gotEstimatedCount ||
+              (gotEstimatedCount && estimatedRecordingCount !== 0))
+          "
         >
           <b-badge variant="light" text-variant="secondary">
             <span v-if="estimatingCount">
               <b-spinner variant="secondary" small class="me-1 fw-normal" />
               estimating results
             </span>
-            <span v-else-if="gotEstimatedCount"
+            <span
+              v-else-if="gotEstimatedCount"
+              data-cy="search results estimate count"
               >{{ estimatedRecordingCount
               }}<span v-if="estimatedRecordingCount === 1000">+</span
               >&nbsp;results</span
