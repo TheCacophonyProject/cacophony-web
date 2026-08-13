@@ -50,6 +50,7 @@ test("Project activity digest email sent successfully for weekly and daily diges
       "project daily activity digest",
     );
   }
+  await new Promise((resolve) => setTimeout(resolve, 1000));
   {
     // Weekly
     await dockerExecNodeScript("project-activity-digest.js", [
@@ -64,4 +65,5 @@ test("Project activity digest email sent successfully for weekly and daily diges
       "project weekly activity digest",
     );
   }
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 });
