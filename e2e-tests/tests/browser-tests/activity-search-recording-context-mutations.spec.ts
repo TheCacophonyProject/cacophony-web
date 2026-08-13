@@ -105,8 +105,9 @@ test("Can delete recordings in recording search context", async ({ oneFrameCptv,
   });
   await test.step("Delete recording and ensure the next (later) recording is navigated to", async () => {
     await test.step(`Delete selected recording (#${uploads[2].recordingId})`, async () => {
-      await recordingView.getByTestId("delete recording").click();
-      await page.getByTestId("confirm action").click();
+      const deleteActionButton = recordingView.getByTestId("delete recording");
+      await deleteActionButton.click();
+      await deleteActionButton.getByTestId("confirm action").click();
     });
     await waitToNavigateToProjectPage(
       page,
