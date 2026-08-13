@@ -1371,10 +1371,6 @@ const resetQuery = (
   currentQueryLoaded.value = 0;
   completedCurrentQuery.value = false;
 
-  estimatedRecordingCount.value = 0;
-  estimatingCount.value = false;
-  gotEstimatedCount.value = false;
-
   currentQueryCursor.value = {
     fromDateTime: new Date(fromDateTime),
     untilDateTime: new Date(untilDateTime),
@@ -2423,11 +2419,23 @@ const scrollToTopButtonLeft = computed<number>(() => {
               (gotEstimatedCount && estimatedRecordingCount !== 0))
           "
         >
-          <b-badge variant="light" text-variant="secondary">
-            <span v-if="estimatingCount">
-              <b-spinner variant="secondary" small class="me-1 fw-normal" />
-              estimating results
+          <b-badge
+            variant="light"
+            text-variant="secondary"
+            class="d-inline-flex align-items-center"
+          >
+            <span
+              style="transform: scale(0.7)"
+              v-if="estimatingCount"
+              class="d-inline-flex align-items-center"
+            >
+              <b-spinner
+                variant="secondary"
+                small
+                class="me-1 fw-normal fs-7"
+              />
             </span>
+            <span v-if="estimatingCount"> estimating results </span>
             <span
               v-else-if="gotEstimatedCount"
               data-cy="search results estimate count"
