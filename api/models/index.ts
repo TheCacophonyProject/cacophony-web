@@ -51,6 +51,7 @@ export const initSequelize = async (withoutLogging?: boolean) => {
     const Op = Sequelize.Op;
     const enableLogging =
       !IS_CI_ENV && (IS_DEBUG || true) && withoutLogging !== true;
+    // const enableLogging = false;
 
     // If we're running in debug mode, we want to be able to see requestIds with every
     // logged DB call, so that we can match up all the logs for a single request.
