@@ -1,16 +1,13 @@
 import { test } from "@/helpers/upload-tests";
 import { createProjectWithUserAndDevice } from "@/helpers/create-test-entities";
-import {
-  confirmEmailAddressViaApi,
-  waitForEmailAndRenderEmailHtml
-} from "@/helpers/email-utils";
+import { confirmEmailAddressViaApi, waitForEmailAndRenderEmailHtml } from "@/helpers/email-utils";
 import { uploadThermalRecordingsFromDeviceWithTimesAndDurations } from "@/helpers/recording-uploads";
 import { addDays, addMinutes } from "@/helpers/date-helpers";
 import { dockerExecNodeScript } from "@/helpers/docker-exec";
-import { expect } from "@playwright/test";
 
 test("Project activity digest email sent successfully for weekly and daily digests", async ({
-  oneFrameCptv, page
+  smallCptv,
+  page,
 }) => {
   const initialDateTime = new Date("2026-05-01T10:00:00Z"); // What day of the week is this?
   const project = await createProjectWithUserAndDevice({ initialDateTime });
@@ -35,7 +32,7 @@ test("Project activity digest email sent successfully for weekly and daily diges
     ],
     deviceHandle,
     project.locationBase,
-    oneFrameCptv,
+    smallCptv,
   );
 
   const scriptRunTime = addDays(initialDateTime, 2);
@@ -67,6 +64,4 @@ test("Project activity digest email sent successfully for weekly and daily diges
       "project weekly activity digest",
     );
   }
-
-
 });
