@@ -62,9 +62,10 @@ test("Existing new user is able to request to join an existing project from setu
     await signOut(page);
   });
   await test.step(`${user2} (requester) receives email confirmation that their request was accepted`, async () => {
-    const email = await waitForEmail(user2, "join request accepted");
+    const email = await waitForEmailAndRenderEmailHtml(page, user2, "join request accepted");
     console.log("email", email);
-    expect(email.body).toContain(`You've been added to the project ${project}.`);
+    expect(email.body).toContain(`You're now a member of ${project}`);
+    await page.goto("/");
   });
   await test.step(`${user2} signs in and is taken to project ${project}`, async () => {
     await signInExistingUser(page, user2, password2);
