@@ -771,12 +771,13 @@ const audioItems = computed<BirdDetectionsItem[]>(() => {
       }
     }
     for (const path of uniqueTagsInRecording.values()) {
-      const count = recordingsBySpecies.getOrInsert(path, 0);
+      const count = recordingsBySpecies.get(path) || 0;
       recordingsBySpecies.set(path, count + 1);
       if (recording.stationId) {
-        locationsPerSpecies
-          .getOrInsert(path, new Set())
-          .add(recording.stationId);
+        if (!locationsPerSpecies.has(path)) {
+          locationsPerSpecies.set(path, new Set());
+        }
+        locationsPerSpecies.get(path)?.add(recording.stationId);
       }
     }
   }

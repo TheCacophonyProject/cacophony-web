@@ -2683,7 +2683,7 @@ const scrollToTopButtonLeft = computed<number>(() => {
   margin-right: -4px;
   padding-left: 4px;
   padding-right: 4px;
-  z-index: 2;
+  z-index: 11;
   @media (max-width: @breakpoint-xs-max) {
     top: var(--cp-mobile-header-height);
   }
