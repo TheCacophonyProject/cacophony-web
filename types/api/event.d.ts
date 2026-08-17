@@ -14,8 +14,8 @@ type IsoFormattedString = string;
 
 export interface ApiDeviceEventResponse {
   id: number;
-  dateTime: IsoFormattedDateString;
-  createdAt: IsoFormattedDateString;
+  dateTime: IsoFormattedDateString | Date;
+  createdAt: IsoFormattedDateString | Date;
   env: EventEnv;
   EventDetail: EventDescription;
   DeviceId: DeviceId;

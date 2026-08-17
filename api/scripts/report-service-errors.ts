@@ -175,10 +175,10 @@ const groupSystemErrors = (
         });
       }
       if (bestExistingErrorMatch.from > errorEvent.dateTime) {
-        bestExistingErrorMatch.from = errorEvent.dateTime;
+        bestExistingErrorMatch.from = errorEvent.dateTime as Date;
       }
       if (bestExistingErrorMatch.until < errorEvent.dateTime) {
-        bestExistingErrorMatch.until = errorEvent.dateTime;
+        bestExistingErrorMatch.until = errorEvent.dateTime as Date;
       }
     } else {
       // Add the error.
@@ -187,8 +187,8 @@ const groupSystemErrors = (
           { id: errorEvent.DeviceId, name: errorEvent.Device.deviceName },
         ],
         count: 1,
-        from: errorEvent.dateTime,
-        until: errorEvent.dateTime,
+        from: errorEvent.dateTime as Date,
+        until: errorEvent.dateTime as Date,
         log: lines,
       });
     }
@@ -346,14 +346,14 @@ const groupedSystemErrors = async (
   const devices: Record<DeviceId, { minDate: Date; maxDate: Date }> = {};
   for (const errorEvent of serviceErrorEvents) {
     const existingDeviceSpan = devices[errorEvent.DeviceId] || {
-      minDate: errorEvent.dateTime,
-      maxDate: errorEvent.dateTime,
+      minDate: errorEvent.dateTime as Date,
+      maxDate: errorEvent.dateTime as Date,
     };
     if (errorEvent.dateTime < existingDeviceSpan.minDate) {
-      existingDeviceSpan.minDate = errorEvent.dateTime;
+      existingDeviceSpan.minDate = errorEvent.dateTime as Date;
     }
     if (errorEvent.dateTime > existingDeviceSpan.maxDate) {
-      existingDeviceSpan.maxDate = errorEvent.dateTime;
+      existingDeviceSpan.maxDate = errorEvent.dateTime as Date;
     }
     devices[errorEvent.DeviceId] = existingDeviceSpan;
   }

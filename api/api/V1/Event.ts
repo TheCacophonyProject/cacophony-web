@@ -693,8 +693,10 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/event-types/for-device/:deviceId`,
     extractJwtAuthorizedUser,
+    validateFields([optionalDateOf(query("latest-time"))]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
-    async (_request: Request, response: Response) => {
+    async (request: Request, response: Response) => {
+      const latestEventTime = request.query["latest-time"] as unknown as Date;
       const eventTypes = await sequelize.query(
         `
       select distinct 
@@ -703,9 +705,14 @@ export default function (app: Application, baseUrl: string) {
           inner join "Events" e
         on ds.id = e."EventDetailId"
         where e."DeviceId" = ${response.locals.device.id}
-        and e."dateTime" > now() - interval '1 month' 
+        and e."dateTime" > :now - interval '1 month' 
       `,
-        { type: QueryTypes.SELECT },
+        {
+          type: QueryTypes.SELECT,
+          replacements: {
+            now: latestEventTime.toISOString(),
+          },
+        },
       );
       return successResponse(response, "Got event types", {
         eventTypes: (eventTypes as { type: string }[]).map(({ type }) => type),

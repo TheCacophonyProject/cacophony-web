@@ -36,7 +36,7 @@ const flattenNodes = (
     if (child.status) {
       childInfo.status = child.status;
     }
-    acc[child.label] = childInfo;
+    acc[child.label.replaceAll("-", "").replaceAll(" ", "_")] = childInfo;
     if (child.aliases) {
       for (const alias of child.aliases) {
         acc[alias] = childInfo;
@@ -197,7 +197,7 @@ export const displayLabelForClassificationLabel = (
   if (!label) {
     return "";
   }
-  label = label.toLowerCase();
+  label = label.toLowerCase().replaceAll("_", " ");
   if (label === "unclassified") {
     return "AI Queued";
   }

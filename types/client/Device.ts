@@ -16,7 +16,6 @@ import type {
   ApiSubmitEventsRequestBody,
   BatteryInfoEvent,
   BatteryInfoEventAndDate,
-  BatteryInfoEventDetail,
   DeviceConfigDetail,
   DeviceEvent,
   IsoFormattedString,
@@ -106,13 +105,18 @@ const getKnownEventTypes =
       FetchResult<{ eventTypes: string[] }>
     >;
 
-const getKnownEventTypesForDeviceInLastMonth =
+const getKnownEventTypesForDeviceInLatestMonth =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId) =>
-    api.get(
+  (deviceId: DeviceId, now?: Date) => {
+    const params = new URLSearchParams();
+    if (now) {
+      params.append("latest-time", now.toISOString());
+    }
+    return api.get(
       authKey,
-      `/api/v1/events/event-types/for-device/${deviceId}`,
+      `/api/v1/events/event-types/for-device/${deviceId}${optionalQueryString(params)}`,
     ) as Promise<FetchResult<{ eventTypes: string[] }>>;
+  };
 
 const getLatestEventsByDeviceId =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
@@ -269,7 +273,7 @@ const getBatteryInfo =
               EventDetail: { details },
             } = event;
             return {
-              dateTime,
+              dateTime: dateTime as string,
               ...details,
             };
           });
@@ -913,8 +917,8 @@ export default (api: CacophonyApiClient) => {
     getDeviceById: getDeviceById(api),
     getDeviceLocationAtTime: getDeviceLocationAtTime(api),
     getKnownEventTypes: getKnownEventTypes(api),
-    getKnownEventTypesForDeviceInLastMonth:
-      getKnownEventTypesForDeviceInLastMonth(api),
+    getKnownEventTypesForDeviceInLatestMonth:
+      getKnownEventTypesForDeviceInLatestMonth(api),
     getLatestEventsByDeviceId: getLatestEventsByDeviceId(api),
     getStoppedEvents: getStoppedEvents(api),
     getLastStoppedEvent: getLastStoppedEvent(api),
@@ -962,8 +966,8 @@ export default (api: CacophonyApiClient) => {
       getDeviceById: getDeviceById(api, authKey),
       getDeviceLocationAtTime: getDeviceLocationAtTime(api, authKey),
       getKnownEventTypes: getKnownEventTypes(api, authKey),
-      getKnownEventTypesForDeviceInLastMonth:
-        getKnownEventTypesForDeviceInLastMonth(api, authKey),
+      getKnownEventTypesForDeviceInLatestMonth:
+        getKnownEventTypesForDeviceInLatestMonth(api, authKey),
       getLatestEventsByDeviceId: getLatestEventsByDeviceId(api, authKey),
       getStoppedEvents: getStoppedEvents(api, authKey),
       getLastStoppedEvent: getLastStoppedEvent(api, authKey),

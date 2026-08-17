@@ -3,11 +3,6 @@ import { computed, nextTick, onBeforeMount, onUpdated, ref } from "vue";
 import { useRoute } from "vue-router";
 import type { DeviceId } from "@typedefs/api/common";
 import type { DeviceEvent } from "@typedefs/api/event";
-// import {
-//   type EventApiParams,
-//   getKnownEventTypesForDeviceInLastMonth,
-//   getLatestEventsByDeviceId,
-// } from "@api/Device.ts";
 import Multiselect from "@vueform/multiselect";
 import {
   type MaybeElement,
@@ -29,12 +24,9 @@ const deviceEvents = computed<DeviceEvent[]>(() => {
   return loadedDeviceEvents.value || [];
 });
 
-onBeforeMount(() => {
-  loadedDeviceEvents.value = null;
-});
-
-const oneMonthAgo = new Date();
-oneMonthAgo.setDate(oneMonthAgo.getDate() - 30);
+const oneMonthAgo = ref<Date>(
+  new Date(new Date().setDate(new Date().getDate() - 30)),
+);
 let needsObserverUpdate = false;
 let currentObserver: { stop: () => void } | null;
 
@@ -84,10 +76,10 @@ const knownEventTypesOptions = computed<{ value: string; label: string }[]>(
 const loadingEvents = ref<boolean>(false);
 const loadedBackUntilDateTime = ref<Date>(new Date());
 const loadSomeEvents = async (filterByEvents?: string[]) => {
-  if (loadedBackUntilDateTime.value > oneMonthAgo) {
+  if (loadedBackUntilDateTime.value > oneMonthAgo.value) {
     loadingEvents.value = true;
     const params: EventApiParams = {
-      startTime: oneMonthAgo.toISOString(),
+      startTime: oneMonthAgo.value.toISOString(),
       endTime: loadedBackUntilDateTime.value.toISOString(),
       limit: twoPagesWorthOfEvents.value,
     };
@@ -112,7 +104,7 @@ const loadSomeEvents = async (filterByEvents?: string[]) => {
         needsObserverUpdate = true;
       } else {
         // We must have loaded all the events in the last month
-        loadedBackUntilDateTime.value = oneMonthAgo;
+        loadedBackUntilDateTime.value = oneMonthAgo.value;
       }
     }
     loadingEvents.value = false;
@@ -120,7 +112,7 @@ const loadSomeEvents = async (filterByEvents?: string[]) => {
 };
 
 const canExpandSearchBackFurther = computed<boolean>(() => {
-  return loadedBackUntilDateTime.value === oneMonthAgo;
+  return loadedBackUntilDateTime.value === oneMonthAgo.value;
 });
 
 onBeforeMount(async () => {
@@ -131,13 +123,30 @@ onBeforeMount(async () => {
   // Event timelines?
   // Events grouped by day?
 
-  // Load up to one month worth of events – historical events older than that generally aren't that useful.
+  // Load up to one month worth of events - from the latest event we have from the device.
   // Lazy load up to two pages worth of event items with the current filters.
-  const types = await ClientApi.Devices.getKnownEventTypesForDeviceInLastMonth(
+  const latestEvent = await ClientApi.Devices.getLatestEventsByDeviceId(
     deviceId.value,
+    {
+      limit: 1,
+    },
   );
+  let now = new Date();
+  if (latestEvent.success) {
+    now = new Date(latestEvent.result.rows[0].dateTime);
+    oneMonthAgo.value = new Date(now.setDate(now.getDate() - 30));
+  }
+  const types =
+    await ClientApi.Devices.getKnownEventTypesForDeviceInLatestMonth(
+      deviceId.value,
+      now,
+    );
   if (types.success) {
     knownEventTypes.value = types.result.eventTypes;
+  }
+  if (latestEvent.success) {
+    const now = new Date(latestEvent.result.rows[0].dateTime);
+    oneMonthAgo.value = new Date(now.setDate(now.getDate() - 30));
   }
   await reloadEvents();
 });
@@ -190,8 +199,12 @@ onUpdated(() => {
 });
 
 const lagTimeForUpload = (event: DeviceEvent): string => {
-  const delay = DateTime.fromISO(event.createdAt)
-    .diff(DateTime.fromISO(event.dateTime), ["days", "hours", "minutes"])
+  const delay = DateTime.fromISO(event.createdAt as string)
+    .diff(DateTime.fromISO(event.dateTime as string), [
+      "days",
+      "hours",
+      "minutes",
+    ])
     .toObject();
   if (delay.days === 0 && delay.hours === 0) {
     if ((delay.minutes as number) < 1) {
@@ -239,7 +252,7 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
             </div>
             <div>
               <span>{{
-                DateTime.fromISO(event.dateTime).toLocaleString({
+                DateTime.fromISO(event.dateTime as string).toLocaleString({
                   year: "numeric",
                   month: "short",
                   day: "numeric",
@@ -252,7 +265,7 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
           <div class="p-2">
             <span
               ><strong>Logged</strong>
-              {{ DateTime.fromISO(event.dateTime).toRelative() }},
+              {{ DateTime.fromISO(event.dateTime as string).toRelative() }},
               <strong>uploaded</strong>
               {{ lagTimeForUpload(event) }}</span
             >
@@ -310,7 +323,7 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
                   {{
                     Math.round(
                       DateTime.fromJSDate(new Date(val / 1000 / 1000)).diff(
-                        DateTime.fromISO(event.dateTime),
+                        DateTime.fromISO(event.dateTime as string),
                         "minutes",
                       ).minutes,
                     )

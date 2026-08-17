@@ -8,7 +8,6 @@ import type { DeviceId } from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
 import type { CardTableRows } from "@/components/CardTableTypes";
 import type {
-  BatteryInfoEvent,
   BatteryInfoEventAndDate,
   DeviceConfigDetail,
 } from "@typedefs/api/event";
