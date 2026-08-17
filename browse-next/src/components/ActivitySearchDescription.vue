@@ -28,6 +28,9 @@ const props = defineProps<{
   selectedDevices: "all" | ApiDeviceResponse[];
   locationsInSelectedTimespan: ApiLocationResponse[];
   availableDateRanges: { range: [Date, Date]; from: string; label: string }[];
+  inline?: boolean;
+  recordingCount?: number;
+  estimatingCount?: boolean;
 }>();
 
 const upperFirst = (str: string): string => {
@@ -121,17 +124,28 @@ const otherLabels = computed<string[]>(
 </script>
 
 <template>
-  <b-alert :model-value="true" variant="light" class="mb-2 mb-sm-3">
+  <b-alert
+    :model-value="true"
+    variant="light"
+    :class="{
+      'border-0': inline,
+      'mb-2': !inline,
+      'mb-sm-3': !inline,
+      'mb-0': inline,
+      'p-0': inline,
+    }"
+  >
     <div class="description d-flex">
-      <material-symbol name="info" class="me-2" size="1.25rem" />
+      <material-symbol name="info" class="me-2" size="1.25rem" v-if="!inline" />
       <div>
+        <slot name="pretext"></slot>
         <strong v-if="hasStarred"> Starred</strong
         ><span v-if="hasStarred && hasFlagged"> or </span
         ><strong v-if="hasFlagged">{{
           hasStarred ? "flagged" : "Flagged"
         }}</strong>
         <strong>{{
-          !hasFlagged && !hasStarred
+          !hasFlagged && !hasStarred && !inline
             ? upperFirst(searchParams.displayMode)
             : ` ${searchParams.displayMode}`
         }}</strong>
@@ -275,6 +289,7 @@ const otherLabels = computed<string[]>(
           </span>
         </span>
         <span>.</span>
+        <slot name="posttext"></slot>
       </div>
     </div>
   </b-alert>

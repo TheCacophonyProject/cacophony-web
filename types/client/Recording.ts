@@ -47,6 +47,7 @@ export interface QueryRecordingsOptions {
   includeFilteredFalsePositivesAndNones?: boolean;
   subClassTags?: boolean;
   queryIsTimeSensitive?: boolean;
+  countOnly?: boolean;
 
   durationMinSecs?: number;
   durationMaxSecs?: number;
@@ -55,7 +56,6 @@ export interface QueryRecordingsOptions {
 }
 export interface BulkRecordingsResponse {
   recordings: ApiRecordingResponse[];
-  count?: number;
 }
 
 const getRecordingById =
@@ -195,13 +195,31 @@ const undeleteRecordings =
       FetchResult<void>
     >;
 
-const queryRecordingsInProjectNew =
+const queryRecordingsInProject =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (projectId: ProjectId, options: QueryRecordingsOptions) => {
+    return queryRecordingsInProjectInternal(api, authKey)(
+      projectId,
+      options,
+    ) as Promise<FetchResult<{ recordings: ApiRecordingResponse[] }>>;
+  };
+
+const queryRecordingCountInProject =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (projectId: ProjectId, options: QueryRecordingsOptions) => {
+    return queryRecordingsInProjectInternal(api, authKey)(projectId, {
+      ...options,
+      countOnly: true,
+    }) as Promise<FetchResult<{ count: number }>>;
+  };
+
+const queryRecordingsInProjectInternal =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (
     projectId: ProjectId,
     options: QueryRecordingsOptions,
   ): Promise<
-    FetchResult<{ recordings: ApiRecordingResponse[]; count?: number }>
+    FetchResult<{ recordings?: ApiRecordingResponse[]; count?: number }>
   > => {
     const params = new URLSearchParams();
     if (options.taggedWith) {
@@ -237,6 +255,9 @@ const queryRecordingsInProjectNew =
     }
     if (options.limit) {
       params.append("max-results", options.limit.toString());
+    }
+    if (options.countOnly) {
+      params.append("count-only", options.countOnly.toString());
     }
     params.append("duration", "0");
     // Do we want this, or do we want to show processing recordings?
@@ -324,7 +345,7 @@ const getRecordingsForLocationsAndDevicesInProject =
       options.taggedWith = tags;
     }
     return unwrapLoadedResource(
-      queryRecordingsInProjectNew(api, authKey)(projectId, options) as Promise<
+      queryRecordingsInProject(api, authKey)(projectId, options) as Promise<
         WrappedFetchResult<ApiRecordingResponse[]>
       >,
       "recordings",
@@ -344,13 +365,10 @@ const getAllRecordingsForProjectBetweenTimes =
     const recordings = [];
     let moreRecordingsToLoad = true;
     while (moreRecordingsToLoad) {
-      const response = await queryRecordingsInProjectNew(api, authKey)(
-        projectId,
-        {
-          ...query,
-          queryIsTimeSensitive: false,
-        },
-      );
+      const response = await queryRecordingsInProject(api, authKey)(projectId, {
+        ...query,
+        queryIsTimeSensitive: false,
+      });
       if (response.success) {
         const result = response.result;
         recordings.push(...result.recordings);
@@ -634,7 +652,8 @@ export default (api: CacophonyApiClient) => {
     deleteRecording: deleteRecording(api),
     undeleteRecording: undeleteRecording(api),
     undeleteRecordings: undeleteRecordings(api),
-    queryRecordingsInProjectNew: queryRecordingsInProjectNew(api),
+    queryRecordingsInProject: queryRecordingsInProject(api),
+    queryRecordingCountInProject: queryRecordingCountInProject(api),
     getRecordingsForDeviceInProject: getRecordingsForDeviceInProject(api),
     getRecordingsForLocationsInProject: getRecordingsForLocationsInProject(api),
     getRecordingsForLocationsAndDevicesInProject:
@@ -665,7 +684,8 @@ export default (api: CacophonyApiClient) => {
       deleteRecording: deleteRecording(api, authKey),
       undeleteRecording: undeleteRecording(api, authKey),
       undeleteRecordings: undeleteRecordings(api, authKey),
-      queryRecordingsInProjectNew: queryRecordingsInProjectNew(api, authKey),
+      queryRecordingsInProject: queryRecordingsInProject(api, authKey),
+      queryRecordingCountInProject: queryRecordingCountInProject(api, authKey),
       getRecordingsForDeviceInProject: getRecordingsForDeviceInProject(
         api,
         authKey,

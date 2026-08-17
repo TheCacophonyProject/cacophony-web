@@ -10,6 +10,7 @@ import {
   onUpdated,
   provide,
   ref,
+  useTemplateRef,
   watch,
   type WatchStopHandle,
 } from "vue";
@@ -45,7 +46,12 @@ import type {
   StationId as LocationId,
 } from "@typedefs/api/common";
 import InlineViewModal from "@/components/InlineViewModal.vue";
-import type { MaybeElement } from "@vueuse/core";
+import {
+  type MaybeElement,
+  useElementBounding,
+  useScroll,
+  useWindowScroll,
+} from "@vueuse/core";
 import { useIntersectionObserver, useWindowSize } from "@vueuse/core";
 import { DateTime } from "luxon";
 import {
@@ -89,10 +95,12 @@ import type {
 import { ClientApi } from "@/api";
 import type { NonEmptyArray } from "@/helpers/utils.ts";
 import {
+  BBadge,
   BButton,
   BModal,
   BOffcanvas,
   BProgress,
+  BProgressBar,
   BSpinner,
 } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
@@ -102,6 +110,7 @@ import type { IconsProp } from "@dbetka/vue-material-symbols/dist/jscache/icons-
 import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
 import { recordingUpdatedInVisitsContext } from "@/helpers/patch-visits-context.ts";
 import { createRecordingsCsv, createVisitsCsv } from "@/helpers/csv-exports.ts";
+import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 
 type RecordingItem = { type: "recording"; data: ApiRecordingResponse };
 type SunItem = { type: "sunset" | "sunrise"; data: string };
@@ -112,7 +121,8 @@ type RecordingsChunk = {
 
 const mapBuffer = ref<HTMLDivElement>();
 const mapContainer = ref<HTMLDivElement>();
-const searchContainer = ref<HTMLDivElement>();
+const searchContainer = useTemplateRef<HTMLDivElement>("searchContainer");
+const sectionHeader = useTemplateRef<HTMLDivElement>("sectionHeader");
 const searchControls = ref<HTMLDivElement>();
 const searchResults = ref<HTMLDivElement>();
 const { height: windowHeight, width: windowWidth } = useWindowSize();
@@ -688,6 +698,9 @@ watch(dateRange, (next, prev) => {
     }
   }
   if (next[0] !== null && next[1] !== null) {
+    estimatedRecordingCount.value = 0;
+    estimatingCount.value = false;
+    gotEstimatedCount.value = false;
     doSearch();
   }
 });
@@ -1014,9 +1027,6 @@ const loadMoreRecordingsInPast = () => {
   doSearch();
 };
 const currentTotalRecordings = computed<number>(() => {
-  if (currentQueryCount.value) {
-    return currentQueryCount.value as number;
-  }
   return filteredLoadedRecordings.value.length;
 });
 const canExpandSearchBackFurther = computed<boolean>(() => {
@@ -1079,7 +1089,6 @@ const currentQueryCursor = ref<RecordingQueryCursor>({
   fromDateTime: null,
   untilDateTime: null,
 });
-const currentQueryCount = ref<LoadedResource<number | undefined>>(null);
 const currentQueryLoaded = ref<number>(0);
 const completedCurrentQuery = ref<boolean>(false);
 
@@ -1361,7 +1370,7 @@ const resetQuery = (
   currentQueryHash.value = newQueryHash;
   currentQueryLoaded.value = 0;
   completedCurrentQuery.value = false;
-  currentQueryCount.value = undefined;
+
   currentQueryCursor.value = {
     fromDateTime: new Date(fromDateTime),
     untilDateTime: new Date(untilDateTime),
@@ -1473,10 +1482,34 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
         | LoadedResource<ApiStaticVisitResponse[]>;
       const maxVisitsPerRequest = 1000;
       if (inRecordingsMode.value) {
-        // NOTE: Not sure we need to ever get the total count for this query for the
-        //  purposes of this UI?
         CurrentViewAbortController.newView();
-        response = await ClientApi.Recordings.queryRecordingsInProjectNew(
+        if (!gotEstimatedCount.value) {
+          // One-time recording count query, we don't really care when it returns
+          estimatingCount.value = true;
+          ClientApi.Recordings.queryRecordingCountInProject(project.id, {
+            ...query,
+            limit: 1000,
+            fromDateTime: dateRange.value[0],
+            untilDateTime: dateRange.value[1],
+            queryIsTimeSensitive: false,
+            types: typesForRecordingMode.value as (
+              | RecordingType.ThermalRaw
+              | RecordingType.Audio
+            )[],
+          }).then((response) => {
+            estimatingCount.value = false;
+            if (response.success) {
+              gotEstimatedCount.value = true;
+              estimatedRecordingCount.value = (
+                response as unknown as SuccessFetchResult<{
+                  count: number;
+                }>
+              ).result.count;
+            }
+          });
+        }
+        // Get total for query:
+        response = await ClientApi.Recordings.queryRecordingsInProject(
           project.id,
           {
             ...query,
@@ -1490,9 +1523,6 @@ const getRecordingsOrVisitsForCurrentQuery = async () => {
             )[],
           },
         );
-        if (response && response.success && response.result.count) {
-          currentQueryCount.value = response.result.count;
-        }
       } else {
         // Else visits
         // Make it the lesser of the current date range or 2 pages worth of days.
@@ -1971,9 +2001,276 @@ provide("currentlySelectedVisit", currentlySelectedVisit);
 provide("visitsContext", chunkedVisits);
 // TODO: Nice to have - allow expanding the current search range when we reach the end of the list of recordings.
 provide("canExpandCurrentQueryInPast", canExpandSearchBackFurther);
+
+const estimatedRecordingCount = ref<number>(0);
+const estimatingCount = ref<boolean>(false);
+const gotEstimatedCount = ref<boolean>(false);
+
+const showBulkDeleteModal = ref<boolean>(false);
+const readyToBulkDelete = ref<boolean>(false);
+const bulkDeleteInProgress = ref<boolean>(false);
+const recordingsToDelete = ref<RecordingId[]>([]);
+const bulkDelete = async () => {
+  showBulkDeleteModal.value = true;
+  // Start calculating all the recordings in the current search range.
+  await getClassifications();
+  if (
+    currentProject.value &&
+    dateRange.value[0] !== null &&
+    dateRange.value[1] !== null
+  ) {
+    const fromDateTime = dateRange.value[0];
+    const untilDateTime = dateRange.value[1];
+    const query = getCurrentQuery();
+    const project = currentProject.value as SelectedProject;
+    query.fromDateTime = fromDateTime;
+    query.untilDateTime = untilDateTime;
+    const recordings =
+      await ClientApi.Recordings.getAllRecordingsForProjectBetweenTimes(
+        project.id,
+        query,
+        () => {
+          exportTime.value = performance.now();
+        },
+      );
+    for (const recording of recordings) {
+      recordingsToDelete.value.push(recording.id);
+    }
+    readyToBulkDelete.value = true;
+  }
+};
+
+const cancelBulkDelete = async () => {
+  showBulkDeleteModal.value = false;
+  bulkDeleteInProgress.value = false;
+};
+
+const startBulkDelete = async () => {
+  bulkDeleteInProgress.value = true;
+  for (const recordingId of recordingsToDelete.value) {
+    await ClientApi.Recordings.deleteRecording(recordingId);
+    numRecordingsDeleted.value += 1;
+  }
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  showBulkDeleteModal.value = false;
+};
+
+const refreshActivitySearchUponBulkDeleteCompletion = async () => {
+  const didBulkDelete = numRecordingsDeleted.value !== 0;
+  numRecordingsDeleted.value = 0;
+  recordingsToDelete.value = [];
+  bulkDeleteInProgress.value = false;
+  readyToBulkDelete.value = false;
+  if (didBulkDelete) {
+    firstLoad.value = true;
+    await doSearch();
+  }
+};
+
+const numRecordingsToDelete = computed<number>(() => {
+  return recordingsToDelete.value.length;
+});
+const numRecordingsDeleted = ref<number>(0);
+const deletionProgress = computed<number>(() => {
+  if (numRecordingsToDelete.value === 0) {
+    return 0;
+  }
+  return (numRecordingsDeleted.value / numRecordingsToDelete.value) * 100;
+});
+
+function getScrollParent(element: HTMLElement) {
+  if (!element) {
+    return document.documentElement;
+  }
+
+  // Check the element's actual layout style
+  const style = window.getComputedStyle(element);
+
+  // Fixed elements usually scroll with the viewport/document root
+  if (style.position === "fixed") {
+    return document.documentElement;
+  }
+
+  // Absolute elements ignore statically positioned parents
+  const excludeStaticParent = style.position === "absolute";
+  const overflowRegex = /(auto|scroll)/;
+
+  let parent = element.parentElement;
+  while (parent) {
+    const parentStyle = window.getComputedStyle(parent);
+
+    // Skip static parents if target element is absolute
+    if (excludeStaticParent && parentStyle.position === "static") {
+      parent = parent.parentElement;
+      continue;
+    }
+
+    // Check if the container allows vertical or horizontal scrolling
+    if (
+      overflowRegex.test(
+        parentStyle.overflow + parentStyle.overflowY + parentStyle.overflowX,
+      )
+    ) {
+      return parent;
+    }
+
+    parent = parent.parentElement;
+  }
+
+  // Fallback to document element if no scroll container is found
+  return document.documentElement;
+}
+const scrollToTop = () => {
+  if (sectionHeader.value) {
+    getScrollParent(sectionHeader.value!).scrollTo({
+      behavior: "smooth",
+      top: 0,
+    });
+  }
+};
+const scrollY = ref<ComputedRef<number>>();
+
+watch(
+  searchContainer,
+  (next, prev) => {
+    if (next !== null && prev === null) {
+      const { y } = useScroll(getScrollParent(next));
+      scrollY.value = y;
+    }
+  },
+  { once: true },
+);
+
+const hasScrolled = computed<boolean>(() => {
+  if (scrollY.value === null) {
+    return false;
+  }
+  if (scrollY.value?.value) {
+    return scrollY.value!.value > 0;
+  }
+  return false;
+});
+
+const mapBufferPosition = useElementBounding(mapBuffer);
+const scrollToTopButtonLeft = computed<number>(() => {
+  if (mapBufferPosition.left) {
+    if (mapBufferPosition.left.value !== 0) {
+      return window.outerWidth - mapBufferPosition.left.value;
+    }
+  }
+  return 10;
+});
 </script>
 <template>
-  <section-header>Activity</section-header>
+  <section-header
+    >Activity
+    <b-modal
+      v-model="showBulkDeleteModal"
+      centered
+      no-close-on-esc
+      no-header-close
+      title="Bulk delete recordings"
+      @hidden="refreshActivitySearchUponBulkDeleteCompletion"
+      no-close-on-backdrop
+      hide-header-close
+      :no-footer="bulkDeleteInProgress"
+      data-cy="bulk delete modal"
+    >
+      <div
+        v-if="!readyToBulkDelete"
+        class="d-flex flex-column align-items-center my-3 gap-3"
+      >
+        <b-spinner variant="secondary" small />
+        Determining the number of recordings to delete
+      </div>
+      <div v-else-if="readyToBulkDelete && !bulkDeleteInProgress">
+        <activity-search-description
+          :locations-in-selected-timespan="locationsInSelectedTimespan"
+          :selected-locations="selectedLocations"
+          :selected-devices="selectedDevices"
+          :available-date-ranges="availableDateRanges"
+          :search-params="searchParams"
+          :inline="true"
+        >
+          <template #pretext
+            >You are about to delete
+            <strong>{{
+              numRecordingsToDelete.toLocaleString()
+            }}</strong></template
+          >
+          <template #posttext>
+            <div class="mt-2">This action cannot be undone.</div>
+          </template>
+        </activity-search-description>
+      </div>
+      <div v-else class="d-flex gap-2 flex-column">
+        <span
+          >Deleted {{ numRecordingsDeleted.toLocaleString() }} of
+          {{ numRecordingsToDelete.toLocaleString() }} recordings</span
+        >
+        <b-progress variant="danger" :value="deletionProgress" />
+        <span
+          >Keep this browser tab open until the bulk deletion finishes.</span
+        >
+      </div>
+      <template #footer>
+        <div class="d-flex gap-2">
+          <b-button
+            variant="outline-secondary"
+            @click="cancelBulkDelete"
+            data-cy="cancel bulk delete"
+            >Cancel</b-button
+          >
+          <b-button
+            variant="danger"
+            data-cy="start bulk delete"
+            class="d-flex align-items-center gap-1"
+            @click="startBulkDelete"
+            :disabled="bulkDeleteInProgress"
+          >
+            <material-symbol name="warning" />
+            <span>Bulk delete</span>
+          </b-button>
+        </div>
+      </template>
+    </b-modal>
+    <template #extra>
+      <two-step-action-button
+        data-cy="bulk delete button"
+        class="align-self-start d-none d-md-block"
+        v-if="displayMode === ActivitySearchDisplayMode.Recordings"
+        :action="bulkDelete"
+        tooltip-label="delete recordings"
+        label="delete recordings"
+        confirmation-label="Delete recordings"
+        confirmation-btn-variant-class="btn-outline-secondary"
+      >
+        <template #target>
+          <b-button
+            variant="outline-secondary"
+            class="d-none d-sm-flex align-items-center align-self-start px-1 me-lg-2"
+            size="sm"
+          >
+            <material-symbol name="more_horiz" size="1.125rem" />
+          </b-button>
+        </template>
+        <template #confirmation-icon>
+          <material-symbol
+            name="delete"
+            size="1.25rem"
+            color="inherit"
+            class="me-1"
+          />
+        </template>
+      </two-step-action-button>
+    </template>
+    <template #buffer>
+      <div
+        ref="sectionHeader"
+        class="map-buffer d-none d-lg-flex col col-lg-3 col-xl-3 col-xxl-3"
+      ></div>
+    </template>
+  </section-header>
   <!--  <h6>Things that need to appear here:</h6>-->
   <!--  <ul>-->
   <!--    <li>Ability to do arbitrary queries over the group</li>-->
@@ -2029,17 +2326,6 @@ provide("canExpandCurrentQueryInPast", canExpandSearchBackFurther);
       class="search-controls-wrapper col col-12 col-md-4 col-lg-3 col-xl-3 col-xxl-3 d-flex py-md-0 align-items-md-start"
       ref="searchControls"
     >
-      <div class="search-results-toggle position-fixed d-md-none d-block">
-        <b-button
-          @click="toggleOffcanvasSearch"
-          class="d-flex align-items-center p-2"
-        >
-          <material-symbol
-            :name="'search_gear' as unknown as IconsProp"
-            size="1.5rem"
-          />
-        </b-button>
-      </div>
       <b-offcanvas
         v-if="!shouldShowSearchControlsInline"
         v-model="showOffcanvasSearch"
@@ -2087,6 +2373,78 @@ provide("canExpandCurrentQueryInPast", canExpandSearchBackFurther);
           :available-date-ranges="availableDateRanges"
           :search-params="searchParams"
         />
+        <div
+          class="sticky-top py-2 d-flex gap-2 search-controls-trigger d-md-none"
+        >
+          <b-button
+            variant="outline-secondary"
+            class="flex-grow-1"
+            @click="toggleOffcanvasSearch"
+            >Edit search</b-button
+          >
+          <two-step-action-button
+            class="align-self-stretch d-flex"
+            v-if="displayMode === ActivitySearchDisplayMode.Recordings"
+            :action="bulkDelete"
+            tooltip-label="delete recordings"
+            label="delete recordings"
+            placement="bottom-end"
+            confirmation-label="Delete recordings"
+            confirmation-btn-variant-class="btn-outline-secondary"
+          >
+            <template #target>
+              <b-button
+                variant="outline-secondary"
+                class="d-flex align-items-center justify-content-center px-2"
+              >
+                <material-symbol name="more_horiz" size="1.125rem" />
+              </b-button>
+            </template>
+            <template #confirmation-icon>
+              <material-symbol
+                name="delete"
+                size="1.25rem"
+                color="inherit"
+                class="me-1"
+              />
+            </template>
+          </two-step-action-button>
+        </div>
+        <div
+          class="search-count d-flex justify-content-end"
+          data-cy="search results estimate"
+          v-if="
+            displayMode === ActivitySearchDisplayMode.Recordings &&
+            (!gotEstimatedCount ||
+              (gotEstimatedCount && estimatedRecordingCount !== 0))
+          "
+        >
+          <b-badge
+            variant="light"
+            text-variant="secondary"
+            class="d-inline-flex align-items-center"
+          >
+            <span
+              style="transform: scale(0.7)"
+              v-if="estimatingCount"
+              class="d-inline-flex align-items-center"
+            >
+              <b-spinner
+                variant="secondary"
+                small
+                class="me-1 fw-normal fs-7"
+              />
+            </span>
+            <span v-if="estimatingCount"> estimating results </span>
+            <span
+              v-else-if="gotEstimatedCount"
+              data-cy="search results estimate count"
+              >{{ estimatedRecordingCount
+              }}<span v-if="estimatedRecordingCount === 1000">+</span
+              >&nbsp;results</span
+            ></b-badge
+          >
+        </div>
         <div class="search-items-container">
           <recordings-list
             v-if="inRecordingsMode"
@@ -2209,11 +2567,23 @@ provide("canExpandCurrentQueryInPast", canExpandSearchBackFurther);
         </div>
       </div>
     </div>
+
     <div
       class="map-buffer d-none d-lg-flex col col-lg-3 col-xl-3 col-xxl-3"
       ref="mapBuffer"
     ></div>
   </div>
+  <b-button
+    variant="outline-secondary"
+    size="lg"
+    pill
+    v-if="hasScrolled"
+    class="d-flex align-items-center justify-content-center px-2 position-absolute border-0 shadow scroll-to-top-btn"
+    :style="`bottom: 10px; right: ${scrollToTopButtonLeft}px; z-index: 999;`"
+    @click.prevent.stop="scrollToTop"
+  >
+    <material-symbol name="arrow_upward" size="1.5rem" />
+  </b-button>
   <map-with-points
     ref="mapContainer"
     v-if="projectHasLocationsWithRecordings && mapWidthPx !== 0"
@@ -2290,6 +2660,38 @@ provide("canExpandCurrentQueryInPast", canExpandSearchBackFurther);
 }
 </style>
 <style lang="less">
+@import "../assets/less/breakpoints";
+
+.search-count {
+  position: relative;
+  z-index: 10;
+  @media (max-width: @breakpoint-sm-max) {
+    margin-bottom: calc(var(--cp-spacing-md) * -1);
+    margin-top: var(--cp-spacing-xs);
+  }
+  @media (min-width: @breakpoint-md) {
+    margin-bottom: calc(var(--cp-spacing-sm) * -1);
+  }
+}
+
+.search-controls-trigger {
+  height: var(--cp-mobile-search-trigger-height);
+  //background: var(--app-bg-color);
+  background: color-mix(in srgb, var(--app-bg-color), transparent 15%);
+  backdrop-filter: blur(8px);
+  margin-left: -4px;
+  margin-right: -4px;
+  padding-left: 4px;
+  padding-right: 4px;
+  z-index: 11;
+  @media (max-width: @breakpoint-xs-max) {
+    top: var(--cp-mobile-header-height);
+  }
+  @media (min-width: @breakpoint-sm) {
+    top: 0;
+  }
+}
+
 .search-controls-wrapper {
   .search-controls-scroll {
     max-height: 100cqh;
@@ -2308,6 +2710,19 @@ provide("canExpandCurrentQueryInPast", canExpandSearchBackFurther);
   }
   .b-overlay-wrap .b-overlay {
     z-index: 1040 !important;
+  }
+}
+
+.scroll-to-top-btn {
+  animation: add-btn-animate-in 0.35s ease-in-out;
+}
+
+@keyframes add-btn-animate-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 </style>

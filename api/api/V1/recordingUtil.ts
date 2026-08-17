@@ -1320,89 +1320,67 @@ export async function sendAlerts(
       );
     }
     for (const alert of alerts) {
-      if (alert.User) {
-        if (!alert.User.emailConfirmed) {
-          // FIXME: Remove this?
-          // Send old alert email
-          await alert.sendAlert(
-            recording,
-            matchedTrack,
-            matchedTag,
-            alert.GroupId !== null
-              ? "project"
-              : alert.StationId !== null
-                ? "station"
-                : "device",
-            thumbnail && {
-              buffer: Buffer.from(thumbnail),
-              cid: "thumbnail",
-              mimeType: "image/png",
-            },
-          );
-        } else {
-          // Send a new style alert email if the user has confirmed their email via browse-next
-          const alertTime = recording.recordingDateTime;
+      // Send a new style alert email if the user has confirmed their email via browse-next
+      const alertTime = recording.recordingDateTime;
 
-          // Get the best matching condition.  If the user has an alert for both Mammal and Cat
-          // and we get a classification of Cat, we want the matched condition to be Cat.
-          let matchingCondition = alert.conditions.find(
-            (condition) => matchedTag.what === condition.tag,
-          );
-          if (!matchingCondition) {
-            matchingCondition = alert.conditions.find((condition) =>
-              matchedTag.path.split(".").includes(condition.tag),
-            );
-            if (!matchingCondition) {
-              return;
-            }
-          }
-
-          const alertClassification = matchingCondition.tag;
-          const matchedClassification = matchedTag.what;
-
-          // NOTE: We want to display the alert time in the devices' timezone if known
-          let deviceTimezone = null;
-          if (recording.Device.location) {
-            deviceTimezone = tzLookup(
-              recording.Device.location.lat,
-              recording.Device.location.lng,
-            );
-          }
-          const alertSendSuccess = await sendAnimalAlertEmail(
-            recording.Group.groupName,
-            recording.Device.deviceName,
-            (recording.Station && recording.Station.name) || "unknown location",
-            recording.StationId,
-            alertTime,
-            alertClassification,
-            matchedClassification,
-            recording.id,
-            matchedTrack.id,
-            alert.User.email,
-            deviceTimezone,
-            thumbnail && Buffer.from(thumbnail),
-          );
-          if (alertSendSuccess) {
-            // Log an email alert event also
-            const detail = await DetailSnapshot.getOrCreateMatching("alert", {
-              alertId: alert.id,
-              recId: recording.id,
-              trackId: matchedTrack.id,
-              success: alertSendSuccess,
-            });
-            await Event.create({
-              DeviceId: recording.Device.id,
-              EventDetailId: detail.id,
-              dateTime: recording.recordingDateTime,
-            });
-            await alert.update({ lastAlert: new Date() });
-          } else {
-            log.warning(
-              "Failed sending animal alert email to %s",
-              alert.User.email,
-            );
-          }
+      // Get the best matching condition.  If the user has an alert for both Mammal and Cat
+      // and we get a classification of Cat, we want the matched condition to be Cat.
+      let matchingCondition = alert.conditions.find(
+        (condition) => matchedTag.what === condition.tag,
+      );
+      if (!matchingCondition) {
+        matchingCondition = alert.conditions.find((condition) =>
+          matchedTag.path.split(".").includes(condition.tag),
+        );
+        if (!matchingCondition) {
+          return;
         }
+      }
+
+      const alertClassification = matchingCondition.tag;
+      const matchedClassification = matchedTag.what;
+
+      // NOTE: We want to display the alert time in the devices' timezone if known
+      let deviceTimezone = null;
+      if (recording.Device.location) {
+        deviceTimezone = tzLookup(
+          recording.Device.location.lat,
+          recording.Device.location.lng,
+        );
+      }
+      const alertSendSuccess = await sendAnimalAlertEmail(
+        recording.Group.groupName,
+        recording.Device.deviceName,
+        (recording.Station && recording.Station.name) || "unknown location",
+        recording.StationId,
+        alertTime,
+        alertClassification,
+        matchedClassification,
+        recording.id,
+        matchedTrack.id,
+        alert.User.email,
+        deviceTimezone,
+        thumbnail && Buffer.from(thumbnail),
+      );
+      if (alertSendSuccess) {
+        // Log an email alert event also
+        const detail = await DetailSnapshot.getOrCreateMatching("alert", {
+          alertId: alert.id,
+          recId: recording.id,
+          trackId: matchedTrack.id,
+          success: alertSendSuccess,
+        });
+        await Event.create({
+          DeviceId: recording.Device.id,
+          EventDetailId: detail.id,
+          dateTime: recording.recordingDateTime,
+        });
+        await alert.update({ lastAlert: new Date() });
+      } else {
+        log.warning(
+          "Failed sending animal alert email to %s",
+          alert.User.email,
+        );
       }
     }
   }

@@ -474,9 +474,14 @@ const removeMarginBottom = (
   padding-left: 4px;
   padding-right: 4px;
   @media (max-width: @breakpoint-xs-max) {
+    top: calc(
+      var(--cp-mobile-header-height) + var(--cp-mobile-search-trigger-height)
+    );
+  }
+  @media (min-width: @breakpoint-sm) and (max-width: @breakpoint-sm-max) {
     top: var(--cp-mobile-header-height);
   }
-  @media (min-width: @breakpoint-sm) {
+  @media (min-width: @breakpoint-md) {
     top: 0;
   }
 }
