@@ -2,12 +2,16 @@
 import type { Ref } from "vue";
 import { computed, inject, onBeforeMount, ref, watch } from "vue";
 import { ClientApi } from "@/api";
-import type { BatteryInfoEvent, LoadedResource } from "@apiClient/types";
+import type { LoadedResource } from "@apiClient/types";
 import { useRoute } from "vue-router";
 import type { DeviceId } from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
 import type { CardTableRows } from "@/components/CardTableTypes";
-import type { DeviceConfigDetail } from "@typedefs/api/event";
+import type {
+  BatteryInfoEvent,
+  BatteryInfoEventAndDate,
+  DeviceConfigDetail,
+} from "@typedefs/api/event";
 import {
   projectDevicesLoaded,
   projectLocationsLoaded,
@@ -25,7 +29,9 @@ import type {
   ApiDeviceHistorySettings,
   ApiDeviceResponse,
 } from "@typedefs/api/device";
-import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
+import DeviceBatteryLevel, {
+  type BatteryInfoMapContainer,
+} from "@/components/DeviceBatteryLevel.vue";
 import { resourceIsLoading } from "@/helpers/utils.ts";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import { BButton, BPopover, BSpinner } from "bootstrap-vue-next";
@@ -382,7 +388,7 @@ const initBatteryInfoTimeSeries = () => {
   }
 };
 
-const batteryInfo = ref<LoadedResource<BatteryInfoEvent[]>>(null);
+const batteryInfo = ref<LoadedResource<BatteryInfoEventAndDate[]>>(null);
 const batteryInfoIsLoading = computed(() => batteryInfo.value === null);
 const hasUnknownPowerSource = computed<boolean>(() => {
   if (!isTc2Device.value) {
@@ -403,12 +409,37 @@ interface BatteryInfoDisplayEvent {
   voltage: number | null;
   battery: number | null;
 }
+(window as unknown as BatteryInfoMapContainer).deviceBatteryInfoMap =
+  (window as unknown as BatteryInfoMapContainer).deviceBatteryInfoMap ||
+  ({} as BatteryInfoMapContainer);
+watch(
+  batteryInfo,
+  (nextBatteryInfo: LoadedResource<BatteryInfoEventAndDate[]>) => {
+    const cacheKey = `__${deviceId}`;
+    const existingEntry = (window as unknown as BatteryInfoMapContainer)
+      .deviceBatteryInfoMap[cacheKey];
+    // Update latest cached battery info for device if it's changed:
+    if (nextBatteryInfo && nextBatteryInfo.length) {
+      if (
+        !existingEntry ||
+        new Date(nextBatteryInfo[0].dateTime).getTime() >
+          new Date(existingEntry.dateTime).getTime()
+      ) {
+        (window as unknown as BatteryInfoMapContainer).deviceBatteryInfoMap[
+          cacheKey
+        ] = nextBatteryInfo[0];
+      }
+    }
+  },
+);
+
 const interpolatedBatteryInfo = computed<BatteryInfoDisplayEvent[]>(() => {
   const eightWeeksAgo = new Date();
   const now = new Date();
   const sortedEvents: BatteryInfoDisplayEvent[] = (batteryInfo.value || []).map(
-    (event: BatteryInfoEvent) => ({
-      ...event,
+    (event: BatteryInfoEventAndDate) => ({
+      voltage: event.voltage,
+      battery: event.battery,
       dateTime: new Date(event.dateTime),
     }),
   );
@@ -421,8 +452,8 @@ const interpolatedBatteryInfo = computed<BatteryInfoDisplayEvent[]>(() => {
     const lastEvent = sortedEvents[
       sortedEvents.length - 1
     ] as BatteryInfoDisplayEvent;
-    const firstEventTime = firstEvent.dateTime;
-    const lastEventTime = lastEvent.dateTime;
+    const firstEventTime = firstEvent.dateTime as Date;
+    const lastEventTime = lastEvent.dateTime as Date;
     const emptyDaysAtStart = Math.floor(
       (firstEventTime.getTime() - eightWeeksAgo.getTime()) /
         1000 /

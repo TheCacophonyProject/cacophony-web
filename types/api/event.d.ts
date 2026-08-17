@@ -14,8 +14,8 @@ type IsoFormattedString = string;
 
 export interface ApiDeviceEventResponse {
   id: number;
-  dateTime: Date;
-  createdAt: Date;
+  dateTime: IsoFormattedDateString;
+  createdAt: IsoFormattedDateString;
   env: EventEnv;
   EventDetail: EventDescription;
   DeviceId: DeviceId;
@@ -147,6 +147,10 @@ export interface BatteryInfoEventDetail {
   // NOTE: There is also a bunch of 'depletion_method' etc fields in newer events, but it's not clear
   // yet how or if we'd use those in the front-end.
 }
+
+export type BatteryInfoEventAndDate = BatteryInfoEventDetail & {
+  dateTime: IsoFormattedDateString;
+};
 
 export interface BatteryInfoEvent extends ApiDeviceEventResponse {
   EventDetail: {

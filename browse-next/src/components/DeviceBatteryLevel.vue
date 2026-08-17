@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import { computed, onBeforeMount, ref, watch } from "vue";
-import type { BatteryInfoEvent, LoadedResource } from "@apiClient/types.ts";
+import type { LoadedResource } from "@apiClient/types.ts";
 import { ClientApi } from "@/api";
 import { resourceFailedLoading, resourceIsLoading } from "@/helpers/utils.ts";
 import { BSpinner } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import type {
+  BatteryInfoEvent,
+  BatteryInfoEventAndDate,
+} from "@typedefs/api/event";
 
 const props = withDefaults(
   defineProps<{
@@ -16,17 +20,17 @@ const props = withDefaults(
   }>(),
   { showLevel: true, showIcon: true, showVoltage: true },
 );
-const batteryLevelInfo = ref<LoadedResource<BatteryInfoEvent>>(null);
+const batteryLevelInfo = ref<LoadedResource<BatteryInfoEventAndDate>>(null);
 const loading = resourceIsLoading(batteryLevelInfo);
 const loadingFailed = resourceFailedLoading(batteryLevelInfo);
-interface BatteryInfoMapContainer extends Window {
-  deviceBatteryInfoMap: Record<string, BatteryInfoEvent | false>;
+export interface BatteryInfoMapContainer extends Window {
+  deviceBatteryInfoMap: Record<string, BatteryInfoEventAndDate | false>;
 }
 // Create a 'global' cache of battery infos, so we don't need to reload them if
 // the devices list containing these is sorted.
 (window as unknown as BatteryInfoMapContainer).deviceBatteryInfoMap =
   (window as unknown as BatteryInfoMapContainer).deviceBatteryInfoMap ||
-  ({} as Record<string, BatteryInfoEvent | false>);
+  ({} as BatteryInfoMapContainer);
 const loadInfo = async () => {
   if (
     (
@@ -34,15 +38,11 @@ const loadInfo = async () => {
     ).deviceBatteryInfoMap.hasOwnProperty(`__${props.device.id}`)
   ) {
     batteryLevelInfo.value = (window as unknown as BatteryInfoMapContainer)
-      .deviceBatteryInfoMap[`__${props.device.id}`] as BatteryInfoEvent;
+      .deviceBatteryInfoMap[`__${props.device.id}`] as BatteryInfoEventAndDate;
   } else {
     batteryLevelInfo.value = null;
     batteryLevelInfo.value =
       await ClientApi.Devices.getLastKnownDeviceBatteryLevel(props.device.id);
-    // batteryLevelInfo.value = batteryLevelInfo.value || {
-    //   batteryType: "lime",
-    //   battery: Math.round(Math.random() * 100),
-    // };
     if (batteryLevelInfo.value !== null) {
       (window as unknown as BatteryInfoMapContainer).deviceBatteryInfoMap[
         `__${props.device.id}`
@@ -93,7 +93,7 @@ watch(
   >
     <material-symbol name="power" size="1.125rem" />
     <span v-if="props.showLevel" class="ms-1"
-      >{{ (batteryLevelInfo as BatteryInfoEvent).battery }}%</span
+      >{{ (batteryLevelInfo as BatteryInfoEventAndDate).battery }}%</span
     >
     <span v-if="shouldShowVoltage" class="ms-1 text-muted small">{{
       formattedVoltage
@@ -125,7 +125,7 @@ watch(
       />
     </svg>
     <span v-if="props.showLevel" class="ms-1"
-      >{{ (batteryLevelInfo as BatteryInfoEvent).battery }}%</span
+      >{{ (batteryLevelInfo as BatteryInfoEventAndDate).battery }}%</span
     >
     <span v-if="shouldShowVoltage" class="ms-1 voltage small">{{
       formattedVoltage

@@ -15,6 +15,7 @@ import type {
 import type {
   ApiSubmitEventsRequestBody,
   BatteryInfoEvent,
+  BatteryInfoEventAndDate,
   BatteryInfoEventDetail,
   DeviceConfigDetail,
   DeviceEvent,
@@ -243,7 +244,7 @@ const getBatteryInfo =
     // eslint-disable-next-line no-async-promise-executor
     return new Promise(async (resolve) => {
       let stillHasEvents = true;
-      const events: (BatteryInfoEventDetail & { dateTime: Date })[] = [];
+      const events: BatteryInfoEventAndDate[] = [];
       while (
         stillHasEvents &&
         (stopAfterNumResults === null || events.length !== stopAfterNumResults)
@@ -291,9 +292,7 @@ const getBatteryInfo =
       } else {
         resolve(false);
       }
-    }) as Promise<
-      (BatteryInfoEventDetail & { dateTime: Date })[] | false | null
-    >;
+    }) as Promise<BatteryInfoEventAndDate[] | false | null>;
   };
 
 const getEarliestEventAfterTime =
@@ -748,9 +747,7 @@ const hasReferenceImageForDeviceAtTime =
 
 const getLastKnownDeviceBatteryLevel =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (
-    deviceId: DeviceId,
-  ): Promise<(BatteryInfoEventDetail & { dateTime: Date }) | false | null> => {
+  (deviceId: DeviceId): Promise<BatteryInfoEventAndDate | false | null> => {
     const lastThirtyDays = new Date();
     lastThirtyDays.setDate(lastThirtyDays.getDate() - 30);
     return new Promise((resolve) => {
@@ -761,9 +758,7 @@ const getLastKnownDeviceBatteryLevel =
           } else if (result === false || result.length === 0) {
             resolve(false);
           }
-          resolve(
-            (result as (BatteryInfoEventDetail & { dateTime: Date })[])[0],
-          );
+          resolve((result as BatteryInfoEventAndDate[])[0]);
         },
       );
     });
