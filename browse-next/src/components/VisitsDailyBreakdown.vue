@@ -539,9 +539,15 @@ const isStillProcessing = computed<boolean>(() => {
       position: sticky;
       z-index: 1;
       @media (max-width: @breakpoint-xs-max) {
-        top: calc(var(--cp-grid-base) * 12); // size of the header on mobile
+        top: calc(
+          var(--cp-mobile-header-height) +
+            var(--cp-mobile-search-trigger-height)
+        );
       }
-      @media (min-width: @breakpoint-sm) {
+      @media (min-width: @breakpoint-sm) and (max-width: @breakpoint-sm-max) {
+        top: var(--cp-mobile-header-height);
+      }
+      @media (min-width: @breakpoint-md) {
         top: 0;
       }
     }

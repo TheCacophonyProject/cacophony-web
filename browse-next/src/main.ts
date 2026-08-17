@@ -4,7 +4,6 @@ import { createApp } from "vue";
 import App from "./App.vue";
 import router from "./router";
 import { createBootstrap } from "bootstrap-vue-next";
-import FontAwesomeIcon from "./font-awesome-icons";
 import materialSymbolsPlugin from "@dbetka/vue-material-symbols";
 import "material-symbols/index.css";
 import {
@@ -31,7 +30,6 @@ import {
 import { CurrentUser } from "@/api";
 
 const app = createApp(App);
-app.component("font-awesome-icon", FontAwesomeIcon);
 app.use(router);
 app.use(createBootstrap());
 app.use(materialSymbolsPlugin);

@@ -69,6 +69,8 @@ const isMobileView = useMediaQuery("(max-width: 575px)");
       >
         <slot></slot>
       </h1>
+      <slot name="extra"></slot>
+      <slot name="buffer"></slot>
     </div>
   </div>
 </template>

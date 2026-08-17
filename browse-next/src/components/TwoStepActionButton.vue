@@ -101,34 +101,37 @@ const computedConfirmationLabel = computed<string>(() => {
       @hide="popoverIsShowing = false"
     >
       <template #target>
-        <button
-          class="btn d-flex justify-content-center"
-          :class="[...(classes || []), btnVariantClass]"
-          @click.stop.prevent="() => {}"
-          ref="actionBtn"
-          :aria-label="computedTooltipLabel"
-          :disabled="disabled"
-        >
-          <material-symbol
-            :name="icon"
-            size="1.25rem"
-            v-if="icon"
-            :color="color || 'inherit'"
-            :rotation="rotate || null"
-          />
-          <span
-            v-if="computedLabel"
-            :class="{ 'ps-2': icon }"
-            v-html="computedLabel"
-          />
-        </button>
-        <b-tooltip
-          v-if="actionBtn && computedTooltipLabel !== '' && !popoverIsShowing"
-          :target="actionBtn as unknown as HTMLElement"
-          :placement="placement"
-        >
-          <span v-html="computedTooltipLabel"></span>
-        </b-tooltip>
+        <slot name="target">
+          <button
+            class="btn d-flex justify-content-center"
+            :class="[...(classes || []), btnVariantClass]"
+            @click.stop.prevent="() => {}"
+            ref="actionBtn"
+            :aria-label="computedTooltipLabel"
+            :disabled="disabled"
+          >
+            <material-symbol
+              :name="icon"
+              size="1.25rem"
+              v-if="icon"
+              :color="color || 'inherit'"
+              :rotation="rotate || null"
+            />
+
+            <span
+              v-if="computedLabel"
+              :class="{ 'ps-2': icon }"
+              v-html="computedLabel"
+            />
+          </button>
+          <b-tooltip
+            v-if="actionBtn && computedTooltipLabel !== '' && !popoverIsShowing"
+            :target="actionBtn as unknown as HTMLElement"
+            :placement="placement"
+          >
+            <span v-html="computedTooltipLabel"></span>
+          </b-tooltip>
+        </slot>
       </template>
       <div
         v-if="confirmationExtra"
@@ -147,12 +150,14 @@ const computedConfirmationLabel = computed<string>(() => {
         class="btn d-flex align-items-center justify-content-center text-nowrap w-100"
         :class="[confirmationBtnVariantClass]"
       >
-        <material-symbol
-          v-if="confirmationBtnVariantClass === 'btn-outline-danger'"
-          name="warning"
-          size="1.25rem"
-          class="me-2"
-        />
+        <slot name="confirmation-icon">
+          <material-symbol
+            v-if="confirmationBtnVariantClass === 'btn-outline-danger'"
+            name="warning"
+            size="1.25rem"
+            class="me-2"
+          />
+        </slot>
         <span v-html="computedConfirmationLabel" />
       </button>
     </b-popover>

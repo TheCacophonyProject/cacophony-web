@@ -65,8 +65,8 @@ export const waitForEmail = async (
   });
 };
 
-export const waitForEmailAndRenderEmailHtml = async (page: Page, toUser: string, type = "") => {
-  const email = await waitForEmail(toUser, type);
+export const waitForEmailAndRenderEmailHtml = async (page: Page, toUser: string, type = "", timeout?: number) => {
+  const email = await waitForEmail(toUser, type, timeout);
   expect(email.error, "email was sent").toBeUndefined();
   await test.step(`${toUser} opens email`, async () => {
     await page.setContent(email.html);

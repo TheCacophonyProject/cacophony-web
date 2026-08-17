@@ -1,44 +1,42 @@
 <tr>
-  <td class="container-padding content" align="left" style="border-radius:3px;padding-left:24px;padding-right:24px;padding-top:12px;padding-bottom:12px;background-color:#ffffff">
+  <td class="container-padding content" align="left" style="border-radius:8px;box-shadow:rgba(0, 0, 0, 0.075) 0px 2px 4px 0px;padding-left:24px;padding-right:24px;padding-top:12px;padding-bottom:12px;background-color:#ffffff">
     <br>
-    <div style="font-family:Helvetica, Arial, sans-serif;font-size:24px;font-weight:bold;padding-bottom:12px;color:#DF4726;padding-right:24px">
-      '{{ groupName }}': Stopped or offline devices report.
+    <div style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:21px;font-weight:650;padding-bottom:12px;color:#252921;padding-right:24px">
+      Stopped or offline devices
     </div>
     <br>
-    <div class="body-text" style="font-family:Helvetica, Arial, sans-serif;font-size:14px;line-height:20px;text-align:left;color:#333333">
-      Hi, this email is to let you know that the battery for the devices(s) listed below may be flat.<br/>
-      It is sent if there has been no communication from the device to the Cacophony Monitoring platform for more than 24 hours.<br/><br/>
-      <ul style="margin: 0; padding: 0; padding-left: 20px;">
-      {{#stoppedDevicesList}}
+    <div class="body-text" style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;line-height:160%;text-align:left;color:#252921 !important;">
+      The battery of some devices in the project <strong style="font-weight: 600">{{ groupName }}</strong> may be flat. Those devices are listed below:<br/><br/>
+      <ul style="margin: 0; padding: 0; padding-left: 20px; line-height: 160%; font-weight: 600">
+        {{#stoppedDevicesList}}
         <li>{{.}}</li>
-      {{/stoppedDevicesList}}
+        {{/stoppedDevicesList}}
       </ul>
-
-      <p style="font-family:Helvetica, Arial, sans-serif;font-size:12px;line-height:18px;text-align:left;color:#666">Note: the battery may not be flat if the device is out of coverage, or is simply no longer being used.<br />
-        You won't get another one of these emails until after the device has come back online again and is not heard from for 24 hours.</p>
-
+      <br/>
+      This email is sent if the Cacophony Monitoring Platform has not received any communication from a device for more than 24 hours.
+      <br/><br/>
+      The battery may not be flat if the device is out of coverage or if the device is no longer being used.
       <br><br>
-      &ndash; The Cacophony Team.
+      You won't get another stopped device email until the device has come back online and is not heard from for 24 hours.
+      <br><br>
+      <span style="color:#777875">&ndash; The Cacophony Team</span>
       <br><br>
     </div>
   </td>
 </tr>
 <tr>
-  <td class="container-padding footer-text" align="left" style="font-family:Helvetica, Arial, sans-serif;font-size:12px;line-height:16px;color:#aaaaaa;padding-left:24px;padding-right:24px">
+  <td class="container-padding footer-text" align="left" style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:12px;line-height:180%;text-align:center;color:#90908F;padding-left:24px;padding-right:24px">
     <br><br>
     {{#unconfirmedEmailUsers}}
-    <span>You are receiving this email because you are currently an admin of the project '{{ groupName }}'.</span>
+    <span>You are receiving this email because you are currently an admin of the project {{ groupName }}.</span>
     {{/unconfirmedEmailUsers}}
     {{#confirmedEmailUsers}}
-    <span>You are receiving this email because you are subscribed to stopped device alerts for the project '{{ groupName }}'. Update your <a href="{{ emailSettingsUrl }}" style="color:#aaaaaa">notification preferences</a>.</span>
+    <span>You are receiving this email because you are subscribed to stopped device alerts for this project. You can <a href="{{ emailSettingsUrl }}" style="color:#90908F">update your email preferences</a> on the Cacophony Monitoring Platform.</span>
     {{/confirmedEmailUsers}}
     <br><br>
 
-    <strong>The Cacophony Project.</strong><br>
-    <span class="ios-footer">
-New Zealand.<br>
-</span>
-    <a href="{{ cacophonyBrowseUrl }}" style="color:#aaaaaa">{{ cacophonyDisplayUrl }}</a><br>
+    <strong style="font-weight: 500">The Cacophony Project</strong><br>
+    <a href="{{ cacophonyBrowseUrl }}" style="color:#90908f">{{ cacophonyDisplayUrl }}</a><br>
     <br><br>
   </td>
 </tr>

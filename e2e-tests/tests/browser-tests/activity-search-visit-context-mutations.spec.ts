@@ -8,7 +8,6 @@ import {
   waitToNavigateToProject,
   waitToNavigateToProjectPage,
 } from "@/helpers/browse-helpers";
-import { Locator } from "@playwright/test";
 import { elementIsClipped } from "@/helpers/dom-helpers";
 
 test("Human classifying recordings correctly updates visits context", async ({

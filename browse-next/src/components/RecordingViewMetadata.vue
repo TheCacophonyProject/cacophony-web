@@ -217,6 +217,7 @@ const mapPointForRecording = computed<NamedPoint[]>(() => {
       border-left: 1px solid var(--bs-border-color);
     }
     .recording-location-map {
+      .standard-shadow-inset();
       width: 100%;
       height: calc(var(--cp-grid-base) * 44);
       margin-top: var(--cp-spacing-md);

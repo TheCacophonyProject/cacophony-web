@@ -537,7 +537,7 @@ const debugConfirmEmail = async () => {
               <template #status="{ cell }">
                 <div v-if="cell.value.pending === 'requested'">
                   <div
-                    class="d-flex align-items-center"
+                    class="d-flex align-items-center text-nowrap"
                     :data-cy="`waiting for approval from admin of ${cell.value.groupName}`"
                   >
                     <material-symbol

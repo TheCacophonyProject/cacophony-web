@@ -44,7 +44,7 @@ test("Project activity digest email sent successfully for weekly and daily diges
       `--at-time=${scriptRunTime.toISOString()}`,
     ]);
 
-    const email = await waitForEmailAndRenderEmailHtml(
+    const _email = await waitForEmailAndRenderEmailHtml(
       page,
       adminUserHandle.testId,
       "project daily activity digest",
@@ -59,7 +59,7 @@ test("Project activity digest email sent successfully for weekly and daily diges
       `--at-time=${scriptRunTime.toISOString()}`,
     ]);
 
-    const email = await waitForEmailAndRenderEmailHtml(
+    const _email = await waitForEmailAndRenderEmailHtml(
       page,
       adminUserHandle.testId,
       "project weekly activity digest",
