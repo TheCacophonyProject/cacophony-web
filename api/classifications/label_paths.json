@@ -41,6 +41,7 @@
   "other": "all.other",
   "false-positive": "all.other.falsepositive",
   "frog": "all.other.frog",
+  "hochstetter's frog": "all.other.frog.hochstetters_frog",
   "insect": "all.other.insect",
   "weta": "all.other.insect.weta",
   "tree weta": "all.other.insect.weta.tree_weta",

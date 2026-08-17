@@ -326,34 +326,34 @@ watch(route, (nextRoute) => {
 
 // Use provide to provide selected visit context to loaded modal.
 // If url is saved and returned to, the best we can do is display the visit, but we can't do next/prev visits.
-// const timePeriodDays = computed<number>(() => {
-//   if (recordingMode.value === "Thermal") {
-//     return Number(localStorage.getItem("dashboard-thermal-time-period-days")) || 7;
-//   }
-//   return Number(localStorage.getItem("dashboard-audio-time-period-days")) || 60;
-// });
 
-const timePeriodDays = computed<number>({
-  get() {
-    if (recordingMode.value === "Thermal") {
-      return (
-        Number(localStorage.getItem("dashboard-thermal-time-period-days")) || 7
-      );
-    }
+const initialTimePeriodDays = computed<number>(() => {
+  if (recordingMode.value === "Thermal") {
     return (
-      Number(localStorage.getItem("dashboard-audio-time-period-days")) || 60
+      Number(localStorage.getItem("dashboard-thermal-time-period-days")) || 7
     );
-  },
-  set(value: number) {
+  }
+  return Number(localStorage.getItem("dashboard-audio-time-period-days")) || 60;
+});
+
+const timePeriodDays = ref<number>(initialTimePeriodDays.value);
+
+watch(timePeriodDays, async (newValue, oldValue) => {
+  if (newValue !== oldValue) {
     if (recordingMode.value === "Thermal") {
       localStorage.setItem(
         "dashboard-thermal-time-period-days",
-        value.toString(),
+        newValue.toString(),
       );
+      await loadVisits();
+    } else {
+      localStorage.setItem(
+        "dashboard-audio-time-period-days",
+        newValue.toString(),
+      );
+      await loadAudioRecordings();
     }
-    localStorage.setItem("dashboard-audio-time-period-days", value.toString());
-    return value;
-  },
+  }
 });
 
 const visitsOrRecordings = ref<"visits" | "recordings">("visits");
@@ -459,15 +459,9 @@ const reloadDashboard = async (nextProject: SelectedProject | false) => {
   }
 };
 
-watch(timePeriodDays, async () => {
-  if (recordingMode.value === "Thermal") {
-    await loadVisits();
-  } else {
-    await loadAudioRecordings();
-  }
-});
 watch(currentProject, reloadDashboard);
 watch(recordingMode, async () => {
+  timePeriodDays.value = initialTimePeriodDays.value;
   if (recordingMode.value === "Thermal") {
     await loadVisits();
   } else {
@@ -777,12 +771,13 @@ const audioItems = computed<BirdDetectionsItem[]>(() => {
       }
     }
     for (const path of uniqueTagsInRecording.values()) {
-      const count = recordingsBySpecies.getOrInsert(path, 0);
+      const count = recordingsBySpecies.get(path) || 0;
       recordingsBySpecies.set(path, count + 1);
       if (recording.stationId) {
-        locationsPerSpecies
-          .getOrInsert(path, new Set())
-          .add(recording.stationId);
+        if (!locationsPerSpecies.has(path)) {
+          locationsPerSpecies.set(path, new Set());
+        }
+        locationsPerSpecies.get(path)?.add(recording.stationId);
       }
     }
   }
@@ -819,7 +814,7 @@ const audioItems = computed<BirdDetectionsItem[]>(() => {
 
 const getConservationStatusForCode = (classification?: string) => {
   if (!classification) {
-    return "unknown";
+    return "";
   }
   switch (classification) {
     case "lc":
@@ -1145,7 +1140,7 @@ const closedModal = () => {
                 </p>
                 <p class="mb-3 d-flex gap-2 align-items-center">
                   <span
-                    >{{ (bird.locations * 100).toFixed(1) }}% locations</span
+                    >{{ (bird.locations * 100).toFixed(0) }}% locations</span
                   >
 
                   <span
@@ -1222,7 +1217,7 @@ const closedModal = () => {
         </template>
         <template #locations="{ cell }">
           <div class="d-flex gap-2 align-items-center">
-            {{ (cell * 100).toFixed(1) }}%
+            {{ (cell * 100).toFixed(0) }}%
             <span
               class="locations-chart d-block rounded-5"
               :style="`background: conic-gradient(
@@ -1268,7 +1263,7 @@ const closedModal = () => {
           </p>
 
           <p class="d-flex gap-2 align-items-center mb-0 fs-6">
-            {{ (card.locations * 100).toFixed(1) }}% locations
+            {{ (card.locations * 100).toFixed(0) }}% locations
             <span
               class="locations-chart d-block rounded-5"
               :style="`background: conic-gradient(
@@ -1358,7 +1353,7 @@ const closedModal = () => {
                 'recording-mode': ActivitySearchRecordingMode.Audio,
               },
             }"
-            >View latest bird detections</b-button
+            >View latest audio recordings</b-button
           >
         </div>
       </div>
@@ -1560,6 +1555,9 @@ const closedModal = () => {
 // See https://en.wikipedia.org/wiki/IUCN_Red_List#Categories
 // We'll use the same color scheme Wikipedia is using
 .conservation-status {
+  background: var(--bs-light) !important;
+  color: var(--bs-dark) !important;
+
   &.mini {
     font-size: var(--cp-font-size-sm);
     font-weight: var(--cp-font-weight-semilbold);
@@ -1567,7 +1565,6 @@ const closedModal = () => {
     height: var(--cp-spacing-xl);
     text-transform: uppercase;
   }
-  color: var(--bs-white);
   // important used because of the badge colors also using it 🙃
   &.ex {
     background: var(--bs-black) !important;
@@ -1576,26 +1573,32 @@ const closedModal = () => {
   // extinct in the wild
   &.ew {
     background: var(--bs-black) !important;
+    color: var(--bs-white) !important;
   }
   // critically endangered
   &.cr {
     background: var(--bs-red) !important;
+    color: var(--bs-white) !important;
   }
   // endangered
   &.en {
     background: #cc6633 !important;
+    color: var(--bs-white) !important;
   }
   // vulnerable
   &.vu {
     background: #cc9900 !important;
+    color: var(--bs-white) !important;
   }
   // near threatened
   &.nt {
     background: #369f00 !important;
+    color: var(--bs-white) !important;
   }
   // least concern
   &.lc {
     background: #057339 !important;
+    color: var(--bs-white) !important;
   }
 }
 
@@ -1604,7 +1607,7 @@ const closedModal = () => {
     background: var(--cp-color-green-100) !important;
     color: var(--cp-color-green-700) !important;
   }
-  &.naturalised {
+  &.native {
     background: color-mix(in oklch, var(--bs-teal), transparent 80%) !important;
     color: color-mix(in oklch, var(--bs-teal), #000 30%) !important;
   }

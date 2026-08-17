@@ -163,7 +163,6 @@ const doAddLabel = async (labelToAdd: string) => {
         }
       }
       updateRecentlyUsedLabels(recentlyUsedLabels);
-      console.log("new recently used", recentlyUsedLabels);
       selectedLabel.value = "";
     }
     addingLabel.value = false;
@@ -262,7 +261,7 @@ const recentlyUsedLabels = (): RecordingLabel[] => {
         <b-button
           v-for="label in recentlyUsedLabels()"
           :key="label.value"
-          :pill="true"
+          pill
           variant="light"
           @click="() => doAddLabel(label.value || '')"
           class="d-flex flex-shrink-1 fs-6"
