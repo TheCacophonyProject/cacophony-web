@@ -457,7 +457,7 @@ export const sendAnimalAlertEmail = async (
   const stationUrl = stationId
     ? `${projectRoot}/activity?display-mode=visits&recording-mode=cameras&locations=${stationId}&from=any&tag-mode=any`
     : "";
-  const recordingUrl = `${projectRoot}/recording/${recordingId}/tracks/${trackId}`;
+  const recordingUrl = `${projectRoot}/thermal/recording/${recordingId}/tracks/${trackId}`;
   const recordingTime = recordingDateTime.toLocaleDateString("en-NZ", {
     month: "short",
     day: "numeric",
