@@ -1,10 +1,6 @@
 import log from "@/logging.js";
 import { initSequelize } from "@models/index.js";
-import {
-  sendAddedToGroupNotificationEmail,
-  sendPasswordResetEmail,
-  sendWelcomeEmailConfirmationEmail,
-} from "@/emails/transactionalEmails.js";
+import { sendProjectActivityDigestEmail } from "@/emails/transactionalEmails.js";
 await initSequelize();
 
 async function main() {
@@ -14,16 +10,35 @@ async function main() {
   }
   if (args[0] === "--address") {
     const targetEmailAddress = args[1];
-    // await sendAddedToGroupNotificationEmail(targetEmailAddress, "Group name", {
-    //   admin: true,
-    // });
-    // await sendWelcomeEmailConfirmationEmail(
-    //   "fake-confirmation-token",
-    //   targetEmailAddress,
-    // );
-    await sendPasswordResetEmail(
-      "fake-password-reset-token",
-      targetEmailAddress,
+    await sendProjectActivityDigestEmail(
+      "Daily",
+      "orton bradley park",
+      [
+        {
+          email: targetEmailAddress,
+          userName: "Sara",
+        },
+      ],
+      [
+        {
+          species: "mustelid",
+          speciesDisplayName: "Mustelid",
+          count: 5,
+          hasIcon: true,
+        },
+        {
+          species: "rodent",
+          speciesDisplayName: "Rodent",
+          count: 10,
+          hasIcon: true,
+        },
+        {
+          species: "cat",
+          speciesDisplayName: "Cat",
+          count: 3,
+          hasIcon: true,
+        },
+      ],
     );
   } else {
     throw new Error("No email address specified");
