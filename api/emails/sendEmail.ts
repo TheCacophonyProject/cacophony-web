@@ -2,48 +2,7 @@ import { Message, SMTPClient } from "emailjs";
 import config from "@config";
 import log from "@log";
 import { Readable } from "stream";
-import type { Recording } from "@models/Recording.js";
-import type { TrackTag } from "@models/TrackTag.js";
-import moment from "moment";
-import {
-  urlNormaliseName,
-  type EmailImageAttachment,
-} from "@/emails/htmlEmailUtils.js";
-
-export function alertBody(
-  recording: Recording,
-  tag: TrackTag,
-  hasThumbnail: boolean,
-  camera?: string,
-  station?: string,
-): string[] {
-  const dateTime = moment(recording.recordingDateTime)
-    .tz(config.timeZone)
-    .format("h:mma Do MMM");
-  let html = camera
-    ? `<b>${camera} has detected a ${tag.what} - ${dateTime}</b>`
-    : `<b>${tag.what} detected at station ${station} - ${dateTime}</b>`;
-  if (hasThumbnail) {
-    html += `<br> <a href="${config.server.browseUrl}/${urlNormaliseName(recording.Group.groupName)}/thermal/recording/${recording.id}/tracks/${tag.TrackId}">`;
-    html += `<img width="200" height ="200" src="cid:thumbnail" alt="recording thumbnail"></a><br>`;
-  }
-
-  html += `<br><a href="${config.server.browseUrl}/${urlNormaliseName(recording.Group.groupName)}/thermal/recording/${recording.id}/tracks/${tag.TrackId}">View Recording</a>`;
-  if (station) {
-    html += `<br><br><a href="${config.server.browseUrl}/${urlNormaliseName(recording.Group.groupName)}/my-settings">Remove this alert</a>`;
-  }
-  html += "<br><p>Thanks,<br> Cacophony Team</p>";
-
-  let text = camera
-    ? `${camera} has detected a ${tag.what} - ${dateTime}\r\n`
-    : `${tag.what} detected at station ${station} - ${dateTime}\r\n`;
-  text += `Go to ${config.server.browseUrl}/${urlNormaliseName(recording.Group.groupName)}/thermal/recording/${recording.id}/tracks/${tag.TrackId} to view this recording\r\n`;
-  if (station) {
-    text += `Go to ${config.server.browseUrl}/${urlNormaliseName(recording.Group.groupName)}/my-settings to remove this alert\r\n`;
-  }
-  text += "Thanks, Cacophony Team";
-  return [html, text];
-}
+import { type EmailImageAttachment } from "@/emails/htmlEmailUtils.js";
 
 export async function sendEmail(
   html: string,

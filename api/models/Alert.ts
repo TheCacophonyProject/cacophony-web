@@ -22,8 +22,6 @@ import Sequelize, {
   NonAttribute,
 } from "sequelize";
 import { CreationOptional } from "sequelize";
-import type { Recording } from "./Recording.js";
-import type { Track } from "./Track.js";
 import type { TrackTag } from "./TrackTag.js";
 import type {
   DeviceId,
@@ -32,15 +30,11 @@ import type {
   UserId,
 } from "@typedefs/api/common.js";
 import logger from "../logging.js";
-import { alertBody, sendEmail } from "@/emails/sendEmail.js";
 import { Device } from "@models/Device.js";
 import { Station } from "@models/Station.js";
 import { Group } from "@models/Group.js";
 import { User } from "@models/User.js";
 import { ModelStaticCommon } from "@models/index.js";
-import { Event } from "./Event.js";
-import { DetailSnapshot } from "@models/DetailSnapshot.js";
-import { EmailImageAttachment } from "@/emails/htmlEmailUtils.js";
 
 export type AlertId = number;
 const Op = Sequelize.Op;
@@ -76,45 +70,6 @@ export class Alert extends ModelStaticCommon<Alert> {
     this.belongsTo(Device);
     this.belongsTo(Station);
     this.belongsTo(Group);
-  }
-
-  async sendAlert(
-    recording: Recording,
-    track: Track,
-    tag: TrackTag,
-    alertOn: "station" | "device" | "project",
-    thumbnail?: EmailImageAttachment,
-  ): Promise<void> {
-    const subject = `${this.name}  - ${tag.what} Detected`;
-    const [html, text] = alertBody(
-      recording,
-      tag,
-      !!thumbnail,
-      alertOn === "device" ? recording.Device?.deviceName : undefined,
-      ["project", "station"].includes(alertOn)
-        ? recording.Station?.name
-        : undefined,
-    );
-    const alertTime = new Date();
-    const result = await sendEmail(
-      html,
-      text,
-      this.User.email,
-      subject,
-      (thumbnail && [thumbnail]) || [],
-    );
-    const detail = await DetailSnapshot.getOrCreateMatching("alert", {
-      alertId: this.id,
-      recId: recording.id,
-      trackId: track.id,
-      success: result,
-    });
-    await Event.create({
-      DeviceId: recording.Device.id,
-      EventDetailId: detail.id,
-      dateTime: alertTime,
-    });
-    await this.update({ lastAlert: alertTime });
   }
 
   static async query(
