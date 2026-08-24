@@ -25,6 +25,7 @@ const props = withDefaults(
   defineProps<{
     disabled?: boolean;
     exclude?: string[];
+    include?: string[];
     placeholder?: string;
     multiselect?: boolean;
     canBePinned?: boolean;
@@ -38,6 +39,7 @@ const props = withDefaults(
   {
     disabled: false,
     exclude: () => [],
+    include: () => [],
     placeholder: "Search tags",
     multiselect: false,
     withAudioContext: false,
@@ -67,21 +69,42 @@ const options = ref<Classification>({ label: "", children: [] });
 
 const setClassifications = (classifications: Classification) => {
   // classifications is a tree, we want to filter out excluded nodes
-  const filter = (node: Classification) => {
-    if (props.exclude.includes(node.label)) {
-      return false;
+  if (props.include.length !== 0) {
+    if (classifications.children) {
+      const filterInclude = (node: Classification): boolean => {
+        const matches = props.include.includes(node.label);
+        if (node.children && node.children.length) {
+          node.children = node.children.filter(filterInclude);
+          if (node.children.length === 0) {
+            // TODO: Should we delete children, or should we include, assuming that if a user doesn't want to see
+            //  stoat, they might want to pick that rather than `mustelid`?
+            delete node.children;
+          }
+        }
+
+        // keep node if it matches or it still has kept descendants
+        return matches || (!!node.children && node.children.length > 0);
+      };
+      classifications.children = classifications.children.filter(filterInclude);
     }
-    if (node.children) {
-      node.children = node.children.filter(filter);
+  } else if (props.exclude.length !== 0) {
+    if (classifications.children) {
+      const filterExclude = (node: Classification): boolean => {
+        if (props.exclude.includes(node.label)) {
+          return false;
+        }
+        if (node.children) {
+          node.children = node.children.filter(filterExclude);
+        }
+        return true;
+      };
+      classifications.children = classifications.children.filter(filterExclude);
     }
-    return true;
-  };
-  if (classifications.children) {
-    classifications.children = classifications.children.filter(filter);
   }
   options.value = classifications;
 };
 onMounted(async () => {
+  console.log("Mounted", props);
   // Get our own copy of classifications since we're going to mutate it.
   const classifications = (await getClassifications(
     setClassifications,

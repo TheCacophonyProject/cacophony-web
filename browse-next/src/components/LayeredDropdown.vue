@@ -349,7 +349,7 @@ defineExpose({
             size="1.25rem"
           />
         </button>
-        <b-tooltip target="pin-btn">
+        <b-tooltip target="pin-btn" v-if="canBePinned">
           <span v-if="singleSelectionIsPinned"> Unpin tag </span>
           <span v-else> Pin tag </span>
         </b-tooltip>

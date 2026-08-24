@@ -37,6 +37,9 @@ export interface ApiGroupSettings {
   audioLabels?: RecordingLabel[];
   ignoredCameraDashboardTags?: string[];
   ignoredAudioDashboardTags?: string[];
+
+  regionInvalidThermalTags?: string[];
+  regionInvalidAudioTags?: string[];
   // Delete audio recordings with human voices
   filterHuman?: boolean;
   filteredAudioTags?: string[];
