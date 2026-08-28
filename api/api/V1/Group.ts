@@ -77,7 +77,12 @@ import { mapSchedule } from "@api/V1/Schedule.js";
 import { mapStation, mapStations } from "./Station.js";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 import { urlNormaliseName } from "@/emails/htmlEmailUtils.js";
-import { HasManyAddAssociationMixinOptions, Op } from "sequelize";
+import {
+  HasManyAddAssociationMixinOptions,
+  Op,
+  Sequelize,
+  WhereOptions,
+} from "sequelize";
 import {
   sendAddedToGroupNotificationEmail,
   sendGroupInviteExistingMemberEmail,
@@ -107,6 +112,8 @@ import { GroupUsers } from "@models/GroupUsers.js";
 import { User } from "@models/User.js";
 import { Station } from "@models/Station.js";
 import logging from "@log";
+import { DeviceHistory } from "@models/DeviceHistory.js";
+import { Device } from "@models/Device.js";
 const mapGroup = (
   group: Group,
   viewAsSuperAdmin: boolean,
@@ -415,6 +422,7 @@ export default function (app: Application, baseUrl: string) {
       });
     },
   );
+
   /**
    * @api {get} /api/v1/groups/:groupIdOrName/devices Retrieves all devices for a group (only active devices by default).
    * @apiName GetDevicesForGroup
@@ -449,6 +457,80 @@ export default function (app: Application, baseUrl: string) {
         devices: mapDevicesResponse(
           response.locals.devices,
           response.locals.viewAsSuperUser,
+        ),
+      });
+    },
+  );
+
+  /**
+   * @api {get} /api/v1/groups/:groupIdOrName/devices-with-traps Retrieves all devices for a group that have an active trap config.
+   * @apiName GetDevicesWithTrapForGroup
+   * @apiGroup Group
+   * @apiDescription A group member or an admin member with globalRead permissions can view devices that belong
+   * to a group that have an active trap configuration.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {String|Integer} groupIdOrName group id or group name
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiGroupDevicesResponseSuccess} devices List of devices with traps associated with the group
+   * @apiUse DevicesList
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:groupIdOrName/devices-with-traps`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      nameOrIdOf(param("groupIdOrName")),
+      booleanOf(query("only-active")).optional().default(true),
+    ]),
+    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    async (request: Request, response: Response) => {
+      const groupId = response.locals.group.id;
+      const deviceWhere: WhereOptions<Device> = { GroupId: groupId };
+      if (request.query["only-active"]) {
+        deviceWhere.active = true;
+      }
+      const devicesHistories = await DeviceHistory.findAll({
+        include: [
+          {
+            model: Device,
+            where: deviceWhere,
+          },
+        ],
+        where: {
+          GroupId: groupId,
+          [Op.and]: [
+            // settings.trap exists
+            Sequelize.literal(`"DeviceHistory".settings ? 'trap'`),
+
+            // either settings.trap.target or settings.trap.protect has one or more items
+            Sequelize.literal(`COALESCE(jsonb_array_length("DeviceHistory".settings->'trap'->'target'), 0) > 0
+              OR COALESCE(jsonb_array_length("DeviceHistory".settings->'trap'->'protect'), 0) > 0`),
+
+            // settings.thermalRecording.useLowPowerMode is absent or false
+            Sequelize.literal(
+              `COALESCE(("DeviceHistory".settings->'thermalRecording'->>'useLowPowerMode')::boolean, false) = false`,
+            ),
+
+            // latest DeviceHistory per device in the group by fromDateTime
+            Sequelize.literal(`
+              "DeviceHistory"."fromDateTime" = (
+                SELECT MAX(dh2."fromDateTime")
+                FROM "DeviceHistory" dh2
+                JOIN "Devices" d2 ON d2.id = dh2."DeviceId"
+                WHERE dh2."DeviceId" = "DeviceHistory"."DeviceId"
+              )
+            `),
+          ],
+        },
+      });
+
+      return successResponse(response, "Got devices with traps for group", {
+        devices: mapDevicesResponse(
+          devicesHistories.map((history) => history.Device),
+          false,
         ),
       });
     },

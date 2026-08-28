@@ -7,10 +7,12 @@ import type {
   UserId,
 } from "../api/common.js";
 import type {
+  ApiDeviceActionResponse,
   ApiDeviceHistory,
   ApiDeviceHistorySettings,
   ApiDeviceResponse,
   ApiMaskRegionsData,
+  DeviceAction,
 } from "../api/device.js";
 import type {
   ApiSubmitEventsRequestBody,
@@ -20,7 +22,11 @@ import type {
   DeviceEvent,
   IsoFormattedString,
 } from "../api/event.js";
-import type { DeviceEventType, DeviceTypeUnion } from "../api/consts.js";
+import {
+  DeviceActionStatus,
+  DeviceEventType,
+  DeviceTypeUnion,
+} from "../api/consts.js";
 import type { ApiStationResponse as ApiLocationResponse } from "../api/station.js";
 import type { ApiRecordingResponse } from "../api/recording.js";
 import type { ApiTrackResponse } from "../api/track.js";
@@ -910,6 +916,48 @@ const getDeviceHistoryInTest =
     ) as Promise<LoadedResource<ApiDeviceHistory[]>>;
   };
 
+const createDeviceActionRequest =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    deviceId: DeviceId,
+    uuid: string,
+    createdAt: Date,
+    classification: string,
+  ) => {
+    return api.post(authKey, `/api/v1/devices/${deviceId}/device-action`, {
+      uuid,
+      createdAt: createdAt.toISOString(),
+      classification,
+    });
+  };
+const getDeviceActionRequest =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (deviceId: DeviceId, uuid: string) => {
+    const params = new URLSearchParams();
+    params.append("uuid", uuid);
+    return unwrapLoadedResource(
+      api.get(
+        authKey,
+        `/api/v1/devices/${deviceId}/device-action?${params.toString()}`,
+      ) as Promise<FetchResult<{ "device-action": ApiDeviceActionResponse }>>,
+      "device-action",
+    );
+  };
+
+const updateDeviceActionRequest =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (deviceId: DeviceId, uuid: string, status: DeviceActionStatus) => {
+    const params = new URLSearchParams();
+    params.append("uuid", uuid);
+    return api.patch(
+      authKey,
+      `/api/v1/devices/${deviceId}/device-action?${params.toString()}`,
+      {
+        status,
+      },
+    ) as Promise<FetchResult<void>>;
+  };
+
 export default (api: CacophonyApiClient) => {
   // NOTE: this is a bit tedious, but it makes the type inference work for the return type.
   return {
@@ -961,6 +1009,9 @@ export default (api: CacophonyApiClient) => {
     getDeviceHistoryInTest: getDeviceHistoryInTest(api),
     submitEventsFromDevice: submitEventsFromDevice(api),
     submitEventsOnBehalfOfDevice: submitEventsOnBehalfOfDevice(api),
+    createDeviceActionRequest: createDeviceActionRequest(api),
+    getDeviceActionRequest: getDeviceActionRequest(api),
+    updateDeviceActionRequest: updateDeviceActionRequest(api),
     withAuth: (authKey: TestHandle) => ({
       deleteDevice: deleteDevice(api, authKey),
       setDeviceActive: setDeviceActive(api, authKey),
@@ -1031,6 +1082,9 @@ export default (api: CacophonyApiClient) => {
       getDeviceHistoryInTest: getDeviceHistoryInTest(api, authKey),
       submitEventsFromDevice: submitEventsFromDevice(api, authKey),
       submitEventsOnBehalfOfDevice: submitEventsOnBehalfOfDevice(api, authKey),
+      createDeviceActionRequest: createDeviceActionRequest(api, authKey),
+      getDeviceActionRequest: getDeviceActionRequest(api, authKey),
+      updateDeviceActionRequest: updateDeviceActionRequest(api, authKey),
     }),
   };
 };

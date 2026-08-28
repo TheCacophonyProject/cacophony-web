@@ -60,7 +60,6 @@ import {
 import { Device } from "@models/Device.js";
 import type {
   ApiDeviceHistorySettings,
-  ApiDeviceLocationFixup,
   ApiDeviceResponse,
   ImageMimeTypes,
   MaskRegion,
@@ -75,6 +74,7 @@ import { DeviceHistory } from "@models/DeviceHistory.js";
 import { Station, TimeInterval } from "@models/Station.js";
 import { Group } from "@models/Group.js";
 import {
+  DeviceActionStatus,
   DeviceType,
   HttpStatusCode,
   RecordingType,
@@ -198,10 +198,6 @@ export interface ApiCreateProxyDeviceRequestBody {
   group: string; // Name of group to assign the device to.
   deviceName: string; // Unique (within group) device name.
   type: DeviceType;
-}
-
-export interface ApiDeviceLocationFixupBody {
-  setStationAtTime: ApiDeviceLocationFixup;
 }
 
 export interface MaskRegionsDataBody {
@@ -2360,6 +2356,43 @@ export default function (app: Application, baseUrl: string) {
           ],
         });
         return successResponse(response, "Got device history", { history });
+      },
+    );
+
+    app.get(
+      `${apiUrl}/:deviceId/actions`,
+      extractJwtAuthorizedUserOrDevice,
+      validateFields([idOf(param("deviceId")), optionalDateOf(query("from"))]),
+      fetchAuthorizedRequiredDeviceById(param("deviceId")),
+      async function (request, response, next) {
+        // TODO: Optionally return only actions *after* the last time you polled.
+        return successResponse(response, "Got device actions", {});
+      },
+    );
+
+    app.put(
+      `${apiUrl}/:deviceId/actions`,
+      extractJwtAuthorizedUserOrDevice,
+      validateFields([idOf(param("deviceId"))]),
+      fetchAuthorizedRequiredDeviceById(param("deviceId")),
+      async function (request, response, next) {
+        // TODO: Do we need to define payload schemas?
+        return successResponse(response, "Got device actions", {});
+      },
+    );
+
+    app.patch(
+      `${apiUrl}/:deviceId/actions/:actionId`,
+      extractJwtAuthorizedUserOrDevice,
+      validateFields([
+        idOf(param("deviceId")),
+        idOf(param("actionId")),
+        body("status").isIn(Object.values(DeviceActionStatus)),
+      ]),
+      fetchAuthorizedRequiredDeviceById(param("deviceId")),
+      async function (request, response, next) {
+        // Update the status of an action
+        return successResponse(response, "Got device actions", {});
       },
     );
   }

@@ -16,6 +16,7 @@ import {
 import { getDeviceTestName } from "@/helpers/create-test-entities";
 import { test } from "@/helpers/upload-tests";
 import { addSeconds } from "./date-helpers";
+import { ApiDeviceHistorySettings, DeviceAction } from "@shared/api/device";
 
 export interface EventStoredOnDevice {
   event: EventDescription;
@@ -42,6 +43,7 @@ export class DeviceSim {
   private events: EventStoredOnDevice[] = [];
   private recordings: RecordingStoredOnDevice[] = [];
   private location?: LatLng;
+  private settings?: ApiDeviceHistorySettings = {};
 
   constructor(deviceHandle: TestDeviceHandle, withModem = true) {
     this.deviceHandle = deviceHandle;
@@ -53,7 +55,10 @@ export class DeviceSim {
     this.events.push({ event, atTime, deviceId: this.deviceHandle.id });
   }
 
-  public async makeThermalRecording(file: ArrayBuffer, recordingDateTime: Date): Promise<void> {
+  public async makeThermalRecording(
+    file: ArrayBuffer,
+    recordingDateTime: Date,
+  ): Promise<void> {
     if (!this.location) {
       throw new Error("Can't make a recording with no location set on device");
     }
@@ -70,7 +75,10 @@ export class DeviceSim {
       await this.uploadEvents(addSeconds(recordingDateTime, 16));
     }
   }
-  public async makeAudioRecording(file: ArrayBuffer, recordingDateTime: Date): Promise<void> {
+  public async makeAudioRecording(
+    file: ArrayBuffer,
+    recordingDateTime: Date,
+  ): Promise<void> {
     if (!this.location) {
       throw new Error("Can't make a recording with no location set on device");
     }
@@ -88,7 +96,27 @@ export class DeviceSim {
     }
   }
 
-  public async syncSettings() {}
+  public async syncSettings() {
+    const settings = await TestApiImpl.Devices.withAuth(
+      this.deviceHandle.testId,
+    ).updateDeviceSettings(this.deviceHandle.id, this.settings);
+    if (settings.success && settings.result.settings) {
+      this.settings = settings.result.settings;
+      return this.settings;
+    }
+    return null;
+  }
+
+  public async trapActivation(
+    eventUUID: string,
+    classification: string,
+    atTime: Date,
+    thumbnail?: ArrayBuffer,
+  ): Promise<void> {
+    // TODO: Device tells API that it caught something!
+    // Thumbnail can be added to the event later as a separate request, using the same UUID to patch it.
+    await TestApiImpl.Devices.createDeviceActionRequest(this.deviceHandle.id, eventUUID, atTime, classification);
+  }
 
   public updateLocation(location: LatLng, atTime: Date): void {
     this.location = { ...location };
@@ -117,7 +145,9 @@ export class DeviceSim {
     );
   }
 
-  public async uploadRecordings(atTime: Date = new Date()): Promise<(RecordingId | null)[]> {
+  public async uploadRecordings(
+    atTime: Date = new Date(),
+  ): Promise<(RecordingId | null)[]> {
     if (this.recordings.length !== 0) {
       return await test.step("Upload recordings from device", async () => {
         const ids: RecordingId[] = [];
@@ -155,7 +185,9 @@ export class DeviceSim {
       await test.step("Upload events from device", async () => {
         const eventsByPayload = new Map<string, EventStoredOnDevice[]>();
         for (const event of this.events) {
-          const canonicalPayload = JSON.stringify(JSON.parse(JSON.stringify(event.event)));
+          const canonicalPayload = JSON.stringify(
+            JSON.parse(JSON.stringify(event.event)),
+          );
           if (!eventsByPayload.has(canonicalPayload)) {
             eventsByPayload.set(canonicalPayload, []);
           }
@@ -191,15 +223,25 @@ export class DeviceSim {
     })) as EventStoredInSidekick[];
   }
 
-  public offloadRecordingsToSidekick(latestOnly = false): RecordingStoredInSidekick[] {
+  public offloadRecordingsToSidekick(
+    latestOnly = false,
+  ): RecordingStoredInSidekick[] {
     if (latestOnly) {
       throw new Error("Offload latest not implemented in sidekick currently");
       if (this.recordings.length === 0) {
         return [];
       }
-      return [{ ...this.recordings[this.recordings.length - 1], deviceId: this.deviceHandle.id }];
+      return [
+        {
+          ...this.recordings[this.recordings.length - 1],
+          deviceId: this.deviceHandle.id,
+        },
+      ];
     }
-    return this.recordings.map((recording) => ({ ...recording, deviceId: this.deviceHandle.id }));
+    return this.recordings.map((recording) => ({
+      ...recording,
+      deviceId: this.deviceHandle.id,
+    }));
   }
 
   public connectWithSidekick(sidekick: SidekickSim) {
@@ -211,7 +253,9 @@ export class DeviceSim {
 
   public disconnectFromSidekick() {
     if (!this.connectedSidekickSim) {
-      throw new Error("Can't disconnect from sidekick, not connected in the first place");
+      throw new Error(
+        "Can't disconnect from sidekick, not connected in the first place",
+      );
     }
     this.connectedSidekickSim = null;
     this.isOffline = !this.hasModem;
@@ -264,8 +308,12 @@ export class DeviceSim {
       expect(deviceCredsResponse.success, "create device").toBe(true);
       if (deviceCredsResponse.success) {
         const newDeviceHandle =
-          (newDeviceName && getDeviceTestName(newDeviceName)) || getDeviceTestName("ReRegistered");
-        TestApiImpl.registerCredentials(newDeviceHandle, deviceCredsResponse.result);
+          (newDeviceName && getDeviceTestName(newDeviceName)) ||
+          getDeviceTestName("ReRegistered");
+        TestApiImpl.registerCredentials(
+          newDeviceHandle,
+          deviceCredsResponse.result,
+        );
         const deviceId = deviceCredsResponse.result.id;
         this.deviceHandle = {
           id: deviceId,

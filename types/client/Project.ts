@@ -13,7 +13,11 @@ import type {
   ApiGroupSettings as ApiProjectSettings,
   ApiGroupUserResponse as ApiProjectUserResponse,
 } from "../api/group.js";
-import type { ApiDeviceResponse } from "../api/device.js";
+import type {
+  ApiDeviceActionResponse,
+  ApiDeviceResponse,
+  DeviceAction,
+} from "../api/device.js";
 import type { ApiStationResponse as ApiLocationResponse } from "../api/station.js";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "../api/group.js";
 import { JsonDocument } from "@typedefs/api/event.js";
@@ -178,6 +182,60 @@ const getDevicesForProject =
     );
   };
 
+const getDevicesWithActiveTrapsForProject =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    projectNameOrId: string | number,
+    activeAndInactive = false,
+    NO_ABORT = false,
+  ): Promise<LoadedResource<ApiDeviceResponse[]>> => {
+    const params = new URLSearchParams();
+    params.append(
+      "only-active",
+      activeAndInactive ? false.toString() : true.toString(),
+    );
+    return unwrapLoadedResource(
+      api.get(
+        authKey,
+        `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/devices-with-traps`,
+        !NO_ABORT,
+      ) as Promise<FetchResult<{ devices: ApiDeviceResponse[] }>>,
+      "devices",
+    );
+  };
+
+const getPendingDeviceActionRequests =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (projectNameOrId: string | number, NO_ABORT = false) => {
+    return unwrapLoadedResource(
+      api.get(
+        authKey,
+        `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/pending-device-actions`,
+        !NO_ABORT,
+      ) as Promise<FetchResult<{ actions: ApiDeviceActionResponse[] }>>,
+      "actions",
+    );
+  };
+
+const confirmDeviceActionRequest =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    projectNameOrId: string | number,
+    uuid: string,
+    action: DeviceAction,
+    NO_ABORT = false,
+  ) => {
+    return api.post(
+      authKey,
+      `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/confirm-device-action`,
+      {
+        uuid,
+        action,
+      },
+      !NO_ABORT,
+    ) as Promise<FetchResult<void>>;
+  };
+
 const getLocationsForProject =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (
@@ -270,6 +328,10 @@ export default (api: CacophonyApiClient) => {
     getProjectByName: getProjectByName(api),
     getUsersForProject: getUsersForProject(api),
     getDevicesForProject: getDevicesForProject(api),
+    getDevicesWithActiveTrapsForProject:
+      getDevicesWithActiveTrapsForProject(api),
+    getPendingDeviceActionRequests: getPendingDeviceActionRequests(api),
+    confirmDeviceActionRequest: confirmDeviceActionRequest(api),
     getLocationsForProject: getLocationsForProject(api),
     getLocationByNameInProject: getLocationByNameInProject(api),
     inviteSomeoneToProject: inviteSomeoneToProject(api),
@@ -287,6 +349,15 @@ export default (api: CacophonyApiClient) => {
       getProjectByName: getProjectByName(api, authKey),
       getUsersForProject: getUsersForProject(api, authKey),
       getDevicesForProject: getDevicesForProject(api, authKey),
+      getDevicesWithActiveTrapsForProject: getDevicesWithActiveTrapsForProject(
+        api,
+        authKey,
+      ),
+      getPendingDeviceActionRequests: getPendingDeviceActionRequests(
+        api,
+        authKey,
+      ),
+      confirmDeviceActionRequest: confirmDeviceActionRequest(api, authKey),
       getLocationsForProject: getLocationsForProject(api, authKey),
       getLocationByNameInProject: getLocationByNameInProject(api, authKey),
       inviteSomeoneToProject: inviteSomeoneToProject(api, authKey),

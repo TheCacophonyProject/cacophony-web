@@ -4,6 +4,12 @@ export const addDays = (startDate: Date, days: number) => {
   return result;
 };
 
+export const addHours = (startDate: Date, hours: number) => {
+  const result = new Date(startDate);
+  result.setHours(result.getHours() + hours);
+  return result;
+};
+
 export const addMinutes = (startDate: Date, mins: number) => {
   const result = new Date(startDate);
   result.setMinutes(result.getMinutes() + mins);

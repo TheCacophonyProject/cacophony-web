@@ -18,6 +18,53 @@ export enum AudioRecordingMode {
   Disabled = "Disabled",
 }
 
+export enum DeviceActionStatus {
+  "pending" = "pending",
+  "acknowledged" = "acknowledged",
+  "completed" = "completed",
+  "failed" = "failed",
+}
+
+export enum DeviceThermalModelOutputLabel {
+  "bird" = "bird",
+  "cat" = "cat",
+  "deer" = "deer",
+  "dog" = "dog",
+  "false-positive" = "false-positive",
+  "hedgehog" = "hedgehog",
+  "human" = "human",
+  "kiwi" = "kiwi",
+  "leporidae" = "leporidae",
+  "mustelid" = "mustelid",
+  "penguin" = "penguin",
+  "possum" = "possum",
+  "rodent" = "rodent",
+  "sheep" = "sheep",
+  "vehicle" = "vehicle",
+  "wallaby" = "wallaby",
+}
+
+export enum ServerThermalModelOutputLabel {
+  "bird" = "bird",
+  "cat" = "cat",
+  "chicken" = "chicken",
+  "deer" = "deer",
+  "dog" = "dog",
+  "false-positive" = "false-positive",
+  "hedgehog" = "hedgehog",
+  "human" = "human",
+  "kiwi" = "kiwi",
+  "leporidae" = "leporidae",
+  "mustelid" = "mustelid",
+  "penguin" = "penguin",
+  "possum" = "possum",
+  "rodent" = "rodent",
+  "sheep" = "sheep",
+  "vehicle" = "vehicle",
+  "wallaby" = "wallaby",
+  "weka" = "weka",
+}
+
 export enum TagMode {
   Any = "any",
   UnTagged = "untagged",

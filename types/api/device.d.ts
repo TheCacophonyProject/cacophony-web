@@ -7,7 +7,11 @@ import type {
   ScheduleId,
   StationId,
 } from "./common.ts";
-import { AudioRecordingMode, type DeviceType } from "./consts.ts";
+import {
+  AudioRecordingMode, DeviceActionStatus,
+  DeviceThermalModelOutputLabel,
+  type DeviceType
+} from "./consts.ts";
 import { type ApiGroupUserResponse } from "./group.ts";
 
 export type DeviceBatteryChargeState =
@@ -48,12 +52,6 @@ export interface ApiMaskRegionsData {
   maskRegions: Record<string, MaskRegion>;
 }
 
-export interface ApiDeviceLocationFixup {
-  fromDateTime: IsoFormattedDateString;
-  stationId: StationId;
-  location?: LatLng; // Supply a location to map to the station
-}
-
 interface SettingsBase {
   updated: IsoFormattedDateString;
 }
@@ -78,6 +76,19 @@ export type BatterySettings = {
   chemistry?: string;
   manualCellCount?: number;
 } & SettingsBase;
+
+export type DeviceModelOutput = keyof typeof DeviceThermalModelOutputLabel;
+
+export type TrapSettings = {
+  protect: DeviceModelOutput[];
+  target: DeviceModelOutput[];
+  // This setting is about whether the trap will trigger before there is any
+  // AI classification, or if it waits for a positive classification before triggering.
+  defaultState: "armed" | "safe";
+  hasKillMechanism: boolean;
+  enabled: boolean;
+} & SettingsBase;
+
 export type ImageMimeTypes =
   | "image/jpeg"
   | "image/png"
@@ -104,9 +115,8 @@ export interface ApiDeviceHistorySettings extends Record<string, unknown> {
   audioRecording?: AudioRecordingSettings;
   windows?: WindowsSettings;
   battery?: BatterySettings;
-
+  trap?: TrapSettings;
   location?: LatLng;
-
   synced?: boolean;
 }
 
@@ -129,4 +139,15 @@ export interface ApiDeviceHistory {
   settings: ApiDeviceHistorySettings | null;
   DeviceId: DeviceId;
   GroupId: GroupId;
+}
+
+export type DeviceAction = "release" | "dispatch" | "hold" | "more-info";
+export type ActionStatus = keyof typeof DeviceActionStatus;
+
+export interface ApiDeviceActionResponse {
+  uuid: string;
+  deviceId: DeviceId;
+  status: ActionStatus;
+  chosenAction?: DeviceAction;
+  availableActions: DeviceAction[];
 }
