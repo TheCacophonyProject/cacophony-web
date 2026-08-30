@@ -134,7 +134,9 @@ test("A device polls for actions", async ({smallCptv}) => {
     if (deviceActionResponse) {
       if (deviceActionResponse.chosenAction) {
         // Cool, break;
-        await TestApiImpl.Devices.withAuth(project.getDevice().testId).updateDeviceActionRequest(project.getDevice().id, eventUUID, DeviceActionStatus.completed);
+        // TODO: Should we have an acknowledged step, or is it more likely that the device just goes right to completed/failed?
+        //  Seems like the action to the trap should return once it's actually completed.
+        await TestApiImpl.Devices.withAuth(project.getDevice().testId).updateDeviceActionRequest(project.getDevice().id, eventUUID, DeviceActionStatus.acknowledged);
       }
     }
 
