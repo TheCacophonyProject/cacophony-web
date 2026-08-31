@@ -142,6 +142,23 @@ const isDesktopView = useMediaQuery("(min-width: 992px)");
               <span class="d-none d-md-inline"> Mask regions</span>
             </span>
           </b-nav-item>
+          <b-nav-item
+            :to="{ name: 'trap-setup' }"
+            :active="activeTabPath.includes('trap-setup')"
+            :link-class="{ 'py-2': isMobileView }"
+            data-cy="trap setup"
+          >
+            <span
+              class="d-flex"
+              :class="{
+                'justify-content-center align-items-center': !isDesktopView,
+              }"
+            >
+              <material-symbol name="tune" class="me-2" />
+              <span class="d-md-none">Trap</span>
+              <span class="d-none d-md-inline">Trap setup</span>
+            </span>
+          </b-nav-item>
         </b-nav>
       </div>
       <router-view

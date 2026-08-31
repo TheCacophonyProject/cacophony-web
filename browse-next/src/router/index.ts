@@ -255,11 +255,15 @@ const router = createRouter({
     {
       path: "/:projectName/locations",
       name: "locations",
-      // route level code-splitting
-      // this generates a separate chunk (About.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
       meta: { requiresLogin: true, title: "Locations for :projectName" },
       component: () => import("@/views/LocationsView.vue"),
+      beforeEnter: cancelPendingRequests,
+    },
+    {
+      path: "/:projectName/trap-actions",
+      name: "trap-actions",
+      meta: { requiresLogin: true, title: "Trap actions for :projectName" },
+      component: () => import("@/views/TrapActionsView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
@@ -358,6 +362,12 @@ const router = createRouter({
                   name: "recording-options",
                   component: () =>
                     import("@/components/DeviceRecordingOptions.vue"),
+                },
+                {
+                  path: "trap-setup",
+                  name: "trap-setup",
+                  component: () =>
+                    import("@/components/DeviceTrapActionsSetup.vue"),
                 },
                 {
                   path: "reference",

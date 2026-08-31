@@ -324,6 +324,38 @@ onMounted(() => {
           <span class="nav-text ms-3">Locations</span>
         </router-link>
       </li>
+      <li class="nav-item w-100">
+        <router-link
+          :to="{
+            name: 'trap-actions',
+            params: {
+              projectName: urlNormalisedCurrentProjectName,
+            },
+          }"
+          class="nav-link py-3 d-flex flex-row align-items-center"
+          title=""
+          data-bs-toggle="tooltip"
+          data-bs-placement="right"
+          data-bs-original-title="Locations"
+        >
+          <span class="nav-icon-wrapper d-flex">
+            <material-symbol name="pin_drop" />
+            <svg
+              class="warning-icon"
+              width="12"
+              height="12"
+              xmlns="http://www.w3.org/2000/svg"
+              v-if="someLocationsNeedRenaming"
+            >
+              <!-- TODO: If some traps have pending actions, show some badge -->
+              <path
+                d="M.53 10.983a.52.52 0 0 1-.464-.259.39.39 0 0 1-.065-.255.692.692 0 0 1 .08-.27L5.566 1.08a.393.393 0 0 1 .187-.183.596.596 0 0 1 .495 0c.078.035.14.096.186.183l5.485 9.117a.692.692 0 0 1 .08.27.39.39 0 0 1-.065.256.635.635 0 0 1-.19.187.5.5 0 0 1-.274.072H.53Zm6.149-3.09a.15.15 0 0 0 .06-.105l.105-3.638a.122.122 0 0 0-.053-.105.225.225 0 0 0-.15-.045H5.366a.225.225 0 0 0-.15.045.113.113 0 0 0-.06.105l.105 3.638c0 .045.015.075.06.105.04.029.087.045.135.045h1.088a.21.21 0 0 0 .135-.045ZM6.7 9.947a.195.195 0 0 0 .053-.142v-1.11a.195.195 0 0 0-.053-.142.173.173 0 0 0-.127-.053H5.449c-.051 0-.1.022-.135.06a.188.188 0 0 0-.06.135v1.11c0 .052.022.097.06.135.037.037.082.06.135.06h1.125c.052 0 .09-.015.127-.053Z"
+              />
+            </svg>
+          </span>
+          <span class="nav-text ms-3">Trap actions</span>
+        </router-link>
+      </li>
       <!--        NOTE: remove Report until we know what to do with it. -->
       <!--        <li class="nav-item">-->
       <!--          <router-link-->

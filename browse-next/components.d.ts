@@ -25,6 +25,7 @@ declare module 'vue' {
     DeviceRecordingOptions: typeof import('./src/components/DeviceRecordingOptions.vue')['default']
     DeviceSetupDefineMask: typeof import('./src/components/DeviceSetupDefineMask.vue')['default']
     DeviceSetupReferencePhoto: typeof import('./src/components/DeviceSetupReferencePhoto.vue')['default']
+    DeviceTrapActionsSetup: typeof import('./src/components/DeviceTrapActionsSetup.vue')['default']
     GitReleaseInfoBar: typeof import('./src/components/GitReleaseInfoBar.vue')['default']
     HierarchicalTagSelect: typeof import('./src/components/HierarchicalTagSelect.vue')['default']
     HorizontalOverflowCarousel: typeof import('./src/components/HorizontalOverflowCarousel.vue')['default']
