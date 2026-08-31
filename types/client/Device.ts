@@ -7,12 +7,12 @@ import type {
   UserId,
 } from "../api/common.js";
 import type {
+  ApiDeviceActionRequest,
   ApiDeviceActionResponse,
   ApiDeviceHistory,
   ApiDeviceHistorySettings,
   ApiDeviceResponse,
   ApiMaskRegionsData,
-  DeviceAction,
 } from "../api/device.js";
 import type {
   ApiSubmitEventsRequestBody,
@@ -921,15 +921,20 @@ const createDeviceActionRequest =
   (
     deviceId: DeviceId,
     uuid: string,
-    createdAt: Date,
+    actionDateTime: Date,
     classification: string,
   ) => {
-    return api.post(authKey, `/api/v1/devices/${deviceId}/device-action`, {
+    const action: ApiDeviceActionRequest = {
       uuid,
-      createdAt: createdAt.toISOString(),
+      deviceId,
+      actionDateTime: actionDateTime.toISOString(),
       classification,
+    };
+    return api.put(authKey, `/api/v1/devices/${deviceId}/actions/${uuid}`, {
+      action,
     });
   };
+
 const getDeviceActionRequest =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (deviceId: DeviceId, uuid: string) => {

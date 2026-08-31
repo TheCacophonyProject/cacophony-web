@@ -54,17 +54,20 @@ import {
   nameOrIdOf,
   optionalDateOf,
   stringOf,
+  uuidOf,
   validNameOf,
   validPasswordOf,
 } from "../validation-middleware.js";
 import { Device } from "@models/Device.js";
 import type {
+  ApiDeviceActionRequest,
   ApiDeviceHistorySettings,
   ApiDeviceResponse,
   ImageMimeTypes,
   MaskRegion,
 } from "@typedefs/api/device.js";
 import ApiDeviceHistorySettingsSchema from "@schemas/api/device/ApiDeviceHistorySettings.schema.json" with { type: "json" };
+import ApiDeviceActionRequestSchema from "@schemas/api/device/ApiDeviceActionRequest.schema.json" with { type: "json" };
 import MaskRegionsSchema from "@schemas/api/device/MaskRegions.schema.json" with { type: "json" };
 import logging from "@log";
 import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
@@ -102,6 +105,8 @@ import {
   greaterDate,
 } from "@api/fileUploaders/uploadGenericRecording.js";
 import { postgresLocationExactlyMatches } from "@api/V1/deviceHistoryUpdates.js";
+import { UUID } from "node:crypto";
+import { ActionStateTransition, DeviceAction } from "@models/DeviceAction.js";
 
 const mapDeviceKind = (device: Device): DeviceType => {
   if (device.lastThermalRecordingTime && device.lastAudioRecordingTime) {
@@ -2366,18 +2371,79 @@ export default function (app: Application, baseUrl: string) {
       fetchAuthorizedRequiredDeviceById(param("deviceId")),
       async function (request, response, next) {
         // TODO: Optionally return only actions *after* the last time you polled.
-        return successResponse(response, "Got device actions", {});
+        const fromDateTime = request.query.from as unknown as Date;
+        const pendingActions = await (
+          response.locals.device as Device
+        ).getPendingUserActionRequests(fromDateTime);
+
+        return successResponse(response, "Got device actions", {
+          actions: pendingActions,
+        });
+      },
+    );
+
+    app.get(
+      `${apiUrl}/:deviceId/actions/:actionId`,
+      extractJwtAuthorizedUserOrDevice,
+      validateFields([idOf(param("deviceId")), uuidOf(param("actionId"))]),
+      fetchAuthorizedRequiredDeviceById(param("deviceId")),
+      async function (request, response) {
+        const actionUUID = request.params.actionId as unknown as UUID;
+        const action = await (
+          response.locals.device as Device
+        ).getUserActionRequest(actionUUID);
+        return successResponse(response, "Got device action", {
+          action,
+        });
       },
     );
 
     app.put(
-      `${apiUrl}/:deviceId/actions`,
+      `${apiUrl}/:deviceId/actions/:actionId`,
       extractJwtAuthorizedUserOrDevice,
-      validateFields([idOf(param("deviceId"))]),
+      validateFields([
+        idOf(param("deviceId")),
+        uuidOf(param("actionId")),
+        body("action").custom(jsonSchemaOf(ApiDeviceActionRequestSchema)),
+      ]),
       fetchAuthorizedRequiredDeviceById(param("deviceId")),
-      async function (request, response, next) {
-        // TODO: Do we need to define payload schemas?
-        return successResponse(response, "Got device actions", {});
+      async function (request, response) {
+        const actionUUID = request.params.actionId as unknown as UUID;
+        const action = request.body.action as unknown as ApiDeviceActionRequest;
+        await DeviceAction.sequelize.transaction(async (transaction) => {
+          const existingAction = await DeviceAction.findOne({
+            where: { id: actionUUID },
+            transaction,
+          });
+          if (existingAction) {
+            return new UnprocessableError(
+              `action with the uuid '${actionUUID}' already exists`,
+            );
+          }
+          const initialState: ActionStateTransition = {
+            dateTime: action.actionDateTime,
+            state: DeviceActionStatus.pending,
+            classification: action.classification,
+          };
+          if ("confidence" in action) {
+            initialState.confidence = action.confidence;
+          }
+          const createdAction = await DeviceAction.create(
+            {
+              id: actionUUID,
+              status: DeviceActionStatus.pending,
+              history: [initialState],
+              DeviceId: response.locals.device.id,
+            },
+            { transaction },
+          );
+          if (createdAction) {
+            return successResponse(response, "Created action", {
+              id: actionUUID,
+            });
+          }
+          return new UnprocessableError("Failed to create action");
+        });
       },
     );
 

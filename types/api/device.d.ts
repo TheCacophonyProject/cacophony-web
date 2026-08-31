@@ -3,14 +3,16 @@ import type {
   GroupId,
   IsoFormattedDateString,
   LatLng,
+  RecordingId,
   SaltId,
   ScheduleId,
   StationId,
 } from "./common.ts";
 import {
-  AudioRecordingMode, DeviceActionStatus,
+  AudioRecordingMode,
+  DeviceActionStatus,
   DeviceThermalModelOutputLabel,
-  type DeviceType
+  type DeviceType,
 } from "./consts.ts";
 import { type ApiGroupUserResponse } from "./group.ts";
 
@@ -141,13 +143,25 @@ export interface ApiDeviceHistory {
   GroupId: GroupId;
 }
 
-export type DeviceAction = "release" | "dispatch" | "hold" | "more-info";
+export type DeviceActionDecision =
+  | "release"
+  | "dispatch"
+  | "hold"
+  | "more-info";
 export type ActionStatus = keyof typeof DeviceActionStatus;
+
+export interface ApiDeviceActionRequest {
+  uuid: string;
+  deviceId: DeviceId;
+  classification: string;
+  confidence?: number;
+  actionDateTime: IsoFormattedDateString;
+}
 
 export interface ApiDeviceActionResponse {
   uuid: string;
   deviceId: DeviceId;
   status: ActionStatus;
-  chosenAction?: DeviceAction;
-  availableActions: DeviceAction[];
+  chosenAction?: DeviceActionDecision;
+  availableActions: DeviceActionDecision[];
 }

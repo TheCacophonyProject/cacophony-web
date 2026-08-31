@@ -16,7 +16,7 @@ import type {
 import type {
   ApiDeviceActionResponse,
   ApiDeviceResponse,
-  DeviceAction,
+  DeviceActionDecision,
 } from "../api/device.js";
 import type { ApiStationResponse as ApiLocationResponse } from "../api/station.js";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "../api/group.js";
@@ -222,7 +222,7 @@ const confirmDeviceActionRequest =
   (
     projectNameOrId: string | number,
     uuid: string,
-    action: DeviceAction,
+    action: DeviceActionDecision,
     NO_ABORT = false,
   ) => {
     return api.post(

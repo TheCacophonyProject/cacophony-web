@@ -1,6 +1,7 @@
 import log from "@log";
 import { BadRequestError, UnprocessableError } from "@api/customErrors.js";
 import {
+  DeviceActionStatus,
   RecordingProcessingState,
   RecordingType,
 } from "@typedefs/api/consts.js";
@@ -53,6 +54,7 @@ import { ByteLengthTruncateStream } from "pechkin/dist/ByteLengthTruncateStream.
 import tzLookup from "tz-lookup-oss";
 import { asyncLocalStorage } from "@/Globals.js";
 import { maybeUpdateDeviceHistoryLocation } from "@api/V1/deviceHistoryUpdates.js";
+import { DeviceAction } from "@models/DeviceAction.js";
 
 interface RecordingUploadSuppliedData {
   type: RecordingType;
@@ -909,6 +911,10 @@ export const uploadGenericRecording =
         await sendAlerts(recording);
       }
     }
+
+    // Check if there are any pending device/trap actions that relate to this recording
+    await DeviceAction.matchRecordingToPendingAction(recording);
+
     if (!response.headersSent) {
       return successResponse(response, "Thanks for the data", {
         recordingId: recording.id,

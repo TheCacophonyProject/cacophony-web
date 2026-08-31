@@ -1,20 +1,22 @@
 "use strict";
 /** @type {import('sequelize-cli').Migration} */
+
+const states = ['pending', 'requested', 'responded', 'acknowledged', 'completed', 'failed'];
+
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.sequelize.query(
-      `create type "enum_Device_actions_status" as ENUM('pending', 'acknowledged', 'completed', 'failed');`,
+      `create type "enum_Device_actions_status" as ENUM('${states.join(', ')}');`,
     );
     await queryInterface.createTable("DeviceActions", {
       id: {
         type: Sequelize.UUID,
-        defaultValue: Sequelize.UUIDV4,
+        allowNull: false,
         primaryKey: true,
       },
-      type: { type: Sequelize.STRING, allowNull: false },
-      action: { type: Sequelize.JSONB, allowNull: false },
+      history: { type: Sequelize.JSONB, allowNull: false },
       status: {
-        type: Sequelize.ENUM('pending', 'acknowledged', 'completed', 'failed'),
+        type: Sequelize.ENUM(...states),
         defaultValue: "pending",
       },
       createdAt: {
@@ -30,6 +32,10 @@ module.exports = {
       DeviceId: {
         type: Sequelize.INTEGER,
         allowNull: false,
+      },
+      RecordingId: {
+        type: Sequelize.INTEGER,
+        allowNull: true,
       }
     });
     await Promise.all([
@@ -43,6 +49,17 @@ module.exports = {
         },
         onUpdate: "CASCADE",
         onDelete: "CASCADE",
+      }),
+      queryInterface.addConstraint("DeviceActions", {
+        fields: ["RecordingId"],
+        type: "foreign key",
+        name: "fk_device_actions_recording_id",
+        references: {
+          table: "Recordings",
+          field: "id",
+        },
+        onUpdate: "CASCADE",
+        onDelete: "SET NULL",
       }),
     ]);
   },

@@ -53,6 +53,8 @@ import {
   ApiDeviceHistorySettings,
   DeviceHistorySetBy,
 } from "@typedefs/api/device.js";
+import { DeviceAction } from "@models/DeviceAction.js";
+import { UUID } from "node:crypto";
 const Op = Sequelize.Op;
 
 const maxDate = (a?: Date, b?: Date): Date | undefined => {
@@ -609,6 +611,14 @@ where
     }
     return newDevice;
   }
+
+  async getPendingUserActionRequests(fromDateTime: Date) {
+    // Use static with this.id
+    return DeviceAction.getPendingUserActionRequests(this.id, fromDateTime);
+  }
+  async getUserActionRequest(uuid: UUID) {
+    return DeviceAction.getUserActionRequestForDevice(this.id, uuid);
+  }
 }
 
 export const init = (sequelizeInstance: Sequelize.Sequelize) => {
@@ -620,7 +630,6 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
     },
     createdAt: DataTypes.DATE,
     updatedAt: DataTypes.DATE,
-
     deviceName: {
       type: DataTypes.STRING,
       unique: true,

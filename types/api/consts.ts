@@ -19,10 +19,12 @@ export enum AudioRecordingMode {
 }
 
 export enum DeviceActionStatus {
-  "pending" = "pending",
-  "acknowledged" = "acknowledged",
-  "completed" = "completed",
-  "failed" = "failed",
+  "pending" = "pending", // Device action asking for user input has been created
+  "requested" = "requested", // User input has been requested (once an associated recording is received)
+  "responded" = "responded", // User has provided input
+  "acknowledged" = "acknowledged", // Device has acknowledged receipt of user instructions
+  "completed" = "completed", // Device has completed user instructions
+  "failed" = "failed", // Completing provided instructions failed.
 }
 
 export enum DeviceThermalModelOutputLabel {

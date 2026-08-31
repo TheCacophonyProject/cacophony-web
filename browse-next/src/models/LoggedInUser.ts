@@ -615,7 +615,6 @@ export const showSideNavBg = computed<boolean>(() => {
   return pinSideNav.value && isSmallScreen.value;
 });
 
-export const rafFps = ref(60);
 // On load:
 // {
 //   if (typeof window !== "undefined") {
