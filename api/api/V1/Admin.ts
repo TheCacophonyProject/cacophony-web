@@ -21,7 +21,7 @@ import { successResponse } from "./responseUtil.js";
 import { body, param } from "express-validator";
 import type { Application, NextFunction, Request, Response } from "express";
 import {
-  extractJwtAuthorisedSuperAdminUser,
+  extractJwtAuthorizedSuperAdminUser,
   fetchUnauthorizedRequiredUserByEmailOrId,
 } from "@api/extract-middleware.js";
 import {
@@ -54,7 +54,7 @@ export default function (app: Application, baseUrl: string) {
      */
     app.patch(
       `${apiUrl}/global-permission/:userEmailOrId`,
-      extractJwtAuthorisedSuperAdminUser,
+      extractJwtAuthorizedSuperAdminUser,
       validateFields([
         exactlyOneOf(
           emailOf(param("userEmailOrId")),

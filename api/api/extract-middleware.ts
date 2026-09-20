@@ -283,11 +283,11 @@ export const extractJwtAuthorizedUserOrDevice = extractJwtAuthenticatedEntity([
   "user",
   "device",
 ]);
-export const extractJwtAuthorisedSuperAdminUser = extractJwtAuthenticatedEntity(
+export const extractJwtAuthorizedSuperAdminUser = extractJwtAuthenticatedEntity(
   ["user"],
   true,
 );
-export const extractJwtAuthorisedDevice = extractJwtAuthenticatedEntity([
+export const extractJwtAuthorizedDevice = extractJwtAuthenticatedEntity([
   "device",
 ]);
 

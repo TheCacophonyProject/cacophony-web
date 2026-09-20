@@ -16,7 +16,7 @@ import {
 import { getDeviceTestName } from "@/helpers/create-test-entities";
 import { test } from "@/helpers/upload-tests";
 import { addSeconds } from "./date-helpers";
-import { ApiDeviceHistorySettings } from "@shared/api/device";
+import { ApiDeviceHistorySettings, DeviceActionDecision } from "@shared/api/device";
 
 export interface EventStoredOnDevice {
   event: EventDescription;
@@ -104,6 +104,7 @@ export class DeviceSim {
   public async trapActivation(
     eventUUID: string,
     classification: string,
+    availableActions: DeviceActionDecision[],
     atTime: Date,
     thumbnail?: ArrayBuffer,
   ): Promise<void> {
@@ -111,7 +112,13 @@ export class DeviceSim {
     // Thumbnail can be added to the event later as a separate request, using the same UUID to patch it.
     const response = await TestApiImpl.Devices.withAuth(
       this.deviceHandle.testId,
-    ).createDeviceActionRequest(this.deviceHandle.id, eventUUID, atTime, classification);
+    ).createDeviceActionRequest(
+      this.deviceHandle.id,
+      eventUUID,
+      atTime,
+      classification,
+      availableActions,
+    );
     expect(response.success, "creating trap action succeeded").toBe(true);
   }
 

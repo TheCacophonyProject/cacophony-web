@@ -1150,6 +1150,9 @@ export async function sendAlerts(
 ) {
   let recId: RecordingId;
   if (typeof recOrRecId !== "number") {
+    if ((recOrRecId as Recording).type !== RecordingType.ThermalRaw) {
+      return;
+    }
     // Check for alerts on this recording.
     const hasAnyAlerts = await Alert.findOne({
       attributes: ["id"],

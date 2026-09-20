@@ -48,7 +48,7 @@ import {
   validPasswordOf,
 } from "../validation-middleware.js";
 import {
-  extractJwtAuthorisedSuperAdminUser,
+  extractJwtAuthorizedSuperAdminUser,
   extractJwtAuthorizedUser,
   extractJWTInfo,
   extractOptionalJWTInfo,
@@ -118,7 +118,7 @@ export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/users`;
 
   const listUsersOptions = [
-    extractJwtAuthorisedSuperAdminUser,
+    extractJwtAuthorizedSuperAdminUser,
     async (_request: Request, response: Response) => {
       const users = await User.getAll(
         response.locals.requestUser.hasGlobalWrite(),
@@ -633,7 +633,7 @@ export default function (app: Application, baseUrl: string) {
 
   app.get(
     `${apiUrl}/groups-for-user/:emailAddress`,
-    extractJwtAuthorisedSuperAdminUser,
+    extractJwtAuthorizedSuperAdminUser,
     validateFields([emailOf(param("emailAddress"))]),
     fetchUnauthorizedRequiredUserByEmailOrId(param("emailAddress")),
     (_request: Request, response: Response, next: NextFunction) => {

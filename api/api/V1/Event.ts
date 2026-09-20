@@ -22,7 +22,7 @@ import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction, Request, Response } from "express";
 import {
-  extractJwtAuthorisedDevice,
+  extractJwtAuthorizedDevice,
   extractJwtAuthorizedUser,
   fetchAuthorizedOptionalDeviceById,
   fetchAuthorizedRequiredDeviceById,
@@ -341,7 +341,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     apiUrl,
-    extractJwtAuthorisedDevice,
+    extractJwtAuthorizedDevice,
     validateFields(commonEventFields),
     // Extract required resources
     fetchUnAuthorizedOptionalEventDetailSnapshotById(body("eventDetailId")),

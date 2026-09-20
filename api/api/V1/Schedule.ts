@@ -21,7 +21,7 @@ import { body, param, query } from "express-validator";
 import { successResponse } from "./responseUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
 import {
-  extractJwtAuthorisedDevice,
+  extractJwtAuthorizedDevice,
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredDeviceById,
   fetchUnauthorizedRequiredScheduleById,
@@ -104,7 +104,7 @@ export default (app: Application, baseUrl: string) => {
    */
   app.get(
     apiUrl,
-    extractJwtAuthorisedDevice,
+    extractJwtAuthorizedDevice,
     async (_request: Request, response: Response, next: NextFunction) => {
       const device = (await Device.findByPk(
         response.locals.requestDevice.id,

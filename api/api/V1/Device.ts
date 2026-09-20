@@ -26,7 +26,7 @@ import {
   UnprocessableError,
 } from "../customErrors.js";
 import {
-  extractJwtAuthorisedDevice,
+  extractJwtAuthorizedDevice,
   extractJwtAuthorizedUser,
   extractJwtAuthorizedUserFromBody,
   extractJwtAuthorizedUserOrDevice,
@@ -60,7 +60,10 @@ import {
 } from "../validation-middleware.js";
 import { Device } from "@models/Device.js";
 import type {
+  ActionStateTransition,
+  ApiDeviceAction,
   ApiDeviceActionRequest,
+  ApiDeviceActionUpdateRequest,
   ApiDeviceHistorySettings,
   ApiDeviceResponse,
   ImageMimeTypes,
@@ -68,6 +71,7 @@ import type {
 } from "@typedefs/api/device.js";
 import ApiDeviceHistorySettingsSchema from "@schemas/api/device/ApiDeviceHistorySettings.schema.json" with { type: "json" };
 import ApiDeviceActionRequestSchema from "@schemas/api/device/ApiDeviceActionRequest.schema.json" with { type: "json" };
+import ApiDeviceActionUpdateRequestSchema from "@schemas/api/device/ApiDeviceActionUpdateRequest.schema.json" with { type: "json" };
 import MaskRegionsSchema from "@schemas/api/device/MaskRegions.schema.json" with { type: "json" };
 import logging from "@log";
 import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
@@ -106,7 +110,7 @@ import {
 } from "@api/fileUploaders/uploadGenericRecording.js";
 import { postgresLocationExactlyMatches } from "@api/V1/deviceHistoryUpdates.js";
 import { UUID } from "node:crypto";
-import { ActionStateTransition, DeviceAction } from "@models/DeviceAction.js";
+import { DeviceAction } from "@models/DeviceAction.js";
 
 const mapDeviceKind = (device: Device): DeviceType => {
   if (device.lastThermalRecordingTime && device.lastAudioRecordingTime) {
@@ -245,6 +249,14 @@ export interface ApiDeviceUsersResponseSuccess {
   users: ApiGroupUserResponse[];
 }
 
+export interface ApiDeviceActionUpdateRequestBody {
+  update: ApiDeviceActionUpdateRequest;
+}
+
+export interface ApiDeviceActionRequestBody {
+  action: ApiDeviceActionRequest;
+}
+
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/devices`;
 
@@ -352,7 +364,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/reregister-authorized`,
-    extractJwtAuthorisedDevice,
+    extractJwtAuthorizedDevice,
     extractJwtAuthorizedUserFromBody("authorizedToken"),
     validateFields([
       atLeastOneOf(nameOrIdOf(body("newGroup")), validNameOf(body("newName"))),
@@ -429,7 +441,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/reregister`,
-    extractJwtAuthorisedDevice,
+    extractJwtAuthorizedDevice,
     // NOTE: Re-register only works on currently active devices
     validateFields([
       nameOrIdOf(body("newGroup")),
@@ -2317,7 +2329,7 @@ export default function (app: Application, baseUrl: string) {
      */
   app.post(
     `${apiUrl}/heartbeat`,
-    extractJwtAuthorisedDevice,
+    extractJwtAuthorizedDevice,
     validateFields([body("nextHeartbeat").isISO8601().toDate()]),
     async function (request: Request, response: Response) {
       // NOTE: Disable heartbeats
@@ -2326,6 +2338,203 @@ export default function (app: Application, baseUrl: string) {
       // )) as Device;
       // await requestDevice.updateHeartbeat(request.body.nextHeartbeat);
       return successResponse(response, "Heartbeat updated.");
+    },
+  );
+
+  /**
+   * @api {get} /api/v1/devices/:deviceId/actions/:actionId Get an existing device user-action request
+   * @apiName DeviceActions
+   * @apiGroup Device
+   *
+   * @apiParam {number} deviceId DeviceId of device that owns this action
+   * @apiParam {string} actionId uuidv4 string of action id
+   *
+   * @apiUse V1UserOrDeviceAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:deviceId/actions/:actionId`,
+    extractJwtAuthorizedUserOrDevice,
+    validateFields([idOf(param("deviceId")), uuidOf(param("actionId"))]),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    async function (request, response) {
+      const actionUUID = request.params.actionId as unknown as UUID;
+      const action = await (
+        response.locals.device as Device
+      ).getUserActionRequest(actionUUID);
+      const deviceAction: ApiDeviceAction = {
+        uuid: action.id,
+        deviceId: action.DeviceId,
+        createdAt: action.createdAt.toISOString(),
+        updatedAt: action.updatedAt.toISOString(),
+        history: action.history,
+        status: action.status,
+      };
+      if (action.RecordingId) {
+        deviceAction.recordingId = action.RecordingId;
+      }
+      return successResponse(response, "Got device action", {
+        action: deviceAction,
+      });
+    },
+  );
+
+  /**
+   * @api {put} /api/v1/devices/:deviceId/actions/:actionId Initiate a device user-action request
+   * @apiName DeviceActions
+   * @apiGroup Device
+   *
+   * @apiParam {number} deviceId DeviceId of device that owns this action
+   * @apiParam {string} actionId uuidv4 string of action id
+   * @apiInterface {apiBody::ApiDeviceActionRequestBody}
+   *
+   * @apiUse V1DeviceAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.put(
+    `${apiUrl}/:deviceId/actions/:actionId`,
+    extractJwtAuthorizedDevice,
+    validateFields([
+      idOf(param("deviceId")),
+      uuidOf(param("actionId")),
+      body("action").custom(jsonSchemaOf(ApiDeviceActionRequestSchema)),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    async function (request, response) {
+      const actionUUID = request.params.actionId as unknown as UUID;
+      const action = request.body.action as unknown as ApiDeviceActionRequest;
+      await DeviceAction.sequelize.transaction(async (transaction) => {
+        const existingAction = await DeviceAction.findOne({
+          where: { id: actionUUID },
+          transaction,
+        });
+        if (existingAction) {
+          return new UnprocessableError(
+            `action with the uuid '${actionUUID}' already exists`,
+          );
+        }
+        if (action.availableActions.length === 0) {
+          return new UnprocessableError(`no user action options provided`);
+        }
+        const initialState: ActionStateTransition = {
+          dateTime: action.actionDateTime,
+          state: DeviceActionStatus.pending,
+          classification: action.classification,
+          availableActions: action.availableActions,
+        };
+        if ("confidence" in action) {
+          initialState.confidence = action.confidence;
+        }
+        const createdAction = await DeviceAction.create(
+          {
+            id: actionUUID,
+            status: DeviceActionStatus.pending,
+            history: [initialState],
+            DeviceId: response.locals.device.id,
+          },
+          { transaction },
+        );
+        if (createdAction) {
+          return successResponse(response, "Created action", {
+            id: actionUUID,
+          });
+        }
+        return new UnprocessableError("Failed to create action");
+      });
+    },
+  );
+
+  /**
+   * @api {patch} /api/v1/devices/:deviceId/actions/:actionId Update the status of a device user-action request
+   * @apiName DeviceActions
+   * @apiGroup Device
+   *
+   * @apiParam {number} deviceId DeviceId of device that owns this action
+   * @apiParam {string} actionId uuidv4 string of action id
+   * @apiInterface {apiBody::ApiDeviceActionUpdateRequestBody}
+   *
+   * @apiUse V1UserOrDeviceAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.patch(
+    `${apiUrl}/:deviceId/actions/:actionId`,
+    extractJwtAuthorizedUserOrDevice,
+    validateFields([
+      idOf(param("deviceId")),
+      uuidOf(param("actionId")),
+      body("update").custom(jsonSchemaOf(ApiDeviceActionUpdateRequestSchema)),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    async function (request, response, next) {
+      // Update the status of an action
+      const update = request.body.update as ApiDeviceActionUpdateRequest;
+      if (
+        update.state === DeviceActionStatus.responded &&
+        !response.locals.requestUser
+      ) {
+        return new UnprocessableError(
+          "Responses to actions must come from a user",
+        );
+      }
+
+      const actionId = request.params.actionId as string;
+      const newStatus = update.state as DeviceActionStatus;
+      const finalStates = [
+        DeviceActionStatus.completed,
+        DeviceActionStatus.failed,
+      ];
+      const action = await DeviceAction.findByPk(actionId);
+      if (finalStates.includes(action.status)) {
+        return new UnprocessableError(
+          `Action '${actionId}' is already in the '${action.status}' state, no further changes are possible`,
+        );
+      }
+      if (!action) {
+        return new UnprocessableError(`Action '${actionId}' not found`);
+      }
+      const allowedStates = Object.values(DeviceActionStatus);
+      // Make sure states can only move from one to another in order
+      const currentState = allowedStates.indexOf(action.status);
+      const expectedNextState = allowedStates[currentState + 1];
+      if (
+        (action.status === DeviceActionStatus.acknowledged &&
+          !finalStates.includes(newStatus)) ||
+        (action.status !== DeviceActionStatus.acknowledged &&
+          newStatus !== expectedNextState)
+      ) {
+        return new UnprocessableError(
+          `Invalid action state transition '${action.status}' -> '${newStatus}'`,
+        );
+      }
+
+      const newAction: ActionStateTransition = {
+        state: newStatus,
+        dateTime: update.actionDateTime,
+      };
+      if (newStatus === DeviceActionStatus.responded) {
+        // Record what the users' response
+        newAction.action = update.action;
+        const availableActions = action.history[0].availableActions || [];
+        if (!availableActions.includes(update.action)) {
+          return new UnprocessableError(
+            `Provided action ${update.action} is not in the available options provided by the device: '${availableActions.join("', '")}'.`,
+          );
+        }
+        newAction.userId = response.locals.requestUser.id;
+      }
+
+      await action.update({
+        status: newStatus,
+        history: [...action.history, newAction],
+      } as DeviceAction);
+
+      return successResponse(response, "Updated device action");
     },
   );
 
@@ -2361,104 +2570,6 @@ export default function (app: Application, baseUrl: string) {
           ],
         });
         return successResponse(response, "Got device history", { history });
-      },
-    );
-
-    app.get(
-      `${apiUrl}/:deviceId/actions`,
-      extractJwtAuthorizedUserOrDevice,
-      validateFields([idOf(param("deviceId")), optionalDateOf(query("from"))]),
-      fetchAuthorizedRequiredDeviceById(param("deviceId")),
-      async function (request, response, next) {
-        // TODO: Optionally return only actions *after* the last time you polled.
-        const fromDateTime = request.query.from as unknown as Date;
-        const pendingActions = await (
-          response.locals.device as Device
-        ).getPendingUserActionRequests(fromDateTime);
-
-        return successResponse(response, "Got device actions", {
-          actions: pendingActions,
-        });
-      },
-    );
-
-    app.get(
-      `${apiUrl}/:deviceId/actions/:actionId`,
-      extractJwtAuthorizedUserOrDevice,
-      validateFields([idOf(param("deviceId")), uuidOf(param("actionId"))]),
-      fetchAuthorizedRequiredDeviceById(param("deviceId")),
-      async function (request, response) {
-        const actionUUID = request.params.actionId as unknown as UUID;
-        const action = await (
-          response.locals.device as Device
-        ).getUserActionRequest(actionUUID);
-        return successResponse(response, "Got device action", {
-          action,
-        });
-      },
-    );
-
-    app.put(
-      `${apiUrl}/:deviceId/actions/:actionId`,
-      extractJwtAuthorizedUserOrDevice,
-      validateFields([
-        idOf(param("deviceId")),
-        uuidOf(param("actionId")),
-        body("action").custom(jsonSchemaOf(ApiDeviceActionRequestSchema)),
-      ]),
-      fetchAuthorizedRequiredDeviceById(param("deviceId")),
-      async function (request, response) {
-        const actionUUID = request.params.actionId as unknown as UUID;
-        const action = request.body.action as unknown as ApiDeviceActionRequest;
-        await DeviceAction.sequelize.transaction(async (transaction) => {
-          const existingAction = await DeviceAction.findOne({
-            where: { id: actionUUID },
-            transaction,
-          });
-          if (existingAction) {
-            return new UnprocessableError(
-              `action with the uuid '${actionUUID}' already exists`,
-            );
-          }
-          const initialState: ActionStateTransition = {
-            dateTime: action.actionDateTime,
-            state: DeviceActionStatus.pending,
-            classification: action.classification,
-          };
-          if ("confidence" in action) {
-            initialState.confidence = action.confidence;
-          }
-          const createdAction = await DeviceAction.create(
-            {
-              id: actionUUID,
-              status: DeviceActionStatus.pending,
-              history: [initialState],
-              DeviceId: response.locals.device.id,
-            },
-            { transaction },
-          );
-          if (createdAction) {
-            return successResponse(response, "Created action", {
-              id: actionUUID,
-            });
-          }
-          return new UnprocessableError("Failed to create action");
-        });
-      },
-    );
-
-    app.patch(
-      `${apiUrl}/:deviceId/actions/:actionId`,
-      extractJwtAuthorizedUserOrDevice,
-      validateFields([
-        idOf(param("deviceId")),
-        idOf(param("actionId")),
-        body("status").isIn(Object.values(DeviceActionStatus)),
-      ]),
-      fetchAuthorizedRequiredDeviceById(param("deviceId")),
-      async function (request, response, next) {
-        // Update the status of an action
-        return successResponse(response, "Got device actions", {});
       },
     );
   }

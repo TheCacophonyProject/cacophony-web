@@ -16,6 +16,11 @@
  */
 
 /**
+ * @apiDefine V1UserOrDeviceAuthorizationHeader
+ * @apiHeader {String} Authorization Signed JSON web token for a user *or* a device.
+ */
+
+/**
  * @apiDefine V1DeviceAuthorizationHeader
  * @apiHeader {String} Authorization Signed JSON web token for a device.
  */

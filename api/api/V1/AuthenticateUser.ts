@@ -35,7 +35,7 @@ import {
   validPasswordOf,
 } from "../validation-middleware.js";
 import {
-  extractJwtAuthorisedSuperAdminUser,
+  extractJwtAuthorizedSuperAdminUser,
   extractJwtAuthorizedUser,
   extractJWTInfo,
   fetchUnauthorizedOptionalUserByEmailOrId,
@@ -280,7 +280,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   const authenticateAsOtherUserOptions = [
-    extractJwtAuthorisedSuperAdminUser,
+    extractJwtAuthorizedSuperAdminUser,
     validateFields([
       exactlyOneOf(emailOf(body("email")), idOf(body("userId"))),
     ]),

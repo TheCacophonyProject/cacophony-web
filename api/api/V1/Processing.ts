@@ -27,7 +27,7 @@ import {
   RecordingType,
 } from "@typedefs/api/consts.js";
 import {
-  extractJwtAuthorisedSuperAdminUser,
+  extractJwtAuthorizedSuperAdminUser,
   extractValFromRequest,
   fetchAuthorizedRequiredDeviceById,
   fetchUnauthorizedRequiredFlatRecordingById,
@@ -77,7 +77,7 @@ export default function (app: Application, baseUrl: string) {
      */
   app.get(
     apiUrl,
-    extractJwtAuthorisedSuperAdminUser,
+    extractJwtAuthorizedSuperAdminUser,
     validateFields([
       oneOf([
         [
@@ -162,7 +162,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.put(
     apiUrl,
-    extractJwtAuthorisedSuperAdminUser,
+    extractJwtAuthorizedSuperAdminUser,
     validateFields([
       idOf(body("id")),
       body("jobKey").exists(),
@@ -438,7 +438,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/metadata`,
-    extractJwtAuthorisedSuperAdminUser,
+    extractJwtAuthorizedSuperAdminUser,
     validateFields([idOf(body("id")), body("metadata").isJSON()]),
     fetchUnauthorizedRequiredFlatRecordingById(body("id")),
     parseJSONField(body("metadata")),
@@ -466,7 +466,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/:id/tracks-and-tags`,
-    extractJwtAuthorisedSuperAdminUser,
+    extractJwtAuthorizedSuperAdminUser,
     validateFields([
       idOf(param("id")),
       body("data").custom(jsonSchemaOf(ApiMinimalTracksRequestSchema)),
@@ -712,7 +712,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/:id/tracks`,
-    extractJwtAuthorisedSuperAdminUser,
+    extractJwtAuthorizedSuperAdminUser,
     validateFields([
       idOf(param("id")),
       body("data").custom(jsonSchemaOf(ApiMinimalTrackRequestSchema)),
@@ -752,7 +752,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.delete(
     `${apiUrl}/:id/tracks`,
-    extractJwtAuthorisedSuperAdminUser,
+    extractJwtAuthorizedSuperAdminUser,
     validateFields([idOf(param("id"))]),
     fetchUnauthorizedRequiredFlatRecordingById(param("id")),
     async (_request: Request, response: Response) => {
@@ -795,7 +795,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/:id/tracks/:trackId/tags`,
-    extractJwtAuthorisedSuperAdminUser,
+    extractJwtAuthorizedSuperAdminUser,
     validateFields([
       idOf(param("id")),
       idOf(param("trackId")),
@@ -851,7 +851,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/:id/tracks/:trackId/tags-bulk`,
-    extractJwtAuthorisedSuperAdminUser,
+    extractJwtAuthorizedSuperAdminUser,
     validateFields([
       idOf(param("id")),
       idOf(param("trackId")),
@@ -947,7 +947,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/algorithm`,
-    extractJwtAuthorisedSuperAdminUser,
+    extractJwtAuthorizedSuperAdminUser,
     validateFields([body("algorithm").isJSON()]),
     parseJSONField(body("algorithm")),
     async (_request, response) => {
@@ -972,7 +972,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/:id/tracks/:trackId/archive`,
-    extractJwtAuthorisedSuperAdminUser,
+    extractJwtAuthorizedSuperAdminUser,
     validateFields([idOf(param("id")), idOf(param("trackId"))]),
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     async (_request: Request, response) => {
@@ -994,7 +994,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/:id/tracks/:trackId/thumbnailInfo`,
-    extractJwtAuthorisedSuperAdminUser,
+    extractJwtAuthorizedSuperAdminUser,
     validateFields([
       idOf(param("id")),
       idOf(param("trackId")),
@@ -1026,7 +1026,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/:id/tracks/:trackId`,
-    extractJwtAuthorisedSuperAdminUser,
+    extractJwtAuthorizedSuperAdminUser,
     validateFields([
       idOf(param("id")),
       idOf(param("trackId")),
@@ -1110,7 +1110,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.get(
     `${apiUrl}/ratThresh/:id`,
-    extractJwtAuthorisedSuperAdminUser,
+    extractJwtAuthorizedSuperAdminUser,
     validateFields([
       idOf(param("id")),
       query("at-time").isISO8601().toDate().optional(),

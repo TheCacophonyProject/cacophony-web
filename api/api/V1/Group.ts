@@ -67,7 +67,10 @@ import type {
   ApiGroupUserResponse,
   ApiGroupUserSettings,
 } from "@typedefs/api/group.js";
-import type { ApiDeviceResponse } from "@typedefs/api/device.js";
+import type {
+  ApiDeviceActionResponse,
+  ApiDeviceResponse,
+} from "@typedefs/api/device.js";
 import type {
   ApiCreateStationData,
   ApiStationResponse,
@@ -114,6 +117,7 @@ import { Station } from "@models/Station.js";
 import logging from "@log";
 import { DeviceHistory } from "@models/DeviceHistory.js";
 import { Device } from "@models/Device.js";
+import { DeviceAction } from "@models/DeviceAction.js";
 const mapGroup = (
   group: Group,
   viewAsSuperAdmin: boolean,
@@ -1500,6 +1504,48 @@ export default function (app: Application, baseUrl: string) {
         }
       }
       return successResponse(response, "Invited user to group");
+    },
+  );
+
+  /**
+   * @api {get} /api/v1/groups/:groupIdOrName/actions List current device user-action requests for a project
+   * @apiName DeviceActions
+   * @apiGroup Device
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:groupIdOrName/actions`,
+    extractJwtAuthorizedUser,
+    validateFields([nameOrIdOf(param("groupIdOrName"))]),
+    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    async (_request, response) => {
+      const actions = await DeviceAction.findAll({
+        include: [
+          {
+            model: Device,
+            required: true,
+            where: {
+              GroupId: response.locals.group.id,
+            },
+            attributes: ["deviceName"],
+          },
+        ],
+      });
+      return successResponse(response, "Got device actions for project", {
+        actions: actions.map((action) => {
+          return {
+            uuid: action.id,
+            availableActions: action.history[0].availableActions,
+            status: action.status,
+            deviceId: action.DeviceId,
+            deviceName: action.Device.deviceName,
+          } as ApiDeviceActionResponse;
+        }),
+      });
     },
   );
 }

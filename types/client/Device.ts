@@ -7,12 +7,15 @@ import type {
   UserId,
 } from "../api/common.js";
 import type {
+  ActionStatus,
   ApiDeviceActionRequest,
   ApiDeviceActionResponse,
+  ApiDeviceActionUpdateRequest,
   ApiDeviceHistory,
   ApiDeviceHistorySettings,
   ApiDeviceResponse,
   ApiMaskRegionsData,
+  DeviceActionDecision,
 } from "../api/device.js";
 import type {
   ApiSubmitEventsRequestBody,
@@ -923,12 +926,14 @@ const createDeviceActionRequest =
     uuid: string,
     actionDateTime: Date,
     classification: string,
+    availableActions: DeviceActionDecision[],
   ) => {
     const action: ApiDeviceActionRequest = {
       uuid,
       deviceId,
       actionDateTime: actionDateTime.toISOString(),
       classification,
+      availableActions,
     };
     return api.put(authKey, `/api/v1/devices/${deviceId}/actions/${uuid}`, {
       action,
@@ -938,28 +943,51 @@ const createDeviceActionRequest =
 const getDeviceActionRequest =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (deviceId: DeviceId, uuid: string) => {
-    const params = new URLSearchParams();
-    params.append("uuid", uuid);
     return unwrapLoadedResource(
       api.get(
         authKey,
-        `/api/v1/devices/${deviceId}/device-action?${params.toString()}`,
-      ) as Promise<FetchResult<{ "device-action": ApiDeviceActionResponse }>>,
-      "device-action",
+        `/api/v1/devices/${deviceId}/actions/${uuid}`,
+      ) as Promise<FetchResult<{ action: ApiDeviceActionResponse }>>,
+      "action",
     );
   };
 
 const updateDeviceActionRequest =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId, uuid: string, status: DeviceActionStatus) => {
-    const params = new URLSearchParams();
-    params.append("uuid", uuid);
+  (
+    deviceId: DeviceId,
+    uuid: string,
+    status: ActionStatus,
+    atTime: Date = new Date(),
+  ) => {
+    return api.patch(authKey, `/api/v1/devices/${deviceId}/actions/${uuid}`, {
+      update: {
+        state: status,
+        actionDateTime: atTime.toISOString(),
+      } as ApiDeviceActionUpdateRequest,
+    }) as Promise<FetchResult<void>>;
+  };
+
+const confirmDeviceActionRequest =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    deviceId: DeviceId,
+    uuid: string,
+    action: DeviceActionDecision,
+    actionDateTime = new Date(),
+    NO_ABORT = false,
+  ) => {
     return api.patch(
       authKey,
-      `/api/v1/devices/${deviceId}/device-action?${params.toString()}`,
+      `/api/v1/devices/${deviceId}/actions/${uuid}`,
       {
-        status,
+        update: {
+          state: DeviceActionStatus.responded,
+          actionDateTime: actionDateTime.toISOString(),
+          action,
+        } as ApiDeviceActionUpdateRequest,
       },
+      !NO_ABORT,
     ) as Promise<FetchResult<void>>;
   };
 
@@ -1017,6 +1045,7 @@ export default (api: CacophonyApiClient) => {
     createDeviceActionRequest: createDeviceActionRequest(api),
     getDeviceActionRequest: getDeviceActionRequest(api),
     updateDeviceActionRequest: updateDeviceActionRequest(api),
+    confirmDeviceActionRequest: confirmDeviceActionRequest(api),
     withAuth: (authKey: TestHandle) => ({
       deleteDevice: deleteDevice(api, authKey),
       setDeviceActive: setDeviceActive(api, authKey),
@@ -1089,6 +1118,7 @@ export default (api: CacophonyApiClient) => {
       submitEventsOnBehalfOfDevice: submitEventsOnBehalfOfDevice(api, authKey),
       createDeviceActionRequest: createDeviceActionRequest(api, authKey),
       getDeviceActionRequest: getDeviceActionRequest(api, authKey),
+      confirmDeviceActionRequest: confirmDeviceActionRequest(api, authKey),
       updateDeviceActionRequest: updateDeviceActionRequest(api, authKey),
     }),
   };

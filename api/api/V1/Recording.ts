@@ -70,7 +70,7 @@ import {
   FatalError,
 } from "../customErrors.js";
 import {
-  extractJwtAuthorisedDevice,
+  extractJwtAuthorizedDevice,
   extractJwtAuthorizedUser,
   fetchAuthorizedRequiredDeviceById,
   fetchAuthorizedRequiredDeviceInGroup,
@@ -463,7 +463,7 @@ export default (app: Application, baseUrl: string) => {
    */
   app.post(
     apiUrl,
-    extractJwtAuthorisedDevice,
+    extractJwtAuthorizedDevice,
     validateFields([
       // NOTE: Primarily used in testing, allows us to backdate the last connection time of an uploading device
       optionalDateOf(query("at-time")),

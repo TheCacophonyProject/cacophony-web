@@ -1,6 +1,11 @@
 import { expect, test } from "@/helpers/upload-tests";
 import { createProjectWithUserAndDevice } from "@/helpers/create-test-entities";
-import { ApiDeviceActionResponse, ApiDeviceResponse, TrapSettings } from "@shared/api/device";
+import {
+  ApiDeviceActionResponse,
+  ApiDeviceResponse,
+  DeviceActionDecision,
+  TrapSettings,
+} from "@shared/api/device";
 import { DeviceSim } from "@/helpers/device-sim";
 import { addHours, addMinutes, addSeconds } from "@/helpers/date-helpers";
 import { uploadThermalRecordingFromDevice } from "@/helpers/recording-uploads";
@@ -83,11 +88,8 @@ test("A device polls for actions", async ({ smallCptv }) => {
   const deviceHandle = project.getDevice();
   const AdminUser = project.api();
   const Camera = project.api(deviceHandle);
-
   const device = new DeviceSim(deviceHandle);
-
   await confirmEmailAddressViaApi(userHandle);
-
   const trapSettings: TrapSettings = {
     protect: ["bird"],
     target: ["possum", "cat"],
@@ -103,8 +105,9 @@ test("A device polls for actions", async ({ smallCptv }) => {
 
   const captureTime = addMinutes(initialDateTime, 5);
   const eventUUID = crypto.randomUUID();
+  const availableUserActions = ["dispatch", "release"] as DeviceActionDecision[];
   await test.step("The trap triggers on a possum classification", async () => {
-    await device.trapActivation(eventUUID, "possum", captureTime);
+    await device.trapActivation(eventUUID, "possum", availableUserActions, captureTime);
   });
   await test.step("The camera uploads the corresponding recording, and the notification is sent to user(s)", async () => {
     await uploadThermalRecordingFromDevice({
@@ -115,13 +118,14 @@ test("A device polls for actions", async ({ smallCptv }) => {
       duration: 120,
       uploadTime: addSeconds(captureTime, 150), // Recording is uploaded 2.5mins after capture
     });
-    // TODO: Check that we got the email with the action request
     const email = await waitForEmail(userHandle.testId, "device action request");
+    expect(email.headers.subject).toContain(`Trap activated for Possum`);
     expect(email.error, "user was notified successfully").toBeUndefined();
   });
   let now = new Date(captureTime);
   const releaseTime = addHours(now, 24);
   const userActionTime = addHours(now, 2);
+  let userRespondedToActionRequest = false;
   while (now < releaseTime) {
     // Camera/Trap polls every 5 minutes to see if there's a user action
     const deviceActionResponse = (await Camera.Devices.getDeviceActionRequest(
@@ -129,68 +133,77 @@ test("A device polls for actions", async ({ smallCptv }) => {
       eventUUID,
     )) as ApiDeviceActionResponse;
     expect(deviceActionResponse, "got device action").toBeTruthy();
-    // TODO: Check if the deviceAction has a user response yet.
     if (deviceActionResponse) {
-      if (deviceActionResponse.chosenAction) {
-        // Cool, break;
-        // TODO: Should we have an acknowledged step, or is it more likely that the device just goes right to completed/failed?
-        //  Seems like the action to the trap should return once it's actually completed.
+      // Check for a user response, and acknowledge it.
+      if (deviceActionResponse.status === "responded") {
         await Camera.Devices.updateDeviceActionRequest(
           deviceHandle.id,
           eventUUID,
           DeviceActionStatus.acknowledged,
+          now,
         );
+      }
+      // Then complete the actual action, and update again.
+      if (deviceActionResponse.status === "acknowledged") {
+        await Camera.Devices.updateDeviceActionRequest(
+          deviceHandle.id,
+          eventUUID,
+          DeviceActionStatus.completed,
+          now,
+        );
+        // The device is finished, so we're done polling for responses now.
+        //  (Technically, this would happen after the 'acknowledged' step
+        break;
       }
     }
 
     now = addMinutes(now, 5);
-    if (now > userActionTime) {
+    if (!userRespondedToActionRequest && now > userActionTime) {
       // We want to be able to link to the specific trap action request, so should this be on Project or Device?
       const pendingActions = (await AdminUser.Projects.getPendingDeviceActionRequests(
         project.projectHandle.id,
       )) as ApiDeviceActionResponse[];
       expect(pendingActions, "got pending actions").toBeTruthy();
+      expect(pendingActions.length, "there is one pending action").toEqual(1);
       const action = pendingActions[0];
-
-      // TODO: Does this API need an `atTime` param for testing purposes?
-      await AdminUser.Projects.confirmDeviceActionRequest(
-        project.projectHandle.id,
-        action.uuid,
-        "release",
+      expect(action.availableActions, "user is presented with correct actions").toEqual(
+        availableUserActions,
       );
-      break;
-      // TODO: User decides to release the captured animal.
-      // TODO: Maybe first the user asks for more information - gets the device to
-      //  upload associated recording.  Or if the recording has already been uploaded,
-      //  it needs to be associated with the action.
+      await AdminUser.Devices.confirmDeviceActionRequest(
+        deviceHandle.id,
+        action.uuid,
+        availableUserActions[1], // User decides to release from the trap
+        now,
+      );
+      userRespondedToActionRequest = true;
     }
   }
-
-  // First the device says it's got something in a trap, and waits for user
-  // feedback on what to do about it.
-
-  // Then a user confirms the action to take on browse (or maybe via email)
-  // and then the device polls, acknowledges, and then does the action,
-  // adding completed or failed.
-
-  // Do we need any audit trail about how long it took the user to respond to
-  // the action?  Or for the device to get the response and action it?
+  const deviceActionResponse = (await Camera.Devices.getDeviceActionRequest(
+    deviceHandle.id,
+    eventUUID,
+  )) as ApiDeviceActionResponse;
+  expect(deviceActionResponse, "got device action").toBeTruthy();
+  expect(deviceActionResponse.status).toEqual("completed");
 });
 
 test("Once an action is completed, it is an error for the device to try to modify the action", async () => {
   // TODO
+  // Just exercising the APIs, making sure they require statuses to be in correct order
 });
 
 test("When a camera with a trap connected goes below a certain battery threshold the trap is disabled and a user is notified", async () => {
-  // TODO
+  // TODO.  The camera really needs to be the one enforcing this behaviour, so I guess the camera itself can advance the APIs?
+  //  Otherwise, the user just doesn't need to be notified, we show that it timed out in the events list
 });
 
 test("If a camera has a trap config, but no events to indicate that at trap is connected, we surface that to a user somehow", async () => {
   // TODO
+  // In the traps dashboard, just query the last trap connected event for each device
 });
 
 test("A user gets a notification email if there is a trap action pending, unless they opt out", async () => {
   // TODO
+  // Test that opt-out works for trap notifications
 });
 
 test("The last user in a project can't opt out from trap email notifications", async () => {

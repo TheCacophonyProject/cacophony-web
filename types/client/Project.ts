@@ -210,30 +210,11 @@ const getPendingDeviceActionRequests =
     return unwrapLoadedResource(
       api.get(
         authKey,
-        `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/pending-device-actions`,
+        `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/actions`,
         !NO_ABORT,
       ) as Promise<FetchResult<{ actions: ApiDeviceActionResponse[] }>>,
       "actions",
     );
-  };
-
-const confirmDeviceActionRequest =
-  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (
-    projectNameOrId: string | number,
-    uuid: string,
-    action: DeviceActionDecision,
-    NO_ABORT = false,
-  ) => {
-    return api.post(
-      authKey,
-      `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/confirm-device-action`,
-      {
-        uuid,
-        action,
-      },
-      !NO_ABORT,
-    ) as Promise<FetchResult<void>>;
   };
 
 const getLocationsForProject =
@@ -331,7 +312,6 @@ export default (api: CacophonyApiClient) => {
     getDevicesWithActiveTrapsForProject:
       getDevicesWithActiveTrapsForProject(api),
     getPendingDeviceActionRequests: getPendingDeviceActionRequests(api),
-    confirmDeviceActionRequest: confirmDeviceActionRequest(api),
     getLocationsForProject: getLocationsForProject(api),
     getLocationByNameInProject: getLocationByNameInProject(api),
     inviteSomeoneToProject: inviteSomeoneToProject(api),
@@ -357,7 +337,6 @@ export default (api: CacophonyApiClient) => {
         api,
         authKey,
       ),
-      confirmDeviceActionRequest: confirmDeviceActionRequest(api, authKey),
       getLocationsForProject: getLocationsForProject(api, authKey),
       getLocationByNameInProject: getLocationByNameInProject(api, authKey),
       inviteSomeoneToProject: inviteSomeoneToProject(api, authKey),

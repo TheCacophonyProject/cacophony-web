@@ -612,10 +612,6 @@ where
     return newDevice;
   }
 
-  async getPendingUserActionRequests(fromDateTime: Date) {
-    // Use static with this.id
-    return DeviceAction.getPendingUserActionRequests(this.id, fromDateTime);
-  }
   async getUserActionRequest(uuid: UUID) {
     return DeviceAction.getUserActionRequestForDevice(this.id, uuid);
   }

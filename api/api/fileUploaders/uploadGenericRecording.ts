@@ -912,8 +912,14 @@ export const uploadGenericRecording =
       }
     }
 
-    // Check if there are any pending device/trap actions that relate to this recording
-    await DeviceAction.matchRecordingToPendingAction(recording);
+    if (recording.type === RecordingType.ThermalRaw) {
+      // Check if there are any pending device/trap actions that relate to this recording
+      await DeviceAction.matchRecordingToPendingAction(
+        recording.DeviceId,
+        recording,
+        atTime,
+      );
+    }
 
     if (!response.headersSent) {
       return successResponse(response, "Thanks for the data", {
