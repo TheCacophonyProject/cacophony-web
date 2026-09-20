@@ -39,6 +39,8 @@ import {
   locationHasAudioRecordings,
   locationHasThermalRecordings,
 } from "@/utils.ts";
+import IconTrap from "@/components/icons/iconTrap.vue";
+import IconTrapFilled from "@/components/icons/iconTrapFilled.vue";
 
 const fallibleCurrentSelectedProject = inject(
   currentSelectedProject,
@@ -324,6 +326,54 @@ onMounted(() => {
           <span class="nav-text ms-3">Locations</span>
         </router-link>
       </li>
+      <li class="nav-item w-100">
+        <router-link
+          :to="{
+            name: 'traps',
+            params: {
+              projectName: urlNormalisedCurrentProjectName,
+            },
+          }"
+          class="nav-link py-3 d-flex flex-row align-items-center"
+          title=""
+          data-bs-toggle="tooltip"
+          data-bs-placement="right"
+          data-bs-original-title="Locations"
+        >
+          <span class="nav-icon-wrapper d-flex">
+            <icon-trap style="width: 1.5rem" />
+            <!-- TODO: change icon if trap triggered -->
+            <icon-trap-filled v-if="false" style="width: 1.5rem" />
+            <!-- TODO: show if any trap is misconfigured -->
+            <svg
+              class="warning-icon"
+              width="12"
+              height="12"
+              xmlns="http://www.w3.org/2000/svg"
+              v-if="false"
+            >
+              <path
+                d="M.53 10.983a.52.52 0 0 1-.464-.259.39.39 0 0 1-.065-.255.692.692 0 0 1 .08-.27L5.566 1.08a.393.393 0 0 1 .187-.183.596.596 0 0 1 .495 0c.078.035.14.096.186.183l5.485 9.117a.692.692 0 0 1 .08.27.39.39 0 0 1-.065.256.635.635 0 0 1-.19.187.5.5 0 0 1-.274.072H.53Zm6.149-3.09a.15.15 0 0 0 .06-.105l.105-3.638a.122.122 0 0 0-.053-.105.225.225 0 0 0-.15-.045H5.366a.225.225 0 0 0-.15.045.113.113 0 0 0-.06.105l.105 3.638c0 .045.015.075.06.105.04.029.087.045.135.045h1.088a.21.21 0 0 0 .135-.045ZM6.7 9.947a.195.195 0 0 0 .053-.142v-1.11a.195.195 0 0 0-.053-.142.173.173 0 0 0-.127-.053H5.449c-.051 0-.1.022-.135.06a.188.188 0 0 0-.06.135v1.11c0 .052.022.097.06.135.037.037.082.06.135.06h1.125c.052 0 .09-.015.127-.053Z"
+              />
+            </svg>
+            <!-- TODO: show if any of the actions failed -->
+            <svg
+              class="alert-icon"
+              width="12"
+              height="12"
+              xmlns="http://www.w3.org/2000/svg"
+              v-if="false"
+            >
+              <path
+                d="M2.99.8C3.9.27 4.9 0 6 0a5.97 5.97 0 0 1 5.2 9.01 5.97 5.97 0 0 1-8.21 2.19A5.97 5.97 0 0 1 .8 2.99 5.97 5.97 0 0 1 3 .8Zm3.94 9.13A.26.26 0 0 0 7 9.74V8.26a.26.26 0 0 0-.07-.19.23.23 0 0 0-.17-.07h-1.5a.25.25 0 0 0-.18.08.25.25 0 0 0-.08.18v1.48c0 .07.03.13.08.18.05.05.11.08.18.08h1.5c.07 0 .12-.02.17-.07ZM6.9 7.19a.2.2 0 0 0 .08-.14l.14-4.85c0-.06-.02-.1-.07-.14a.3.3 0 0 0-.2-.06h-1.7a.3.3 0 0 0-.2.06.15.15 0 0 0-.08.14l.14 4.85c0 .06.02.1.08.14a.3.3 0 0 0 .18.06h1.45c.07 0 .13-.02.18-.06Z"
+              />
+            </svg>
+            <!-- TODO: show if there's an animal in any trap -->
+            <div class="pulse-badge" v-if="false"></div>
+          </span>
+          <span class="nav-text ms-3">Traps</span>
+        </router-link>
+      </li>
       <!--        NOTE: remove Report until we know what to do with it. -->
       <!--        <li class="nav-item">-->
       <!--          <router-link-->
@@ -503,7 +553,8 @@ onMounted(() => {
       position: relative;
 
       .alert-icon,
-      .warning-icon {
+      .warning-icon,
+      .pulse-badge {
         position: absolute;
         right: calc(var(--cp-spacing-xs) * -1);
         top: calc(var(--cp-spacing-xxs) * -1);
@@ -513,6 +564,28 @@ onMounted(() => {
       }
       .warning-icon {
         fill: var(--bs-warning);
+      }
+      .pulse-badge {
+        &:before,
+        &:after {
+          content: "";
+          position: absolute;
+          top: 2px;
+          right: 2px;
+        }
+        &:before {
+          width: 0.5rem;
+          height: 0.5rem;
+          border-radius: 50%;
+          background-color: var(--bs-danger);
+          animation: 1s pulse ease-out infinite both;
+        }
+        &:after {
+          width: 0.5rem;
+          height: 0.5rem;
+          border-radius: 50%;
+          background-color: var(--bs-danger);
+        }
       }
     }
 
@@ -602,6 +675,18 @@ onMounted(() => {
   }
   100% {
     opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  from {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(2.5);
   }
 }
 </style>

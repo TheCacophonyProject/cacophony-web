@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import type { RouteLocationRaw } from "vue-router";
-import { BLink } from "bootstrap-vue-next";
 import TooltipOnTruncation from "@/components/TooltipOnTruncation.vue";
 const props = withDefaults(
   defineProps<{
@@ -35,7 +34,7 @@ const props = withDefaults(
         v-if="icon"
       />
       <tooltip-on-truncation v-if="truncate">{{ name }}</tooltip-on-truncation>
-      <span v-else>{{ name }}</span>
+      <span v-else class="lh-sm">{{ name }}</span>
     </span>
   </span>
 </template>

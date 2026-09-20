@@ -281,7 +281,7 @@ const alertItems = computed<AlertItem[]>(() => {
 
   <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
     <div class="col-lg-3">
-      <h3 class="section-card-heading">Email alert settings</h3>
+      <h3 class="section-card-heading">Monitoring email alert settings</h3>
       <p class="text-secondary pb-1">
         Send an email when the Cacophony AI recognises something that you're
         interested in for a newly processed recording.
@@ -289,7 +289,7 @@ const alertItems = computed<AlertItem[]>(() => {
     </div>
     <div class="col-lg-9">
       <section-card>
-        <template #header-title> Email alerts </template>
+        <template #header-title>Monitoring email alerts </template>
         <template #header-action>
           <b-button
             variant="outline-secondary"
@@ -297,7 +297,8 @@ const alertItems = computed<AlertItem[]>(() => {
             class="d-flex align-items-center"
           >
             <material-symbol name="add" size="1.25rem" class="me-2" />
-            Create email alert
+            Create
+            <span class="d-none d-sm-inline-block">&nbsp;email alert</span>
           </b-button>
         </template>
         <div v-if="loadingAlerts" class="d-flex justify-content-center my-4">
@@ -408,6 +409,28 @@ const alertItems = computed<AlertItem[]>(() => {
             No email alerts configured.
           </p>
         </div>
+      </section-card>
+    </div>
+  </div>
+
+  <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
+    <div class="col-lg-3">
+      <h3 class="section-card-heading">Trap email alert settings</h3>
+      <p class="text-secondary pb-1">
+        Send an email when the Cacophony AI recognises a target species near or
+        in an high-interaction rate trap.
+      </p>
+    </div>
+    <div class="col-lg-9">
+      <section-card>
+        <template #header-title>Trap email alerts </template>
+        <b-form-checkbox switch
+          >Send email alerts for traps<b-spinner
+            class="ms-1"
+            v-if="savingStoppedDeviceSettings"
+            variant="secondary"
+            small
+        /></b-form-checkbox>
       </section-card>
     </div>
   </div>

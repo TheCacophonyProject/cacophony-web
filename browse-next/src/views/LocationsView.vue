@@ -322,15 +322,6 @@ const updateLocationName = async (payload: {
           v-else
           class="col col-12 col-lg-8 col-xl-7 d-flex flex-fill flex-column me-md-3 mt-4 mt-lg-0"
         >
-          <!--        <h6>Things that need to appear here:</h6>-->
-          <!--        <ul>-->
-          <!--          <li>-->
-          <!--            Hovering table rows should be able to highlight points on the map-->
-          <!--          </li>-->
-          <!--          <li>Rename stations</li>-->
-          <!--          <li>Show active vs inactive stations</li>-->
-          <!--        </ul>-->
-          <!--        TODO: Split into: stations active in the last week, last month, last year, older, retired -->
           <h3 v-if="locationsActiveInLastWeek.length" class="h4 mb-3">
             Active in past week
           </h3>
@@ -346,9 +337,9 @@ const updateLocationName = async (payload: {
             class="mb-4"
           />
 
-          <h6 v-if="locationsActiveInLastMonth.length" class="h4 mb-3">
+          <h3 v-if="locationsActiveInLastMonth.length" class="h4 mb-3">
             Active in past month
-          </h6>
+          </h3>
           <locations-overview-table
             v-if="locationsActiveInLastMonth.length"
             :locations="locationsActiveInLastMonth"
@@ -361,9 +352,9 @@ const updateLocationName = async (payload: {
             class="mb-4"
           />
 
-          <h6 v-if="locationsActiveInLastYear.length" class="h4 mb-3">
+          <h3 v-if="locationsActiveInLastYear.length" class="h4 mb-3">
             Active in past year
-          </h6>
+          </h3>
           <locations-overview-table
             v-if="locationsActiveInLastYear.length"
             :locations="locationsActiveInLastYear"
@@ -376,9 +367,9 @@ const updateLocationName = async (payload: {
             class="mb-4"
           />
 
-          <h6 v-if="locationsNotActiveInLastYear.length" class="h4 mb-3">
+          <h3 v-if="locationsNotActiveInLastYear.length" class="h4 mb-3">
             Not active in past year
-          </h6>
+          </h3>
           <locations-overview-table
             v-if="locationsNotActiveInLastYear.length"
             :locations="locationsNotActiveInLastYear"
@@ -390,7 +381,7 @@ const updateLocationName = async (payload: {
             @updated-location-name="updateLocationName"
             class="mb-4"
           />
-          <h6 v-if="retiredLocations.length" class="h4 mb-3">Retired</h6>
+          <h3 v-if="retiredLocations.length" class="h4 mb-3">Retired</h3>
           <locations-overview-table
             v-if="retiredLocations.length"
             :locations="retiredLocations"

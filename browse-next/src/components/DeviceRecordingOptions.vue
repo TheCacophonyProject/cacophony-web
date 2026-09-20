@@ -1277,7 +1277,7 @@ watch(customRecordingWindowStop, async () => {
           </div>
         </div>
       </section-card>
-      <section-card v-if="isTc2Device" class="mb-3 mb-lg-4">
+      <section-card v-if="isTc2Device" class="mb-3 mb-lg-4" id="power-profile">
         <template #header-title> Power profile </template>
         <template #header-action>
           <div v-if="savingPowerModeSettings">
@@ -1357,7 +1357,7 @@ watch(customRecordingWindowStop, async () => {
         </b-form-radio-group>
       </section-card>
 
-      <section-card class="mb-3 mb-lg-4">
+      <section-card class="mb-3 mb-lg-4" id="thermal-video-recording-schedule">
         <template #header-title> Thermal video recording schedule </template>
         <template #header-action>
           <div v-if="savingRecordingWindowSettings">
