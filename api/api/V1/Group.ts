@@ -848,6 +848,77 @@ export default function (app: Application, baseUrl: string) {
           }
         }
       }
+
+      if (removed) {
+        // Was this user the last user in the project with trapAction notifications enabled?
+        // If so, enable them for any remaining users.
+        const remainingUsersWithTrapNotificationsEnabled: User[] =
+          await response.locals.group.getUsers({
+            attributes: [],
+            where: { emailConfirmed: true },
+            through: {
+              include: [
+                {
+                  model: Group,
+                  include: [{ model: GroupUsers, attributes: ["settings"] }],
+                },
+              ],
+              where: {
+                removedAt: { [Op.eq]: null },
+                pending: { [Op.eq]: null },
+                settings: {
+                  [Op.or]: [
+                    {
+                      notificationPreferences: {
+                        trapActions: true,
+                      },
+                    },
+                    null,
+                  ],
+                },
+              },
+            },
+          });
+        if (remainingUsersWithTrapNotificationsEnabled.length === 0) {
+          // Update all remaining user settings to have trap actions set
+          const remainingUsers: User[] = await response.locals.group.getUsers({
+            attributes: [],
+            where: { emailConfirmed: true },
+            through: {
+              include: [
+                {
+                  model: Group,
+                  include: [{ model: GroupUsers, attributes: ["settings"] }],
+                },
+              ],
+              where: {
+                removedAt: { [Op.eq]: null },
+                pending: { [Op.eq]: null },
+                settings: {
+                  notificationPreferences: {
+                    trapActions: false,
+                  },
+                },
+              },
+            },
+          });
+          for (const user of remainingUsers) {
+            const settings =
+              user.GroupUsers.settings ||
+              ({ notificationPreferences: {} } as ApiGroupUserSettings);
+            await user.GroupUsers.update({
+              settings: {
+                ...settings,
+                notificationPreferences: {
+                  ...settings.notificationPreferences,
+                  trapActions: true,
+                },
+              },
+            });
+          }
+        }
+      }
+
       if (removed && !wasPending) {
         if (
           response.locals.user.emailConfirmed &&
@@ -1132,17 +1203,42 @@ export default function (app: Application, baseUrl: string) {
     ]),
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     parseJSONField(body("settings")),
-    async (_request: Request, response: Response) => {
+    async (_request: Request, response: Response, next: NextFunction) => {
       const groupUser = await GroupUsers.findOne({
         where: {
           GroupId: response.locals.group.id,
           UserId: response.locals.requestUser.id,
           removedAt: { [Op.eq]: null },
+          pending: { [Op.eq]: null },
         },
       });
+      const settings = response.locals.settings as ApiGroupUserSettings;
+      if (settings.notificationPreferences?.trapActions === false) {
+        // Someone needs to be getting notifications to trap actions, so make sure there's at least one other
+        // email verified user in the project.
+        const users: User[] = await response.locals.group.getUsers({
+          attributes: [],
+          where: { emailConfirmed: true },
+          through: {
+            where: {
+              removedAt: { [Op.eq]: null },
+              pending: { [Op.eq]: null },
+            },
+          },
+        });
+        if (users.length <= 1) {
+          logging.warning("Returning");
+          return next(
+            new UnprocessableError(
+              "The sole member of a project cannot opt-out of trap action notifications",
+            ),
+          );
+        }
+      }
+
       await groupUser.update(
         {
-          settings: response.locals.settings,
+          settings,
         },
         {
           where: {

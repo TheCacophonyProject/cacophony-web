@@ -49,6 +49,11 @@ export interface ApiGroupUserSettings {
   displayMode?: "recordings" | "visits";
   tags?: string[];
   audioTags?: string[];
-  notificationPreferences?: Record<string, boolean>;
+  notificationPreferences?: {
+    trapActions?: boolean;
+    dailyDigest?: boolean;
+    weeklyDigest?: boolean;
+    reportStoppedDevices?: boolean;
+  };
   showFalseTriggers?: boolean;
 }

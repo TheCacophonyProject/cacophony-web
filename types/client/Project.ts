@@ -91,18 +91,22 @@ const addOrUpdateProjectUser =
 
 const removeProjectUser =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (projectName: string, userId?: UserId, email?: string) => {
+  (projectId?: ProjectId, projectName?:string, userId?: UserId, email?: string) => {
     const payload: {
-      group: string | ProjectId;
+      groupId?: ProjectId;
+      group?: string;
       userId?: UserId;
       email?: string;
-    } = {
-      group: projectName,
-    };
+    } = {};
     if (userId) {
       payload.userId = userId;
     } else {
       payload.email = email;
+    }
+    if (projectId) {
+      payload.groupId = projectId;
+    } else if (projectName) {
+      payload.group = projectName;
     }
     return api.delete(authKey, "/api/v1/groups/users", payload) as Promise<
       FetchResult<void>

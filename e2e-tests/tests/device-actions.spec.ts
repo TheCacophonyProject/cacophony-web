@@ -219,7 +219,19 @@ test("A user gets a notification email if there is a trap action pending, unless
     project.projectHandle.id,
     getEmail(secondUser.testId),
   );
+  {
+    const email = await waitForEmail(secondUser.testId, "project invite");
+    expect(email.error, "user got project invite").toBeUndefined();
+    expect(email.headers.subject).toContain(
+      `You've been invited to join a group on Cacophony Monitoring`,
+    );
+  }
   await NormalUser.Users.acceptProjectInvitation(project.projectHandle.id);
+  {
+    const email = await waitForEmail(secondUser.testId, "accepted to project");
+    expect(email.error, "user responded to project invite").toBeUndefined();
+    expect(email.headers.subject).toContain(`You've been accepted to`);
+  }
 
   const userProjects = await NormalUser.Projects.getCurrentUserProjects();
   expect(userProjects.success).toBe(true);
@@ -245,7 +257,7 @@ test("A user gets a notification email if there is a trap action pending, unless
   });
   await device.syncSettings();
 
-  {
+  await test.step("First trap activation should notify all users", async () => {
     // Both users should receive notification email
     const captureTime = addMinutes(initialDateTime, 5);
     const eventUUID = crypto.randomUUID();
@@ -264,36 +276,136 @@ test("A user gets a notification email if there is a trap action pending, unless
       });
       await test.step("Admin user gets notification", async () => {
         const email = await waitForEmail(userHandle.testId, "device action request");
-        expect(email.headers.subject).toContain(`Trap activated for Possum`);
         expect(email.error, "user was notified successfully").toBeUndefined();
+        expect(email.headers.subject).toContain(`Trap activated for Possum`);
       });
       await test.step("Second user also gets notification", async () => {
         {
-          const email = await waitForEmail(secondUser.testId, "project invite");
-          expect(email.headers.subject).toContain(
-            `You've been invited to join a group on Cacophony Monitoring`,
-          );
-          expect(email.error, "user got project invite").toBeUndefined();
-        }
-        {
           const email = await waitForEmail(secondUser.testId, "device action request");
-          expect(email.headers.subject).toContain(`Trap activated for Possum`);
           expect(email.error, "user was notified successfully").toBeUndefined();
+          expect(email.headers.subject).toContain(`Trap activated for Possum`);
         }
       });
     });
-  }
+    await test.step("Second use opts out of trap notifications", async () => {
+      await NormalUser.Projects.saveProjectUserSettings(project.projectHandle.id, {
+        notificationPreferences: {
+          trapActions: false,
+        },
+      });
+    });
+  });
+
+  await test.step("Second trap activation should only notify one user", async () => {
+    const captureTime = addMinutes(initialDateTime, 15);
+    const eventUUID = crypto.randomUUID();
+    const availableUserActions = ["dispatch", "release"] as DeviceActionDecision[];
+    await test.step("The trap triggers on a possum classification", async () => {
+      await device.trapActivation(eventUUID, "possum", availableUserActions, captureTime);
+    });
+    await test.step("The camera uploads the corresponding recording, and the notification is sent to only opted-in users", async () => {
+      await uploadThermalRecordingFromDevice({
+        deviceHandle,
+        location: project.locationBase,
+        recordingDateTime: addSeconds(captureTime, -10),
+        file: smallCptv,
+        duration: 120,
+        uploadTime: addSeconds(captureTime, 150), // Recording is uploaded 2.5mins after capture
+      });
+      await test.step("Admin user gets notification", async () => {
+        const email = await waitForEmail(userHandle.testId, "device action request");
+        expect(email.error, "user was notified successfully").toBeUndefined();
+        expect(email.headers.subject).toContain(`Trap activated for Possum`);
+      });
+      await test.step("Second gets no notification", async () => {
+        {
+          const email = await waitForEmail(secondUser.testId, "device action request", 500);
+          expect(email.error, "second user doesn't get notified").toBeDefined();
+        }
+      });
+    });
+  });
 });
 
-test("The last user in a project can't opt out from trap email notifications", async () => {
-  // TODO
+test("The last/only user in a project can't opt out from trap email notifications", async () => {
+  const initialDateTime = new Date("2026-08-01T10:00:00Z");
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  await confirmEmailAddressViaApi(project.getAdminUser());
+  const AdminUser = project.api();
+  const optedOutResponse = await AdminUser.Projects.saveProjectUserSettings(
+    project.projectHandle.id,
+    {
+      notificationPreferences: {
+        trapActions: false,
+      },
+    },
+  );
+  expect(optedOutResponse.success, "Couldn't apply settings").toBe(false);
 });
 
 test(
   "If a user leaves a project, and they were the last user with trap notifications turned on, " +
     "all remaining users have trap notifications re-enabled.",
   async () => {
-    // TODO
+    // Test that opt-out works for trap notifications
+    const initialDateTime = new Date("2026-08-01T10:00:00Z");
+    const project = await createProjectWithUserAndDevice({ initialDateTime });
+    const AdminUser = project.api();
+    const userHandle = project.getAdminUser();
+
+    await confirmEmailAddressViaApi(userHandle);
+    const secondUser = await test.step("Invite a second user to the project", async () => {
+      const secondUser = await createUser("second");
+      await confirmEmailAddressViaApi(secondUser);
+      const NormalUser = project.api(secondUser);
+      await AdminUser.Projects.inviteSomeoneToProject(
+        project.projectHandle.id,
+        getEmail(secondUser.testId),
+      );
+      {
+        const email = await waitForEmail(secondUser.testId, "project invite");
+        expect(email.error, "user got project invite").toBeUndefined();
+        expect(email.headers.subject).toContain(
+          `You've been invited to join a group on Cacophony Monitoring`,
+        );
+      }
+      await NormalUser.Users.acceptProjectInvitation(project.projectHandle.id);
+      {
+        const email = await waitForEmail(secondUser.testId, "accepted to project");
+        expect(email.error, "user responded to project invite").toBeUndefined();
+        expect(email.headers.subject).toContain(`You've been accepted to`);
+      }
+      return secondUser;
+    });
+    await test.step("Admin user turns off trapAction notifications", async () => {
+      const optOutResponse = await AdminUser.Projects.saveProjectUserSettings(
+        project.projectHandle.id,
+        {
+          notificationPreferences: {
+            trapActions: false,
+          },
+        },
+      );
+      expect(optOutResponse.success, "Applied notification settings").toBe(true);
+    });
+    await test.step("Second user leaves the project", async () => {
+      const removalResponse = await AdminUser.Projects.removeProjectUser(
+        project.projectHandle.id,
+        undefined,
+        secondUser.id,
+      );
+      expect(removalResponse.success, "User removed from project").toBe(true);
+    });
+    await test.step("Admin users's notification preferences have changed", async () => {
+      const adminUserSettings = await AdminUser.Projects.getCurrentUserProjects();
+      const settings = (adminUserSettings.result as { groups: ApiGroupResponse[] }).groups[0]
+        .userSettings;
+      expect(settings, "settings have turned on trap notifications").toMatchObject({
+        notificationPreferences: {
+          trapActions: true,
+        },
+      });
+    });
   },
 );
 

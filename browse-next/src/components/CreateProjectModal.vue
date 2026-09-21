@@ -18,6 +18,7 @@ import {
 import { formFieldInputText } from "@/utils";
 import type { FormInputValidationState } from "@/utils";
 import { useRouter } from "vue-router";
+import type { ApiGroupResponse as ApiProjectResponse } from "@typedefs/api/group";
 
 const newProjectName = formFieldInputText();
 const isValidProjectName = computed<boolean>(
@@ -48,13 +49,13 @@ const createNewProject = async () => {
   if (createProjectResponse.success) {
     if (Array.isArray(UserProjects.value)) {
       const newProjectId = createProjectResponse.result.groupId;
-      UserProjects.value.push({
+      (UserProjects.value as ApiProjectResponse[]).push({
         groupName: projectName,
         id: createProjectResponse.result.groupId,
         admin: true,
         owner: true,
       });
-      UserProjects.value.sort((a, b) => a.groupName.localeCompare(b.groupName));
+      (UserProjects.value as ApiProjectResponse[]).sort((a, b) => a.groupName.localeCompare(b.groupName));
       switchCurrentProject({ groupName: projectName, id: newProjectId });
       await router.push({
         name: "project-settings",
