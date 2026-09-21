@@ -1,5 +1,5 @@
 import { expect, test } from "@/helpers/upload-tests";
-import { createProjectWithUserAndDevice } from "@/helpers/create-test-entities";
+import { createProjectWithUserAndDevice, createUser } from "@/helpers/create-test-entities";
 import {
   ApiDeviceActionResponse,
   ApiDeviceResponse,
@@ -11,6 +11,8 @@ import { addHours, addMinutes, addSeconds } from "@/helpers/date-helpers";
 import { uploadThermalRecordingFromDevice } from "@/helpers/recording-uploads";
 import { confirmEmailAddressViaApi, waitForEmail } from "@/helpers/email-utils";
 import { DeviceActionStatus } from "@shared/api/consts";
+import { getEmail } from "@/helpers/browse-helpers";
+import { ApiGroupResponse } from "@shared/api/group";
 
 test("A user sets trap configuration", async () => {
   const initialDateTime = new Date("2026-08-01T10:00:00Z");
@@ -152,7 +154,7 @@ test("A device polls for actions", async ({ smallCptv }) => {
           now,
         );
         // The device is finished, so we're done polling for responses now.
-        //  (Technically, this would happen after the 'acknowledged' step
+        //  (Technically, this would happen after the 'acknowledged' step)
         break;
       }
     }
@@ -201,9 +203,86 @@ test("If a camera has a trap config, but no events to indicate that at trap is c
   // In the traps dashboard, just query the last trap connected event for each device
 });
 
-test("A user gets a notification email if there is a trap action pending, unless they opt out", async () => {
-  // TODO
+test("A user gets a notification email if there is a trap action pending, unless they opt out (opt-out works)", async ({
+  smallCptv,
+}) => {
   // Test that opt-out works for trap notifications
+  const initialDateTime = new Date("2026-08-01T10:00:00Z");
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const AdminUser = project.api();
+  const userHandle = project.getAdminUser();
+  const secondUser = await createUser("second");
+  await confirmEmailAddressViaApi(userHandle);
+  await confirmEmailAddressViaApi(secondUser);
+  const NormalUser = project.api(secondUser);
+  await AdminUser.Projects.inviteSomeoneToProject(
+    project.projectHandle.id,
+    getEmail(secondUser.testId),
+  );
+  await NormalUser.Users.acceptProjectInvitation(project.projectHandle.id);
+
+  const userProjects = await NormalUser.Projects.getCurrentUserProjects();
+  expect(userProjects.success).toBe(true);
+  expect(
+    (userProjects.result as { groups: ApiGroupResponse[] }).groups.some(
+      (group) => group.id === project.projectHandle.id,
+    ),
+    "Second user was added to project",
+  ).toBe(true);
+
+  const deviceHandle = project.getDevice();
+  const device = new DeviceSim(deviceHandle);
+  const trapSettings: TrapSettings = {
+    protect: ["bird"],
+    target: ["possum", "cat"],
+    defaultState: "armed",
+    hasKillMechanism: true,
+    updated: addMinutes(initialDateTime, 1).toISOString(),
+    enabled: true,
+  };
+  await AdminUser.Devices.updateDeviceSettings(deviceHandle.id, {
+    trap: trapSettings,
+  });
+  await device.syncSettings();
+
+  {
+    // Both users should receive notification email
+    const captureTime = addMinutes(initialDateTime, 5);
+    const eventUUID = crypto.randomUUID();
+    const availableUserActions = ["dispatch", "release"] as DeviceActionDecision[];
+    await test.step("The trap triggers on a possum classification", async () => {
+      await device.trapActivation(eventUUID, "possum", availableUserActions, captureTime);
+    });
+    await test.step("The camera uploads the corresponding recording, and the notification is sent to user(s)", async () => {
+      await uploadThermalRecordingFromDevice({
+        deviceHandle,
+        location: project.locationBase,
+        recordingDateTime: addSeconds(captureTime, -10),
+        file: smallCptv,
+        duration: 120,
+        uploadTime: addSeconds(captureTime, 150), // Recording is uploaded 2.5mins after capture
+      });
+      await test.step("Admin user gets notification", async () => {
+        const email = await waitForEmail(userHandle.testId, "device action request");
+        expect(email.headers.subject).toContain(`Trap activated for Possum`);
+        expect(email.error, "user was notified successfully").toBeUndefined();
+      });
+      await test.step("Second user also gets notification", async () => {
+        {
+          const email = await waitForEmail(secondUser.testId, "project invite");
+          expect(email.headers.subject).toContain(
+            `You've been invited to join a group on Cacophony Monitoring`,
+          );
+          expect(email.error, "user got project invite").toBeUndefined();
+        }
+        {
+          const email = await waitForEmail(secondUser.testId, "device action request");
+          expect(email.headers.subject).toContain(`Trap activated for Possum`);
+          expect(email.error, "user was notified successfully").toBeUndefined();
+        }
+      });
+    });
+  }
 });
 
 test("The last user in a project can't opt out from trap email notifications", async () => {

@@ -41,7 +41,7 @@ const saveProjectSettings =
 
 const getCurrentUserProjects =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (abortable: boolean, shouldViewAsSuperUser = false) => {
+  (abortable = false, shouldViewAsSuperUser = false) => {
     const params = new URLSearchParams();
     if (!shouldViewAsSuperUser) {
       params.append("view-mode", "user");
@@ -53,7 +53,7 @@ const getCurrentUserProjects =
 
 const getAllProjects =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (abortable: boolean) => {
+  (abortable = false) => {
     return api.get(authKey, `/api/v1/groups`, abortable) as Promise<
       FetchResult<{ groups: ApiProjectResponse[] }>
     >;
