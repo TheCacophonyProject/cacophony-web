@@ -5,9 +5,13 @@ const states = ['pending', 'requested', 'responded', 'acknowledged', 'completed'
 
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.sequelize.query(
-      `create type "enum_Device_actions_status" as ENUM('${states.join(', ')}');`,
-    );
+    await queryInterface.sequelize.query(`
+      DO $$ BEGIN
+        CREATE TYPE "enum_Device_actions_status" AS ENUM('${states.join(', ')}');
+      EXCEPTION
+        WHEN duplicate_object THEN null;
+      END $$;
+    `);
     await queryInterface.createTable("DeviceActions", {
       id: {
         type: Sequelize.UUID,
