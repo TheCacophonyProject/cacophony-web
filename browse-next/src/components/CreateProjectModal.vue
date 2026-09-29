@@ -55,7 +55,9 @@ const createNewProject = async () => {
         admin: true,
         owner: true,
       });
-      (UserProjects.value as ApiProjectResponse[]).sort((a, b) => a.groupName.localeCompare(b.groupName));
+      (UserProjects.value as ApiProjectResponse[]).sort((a, b) =>
+        a.groupName.localeCompare(b.groupName),
+      );
       switchCurrentProject({ groupName: projectName, id: newProjectId });
       await router.push({
         name: "project-settings",

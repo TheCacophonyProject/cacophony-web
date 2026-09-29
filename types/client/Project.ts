@@ -14,7 +14,9 @@ import type {
   ApiGroupUserResponse as ApiProjectUserResponse,
 } from "../api/group.js";
 import type {
+  ApiDeviceAction,
   ApiDeviceActionResponse,
+  ApiDeviceHistorySettings,
   ApiDeviceResponse,
   DeviceActionDecision,
 } from "../api/device.js";
@@ -91,7 +93,12 @@ const addOrUpdateProjectUser =
 
 const removeProjectUser =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (projectId?: ProjectId, projectName?:string, userId?: UserId, email?: string) => {
+  (
+    projectId?: ProjectId,
+    projectName?: string,
+    userId?: UserId,
+    email?: string,
+  ) => {
     const payload: {
       groupId?: ProjectId;
       group?: string;
@@ -192,20 +199,27 @@ const getDevicesWithActiveTrapsForProject =
     projectNameOrId: string | number,
     activeAndInactive = false,
     NO_ABORT = false,
-  ): Promise<LoadedResource<ApiDeviceResponse[]>> => {
+  ): Promise<
+    FetchResult<{
+      devices: ApiDeviceResponse[];
+      settings: ApiDeviceHistorySettings[];
+    }>
+  > => {
     const params = new URLSearchParams();
     params.append(
       "only-active",
       activeAndInactive ? false.toString() : true.toString(),
     );
-    return unwrapLoadedResource(
-      api.get(
-        authKey,
-        `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/devices-with-traps`,
-        !NO_ABORT,
-      ) as Promise<FetchResult<{ devices: ApiDeviceResponse[] }>>,
-      "devices",
-    );
+    return api.get(
+      authKey,
+      `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/devices-with-traps`,
+      !NO_ABORT,
+    ) as Promise<
+      FetchResult<{
+        devices: ApiDeviceResponse[];
+        settings: ApiDeviceHistorySettings[];
+      }>
+    >;
   };
 
 const getPendingDeviceActionRequests =
@@ -216,7 +230,7 @@ const getPendingDeviceActionRequests =
         authKey,
         `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/actions`,
         !NO_ABORT,
-      ) as Promise<FetchResult<{ actions: ApiDeviceActionResponse[] }>>,
+      ) as Promise<FetchResult<{ actions: ApiDeviceAction[] }>>,
       "actions",
     );
   };

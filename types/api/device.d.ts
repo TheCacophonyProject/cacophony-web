@@ -82,12 +82,13 @@ export type BatterySettings = {
 
 export type DeviceModelOutput = keyof typeof DeviceThermalModelOutputLabel;
 
+export type TrapMode = "armed" | "safe";
 export type TrapSettings = {
   protect: DeviceModelOutput[];
   target: DeviceModelOutput[];
   // This setting is about whether the trap will trigger before there is any
   // AI classification, or if it waits for a positive classification before triggering.
-  defaultState: "armed" | "safe";
+  defaultState: TrapMode;
   hasKillMechanism: boolean;
   enabled: boolean;
 } & SettingsBase;
@@ -148,6 +149,7 @@ export type DeviceActionDecision =
   | "release" // "reset"?
   | "dispatch"
   | "hold"
+  | "wait"
   | "more-info";
 export type ActionStatus = keyof typeof DeviceActionStatus;
 

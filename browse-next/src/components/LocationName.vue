@@ -40,7 +40,15 @@ const props = withDefaults(
 </template>
 
 <style scoped lang="less">
+.location-name-wrapper {
+  // A flex item's default min-width is `auto` (its content's natural size),
+  // which prevents it ever shrinking small enough for the nested truncated
+  // text to actually ellipsize when this component is used inside a flex
+  // row (e.g. a modal header) alongside other content.
+  min-width: 0;
+}
 .location-name {
   word-break: break-word;
+  min-width: 0;
 }
 </style>

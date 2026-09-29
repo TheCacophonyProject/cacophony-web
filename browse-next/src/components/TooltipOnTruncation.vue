@@ -26,7 +26,7 @@ const fullText = computed(() => {
 });
 </script>
 <template>
-  <span class="text-truncate" ref="spanItem"
+  <span class="text-truncate truncation-target" ref="spanItem"
     ><slot></slot
     ><b-tooltip
       hover
@@ -38,4 +38,14 @@ const fullText = computed(() => {
   </span>
 </template>
 
-<style scoped></style>
+<style scoped>
+.truncation-target {
+  /* `.text-truncate` (white-space: nowrap; overflow: hidden; text-overflow:
+     ellipsis) needs a display mode that establishes its own box to actually
+     clip, and needs to be shrinkable when it's a flex item, or it just
+     overflows its container instead of ellipsizing. */
+  display: inline-block;
+  min-width: 0;
+  max-width: 100%;
+}
+</style>

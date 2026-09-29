@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "vite --force --host",
     "build": "vite build",
-    "build-for-tests": "vite build --mode e2e && vite preview --port 5050",
+    "build-for-tests": "concurrently -k \"vite build --watch --mode e2e\" \"vite preview --port 5050\"",
     "preview": "vite build --mode development && vite preview --port 5050",
     "typecheck": "vue-tsc --noEmit",
     "lint": "./node_modules/.bin/eslint ./ --fix --ignore-pattern \"/public/\" --ignore-pattern \"**/*.d.ts\" --ignore-pattern \"**/*.js\""
@@ -46,6 +46,7 @@
     "@vue/eslint-config-prettier": "^10.2.0",
     "@vue/eslint-config-typescript": "^14.6.0",
     "@vue/tsconfig": "^0.9.1",
+    "concurrently": "^10.0.5",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^9.33.0",

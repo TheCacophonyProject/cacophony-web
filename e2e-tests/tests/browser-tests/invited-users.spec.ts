@@ -12,7 +12,7 @@ import {
   signOut,
   signOutFromSetup,
   uniqueName,
-  urlNormaliseProjectName,
+  urlNormaliseName,
   waitToNavigateToProject,
 } from "@/helpers/browse-helpers";
 import {
@@ -88,7 +88,7 @@ test("An existing user with a project can invite a non-platform member using the
   await test.step(`${user1} invites a non-member to join their project via email address, then signs out`, async () => {
     await ensureMainNavIsAvailable(page);
     await page.getByTestId("manage project").click();
-    await expect(page).toHaveURL(`/${urlNormaliseProjectName(project)}/settings/users`);
+    await expect(page).toHaveURL(`/${urlNormaliseName(project)}/settings/users`);
     await page.getByTestId("invite someone to project button").click();
     await page.getByTestId("invitee email address").fill(getEmail(user2));
     await clickModalOkayButton(page, "invite-someone-modal");
@@ -128,7 +128,7 @@ test("An existing user with a project can invite a non-platform member using the
   await test.step(`${user1} invites a non-member to join their project via email address, then signs out`, async () => {
     await ensureMainNavIsAvailable(page);
     await page.getByTestId("manage project").click();
-    await expect(page).toHaveURL(`/${urlNormaliseProjectName(project)}/settings/users`);
+    await expect(page).toHaveURL(`/${urlNormaliseName(project)}/settings/users`);
     await page.getByTestId("invite someone to project button").click();
     await page.getByTestId("invitee email address").fill(getEmail(user2));
     await clickModalOkayButton(page, "invite-someone-modal");
@@ -173,7 +173,7 @@ test("An existing user can invite a platform member using an email address diffe
   await test.step(`${user1} invites a non-member email address to join their project, then signs out`, async () => {
     await ensureMainNavIsAvailable(page);
     await page.getByTestId("manage project").click();
-    await expect(page).toHaveURL(`/${urlNormaliseProjectName(project)}/settings/users`);
+    await expect(page).toHaveURL(`/${urlNormaliseName(project)}/settings/users`);
     await page.getByTestId("invite someone to project button").click();
     await page.getByTestId("invitee email address").fill(getEmail(user2));
     await clickModalOkayButton(page, "invite-someone-modal");
@@ -203,7 +203,7 @@ test("New user with a pending invitation is able to see and accept that invitati
   await test.step(`${user1} invites a non-member email address to join their project, then signs out`, async () => {
     await ensureMainNavIsAvailable(page);
     await page.getByTestId("manage project").click();
-    await expect(page).toHaveURL(`/${urlNormaliseProjectName(project)}/settings/users`);
+    await expect(page).toHaveURL(`/${urlNormaliseName(project)}/settings/users`);
     await page.getByTestId("invite someone to project button").click();
     await page.getByTestId("invitee email address").fill(getEmail(user2));
     await clickModalOkayButton(page, "invite-someone-modal");
@@ -243,7 +243,7 @@ test("Existing user (with projects) is able to be invited to another project", a
   await test.step(`${user1} invites a existing user to project, then signs out`, async () => {
     await ensureMainNavIsAvailable(page);
     await page.getByTestId("manage project").click();
-    await expect(page).toHaveURL(`/${urlNormaliseProjectName(project)}/settings/users`);
+    await expect(page).toHaveURL(`/${urlNormaliseName(project)}/settings/users`);
     await page.getByTestId("invite someone to project button").click();
     await page.getByTestId("invitee email address").fill(getEmail(user2));
     await clickModalOkayButton(page, "invite-someone-modal");
@@ -278,7 +278,7 @@ test("Logged in user is able to accept a project invite", async ({ page }) => {
   await test.step(`${user1} invites a existing user to project, then signs out`, async () => {
     await ensureMainNavIsAvailable(page);
     await page.getByTestId("manage project").click();
-    await expect(page).toHaveURL(`/${urlNormaliseProjectName(project)}/settings/users`);
+    await expect(page).toHaveURL(`/${urlNormaliseName(project)}/settings/users`);
     await page.getByTestId("invite someone to project button").click();
     await page.getByTestId("invitee email address").fill(getEmail(user2));
     await clickModalOkayButton(page, "invite-someone-modal");
@@ -337,7 +337,7 @@ test("Existing user (with projects) is able to request to join an existing proje
     await signInExistingUser(page, user2, password2);
     await expect(page.getByTestId("switch project button")).toBeAttached();
     await page.getByTestId("switch project button").click();
-    await page.getByTestId(urlNormaliseProjectName(project1)).click();
+    await page.getByTestId(urlNormaliseName(project1)).click();
     await waitToNavigateToProject(page, project1);
   });
 });

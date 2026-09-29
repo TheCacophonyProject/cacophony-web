@@ -98,6 +98,7 @@ const isDesktopView = useMediaQuery("(min-width: 992px)");
             :to="{ name: 'recording-options' }"
             :active="activeTabPath.includes('recording-options')"
             :link-class="{ 'py-2 px-1': isMobileView }"
+            data-cy="recording settings"
           >
             <span
               class="d-flex"
@@ -139,6 +140,7 @@ const isDesktopView = useMediaQuery("(min-width: 992px)");
             :to="{ name: 'define-masking' }"
             :active="activeTabPath.includes('define-masking')"
             :link-class="{ 'py-2 px-1': isMobileView }"
+            data-cy="masking settings"
           >
             <span
               class="d-flex"

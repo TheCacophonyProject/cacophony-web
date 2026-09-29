@@ -2404,7 +2404,7 @@ export default function (app: Application, baseUrl: string) {
       body("action").custom(jsonSchemaOf(ApiDeviceActionRequestSchema)),
     ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
-    async function (request, response) {
+    async function (request, response, next) {
       const actionUUID = request.params.actionId as unknown as UUID;
       const action = request.body.action as unknown as ApiDeviceActionRequest;
       await DeviceAction.sequelize.transaction(async (transaction) => {
@@ -2413,12 +2413,16 @@ export default function (app: Application, baseUrl: string) {
           transaction,
         });
         if (existingAction) {
-          return new UnprocessableError(
-            `action with the uuid '${actionUUID}' already exists`,
+          return next(
+            new UnprocessableError(
+              `action with the uuid '${actionUUID}' already exists`,
+            ),
           );
         }
         if (action.availableActions.length === 0) {
-          return new UnprocessableError(`no user action options provided`);
+          return next(
+            new UnprocessableError(`no user action options provided`),
+          );
         }
         const initialState: ActionStateTransition = {
           dateTime: action.actionDateTime,
@@ -2443,7 +2447,7 @@ export default function (app: Application, baseUrl: string) {
             id: actionUUID,
           });
         }
-        return new UnprocessableError("Failed to create action");
+        return next(new UnprocessableError("Failed to create action"));
       });
     },
   );
@@ -2478,8 +2482,8 @@ export default function (app: Application, baseUrl: string) {
         update.state === DeviceActionStatus.responded &&
         !response.locals.requestUser
       ) {
-        return new UnprocessableError(
-          "Responses to actions must come from a user",
+        return next(
+          new UnprocessableError("Responses to actions must come from a user"),
         );
       }
 
@@ -2491,12 +2495,14 @@ export default function (app: Application, baseUrl: string) {
       ];
       const action = await DeviceAction.findByPk(actionId);
       if (finalStates.includes(action.status)) {
-        return new UnprocessableError(
-          `Action '${actionId}' is already in the '${action.status}' state, no further changes are possible`,
+        return next(
+          new UnprocessableError(
+            `Action '${actionId}' is already in the '${action.status}' state, no further changes are possible`,
+          ),
         );
       }
       if (!action) {
-        return new UnprocessableError(`Action '${actionId}' not found`);
+        return next(new UnprocessableError(`Action '${actionId}' not found`));
       }
       const allowedStates = Object.values(DeviceActionStatus);
       // Make sure states can only move from one to another in order
@@ -2508,8 +2514,10 @@ export default function (app: Application, baseUrl: string) {
         (action.status !== DeviceActionStatus.acknowledged &&
           newStatus !== expectedNextState)
       ) {
-        return new UnprocessableError(
-          `Invalid action state transition '${action.status}' -> '${newStatus}'`,
+        return next(
+          new UnprocessableError(
+            `Invalid action state transition '${action.status}' -> '${newStatus}'`,
+          ),
         );
       }
 
@@ -2522,8 +2530,10 @@ export default function (app: Application, baseUrl: string) {
         newAction.action = update.action;
         const availableActions = action.history[0].availableActions || [];
         if (!availableActions.includes(update.action)) {
-          return new UnprocessableError(
-            `Provided action ${update.action} is not in the available options provided by the device: '${availableActions.join("', '")}'.`,
+          return next(
+            new UnprocessableError(
+              `Provided action ${update.action} is not in the available options provided by the device: '${availableActions.join("', '")}'.`,
+            ),
           );
         }
         newAction.userId = response.locals.requestUser.id;

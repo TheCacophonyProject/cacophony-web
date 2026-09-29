@@ -9,6 +9,9 @@ import {
 } from "vue-router";
 import {
   currentEUAVersion,
+  CurrentProjectHasEnabledTraps,
+  CurrentProjectHasFailedTrapActions,
+  CurrentProjectHasPendingTrapActions,
   currentSelectedProject,
   currentUserIsSuperUser,
   DevicesForCurrentProject,
@@ -293,7 +296,7 @@ const router = createRouter({
       path: "/:projectName/traps",
       name: "traps",
       meta: { requiresLogin: true, title: "Trap actions for :projectName" },
-      component: () => import("@views/Traps.vue"),
+      component: () => import("@views/TrapsView.vue"),
       beforeEnter: cancelPendingRequests,
     },
     {
@@ -786,23 +789,57 @@ router.beforeEach(async (to, from, next) => {
       ) {
         LocationsForCurrentProject.value = null;
         DevicesForCurrentProject.value = null;
-        const [devices, locations] = await Promise.all([
-          ClientApi.Projects.getDevicesForProject(
-            currentSelectedProject.value.id,
-            false,
-            true,
-          ),
-          ClientApi.Projects.getLocationsForProject(
-            currentSelectedProject.value.id.toString(),
-            true,
-          ),
-        ]);
+        CurrentProjectHasEnabledTraps.value = false;
+        CurrentProjectHasPendingTrapActions.value = false;
+        const [devices, locations, devicesWithTraps, pendingTrapActions] =
+          await Promise.all([
+            ClientApi.Projects.getDevicesForProject(
+              currentSelectedProject.value.id,
+              false,
+              true,
+            ),
+            ClientApi.Projects.getLocationsForProject(
+              currentSelectedProject.value.id.toString(),
+              true,
+            ),
+            ClientApi.Projects.getDevicesWithActiveTrapsForProject(
+              currentSelectedProject.value.id,
+              false,
+              true,
+            ),
+            ClientApi.Projects.getPendingDeviceActionRequests(
+              currentSelectedProject.value.id,
+              true,
+            ),
+          ]);
         DevicesForCurrentProject.value = devices as LoadedResource<
           ApiDeviceResponse[]
         >;
         LocationsForCurrentProject.value = locations as LoadedResource<
           ApiLocationResponse[]
         >;
+        if (
+          devicesWithTraps.success &&
+          devicesWithTraps.result.devices.length !== 0
+        ) {
+          CurrentProjectHasEnabledTraps.value = true;
+        }
+        if (
+          pendingTrapActions &&
+          pendingTrapActions.filter(
+            (action) =>
+              action.status === "pending" || action.status === "requested",
+          ).length !== 0
+        ) {
+          CurrentProjectHasPendingTrapActions.value = true;
+        }
+        if (
+          pendingTrapActions &&
+          pendingTrapActions.filter((action) => action.status === "failed")
+            .length !== 0
+        ) {
+          CurrentProjectHasFailedTrapActions.value = true;
+        }
       }
     } else {
       LocationsForCurrentProject.value = null;

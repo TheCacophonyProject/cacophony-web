@@ -17,6 +17,7 @@ import { getDeviceTestName } from "@/helpers/create-test-entities";
 import { test } from "@/helpers/upload-tests";
 import { addSeconds } from "./date-helpers";
 import { ApiDeviceHistorySettings, DeviceActionDecision } from "@shared/api/device";
+import { DeviceActionStatus } from "@shared/api/consts";
 
 export interface EventStoredOnDevice {
   event: EventDescription;
@@ -120,6 +121,58 @@ export class DeviceSim {
       availableActions,
     );
     expect(response.success, "creating trap action succeeded").toBe(true);
+  }
+
+  public async pollAndAcknowledgeAction(uuid: string, atTime: Date = new Date()): Promise<boolean> {
+    // Simulates the device polling the API, noticing a user has responded to
+    // an action request, and acknowledging that it has received the response.
+    const action = await TestApiImpl.Devices.withAuth(
+      this.deviceHandle.testId,
+    ).getDeviceActionRequest(this.deviceHandle.id, uuid);
+    if (action && action.status === "responded") {
+      const response = await TestApiImpl.Devices.withAuth(
+        this.deviceHandle.testId,
+      ).updateDeviceActionRequest(
+        this.deviceHandle.id,
+        uuid,
+        DeviceActionStatus.acknowledged,
+        atTime,
+      );
+      return response.success;
+    }
+    return false;
+  }
+
+  public async pollAndCompleteAction(uuid: string, atTime: Date = new Date()): Promise<boolean> {
+    // Simulates the device polling the API again, this time noticing that it
+    // has previously acknowledged the action, and now reporting that it has
+    // actually carried out the requested action (e.g. opened the trap door).
+    const action = await TestApiImpl.Devices.withAuth(
+      this.deviceHandle.testId,
+    ).getDeviceActionRequest(this.deviceHandle.id, uuid);
+    if (action && action.status === "acknowledged") {
+      const response = await TestApiImpl.Devices.withAuth(
+        this.deviceHandle.testId,
+      ).updateDeviceActionRequest(this.deviceHandle.id, uuid, DeviceActionStatus.completed, atTime);
+      return response.success;
+    }
+    return false;
+  }
+
+  public async pollAndFailAction(uuid: string, atTime: Date = new Date()): Promise<boolean> {
+    // Simulates the device having acknowledged the action, then attempting to
+    // actually carry it out (e.g. open the trap door) and failing, because
+    // this step involves physical hardware that can malfunction.
+    const action = await TestApiImpl.Devices.withAuth(
+      this.deviceHandle.testId,
+    ).getDeviceActionRequest(this.deviceHandle.id, uuid);
+    if (action && action.status === "acknowledged") {
+      const response = await TestApiImpl.Devices.withAuth(
+        this.deviceHandle.testId,
+      ).updateDeviceActionRequest(this.deviceHandle.id, uuid, DeviceActionStatus.failed, atTime);
+      return response.success;
+    }
+    return false;
   }
 
   public updateLocation(location: LatLng, atTime: Date): void {

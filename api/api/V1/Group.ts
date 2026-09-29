@@ -68,6 +68,7 @@ import type {
   ApiGroupUserSettings,
 } from "@typedefs/api/group.js";
 import type {
+  ApiDeviceAction,
   ApiDeviceActionResponse,
   ApiDeviceResponse,
 } from "@typedefs/api/device.js";
@@ -461,80 +462,6 @@ export default function (app: Application, baseUrl: string) {
         devices: mapDevicesResponse(
           response.locals.devices,
           response.locals.viewAsSuperUser,
-        ),
-      });
-    },
-  );
-
-  /**
-   * @api {get} /api/v1/groups/:groupIdOrName/devices-with-traps Retrieves all devices for a group that have an active trap config.
-   * @apiName GetDevicesWithTrapForGroup
-   * @apiGroup Group
-   * @apiDescription A group member or an admin member with globalRead permissions can view devices that belong
-   * to a group that have an active trap configuration.
-   *
-   * @apiUse V1UserAuthorizationHeader
-   *
-   * @apiParam {String|Integer} groupIdOrName group id or group name
-   *
-   * @apiUse V1ResponseSuccess
-   * @apiInterface {apiSuccess::ApiGroupDevicesResponseSuccess} devices List of devices with traps associated with the group
-   * @apiUse DevicesList
-   * @apiUse V1ResponseError
-   */
-  app.get(
-    `${apiUrl}/:groupIdOrName/devices-with-traps`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      nameOrIdOf(param("groupIdOrName")),
-      booleanOf(query("only-active")).optional().default(true),
-    ]),
-    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
-    async (request: Request, response: Response) => {
-      const groupId = response.locals.group.id;
-      const deviceWhere: WhereOptions<Device> = { GroupId: groupId };
-      if (request.query["only-active"]) {
-        deviceWhere.active = true;
-      }
-      const devicesHistories = await DeviceHistory.findAll({
-        include: [
-          {
-            model: Device,
-            where: deviceWhere,
-          },
-        ],
-        where: {
-          GroupId: groupId,
-          [Op.and]: [
-            // settings.trap exists
-            Sequelize.literal(`"DeviceHistory".settings ? 'trap'`),
-
-            // either settings.trap.target or settings.trap.protect has one or more items
-            Sequelize.literal(`COALESCE(jsonb_array_length("DeviceHistory".settings->'trap'->'target'), 0) > 0
-              OR COALESCE(jsonb_array_length("DeviceHistory".settings->'trap'->'protect'), 0) > 0`),
-
-            // settings.thermalRecording.useLowPowerMode is absent or false
-            Sequelize.literal(
-              `COALESCE(("DeviceHistory".settings->'thermalRecording'->>'useLowPowerMode')::boolean, false) = false`,
-            ),
-
-            // latest DeviceHistory per device in the group by fromDateTime
-            Sequelize.literal(`
-              "DeviceHistory"."fromDateTime" = (
-                SELECT MAX(dh2."fromDateTime")
-                FROM "DeviceHistory" dh2
-                JOIN "Devices" d2 ON d2.id = dh2."DeviceId"
-                WHERE dh2."DeviceId" = "DeviceHistory"."DeviceId"
-              )
-            `),
-          ],
-        },
-      });
-
-      return successResponse(response, "Got devices with traps for group", {
-        devices: mapDevicesResponse(
-          devicesHistories.map((history) => history.Device),
-          false,
         ),
       });
     },
@@ -1619,7 +1546,25 @@ export default function (app: Application, baseUrl: string) {
     validateFields([nameOrIdOf(param("groupIdOrName"))]),
     fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
     async (_request, response) => {
+      // Only the latest action per device is relevant here (e.g. for showing
+      // outstanding/failed trap actions) - a device can have many actions
+      // over its lifetime, but older ones are superseded once a newer one is
+      // created for the same device.
       const actions = await DeviceAction.findAll({
+        attributes: [
+          [
+            Sequelize.literal(
+              'DISTINCT ON ("DeviceAction"."DeviceId") "DeviceAction"."DeviceId"',
+            ),
+            "DeviceId",
+          ],
+          "id",
+          "history",
+          "status",
+          "createdAt",
+          "updatedAt",
+          "RecordingId",
+        ],
         include: [
           {
             model: Device,
@@ -1630,17 +1575,95 @@ export default function (app: Application, baseUrl: string) {
             attributes: ["deviceName"],
           },
         ],
+        order: [
+          ["DeviceId", "ASC"],
+          ["updatedAt", "DESC"],
+        ],
       });
       return successResponse(response, "Got device actions for project", {
         actions: actions.map((action) => {
           return {
             uuid: action.id,
-            availableActions: action.history[0].availableActions,
+            history: action.history,
             status: action.status,
             deviceId: action.DeviceId,
             deviceName: action.Device.deviceName,
-          } as ApiDeviceActionResponse;
+            createdAt: action.createdAt.toISOString(),
+            updatedAt: action.updatedAt.toISOString(),
+            recordingId: action.RecordingId,
+          } as ApiDeviceAction;
         }),
+      });
+    },
+  );
+
+  /**
+   * @api {get} /api/v1/groups/:groupIdOrName/devices-with-traps Retrieves all devices for a group that have an active trap config.
+   * @apiName GetDevicesWithTrapForGroup
+   * @apiGroup Group
+   * @apiDescription A group member or an admin member with globalRead permissions can view devices that belong
+   * to a group that have an active trap configuration.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {String|Integer} groupIdOrName group id or group name
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiGroupDevicesResponseSuccess} devices List of devices with traps associated with the group
+   * @apiUse DevicesList
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:groupIdOrName/devices-with-traps`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      nameOrIdOf(param("groupIdOrName")),
+      booleanOf(query("only-active")).optional().default(true),
+    ]),
+    fetchAuthorizedRequiredGroupByNameOrId(param("groupIdOrName")),
+    async (request, response) => {
+      const groupId = response.locals.group.id;
+      const deviceWhere: WhereOptions<Device> = { GroupId: groupId };
+      if (request.query["only-active"]) {
+        deviceWhere.active = true;
+      }
+      // Traps: get all devices with a latest device history where there is a trap enabled in settings.
+      const latestDeviceHistories = await DeviceHistory.findAll({
+        attributes: [
+          [
+            Sequelize.literal(
+              'DISTINCT ON ("DeviceHistory"."DeviceId") "DeviceHistory"."DeviceId"',
+            ),
+            "DeviceId",
+          ],
+          "settings",
+          "id",
+        ],
+        where: {
+          [Op.and]: [
+            Sequelize.literal(
+              `("DeviceHistory".settings->'trap'->>'enabled')::boolean = true`,
+            ),
+          ],
+        },
+        include: [
+          {
+            where: deviceWhere,
+            model: Device,
+            required: true,
+          },
+        ],
+        order: [
+          ["DeviceId", "ASC"],
+          ["fromDateTime", "DESC"],
+        ],
+      });
+      const devices = latestDeviceHistories.map(
+        (deviceHistoryItem) => deviceHistoryItem.Device,
+      ) as Device[];
+      return successResponse(response, "Got enabled traps for project", {
+        devices: mapDevicesResponse(devices, false),
+        settings: latestDeviceHistories.map((item) => item.settings),
       });
     },
   );

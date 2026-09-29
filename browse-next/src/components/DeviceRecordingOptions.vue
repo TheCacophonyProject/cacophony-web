@@ -30,6 +30,7 @@ import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import sunCalc from "suncalc";
 import { DateTime } from "luxon";
 import { timezoneForLatLng } from "@models/visitsUtils.ts";
+import { recordingWindowDescriptionForSettings } from "./recordingWindowUtils";
 
 type Time = { hours: number; minutes: number; seconds: number };
 const devices = inject(selectedProjectDevices) as Ref<
@@ -115,45 +116,8 @@ const fetchSettings = async () => {
   };
 };
 
-const records247 = computed<boolean>(() => {
-  // Device records 24/7 if power-on time is non-relative and is set to the same as power off time.
-  if (settings.value) {
-    const start = thermalStartTime.value;
-    const end = thermalStopTime.value;
-    if (!start.endsWith("m") || !end.endsWith("m")) {
-      return start === end;
-    }
-  }
-  return false;
-});
-
 const recordingWindow = computed<string | null>(() => {
-  if (records247.value) {
-    return "Record 24/7";
-  } else if (settings.value) {
-    const start = thermalStartTime.value;
-    const end = thermalStopTime.value;
-    let startTime;
-    let endTime;
-    if (start.startsWith("+") || start.startsWith("-")) {
-      // Relative start time to sunset
-      const beforeAfter = start.startsWith("-") ? "before" : "after";
-      startTime = `${start.slice(1)}ins ${beforeAfter} sunset`;
-    } else {
-      // Absolute start time
-      startTime = start; // Do am/pm?
-    }
-    if (end.startsWith("+") || end.startsWith("-")) {
-      // Relative end time to sunrise
-      const beforeAfter = end.startsWith("-") ? "before" : "after";
-      endTime = `${end.slice(1)}ins ${beforeAfter} sunrise`;
-    } else {
-      // Absolute end time
-      endTime = end;
-    }
-    return `Record from ${startTime} until ${endTime}`;
-  }
-  return null;
+  return recordingWindowDescriptionForSettings(settings.value);
 });
 
 const loadResource = async (
@@ -599,36 +563,6 @@ function timeToMinutes(timeStr: string): number {
 function timeToPercentage(timeStr: string): number {
   const totalMinutes = timeToMinutes(timeStr);
   return (totalMinutes / (24 * 60)) * 100;
-}
-
-function calculateTimePercentagePoints(
-  startTime: string,
-  endTime: string,
-): { x0: number; x1: number }[] {
-  if ((startTime === "12:00" && endTime === "12:00") || startTime === endTime) {
-    return [
-      {
-        x0: 0,
-        x1: 100,
-      },
-    ];
-  }
-  const startPercentage = timeToPercentage(startTime);
-  const endPercentage = timeToPercentage(endTime);
-
-  if (startPercentage <= endPercentage) {
-    return [
-      {
-        x0: startPercentage,
-        x1: endPercentage,
-      },
-    ];
-  } else {
-    return [
-      { x0: startPercentage, x1: 100 - startPercentage },
-      { x0: 0, x1: endPercentage },
-    ];
-  }
 }
 
 const thermalStartTime = computed<string>(() => {
@@ -1280,12 +1214,19 @@ watch(customRecordingWindowStop, async () => {
       <section-card v-if="isTc2Device" class="mb-3 mb-lg-4" id="power-profile">
         <template #header-title> Power profile </template>
         <template #header-action>
-          <div v-if="savingPowerModeSettings">
+          <div
+            v-if="savingPowerModeSettings"
+            data-cy="saving power mode settings"
+          >
             <b-spinner class="me-2" variant="secondary" small />
             <span class="text-secondary">Saving</span>
           </div>
         </template>
-        <b-form-checkbox switch v-model="useLowPowerMode" class="mb-3 fw-medium"
+        <b-form-checkbox
+          switch
+          v-model="useLowPowerMode"
+          class="mb-3 fw-medium"
+          data-cy="use low power mode"
           >Use low power mode</b-form-checkbox
         >
 

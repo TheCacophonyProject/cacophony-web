@@ -1,6 +1,11 @@
 import { expect, test } from "@/helpers/upload-tests";
-import { createProjectWithUserAndDevice, createUser } from "@/helpers/create-test-entities";
 import {
+  addDeviceToProject,
+  createProjectWithUserAndDevice,
+  createUser,
+} from "@/helpers/create-test-entities";
+import {
+  ApiDeviceAction,
   ApiDeviceActionResponse,
   ApiDeviceResponse,
   DeviceActionDecision,
@@ -55,15 +60,7 @@ test("A user sets trap configuration", async () => {
   });
   expect(settings!.synced).toBe(true);
 
-  {
-    const devicesWithTraps = (await AdminUser.Projects.getDevicesWithActiveTrapsForProject(
-      project.projectHandle.id,
-    )) as ApiDeviceResponse[];
-    expect(devicesWithTraps, "got devices with traps").toBeTruthy();
-    expect(devicesWithTraps.length, "got 0 device").toEqual(0);
-  }
   // Now update the settings to be actually active, with something in the protect list and the trap list.
-
   // TODO: Probably can't have target list empty and have something in protect list?
   await AdminUser.Devices.updateDeviceSettings(deviceHandle.id, {
     trap: {
@@ -74,12 +71,13 @@ test("A user sets trap configuration", async () => {
   });
 
   {
-    const devicesWithTraps = (await AdminUser.Projects.getDevicesWithActiveTrapsForProject(
+    const devicesWithTraps = await AdminUser.Projects.getDevicesWithActiveTrapsForProject(
       project.projectHandle.id,
-    )) as ApiDeviceResponse[];
-    expect(devicesWithTraps, "got devices with traps").toBeTruthy();
-    expect(devicesWithTraps.length, "got 1 device").toEqual(1);
-    expect(devicesWithTraps[0].id, "got correct device").toEqual(deviceHandle.id);
+    );
+    expect(devicesWithTraps.success, "got devices with traps").toBe(true);
+    const devices = (devicesWithTraps.result as { devices: ApiDeviceResponse[] }).devices;
+    expect(devices.length, "got 1 device").toEqual(1);
+    expect(devices[0].id, "got correct device").toEqual(deviceHandle.id);
   }
 });
 
@@ -164,11 +162,11 @@ test("A device polls for actions", async ({ smallCptv }) => {
       // We want to be able to link to the specific trap action request, so should this be on Project or Device?
       const pendingActions = (await AdminUser.Projects.getPendingDeviceActionRequests(
         project.projectHandle.id,
-      )) as ApiDeviceActionResponse[];
+      )) as ApiDeviceAction[];
       expect(pendingActions, "got pending actions").toBeTruthy();
       expect(pendingActions.length, "there is one pending action").toEqual(1);
       const action = pendingActions[0];
-      expect(action.availableActions, "user is presented with correct actions").toEqual(
+      expect(action.history[0].availableActions, "user is presented with correct actions").toEqual(
         availableUserActions,
       );
       await AdminUser.Devices.confirmDeviceActionRequest(
@@ -186,11 +184,71 @@ test("A device polls for actions", async ({ smallCptv }) => {
   )) as ApiDeviceActionResponse;
   expect(deviceActionResponse, "got device action").toBeTruthy();
   expect(deviceActionResponse.status).toEqual("completed");
+
+  await test.step("The user can't complete the same action twice", async () => {
+    now = addMinutes(now, 1);
+    const response = await AdminUser.Devices.confirmDeviceActionRequest(
+      deviceHandle.id,
+      eventUUID,
+      availableUserActions[1], // User decides to release from the trap
+      now,
+    );
+    expect(response.success, "setting completed again fails").toBe(false);
+  });
 });
 
-test("Once an action is completed, it is an error for the device to try to modify the action", async () => {
-  // TODO
-  // Just exercising the APIs, making sure they require statuses to be in correct order
+test("Ensure getPendingDeviceActionRequests API only returns the latest action for each device", async () => {
+  const initialDateTime = new Date("2026-08-01T10:00:00Z");
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const AdminUser = project.api();
+  const deviceAHandle = project.getDevice();
+  const deviceBHandle = await addDeviceToProject("second", project.projectHandle, initialDateTime);
+  const deviceA = new DeviceSim(deviceAHandle);
+  const deviceB = new DeviceSim(deviceBHandle);
+  const availableUserActions: DeviceActionDecision[] = ["dispatch", "release"];
+
+  // Device A gets two actions over time - only the later one should still be
+  // considered current, even though the older one is never resolved.
+  const deviceAFirstActionUUID = crypto.randomUUID();
+  await deviceA.trapActivation(
+    deviceAFirstActionUUID,
+    "possum",
+    availableUserActions,
+    addMinutes(initialDateTime, 5),
+  );
+  const deviceALatestActionUUID = crypto.randomUUID();
+  await deviceA.trapActivation(
+    deviceALatestActionUUID,
+    "possum",
+    availableUserActions,
+    addMinutes(initialDateTime, 10),
+  );
+
+  // Device B only ever gets a single action.
+  const deviceBActionUUID = crypto.randomUUID();
+  await deviceB.trapActivation(
+    deviceBActionUUID,
+    "cat",
+    availableUserActions,
+    addMinutes(initialDateTime, 6),
+  );
+
+  const pendingActions = (await AdminUser.Projects.getPendingDeviceActionRequests(
+    project.projectHandle.id,
+  )) as ApiDeviceAction[];
+  expect(pendingActions, "got pending actions").toBeTruthy();
+  expect(pendingActions.length, "exactly one action is returned per device").toEqual(2);
+
+  const deviceAAction = pendingActions.find((a) => a.deviceId === deviceAHandle.id);
+  expect(deviceAAction, "got an action for device A").toBeTruthy();
+  expect(
+    deviceAAction!.uuid,
+    "only the most recently created action for device A is returned",
+  ).toEqual(deviceALatestActionUUID);
+
+  const deviceBAction = pendingActions.find((a) => a.deviceId === deviceBHandle.id);
+  expect(deviceBAction, "got an action for device B").toBeTruthy();
+  expect(deviceBAction!.uuid, "device B's only action is returned").toEqual(deviceBActionUUID);
 });
 
 test("When a camera with a trap connected goes below a certain battery threshold the trap is disabled and a user is notified", async () => {
@@ -408,33 +466,3 @@ test(
     });
   },
 );
-
-// Device comes online, syncs settings.
-// Device is in recording/trap active window, and triggers a recording.
-
-// The on device AI causes the trap to trigger.
-
-// The trap sends a message saying that a target species has been caught.
-
-// Need to make sure trap active time doesn't conflict with camera active time.
-
-// Need to make sure camera is in high power mode if a trap is connected.
-
-// What should happen when there is a trap config, but no trap is connected?
-// Do we get notifications in that case?
-
-// What happens if the power to the trap is low/empty?
-
-// What happens if the camera loses power - does it "safe" the trap at a given battery level?
-
-// We need to disallow audio recording mode if there is a trap configured.
-
-// What if there is a trap connected, but no trap config?
-
-// NOTE: As discussed, in the enabled by default mode, the trap triggers and then catches something,
-//  and then there may be an AI classification after the fact (or not).
-//  We decided that in this mode, the trap was in a "dumb" mode.
-//  Any target or protect lists are ignored (in fact, we won't even allow them to be filled in the UI in this mode).
-//  I briefly wondered if this is correct?
-//  Should we actually still have those lists in this mode, and in the event that we get a classification that's not
-//  in the target list, we'd automatically release without involving the user?
