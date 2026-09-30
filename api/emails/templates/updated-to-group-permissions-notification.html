@@ -8,21 +8,25 @@
     <div class="body-text" style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;line-height:160%;text-align:left;color:#252921 !important;">
       Your status in the project <strong style="font-weight: 600">{{ groupName }}</strong> has changed:
       <br><br>
-      {{#if madeAdmin }}
-        &bull; You've been made a project administrator.<br>
-      {{/if}}
-      {{#if removedAdmin }}
-      &bull; You are no longer an administrator of this project.<br>
-      {{/if}}
-      {{#if madeOwner }}
-      &bull; You've been made a project owner.<br>
-      {{/if}}
-      {{#if removedOwner }}
-      &bull; You are no longer an owner of this project.<br>
-      {{/if}}
+
+      <ul style="margin: 0; padding: 0; padding-left: 20px; line-height: 160%; font-weight: 600">
+        {{#if madeAdmin }}
+        <li>You've been made a project administrator.</li>>
+        {{/if}}
+        {{#if removedAdmin }}
+        <li>You are no longer an administrator of this project.</li>>
+        {{/if}}
+        {{#if madeOwner }}
+        <li>You've been made a project owner.</li>
+        {{/if}}
+        {{#if removedOwner }}
+        <li>You are no longer an owner of this project.</li>
+        {{/if}}
+      </ul>
+
       <br><br>
       <a href="{{ cacophonyBrowseUrl }}/{{ groupUrl }}" style="background-color: #579e02;border:none;border-radius:4px;color:#ffffff;cursor:auto;padding:12px 20px;display: inline-block;font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;font-weight:normal;line-height:120%;margin:0;text-decoration:none;text-transform:none">
-        Go to project
+        View project
       </a>
 
       <br><br>
