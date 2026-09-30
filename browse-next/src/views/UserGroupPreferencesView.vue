@@ -31,6 +31,7 @@ import type {
 import {
   persistUserProjectSettings,
   type SelectedProject,
+  userIsAdminForCurrentSelectedProject,
 } from "@models/LoggedInUser.ts";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import Multiselect from "@vueform/multiselect";
@@ -107,10 +108,12 @@ onBeforeMount(() => {
     userProjectSettings.value.notificationPreferences?.weeklyDigest || false;
   dailyDigestEmails.value =
     userProjectSettings.value.notificationPreferences?.dailyDigest || false;
-  // TODO: Set this to true in the DB for all group admins who currently have emailConfirmed
+  const reportStoppedDevices =
+    userProjectSettings.value.notificationPreferences?.reportStoppedDevices;
   stoppedDeviceEmails.value =
-    userProjectSettings.value.notificationPreferences?.reportStoppedDevices ||
-    false;
+    reportStoppedDevices === undefined
+      ? userIsAdminForCurrentSelectedProject.value
+      : reportStoppedDevices;
 });
 onMounted(() => {
   initialised.value = true;
