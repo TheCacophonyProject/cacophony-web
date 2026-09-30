@@ -364,3 +364,83 @@ test("A device can have a trap enabled, but later be moved into low power mode. 
     await expect(trapCard.getByTestId("trap misconfigured")).toBeVisible();
   });
 });
+
+test("A kill action results in the user having to do two step confirmation", async ({
+  page,
+  smallCptv,
+}) => {
+  const now = new Date();
+  now.setHours(11, 16, 0);
+  const initialDateTime = addDays(now, -5);
+  const project = await test.step("Init project, sign in user, enable trap", async () => {
+    const project = await createProjectWithUserAndDevice({ initialDateTime });
+    await uploadInitialRecording(project, addDays(initialDateTime, 1), smallCptv);
+    await signInNewAdminUserAndEnableATrap(page, project);
+    return project;
+  });
+  const deviceHandle = project.getDevice();
+  const trapCard = page.getByTestId(`trap ${deviceHandle.testId}`);
+
+  await test.step("Simulate trap triggering with a kill action available", async () => {
+    const device = new DeviceSim(project.getDevice());
+    await device.syncSettings();
+    const eventUUID = crypto.randomUUID();
+    const captureTime = addHours(addDays(initialDateTime, 4), 10);
+    // This device has a kill mechanism, so "dispatch" is offered alongside
+    // the usual "release" option.
+    const availableUserActions: DeviceActionDecision[] = ["dispatch", "release"];
+    await device.trapActivation(eventUUID, "possum", availableUserActions, captureTime);
+    await uploadThermalRecordingFromDevice({
+      deviceHandle: project.getDevice(),
+      location: { ...project.locationBase },
+      file: smallCptv,
+      recordingDateTime: addSeconds(captureTime, -10),
+      duration: 120,
+      uploadTime: addSeconds(captureTime, 150),
+    });
+    const email = await waitForEmail(project.getAdminUser().testId, "device action request");
+    expect(email.error, "user was notified successfully").toBeUndefined();
+  });
+
+  await test.step("Navigate to the traps page and open the pending action", async () => {
+    await page.reload();
+    await ensureMainNavIsAvailable(page);
+    await page.getByTestId("view traps").click();
+    await waitToNavigateToProjectPage(page, project.projectHandle.testId, "traps");
+    await expect(trapCard.getByTestId("take action")).toBeEnabled();
+    await trapCard.getByTestId("take action").click();
+    await expect(page.getByTestId("trap action recording ready")).toBeAttached();
+
+    // Both the kill action and the non-destructive "release" action are offered.
+    await expect(page.getByTestId("trap action dispatch")).toBeVisible();
+    await expect(page.getByTestId("trap action release")).toBeVisible();
+  });
+
+  await test.step("Selecting the kill action opens a confirmation dialog, rather than immediately acting", async () => {
+    await page.getByTestId("trap action dispatch").click();
+
+    const confirmButton = page.getByTestId("confirm kill action");
+    const killInput = page.getByTestId("kill confirmation input");
+    await expect(killInput).toBeVisible();
+
+    // The pending action hasn't been resolved yet - the confirmation step
+    // hasn't been completed.
+    await expect(trapCard.getByTestId("trap action pending")).toBeVisible();
+
+    // Confirmation is disabled until the user types the exact confirmation phrase.
+    await expect(confirmButton).toBeDisabled();
+    await killInput.fill("kill");
+    await expect(confirmButton).toBeDisabled();
+  });
+
+  await test.step("Confirming with the correct phrase carries out the kill action", async () => {
+    await page.getByTestId("kill confirmation input").fill("KILL");
+    const confirmButton = page.getByTestId("confirm kill action");
+    await expect(confirmButton).toBeEnabled();
+    await confirmButton.click();
+
+    // Taking action resolves the pending state for this trap.
+    await expect(trapCard.getByTestId("trap action pending")).not.toBeVisible();
+    await expect(trapCard.getByTestId("take action")).toBeDisabled();
+  });
+});

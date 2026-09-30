@@ -9,15 +9,7 @@ import {
   BSpinner,
 } from "bootstrap-vue-next";
 import MapWithPoints from "@/components/MapWithPoints.vue";
-import {
-  computed,
-  inject,
-  onBeforeMount,
-  type Ref,
-  ref,
-  useTemplateRef,
-  watch,
-} from "vue";
+import { computed, inject, onBeforeMount, type Ref, ref, watch } from "vue";
 import { useIntervalFn, useWindowSize } from "@vueuse/core";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import CardTable from "@/components/CardTable.vue";
@@ -339,41 +331,6 @@ const trapDeviceLocations = computed<NamedPoint[]>(() => {
       };
     });
 });
-// const traps = [
-//   {
-//     enabled: true,
-//     device: "A345",
-//     location: "Cacophony HQ longer name two lines",
-//     captureTime: "6:16 am",
-//     captureRelease: "6h 20 m",
-//     actionFailed: true,
-//   },
-//   {
-//     enabled: true,
-//     device: "A345",
-//     location: "Cacophony HQ",
-//     captureTime: "6:16 am",
-//     actionPending: true,
-//     captureRelease: "6h 20 m",
-//   },
-//   {
-//     enabled: true,
-//     device: "A345",
-//     location: "Cacophony HQ",
-//     misconfigured: true,
-//   },
-//   {
-//     enabled: true,
-//     device: "A345",
-//     location: "Cacophony HQ",
-//     misconfigured: true,
-//   },
-//   {
-//     enabled: false,
-//     device: "A345",
-//     location: "Cacophony HQ",
-//   },
-// ];
 
 const selectedAction = ref<TrapActionEntry | null>(null);
 const selectedActionRecording = ref<ApiRecordingResponse | null>(null);
@@ -723,11 +680,6 @@ const confirmKill = async () => {
       centered
       header-bg-variant="danger"
       header-text-variant="light"
-      cancel-variant="outline-secondary"
-      ok-variant="danger"
-      :ok-disabled="killConfirmationInput !== 'KILL'"
-      okTitle="Confirm"
-      @ok="confirmKill"
     >
       <template #header="{ close }">
         <div class="d-flex align-items-center gap-2 me-1">
@@ -748,9 +700,27 @@ const confirmKill = async () => {
       <p>Type KILL below to confirm this action.</p>
       <b-form-input
         type="text"
+        data-cy="kill confirmation input"
         v-model="killConfirmationInput"
         class="kill-input"
       />
+      <template #footer>
+        <b-button
+          variant="outline-secondary"
+          @click="showKillConfirmationModal = false"
+        >
+          Cancel
+        </b-button>
+        <button
+          class="btn btn-danger"
+          type="button"
+          data-cy="confirm kill action"
+          :disabled="killConfirmationInput !== 'KILL'"
+          @click="confirmKill"
+        >
+          Confirm
+        </button>
+      </template>
     </b-modal>
   </div>
 </template>
