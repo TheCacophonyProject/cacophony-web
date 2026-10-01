@@ -55,17 +55,21 @@ test("Project activity digest email sent successfully for weekly and daily diges
   const scriptRunTime = addDays(initialDateTime, 2);
   scriptRunTime.setHours(9);
 
-  for (const { minutesFromInitial, battery, voltage } of [
-    { minutesFromInitial: 5, battery: 95, voltage: 4.1 },
-    { minutesFromInitial: 60 * 10, battery: 60, voltage: 3.9 },
-    { minutesFromInitial: 60 * 28 - 180, battery: 23, voltage: 3.6 },
+  // Anchored to scriptRunTime (rather than initialDateTime) so that "latest" is unambiguous
+  // regardless of the digest's "from"/"until" window length (daily vs weekly) and immune to
+  // local-timezone shifts introduced by scriptRunTime.setHours(9) above.
+  const latestBatteryLevel = 23;
+  for (const { hoursBeforeScriptRun, battery, voltage } of [
+    { hoursBeforeScriptRun: 50, battery: 95, voltage: 4.1 }, // outside the daily window, inside the weekly one
+    { hoursBeforeScriptRun: 20, battery: 60, voltage: 3.9 }, // inside the daily window, but not the latest
+    { hoursBeforeScriptRun: 2, battery: latestBatteryLevel, voltage: 3.6 }, // the latest reading in both windows
   ]) {
     await AdminUser.Devices.submitEventsOnBehalfOfDevice(deviceHandle.id, {
       description: {
         type: "rpiBattery",
         details: { battery, voltage },
       },
-      dateTimes: [addMinutes(initialDateTime, minutesFromInitial).toISOString()],
+      dateTimes: [addHours(scriptRunTime, -hoursBeforeScriptRun).toISOString()],
     });
   }
   {
@@ -79,6 +83,10 @@ test("Project activity digest email sent successfully for weekly and daily diges
       page,
       adminUserHandle.testId,
       "project daily activity digest",
+    );
+    // The device name text also matches ancestor <tr> layout rows, so narrow to the innermost one.
+    await expect(page.locator("tr", { hasText: deviceHandle.testId }).last()).toContainText(
+      `${latestBatteryLevel}%`,
     );
   }
   await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -94,6 +102,10 @@ test("Project activity digest email sent successfully for weekly and daily diges
       page,
       adminUserHandle.testId,
       "project weekly activity digest",
+    );
+    // The device name text also matches ancestor <tr> layout rows, so narrow to the innermost one.
+    await expect(page.locator("tr", { hasText: deviceHandle.testId }).last()).toContainText(
+      `${latestBatteryLevel}%`,
     );
   }
   await new Promise((resolve) => setTimeout(resolve, 1000));
