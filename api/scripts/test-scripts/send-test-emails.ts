@@ -17,6 +17,9 @@ async function main() {
         {
           email: targetEmailAddress,
           userName: "Sara",
+          visitsReport: true,
+          audioReport: true,
+          batteryReport: true,
         },
       ],
       [
@@ -39,6 +42,8 @@ async function main() {
           hasIcon: true,
         },
       ],
+      [],
+      [],
     );
   } else {
     throw new Error("No email address specified");

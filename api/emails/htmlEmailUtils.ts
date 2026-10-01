@@ -110,7 +110,7 @@ export const createEmailWithTemplate = async (
     const plainText = scrapePlainTextFromHtml(html);
     return { text: plainText, html };
   } catch (e) {
-    console.log("Template compile error: ", e);
+    console.warn("Template compile error: ", e);
   }
 };
 

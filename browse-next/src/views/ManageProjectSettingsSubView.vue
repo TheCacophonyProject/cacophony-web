@@ -72,12 +72,12 @@ const addPendingInvalidTag = async (grouping: "camera" | "audio") => {
 };
 
 const knownAIOutputTags = computed(() => {
-  if (currentGrouping.value === 'camera') {
-    return ['possum', 'cat', 'mustelid'];
+  if (currentGrouping.value === "camera") {
+    return ["possum", "cat", "mustelid"];
   } else {
-    return ['bellbird'];
+    return ["bellbird"];
   }
-})
+});
 
 watch(filterHumanVoices, async (next) => {
   if (initialised.value) {
@@ -314,8 +314,6 @@ const resetPendingInvalidTag = () => {
   pendingInvalidTag.value = [];
 };
 
-
-
 const pendingIgnoredTagIsValid = computed<boolean>(() => {
   return (
     pendingIgnoredTag.value.length !== 0 &&
@@ -325,19 +323,19 @@ const pendingIgnoredTagIsValid = computed<boolean>(() => {
 
 const pendingInvalidTagIsValid = computed<boolean>(() => {
   return (
-      pendingInvalidTag.value.length !== 0 &&
-      pendingInvalidTag.value[0].trim().length !== 0
+    pendingInvalidTag.value.length !== 0 &&
+    pendingInvalidTag.value[0].trim().length !== 0
   );
 });
 
 const addInvalidAudioTag = () => {
   showAddInvalidTagModal.value = true;
-  currentGrouping.value = 'audio';
+  currentGrouping.value = "audio";
 };
 
 const addInvalidThermalTag = () => {
   showAddInvalidTagModal.value = true;
-  currentGrouping.value = 'camera';
+  currentGrouping.value = "camera";
 };
 </script>
 <template>
@@ -421,10 +419,10 @@ const addInvalidThermalTag = () => {
     <div class="col-lg-3">
       <h3 class="section-card-heading">Invalid regional thermal tags</h3>
       <p class="text-secondary pb-1">
-        Our thermal AI model is currently trained on NZ predators. If your project is in
-        a region where you know some of these predators do not occur, you can
-        opt to have them tagged as "unidentified" when the AI would incorrectly
-        pick the wrong tag.
+        Our thermal AI model is currently trained on NZ predators. If your
+        project is in a region where you know some of these predators do not
+        occur, you can opt to have them tagged as "unidentified" when the AI
+        would incorrectly pick the wrong tag.
       </p>
     </div>
     <div class="col-lg-9">
@@ -471,9 +469,9 @@ const addInvalidThermalTag = () => {
     <div class="col-lg-3">
       <h3 class="section-card-heading">Invalid regional audio tags</h3>
       <p class="text-secondary pb-1">
-        Our audio AI model is currently trained on NZ birds. If your project is in a
-        region where you know some of these birds do not occur, you can opt to
-        have them tagged as "unidentified" when the AI would incorrectly pick
+        Our audio AI model is currently trained on NZ birds. If your project is
+        in a region where you know some of these birds do not occur, you can opt
+        to have them tagged as "unidentified" when the AI would incorrectly pick
         the wrong tag.
       </p>
     </div>
@@ -539,25 +537,25 @@ const addInvalidThermalTag = () => {
   </b-modal>
 
   <b-modal
-      v-model="showAddInvalidTagModal"
-      title="Add project regionally invalid tag"
-      @cancel="resetPendingInvalidTag"
-      @close="resetPendingInvalidTag"
-      @esc="resetPendingInvalidTag"
-      @ok="() => addPendingInvalidTag(currentGrouping)"
-      :ok-disabled="!pendingInvalidTagIsValid"
-      ok-title="Add invalid tag"
-      ok-variant="secondary"
-      cancel-variant="outline-secondary"
-      centered
+    v-model="showAddInvalidTagModal"
+    title="Add project regionally invalid tag"
+    @cancel="resetPendingInvalidTag"
+    @close="resetPendingInvalidTag"
+    @esc="resetPendingInvalidTag"
+    @ok="() => addPendingInvalidTag(currentGrouping)"
+    :ok-disabled="!pendingInvalidTagIsValid"
+    ok-title="Add invalid tag"
+    ok-variant="secondary"
+    cancel-variant="outline-secondary"
+    centered
   >
-<!--  TODO: Pass enabled tags, as set of outputs from the current model  -->
+    <!--  TODO: Pass enabled tags, as set of outputs from the current model  -->
     <hierarchical-tag-select
-        class="flex-grow-1"
-        :include="knownAIOutputTags"
-        v-model="pendingInvalidTag"
-        :open-on-mount="false"
-        :disabled-tags="customInvalidThermalTags"
+      class="flex-grow-1"
+      :include="knownAIOutputTags"
+      v-model="pendingInvalidTag"
+      :open-on-mount="false"
+      :disabled-tags="customInvalidThermalTags"
     />
   </b-modal>
   <!--  <div class="mt-4">-->

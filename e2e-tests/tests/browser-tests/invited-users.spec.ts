@@ -19,7 +19,6 @@ import {
   openJoinProjectInviteEmailForExistingUser,
   openJoinProjectInviteEmailForNewUser,
   openJoinProjectRequestEmail,
-  waitForEmail,
   waitForEmailAndRenderEmailHtml,
 } from "@/helpers/email-utils";
 

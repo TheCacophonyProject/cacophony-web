@@ -6,10 +6,7 @@ import { ClientApi } from "@/api";
 import { resourceFailedLoading, resourceIsLoading } from "@/helpers/utils.ts";
 import { BSpinner } from "bootstrap-vue-next";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
-import type {
-  BatteryInfoEvent,
-  BatteryInfoEventAndDate,
-} from "@typedefs/api/event";
+import type { BatteryInfoEventAndDate } from "@typedefs/api/event";
 
 const props = withDefaults(
   defineProps<{

@@ -672,16 +672,27 @@ export const sendDailyServiceErrorsEmail = async (
   );
 };
 
+interface SpeciesListItem {
+  species: string;
+  speciesDisplayName: string;
+  count: number;
+  hasIcon?: boolean;
+  iconColor?: string;
+}
+
 export const sendProjectActivityDigestEmail = async (
   frequency: "Daily" | "Weekly",
   projectName: string,
-  recipients: { email: string; userName: string }[],
-  visitsInfo: {
-    species: string;
-    speciesDisplayName: string;
-    count: number;
-    hasIcon?: boolean;
+  recipients: {
+    email: string;
+    userName: string;
+    audioReport: boolean;
+    visitsReport: boolean;
+    batteryReport: boolean;
   }[],
+  thermalVisits: SpeciesListItem[],
+  birdDetections: SpeciesListItem[],
+  batteryReportsList: { deviceName: string; batteryLevel: number }[],
 ) => {
   const common = commonInterpolants();
   const projectRoot = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
@@ -690,9 +701,18 @@ export const sendProjectActivityDigestEmail = async (
   const emailFrequency = frequency.toLowerCase();
   const emailSettingsUrl = `${projectRoot}/my-settings`;
   const timespan = frequency === "Weekly" ? "1-week-ago" : "24-hours-ago";
-  const activityUrl = `${projectRoot}/activity?display-mode=visits&recording-mode=cameras&locations=any&from=${timespan}&tag-mode=any`;
+  const frequencyIsDaily = frequency === "Daily";
+  const frequencyIsWeekly = frequency === "Weekly";
+  const thermalActivityUrl = `${projectRoot}/activity?display-mode=visits&recording-mode=cameras&locations=any&from=${timespan}&tag-mode=any`;
+  const audioActivityUrl = `${projectRoot}/activity?display-mode=recordings&recording-mode=audio&locations=any&from=${timespan}&tag-mode=any`;
   const imageAttachments = [...(await commonAttachments())];
-  for (const species of visitsInfo) {
+  const iconColors = {
+    red: "#f6e3e3",
+    orange: "#f6eae1",
+    yellow: "#f9f1e0",
+    grey: "#f3f3f3",
+  };
+  for (const species of [...thermalVisits, ...birdDetections]) {
     let iconExists = await embedImage(
       species.species,
       imageAttachments,
@@ -720,24 +740,85 @@ export const sendProjectActivityDigestEmail = async (
       }
     }
     species.hasIcon = iconExists !== false;
+    if (species.species === "mustelid") {
+      species.iconColor = iconColors.red;
+    } else if (["possum", "cat"].includes(species.species)) {
+      species.iconColor = iconColors.orange;
+    } else if (
+      ["rodent", "hedgehog", "mouse", "rat"].includes(species.species)
+    ) {
+      species.iconColor = iconColors.yellow;
+    } else {
+      species.iconColor = iconColors.grey;
+    }
   }
-  const { text, html } = await createEmailWithTemplate(
-    "project-activity-digest.html",
-    {
-      emailSettingsUrl,
-      projectName,
-      emailFrequency,
-      visitsInfo,
-      hasVisitsInPeriod: visitsInfo.length !== 0,
-      hasNoVisitsInPeriod: visitsInfo.length === 0,
-      activityUrl,
-      ...common,
-    },
-  );
+  // Because we have two columns, we need to split our array into two
+  const visits = [...thermalVisits].sort((a, b) => b.count - a.count);
+  const visitsInfoCol1 = [];
+  const visitsInfoCol2 = [];
+  while (visits.length !== 0) {
+    const a = visits.shift();
+    if (a) {
+      visitsInfoCol1.push(a);
+    }
+    const b = visits.shift();
+    if (b) {
+      visitsInfoCol2.push(b);
+    }
+  }
+  const birdDetectionsB = [...birdDetections];
+  const birdDetectionOne = birdDetectionsB.shift();
+  const birdDetectionTwo = birdDetectionsB.shift();
+  const birdDetectionThree = birdDetectionsB.shift();
+
+  let topThreeTableItemWidth = "100%";
+  const length = [
+    birdDetectionOne,
+    birdDetectionTwo,
+    birdDetectionThree,
+  ].filter((item) => !!item).length;
+  if (length === 3) {
+    topThreeTableItemWidth = "33%";
+  } else if (length === 2) {
+    topThreeTableItemWidth = "50%";
+  } else if (length === 1) {
+    topThreeTableItemWidth = "100%";
+  }
 
   // TODO: How much info should we try to cram into these reports?
   const recipientPromises = [];
   for (const recipient of recipients) {
+    // Each recipient may get a slightly different report, depending on their notification prefs.
+    const { text, html } = await createEmailWithTemplate(
+      "project-activity-digest.html",
+      {
+        emailSettingsUrl,
+        projectName,
+        emailFrequency,
+        visitsInfoCol1,
+        visitsInfoCol2,
+        hasVisitsInPeriod: thermalVisits.length !== 0,
+        hasNoVisitsInPeriod: thermalVisits.length === 0,
+        hasNoBirdDetectionsInPeriod: birdDetections.length === 0,
+        hasBirdDetectionsInPeriod: birdDetections.length !== 0,
+        hasExtendedBirdDetections: birdDetectionsB.length > 0,
+        birdDetectionOne: [birdDetectionOne],
+        birdDetectionTwo: [birdDetectionTwo],
+        birdDetectionThree: [birdDetectionThree],
+        extendedBirdDetections: birdDetectionsB,
+        topThreeTableItemWidth,
+        thermalActivityUrl,
+        audioActivityUrl,
+        frequencyIsDaily,
+        frequencyIsWeekly,
+        hasAudioReport: recipient.audioReport,
+        hasBatteryReport: recipient.batteryReport,
+        hasVisitsReport: recipient.visitsReport,
+        batteryReport: batteryReportsList,
+        ...common,
+      },
+    );
+
     recipientPromises.push(
       sendEmail(
         html,
