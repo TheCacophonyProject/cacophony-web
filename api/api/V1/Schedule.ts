@@ -127,7 +127,7 @@ export default (app: Application, baseUrl: string) => {
 
   /**
    * @api {get} api/v1/schedules/for-user Get audio bait schedules (for this user)
-   * @apiName GetSchedule
+   * @apiName GetSchedulesForUser
    * @apiGroup Schedules
    * @apiDescription This call is used by a user to retrieve all their audio bait
    * schedules.

@@ -433,7 +433,7 @@ export default function (app: Application, baseUrl: string) {
 
   /**
    * @api {get} api/v1/listUsers List usernames
-   * @apiName ListUsers
+   * @apiName ListUsersLegacy
    * @apiGroup User
    * @apiDescription Given an authenticated super-user, we need to be able to get
    * a list of all email addresses on the system, so that we can switch to viewing
@@ -457,7 +457,7 @@ export default function (app: Application, baseUrl: string) {
 
   /**
    * @api {get} /api/v1/endUserAgreement/latest Get the latest end user agreement version
-   * @apiName EndUserAgreementVersion
+   * @apiName EndUserAgreementVersionLegacy
    * @apiGroup User
    * @apiDeprecated Use /api/v1/end-user-agreement/latest
    *
@@ -557,7 +557,7 @@ export default function (app: Application, baseUrl: string) {
 
   /**
    * @api {patch} /api/v1/users/changePassword Updates a users password with reset token authentication
-   * @apiName ChangePassword
+   * @apiName ChangePasswordLegacy
    * @apiGroup User
    * @apiInterface {apiBody::ApiChangePasswordRequestBody}
    * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess} userData

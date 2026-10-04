@@ -346,7 +346,7 @@ export default function (app: Application, baseUrl: string) {
 
   /**
    * @api {post} /api/v1/devices/reregister-authorized Authorized reregister the device.
-   * @apiName Reregister
+   * @apiName ReregisterAuthorized
    * @apiGroup Device
    * @apiDescription This call is to reregister authorized a device to change the name and/or group
    *
@@ -2343,7 +2343,7 @@ export default function (app: Application, baseUrl: string) {
 
   /**
    * @api {get} /api/v1/devices/:deviceId/actions/:actionId Get an existing device user-action request
-   * @apiName DeviceActions
+   * @apiName GetDeviceAction
    * @apiGroup Device
    *
    * @apiParam {number} deviceId DeviceId of device that owns this action
@@ -2383,7 +2383,7 @@ export default function (app: Application, baseUrl: string) {
 
   /**
    * @api {put} /api/v1/devices/:deviceId/actions/:actionId Initiate a device user-action request
-   * @apiName DeviceActions
+   * @apiName CreateDeviceAction
    * @apiGroup Device
    *
    * @apiParam {number} deviceId DeviceId of device that owns this action
@@ -2454,7 +2454,7 @@ export default function (app: Application, baseUrl: string) {
 
   /**
    * @api {patch} /api/v1/devices/:deviceId/actions/:actionId Update the status of a device user-action request
-   * @apiName DeviceActions
+   * @apiName UpdateDeviceAction
    * @apiGroup Device
    *
    * @apiParam {number} deviceId DeviceId of device that owns this action

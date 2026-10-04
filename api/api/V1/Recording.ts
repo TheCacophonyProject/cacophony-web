@@ -701,7 +701,7 @@ export default (app: Application, baseUrl: string) => {
 
   /**
    * @api {delete} /api/v1/recordings Deletes Recordings based on query
-   * @apiName QueryRecordings
+   * @apiName DeleteRecordings
    * @apiGroup Recordings
    *
    * @apiUse V1UserAuthorizationHeader
@@ -1918,7 +1918,7 @@ export default (app: Application, baseUrl: string) => {
    * Add tag if it is an additional tag e.g. :Part
    * Add tag if this user hasn't already tagged this track
    * Replace existing tag, if user has an existing animal tag
-   * @apiName PostTrackTag
+   * @apiName ReplaceTrackTag
    * @apiGroup Tracks
    *
    * @apiUse V1UserAuthorizationHeader

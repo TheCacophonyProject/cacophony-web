@@ -146,7 +146,7 @@ export default function (app: Application, baseUrl: string) {
   /**
    * @api {post} /authenticate_user Authenticate a user
    *
-   * @apiName AuthenticateUser
+   * @apiName AuthenticateUserLegacy
    * @apiGroup Authentication
    * @apiDescription Checks the email address corresponds to an existing user account
    * and the password matches the account.
@@ -312,7 +312,7 @@ export default function (app: Application, baseUrl: string) {
 
   /**
    * @api {post} /admin_authenticate_as_other_user Authenticate as any user if you are a super-user.
-   * @apiName AdminAuthenticateAsOtherUser
+   * @apiName AdminAuthenticateAsOtherUserLegacy
    * @apiGroup Authentication
    * @apiDescription Allows an authenticated super-user to obtain a user JWT token for any other user, so that they
    * can view the site as that user.
@@ -402,7 +402,7 @@ export default function (app: Application, baseUrl: string) {
 
   /**
    * @api {post} /resetpassword Sends an email to a user for resetting password
-   * @apiName ResetPassword
+   * @apiName ResetPasswordLegacy
    * @apiGroup Authentication
    * @apiDeprecated Use /api/v1/users/reset-password instead
    * @apiBody {String} email Email address of user.
@@ -427,7 +427,7 @@ export default function (app: Application, baseUrl: string) {
 
   /**
    * @api {post} /validateToken Validates a reset token
-   * @apiName ValidateToken
+   * @apiName ValidateTokenLegacy
    * @apiGroup Authentication
    * @apiBody {String} token password reset token to validate
    * @apiDeprecated Use /api/v1/users/validate-reset-token

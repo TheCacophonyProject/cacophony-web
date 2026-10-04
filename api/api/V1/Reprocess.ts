@@ -41,7 +41,7 @@ export default (app: Application, baseUrl: string) => {
 
   /**
    * @api {get} /api/v1/reprocess/retry-failed/:id Retry processing a single recording which is in a failed state
-   * @apiName Reprocess
+   * @apiName RetryFailedReprocess
    * @apiGroup Recordings
    * @apiParam {Integer} id of recording to retry
    * @apiDescription Retries processing a recording that's in a failed state
