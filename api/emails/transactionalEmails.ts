@@ -785,10 +785,13 @@ export const sendProjectActivityDigestEmail = async (
     topThreeTableItemWidth = "100%";
   }
 
-  // TODO: How much info should we try to cram into these reports?
   const recipientPromises = [];
   for (const recipient of recipients) {
     // Each recipient may get a slightly different report, depending on their notification prefs.
+
+    // Think about how we should handle the case where there was no activity for a section last
+    //  week, and there's still no activity this week.  Do we still send the report?
+
     const { text, html } = await createEmailWithTemplate(
       "project-activity-digest.html",
       {

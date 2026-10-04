@@ -121,23 +121,23 @@
         <tr>
           {{#birdDetectionTwo}}
           <td align="center" valign="top" width="{{../topThreeTableItemWidth}}" class="templateColumnContainer" style="line-height: 1.3">
-            <strong style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size: 16px; font-weight:600;color:#252921;">{{ speciesDisplayName }}</strong><br>
-            <span style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#777875; line-height: 2;">{{ count }} detections</span>
+            <strong style="text-transform: capitalize;font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size: 16px; font-weight:600;color:#252921;">{{ speciesDisplayName }}</strong><br>
+            <span style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#777875; line-height: 2;">{{ count }} detection{{#gt detections 1}}s{{/gt}}</span>
             <br><br>
           </td>
           {{/birdDetectionTwo}}
           {{#birdDetectionOne}}
           <td align="center" valign="top" width="{{../topThreeTableItemWidth}}" class="templateColumnContainer" style="line-height: 1.3">
-            <strong style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size: 16px; font-weight:600;color:#252921;">{{ speciesDisplayName }}</strong><br>
-            <div style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#777875;; line-height: 2;">{{ count }} detections</div>
+            <strong style="text-transform: capitalize;font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size: 16px; font-weight:600;color:#252921;">{{ speciesDisplayName }}</strong><br>
+            <div style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#777875;; line-height: 2;">{{ count }} detection{{#gt detections 1}}s{{/gt}}</div>
             <br><br>
           </td>
           {{/birdDetectionOne}}
           {{#birdDetectionThree}}
           <td align="center" valign="top" width="{{../topThreeTableItemWidth}}" class="templateColumnContainer" style="line-height: 1.3">
-            <strong style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size: 16px; font-weight:600;color:#252921; line-height: 1.3;">{{ speciesDisplayName }}</strong><br>
+            <strong style="text-transform: capitalize;font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size: 16px; font-weight:600;color:#252921; line-height: 1.3;">{{ speciesDisplayName }}</strong><br>
             <div style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#777875; line-height: 2;">
-              {{ count }} detections</div>
+              {{ count }} detection{{#gt detections 1}}s{{/gt}}</div>
             <br><br>
           </td>
           {{/birdDetectionThree}}
@@ -150,10 +150,10 @@
         {{#extendedBirdDetections}}
         <tr>
             <td style="padding-top:10px;padding-bottom:10px;border-bottom: 1px solid #eeeeee;line-height: 1.3">
-            <strong style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-weight: 550;color:#252921;">{{ speciesDisplayName }}</strong>
+            <strong style="text-transform: capitalize;font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-weight: 550;color:#252921;">{{ speciesDisplayName }}</strong>
           </td>
             <td style="padding-top:10px;padding-bottom:10px;border-bottom: 1px solid #eeeeee;line-height: 1.3">
-            <span style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#252921;">{{count}} detection(s)</span>
+            <span style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#252921;">{{count}} detection{{#gt detections 1}}s{{/gt}}</span>
           </td>
         </tr>
         {{/extendedBirdDetections}}

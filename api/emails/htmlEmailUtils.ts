@@ -16,6 +16,18 @@ export interface EmailImageAttachment {
 
 const SEPARATOR_LINE = "-----------";
 
+Handlebars.registerHelper(
+  "gt",
+  function (
+    this: unknown,
+    a: number,
+    b: number,
+    options: Handlebars.HelperOptions,
+  ) {
+    return Number(a) > Number(b) ? options.fn(this) : "";
+  },
+);
+
 const depthFirstTraversal = (emailRootElement: HTMLElement) => {
   let rawText = "";
   const nodesToVisit = [];
