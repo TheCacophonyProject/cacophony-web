@@ -11,7 +11,7 @@ import type { Group } from "@models/Group.js";
 import os from "os";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
 
-await initSequelize();
+const sequelize = await initSequelize();
 
 type _UserGroupDevices = Record<
   UserId,
@@ -78,69 +78,85 @@ async function main() {
   if (!config.smtpDetails) {
     throw "No SMTP details found in config/app.js";
   }
-  const stoppedEvents = await Event.latestEventsOfTypes(["stop-reported"]);
-  // filter devices which have already been alerted on
-  const devices = (await Device.stoppedDevices()).filter((device) => {
-    const hasAlerted =
-      stoppedEvents.find(
-        (event) =>
-          event.DeviceId === device.id &&
-          event.dateTime > device.lastConnectionTime,
-      ) !== undefined;
-    return !hasAlerted;
-  });
-  if (devices.length == 0) {
-    log.info("No new stopped devices");
-    return;
-  }
 
-  const userEvents = await getUserEvents(devices);
-  const failedEmails = [];
-  for (const { group, stoppedDevices, users } of Object.values(userEvents)) {
-    const userEmails = users.map(({ email, emailConfirmed }) => ({
-      email,
-      emailConfirmed,
-    }));
-    const successes = await sendStoppedDevicesReportEmail(
-      group.groupName,
-      stoppedDevices.map((device) => device.deviceName),
-      userEmails,
+  // Concurrent invocations of this script (multiple calls from parallel e2e tests)
+  // would otherwise race: both could read the same "not yet alerted" devices before
+  // either has recorded its own stop-reported events, and both would send duplicate alerts.
+  // An advisory lock serializes the whole read-decide-write section across
+  // processes - a concurrent invocation blocks here until this one commits.
+  await sequelize.transaction(async (transaction) => {
+    await sequelize.query(
+      `SELECT pg_advisory_xact_lock(hashtext('report-stopped-devices'))`,
+      { transaction },
     );
-    for (let i = 0; i < successes.length; i++) {
-      if (!successes[i]) {
-        failedEmails.push(userEmails[i].email);
+
+    const stoppedEvents = await Event.latestEventsOfTypes(["stop-reported"]);
+    // filter devices which have already been alerted on
+    const devices = (await Device.stoppedDevices()).filter((device) => {
+      const hasAlerted =
+        stoppedEvents.find(
+          (event) =>
+            event.DeviceId === device.id &&
+            event.dateTime > device.lastConnectionTime,
+        ) !== undefined;
+      return !hasAlerted;
+    });
+    if (devices.length == 0) {
+      log.info("No new stopped devices");
+      return;
+    }
+
+    const userEvents = await getUserEvents(devices);
+    const failedEmails = [];
+    for (const { group, stoppedDevices, users } of Object.values(userEvents)) {
+      const userEmails = users.map(({ email, emailConfirmed }) => ({
+        email,
+        emailConfirmed,
+      }));
+      const successes = await sendStoppedDevicesReportEmail(
+        group.groupName,
+        stoppedDevices.map((device) => device.deviceName),
+        userEmails,
+      );
+      for (let i = 0; i < successes.length; i++) {
+        if (!successes[i]) {
+          failedEmails.push(userEmails[i].email);
+        }
       }
     }
-  }
 
-  if (failedEmails.length) {
-    log.error(
-      "Failed sending stopped devices email to %s",
-      failedEmails.join(", "),
-    );
-  }
-
-  const detail = await DetailSnapshot.getOrCreateMatching("stop-reported", {});
-  const detailsId = detail.id;
-  const eventList = [];
-  const time = new Date();
-
-  for (const device of devices) {
-    eventList.push({
-      DeviceId: device.id,
-      EventDetailId: detailsId,
-      dateTime: time,
-    });
-  }
-  try {
-    await Event.bulkCreate(eventList);
-  } catch (exception: unknown) {
-    let message = "unknown error";
-    if (exception instanceof Error) {
-      message = exception.message;
+    if (failedEmails.length) {
+      log.error(
+        "Failed sending stopped devices email to %s",
+        failedEmails.join(", "),
+      );
     }
-    log.error("Failed to record stop-reported events. %s", message);
-  }
+
+    const detail = await DetailSnapshot.getOrCreateMatching(
+      "stop-reported",
+      {},
+    );
+    const detailsId = detail.id;
+    const eventList = [];
+    const time = new Date();
+
+    for (const device of devices) {
+      eventList.push({
+        DeviceId: device.id,
+        EventDetailId: detailsId,
+        dateTime: time,
+      });
+    }
+    try {
+      await Event.bulkCreate(eventList, { transaction });
+    } catch (exception: unknown) {
+      let message = "unknown error";
+      if (exception instanceof Error) {
+        message = exception.message;
+      }
+      log.error("Failed to record stop-reported events. %s", message);
+    }
+  });
 }
 
 main()

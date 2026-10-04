@@ -49,6 +49,7 @@ export const waitForEmail = async (
   type = "",
   timeout?: number,
   verbatimEmailAddress: boolean = false,
+  subjectContains?: string,
 ): Promise<TestEmail> => {
   const to = verbatimEmailAddress ? toUser : getEmail(toUser);
   return await test.step(`Wait for${type.length ? ` '${type}' ` : " "}email to ${to}`, async () => {
@@ -56,6 +57,9 @@ export const waitForEmail = async (
     params.append("address", to);
     if (timeout) {
       params.append("timeout", timeout.toString());
+    }
+    if (subjectContains) {
+      params.append("subject", subjectContains);
     }
 
     const emailResponse = await fetch(`http://localhost:8888/get-mail?${params}`);
@@ -70,8 +74,9 @@ export const waitForEmailAndRenderEmailHtml = async (
   toUser: string,
   type = "",
   timeout?: number,
+  subjectContains?: string,
 ) => {
-  const email = await waitForEmail(toUser, type, timeout);
+  const email = await waitForEmail(toUser, type, timeout, false, subjectContains);
   expect(email.error, "email was sent").toBeUndefined();
   await test.step(`${toUser} opens email`, async () => {
     await page.setContent(email.html);

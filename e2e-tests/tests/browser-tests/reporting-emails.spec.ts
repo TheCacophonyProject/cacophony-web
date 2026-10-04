@@ -83,6 +83,8 @@ test("Project activity digest email sent successfully for weekly and daily diges
       page,
       adminUserHandle.testId,
       "project daily activity digest",
+      undefined,
+      "Daily activity report",
     );
     // The device name text also matches ancestor <tr> layout rows, so narrow to the innermost one.
     await expect(page.locator("tr", { hasText: deviceHandle.testId }).last()).toContainText(
@@ -102,6 +104,8 @@ test("Project activity digest email sent successfully for weekly and daily diges
       page,
       adminUserHandle.testId,
       "project weekly activity digest",
+      undefined,
+      "Weekly activity report",
     );
     // The device name text also matches ancestor <tr> layout rows, so narrow to the innermost one.
     await expect(page.locator("tr", { hasText: deviceHandle.testId }).last()).toContainText(
@@ -123,6 +127,8 @@ test("Stopped devices emails are sent and render correctly", async ({ page }) =>
     page,
     project.getAdminUser().testId,
     "stopped devices report",
+    undefined,
+    "stopped or offline device",
   );
 });
 
