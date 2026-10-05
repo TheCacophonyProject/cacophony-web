@@ -42,8 +42,8 @@ export default function (app: Application, baseUrl: string) {
    * @apiDeprecated Functionality moved to "POST /api/v1/recordings/:recordingId/tags"
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Number} recordingId ID of the recording that you want to tag.
-   * @apiParam {JSON} tag Tag data in JSON format.
+   * @apiBody {Number} recordingId ID of the recording that you want to tag.
+   * @apiBody {JSON} tag Tag data in JSON format.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Number} tagId ID of the tag just added.
@@ -93,7 +93,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Tag
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Integer} tagId id of the tag to delete.
+   * @apiBody {Integer} tagId id of the tag to delete.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError

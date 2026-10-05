@@ -49,7 +49,7 @@ interface ApiScheduleConfig {
 }
 
 export interface ApiScheduleConfigs {
-  schedules: ScheduleConfig[];
+  schedules: ApiScheduleResponse[];
 }
 
 export default (app: Application, baseUrl: string) => {
@@ -68,6 +68,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiInterface {apiBody::ApiScheduleConfig} schedule Schedule
    *
    * @apiUse V1ResponseSuccess
+   * @apiSuccess {Integer} id Id of the newly created schedule.
    * @apiUse V1ResponseError
    */
   app.post(
@@ -90,11 +91,11 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {get} api/v1/schedules Get device audio bait schedule (for this device)
+   * @api {get} /api/v1/schedules Get device audio bait schedule (for this device)
    * @apiName GetSchedule
    * @apiGroup Schedules
    * @apiDescription This call is used by a device to retrieve its audio bait
-   * schedule.
+   * schedule.  Returns an error if no schedule has been assigned to the device.
    * @apiUse V1DeviceAuthorizationHeader
    *
    * @apiInterface {apiSuccess::ApiScheduleConfig} schedule Metadata of the schedule.
@@ -126,14 +127,14 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {get} api/v1/schedules/for-user Get audio bait schedules (for this user)
+   * @api {get} /api/v1/schedules/for-user Get audio bait schedules (for this user)
    * @apiName GetSchedulesForUser
    * @apiGroup Schedules
-   * @apiDescription This call is used by a user to retrieve all their audio bait
-   * schedules.
-   * @apiUse V1DeviceAuthorizationHeader
+   * @apiDescription This call is used by a user to retrieve all the audio bait
+   * schedules they created.
+   * @apiUse V1UserAuthorizationHeader
    *
-   * @apiInterface {apiSuccess::ApiScheduleConfigs} schedule Metadata of the schedule.
+   * @apiInterface {apiSuccess::ApiScheduleConfigs} schedules The user's schedules, each with its id.
    * @apiUse V1ResponseSuccess
    *
    * @apiUse V1ResponseError
@@ -155,12 +156,15 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {get} api/v1/schedules/:deviceId Get audio bait schedule for a device
+   * @api {get} /api/v1/schedules/:deviceId Get audio bait schedule for a device
    * @apiName GetScheduleForDevice
    * @apiGroup Schedules
    * @apiDescription This call is used by a user to retrieve the audio bait
-   * schedule for one of their devices.
+   * schedule for one of their devices.  Returns an error if no schedule has been assigned to the device.
    * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} deviceId Id of the device.
+   * @apiQuery {Boolean} [only-active=false] Only look up the device if it is active.
    *
    * @apiInterface {apiSuccess::ApiScheduleConfig} schedule Metadata of the schedule.
    * @apiUse V1ResponseSuccess
@@ -188,12 +192,15 @@ export default (app: Application, baseUrl: string) => {
   );
 
   /**
-   * @api {delete} api/v1/schedules/:scheduleId Delete audio bait schedule and remove from all devices
+   * @api {delete} /api/v1/schedules/:scheduleId Delete audio bait schedule and remove from all devices
    * @apiName DeleteSchedule
    * @apiGroup Schedules
    * @apiDescription This call is used by a user to delete an audio-bait schedule.
-   * Deleting the schedule will remove it from all devices it is assigned to.
+   * Deleting the schedule will remove it from all devices it is assigned to.  Only the user who created the
+   * schedule, or a user with global write permission, can delete it.
    * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} scheduleId Id of the schedule to delete.
    *
    * @apiUse V1ResponseSuccess
    *

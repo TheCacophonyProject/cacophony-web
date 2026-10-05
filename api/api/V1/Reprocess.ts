@@ -43,8 +43,9 @@ export default (app: Application, baseUrl: string) => {
    * @api {get} /api/v1/reprocess/retry-failed/:id Retry processing a single recording which is in a failed state
    * @apiName RetryFailedReprocess
    * @apiGroup Recordings
-   * @apiParam {Integer} id of recording to retry
-   * @apiDescription Retries processing a recording that's in a failed state
+   * @apiParam {Integer} id Id of the recording to retry
+   * @apiDescription Retries processing a recording that's in a failed state.  Returns an error if the recording
+   * hasn't failed processing.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -80,9 +81,9 @@ export default (app: Application, baseUrl: string) => {
    * @api {get} /api/v1/reprocess/:id Reprocess a single recording
    * @apiName Reprocess
    * @apiGroup Recordings
-   * @apiParam {Integer} id of recording to reprocess
-   * @apiDescription Marks a recording for reprocessing (tracking) and archives existing tracks.
-   * Used if tracking algorithms have changed
+   * @apiParam {Integer} id Id of the recording to reprocess
+   * @apiDescription Marks a recording for reprocessing (tracking), removes the recording's tags (keeping a copy in
+   * its additional metadata) and archives the tags on its existing tracks.  Used if tracking algorithms have changed
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -105,11 +106,11 @@ export default (app: Application, baseUrl: string) => {
    * @api {post} /api/v1/reprocess Mark recordings for reprocessing
    * @apiName ReprocessMultiple
    * @apiGroup Recordings
-   * @apiParam {Integer[]} recordings an array of recording ids to reprocess
+   * @apiBody {Integer[]} recordings an array of recording ids to reprocess
    *
    * @apiDescription Mark one or more recordings for reprocessing,
-   * archiving any tracks and recording tags that are associated with
-   * them.
+   * removing the recordings' tags (keeping a copy in their additional metadata) and archiving the tags on their
+   * existing tracks.  If the user can't access every recording supplied, none are reprocessed and an error is returned.
    *
    * @apiUse V1UserAuthorizationHeader
    * @apiUse V1ResponseSuccess

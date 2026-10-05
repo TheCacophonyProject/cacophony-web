@@ -63,18 +63,22 @@ export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/processing`;
 
   /**
-     * @api {get} /api/v1/processing Get a new file processing job
-     * @apiName getNewFileProcessingJob
-     * @apiGroup Processing
-     *
-     * Requires super-admin user credentials
-     *
-     * @apiParam {String} type Type of recording.
-     * @apiParam {String} state Processing state.
-     * @apiSuccess {Recording} recording
-     * @apiSuccess {String} rawJWT signed url to download the raw file
-
-     */
+   * @api {get} /api/v1/processing Get a new file processing job
+   * @apiName getNewFileProcessingJob
+   * @apiGroup Processing
+   * @apiDescription Requires super-admin user credentials.  Returns the next recording waiting to be processed
+   * in one of the given states, or a 204 with no content if there is none.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiQuery {String} type Type of recording.
+   * @apiQuery {String|String[]} state Processing state(s) to look for.  For `audio` recordings these can be
+   * `reprocess`, `analyse` or `finished`.  For `thermalRaw` and `irRaw` recordings they can be `reprocess`,
+   * `analyse-thermal`, `trackAndAnalyse`, `tracking` or `reTrack`.
+   *
+   * @apiSuccess {Recording} recording The recording to process
+   * @apiSuccess {String} rawJWT Token for downloading the raw file
+   */
   app.get(
     apiUrl,
     extractJwtAuthorizedSuperAdminUser,
@@ -151,14 +155,20 @@ export default function (app: Application, baseUrl: string) {
    * @api {put} /api/v1/processing Finished a file processing job
    * @apiName finishedFileProcessingJob
    * @apiGroup Processing
+   * @apiDescription Requires super-admin user credentials.  Marks a processing job as done.  If it succeeded, the
+   * recording moves on to its next processing state.  If it failed, the recording is marked as failed and its
+   * failure count is incremented.
    *
-   * Requires super-admin user credentials
+   * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Integer} id ID of the recording.
-   * @apiParam {String} jobKey Key given when requesting the job.
-   * @apiParam {Boolean} success If the job was finished successfully.
-   * @apiParam {JSON} [result] Result of the file processing
-   * @apiParam {String} [newProcessedFileKey] LeoFS Key of the new file.
+   * @apiBody {Integer} id ID of the recording.
+   * @apiBody {String} jobKey Key given when requesting the job.
+   * @apiBody {Boolean} success If the job was finished successfully.
+   * @apiBody {JSON} [result] Result of the file processing.  Any `fieldUpdates` it contains are applied to the recording.
+   * @apiBody {String} [newProcessedFileKey] Storage key of the new file.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
    */
   app.put(
     apiUrl,
@@ -428,12 +438,14 @@ export default function (app: Application, baseUrl: string) {
    * @apiDescription This call updates the metadata for a recording
    * Requires super-admin user credentials
    *
-   * @apiParam {Number} recordingId ID of the recording that you want to tag.
-   * @apiparam {JSON} metadata Metadata to be updated for the recording.  See /api/V1/recording for more details
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiBody {Number} id ID of the recording to update.
+   * @apiBody {JSON} metadata Metadata to be updated for the recording.  See /api/V1/recording for more details
    *
    * @apiUse V1ResponseSuccess
    *
-   * @apiuse V1ResponseError
+   * @apiUse V1ResponseError
    *
    */
   app.post(
@@ -444,18 +456,22 @@ export default function (app: Application, baseUrl: string) {
     parseJSONField(body("metadata")),
     async (_request: Request, response: Response) => {
       await updateMetadata(response.locals.recording, response.locals.metadata);
+      return successResponse(response, "Updated recording metadata.");
     },
   );
 
   /**
-   * @api {post} /api/v1/:id/tracks-and-tags Add tracks and tags to a recording
+   * @api {post} /api/v1/processing/:id/tracks-and-tags Add tracks and tags to a recording
    * @apiName PostTracksAndTags
    * @apiGroup Processing
+   * @apiDescription Requires super-admin user credentials.  Adds tracks, and the tags predicted for them, to a
+   * recording.  Tracks that fall inside the device's mask regions are skipped.
    *
-   * Requires super-admin user credentials
+   * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {JSON} data Data which defines the tracks and tags (type specific).
-   * @apiParam {Number} AlgorithmId Database ID of the Tracking algorithm details retrieved from
+   * @apiParam {Integer} id ID of the recording.
+   * @apiBody {JSON} data Data which defines the tracks and tags (type specific).
+   * @apiBody {Number} algorithmId Database ID of the Tracking algorithm details retrieved from
    * (#FileProcessing:Algorithm) request
    *
    * @apiUse V1ResponseSuccess
@@ -492,12 +508,16 @@ export default function (app: Application, baseUrl: string) {
       const atTime = recording.recordingDateTime;
 
       const mask = await getMask(deviceId, groupId, atTime);
+      // NOTE: Masked tracks are skipped, so keep the data for the tracks we *do* save in an array that lines up
+      //  with `tracks` (and therefore with the created models below).
+      const unmaskedData: MinimalTracksRequestData = [];
       for (const trackData of data) {
         const isMasked = mask && maskMatch(mask, trackData.positions);
 
         if (isMasked) {
           continue;
         }
+        unmaskedData.push(trackData);
         const track = prepareTrackToSave(
           recording,
           trackData,
@@ -512,7 +532,7 @@ export default function (app: Application, baseUrl: string) {
       const modelTracks = await Track.bulkCreate(tracks);
       const tracksAndData = [];
       for (let i = 0; i < modelTracks.length; i++) {
-        const trackData = data[i];
+        const trackData = unmaskedData[i];
         trackIds.push(modelTracks[i].id);
 
         // FIXME: Check if this is correct for Audio
@@ -696,13 +716,16 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/processing/:id/tracks Add track to recording
    * @apiName PostTrack
    * @apiGroup Processing
-   * @apiDeprecated Use /api/v1/processing/:id/tracksAndTags
+   * @apiDeprecated Use /api/v1/processing/:id/tracks-and-tags
+   * @apiDescription Requires super-admin user credentials.  If the track falls inside the device's mask regions
+   * it is discarded, and a `trackId` of 1, which does not refer to a real track, is returned.
    *
-   * Requires super-admin user credentials
+   * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {JSON} data Data which defines the track (type specific).
-   * @apiParam {Number} AlgorithmId Database ID of the Tracking algorithm details retrieved from
-   * (#FileProcessing:Algorithm) request
+   * @apiParam {Integer} id ID of the recording.
+   * @apiBody {JSON} data Data which defines the track (type specific).
+   * @apiBody {Number} algorithmId Database ID of the Tracking algorithm details retrieved from
+   * (#Processing:Algorithm) request
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {int} trackId Unique id of the newly created track.
@@ -744,10 +767,16 @@ export default function (app: Application, baseUrl: string) {
    * @api {delete} /api/v1/processing/:id/tracks Delete all tracks for a recording
    * @apiName DeleteTracks
    * @apiGroup Processing
+   * @apiDescription Requires super-admin user credentials.  Permanently deletes every track on the recording,
+   * along with the tags on those tracks.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} id ID of the recording.
    *
    * @apiUse V1ResponseSuccess
    *
-   * @apiuse V1ResponseError
+   * @apiUse V1ResponseError
    *
    */
   app.delete(
@@ -780,13 +809,16 @@ export default function (app: Application, baseUrl: string) {
    * @apiName PostTrackTag
    * @apiGroup Processing
    * @apiDeprecated Use /api/v1/processing/:id/tracks/:trackId/tags-bulk
-
+   * @apiDescription Requires super-admin user credentials.  Adds an automatic tag to a track.  If `trackId` is 1
+   * (the placeholder returned for discarded tracks), nothing is added and a `trackTagId` of 1 is returned.
    *
-   * Requires super-admin user credentials
+   * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} what Object/event to tag.
-   * @apiParam {Number} confidence Tag confidence score.
-   * @apiParam {JSON} data Data Additional tag data.
+   * @apiParam {Integer} id ID of the recording.
+   * @apiParam {Integer} trackId ID of the track to tag.
+   * @apiBody {String} what Object/event to tag.
+   * @apiBody {Number} confidence Tag confidence score.
+   * @apiBody {JSON} [data] Additional tag data.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {int} trackTagId Unique id of the newly created track tag.
@@ -839,10 +871,14 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/processing/:id/tracks/:trackId/tags-bulk Add tags to track
    * @apiName PostTrackTagsBulk
    * @apiGroup Processing
+   * @apiDescription Requires super-admin user credentials.  Adds a set of automatic/AI tags to a track.  If `trackId`
+   * is 1 (the placeholder returned for discarded tracks), nothing is added and a `trackTagIds` of 1 is returned.
    *
-   * Requires super-admin user credentials
+   * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {JSON} data Describing track tags.
+   * @apiParam {Integer} id ID of the recording.
+   * @apiParam {Integer} trackId ID of the track to tag.
+   * @apiBody {JSON} data Describing track tags.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {int[]} trackTagIds Unique ids of the newly created track tags.
@@ -936,9 +972,11 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/processing/algorithm Finds matching existing algorithm definition or adds a new one to the database
    * @apiName Algorithm
    * @apiGroup Processing
+   * @apiDescription Requires super-admin user credentials.
    *
-   * @apiParam {JSON} algorithm algorithm data in tag form.
-   * Requires super-admin user credentials
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiBody {JSON} algorithm algorithm data in tag form.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {int} algorithmId ID of the matching algorithm tag.
@@ -962,12 +1000,18 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {patch} /api/fileProcessing/:id/tracks/:trackId/archive Archives a track
+   * @api {post} /api/v1/processing/:id/tracks/:trackId/archive Archives a track
    * @apiName ArchiveTrack
    * @apiGroup Processing
+   * @apiDescription Requires super-admin user credentials.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} id ID of the recording.
+   * @apiParam {Integer} trackId ID of the track to archive.
    *
    * @apiUse V1ResponseSuccess
-   * @apiuse V1ResponseError
+   * @apiUse V1ResponseError
    *
    */
   app.post(
@@ -982,14 +1026,19 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/fileProcessing/:id/tracks/:trackId/thumbnailInfo Update thumbnail info for a track, this will not regenerate the thumbnail (this will be done post processing)
+   * @api {post} /api/v1/processing/:id/tracks/:trackId/thumbnailInfo Update thumbnail info for a track, this will not regenerate the thumbnail (this will be done post processing)
    * @apiName UpdateTrackThumbnail
    * @apiGroup Processing
+   * @apiDescription Requires super-admin user credentials.
    *
-   * @apiParam {JSON} data Data which defines the thumbnail info.
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} id ID of the recording.
+   * @apiParam {Integer} trackId ID of the track.
+   * @apiBody {JSON} data Data which defines the thumbnail info.
    *
    * @apiUse V1ResponseSuccess
-   * @apiuse V1ResponseError
+   * @apiUse V1ResponseError
    *
    */
   app.post(
@@ -1014,14 +1063,19 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {post} /api/fileProcessing/:id/tracks/:trackId Update track data for recording and archives the old track data.
+   * @api {post} /api/v1/processing/:id/tracks/:trackId Update track data for recording and archives the old track data.
    * @apiName UpdateTrackData
    * @apiGroup Processing
+   * @apiDescription Requires super-admin user credentials.  A copy of the old track is kept as an archived track.
    *
-   * @apiParam {JSON} data Data which defines the track (type specific).
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} id ID of the recording.
+   * @apiParam {Integer} trackId ID of the track.
+   * @apiBody {JSON} data Data which defines the track (type specific).
    *
    * @apiUse V1ResponseSuccess
-   * @apiuse V1ResponseError
+   * @apiUse V1ResponseError
    *
    */
   app.post(
@@ -1096,16 +1150,22 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/fileProcessing/ratThresh/:deviceId Get rat threshold values for a device
+   * @api {get} /api/v1/processing/ratThresh/:id Get rat threshold values for a device
    * @apiName RatThreshold
    * @apiGroup Processing
-   * @apiParam {Integer} deviceId ID of the device
+   * @apiDescription Requires super-admin user credentials.
+   * @apiParam {Integer} id ID of the device
    * @apiQuery {String} [at-time] ISO8601 formatted date string for when the rat threshold should be current.
+   * @apiQuery {Boolean} [only-active=false] Only look up the device if it is active.
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess DeviceHistory
+   * @apiSuccess {Object} deviceHistoryEntry The device's history entry at that time
+   * @apiSuccess {Integer} deviceHistoryEntry.DeviceId Id of the device
+   * @apiSuccess {String} deviceHistoryEntry.fromDateTime ISO timestamp from which the entry applies
+   * @apiSuccess {Object} deviceHistoryEntry.location Location of the device
+   * @apiSuccess {Object} deviceHistoryEntry.settings Only contains `ratThresh`, the device's rat threshold settings
    * @apiUse V1ResponseError
    */
   app.get(

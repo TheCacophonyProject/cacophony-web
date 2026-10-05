@@ -130,12 +130,11 @@ export default function (app: Application, baseUrl: string) {
 
   /**
    *
-   * @api {get} api/v1/users/list-users List usernames
+   * @api {get} /api/v1/users/list-users List usernames
    * @apiName ListUsers
    * @apiGroup User
-   * @apiDescription Given an authenticated super-user, we need to be able to get
-   * a list of all usernames on the system, so that we can switch to viewing
-   * as a given user.
+   * @apiDescription Only available to super-users.  Returns all users on the system, so that a super-user can
+   * switch to viewing as a given user.  User settings are not included.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -151,14 +150,19 @@ export default function (app: Application, baseUrl: string) {
    * @apiName RegisterUser
    * @apiGroup User
    *
-   * @apiParam {String} userName Username for new user.
-   * @apiParam {String} password Password for new user.
-   * @apiParam {String} email Email for new user.
-   * @apiParam {Integer} [endUserAgreement] Version of the end user agreement accepted.
-   * @apiParam {String} [inviteTokenJWT] Optional invite token if signing up via group-invite email.
+   * @apiDescription Creates a new user account and logs them in.  A confirmation email is sent to the new
+   * user's email address.  If the user is signing up from a group invitation email, they are added to the group,
+   * and if they used the invited email address it is marked as confirmed.
+   *
+   * @apiBody {String} userName Username for new user.
+   * @apiBody {String} password Password for new user.
+   * @apiBody {String} email Email for new user.  Must not already be in use.
+   * @apiBody {Integer} [endUserAgreement] Version of the end user agreement accepted.  Must be the latest version.
+   * @apiBody {String} [inviteTokenJWT] Optional invite token if signing up via group-invite email.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {String} token JWT for authentication. Contains the user ID and type.
+   * @apiSuccess {String} refreshToken Token that can be used to get a new JWT when the current one expires.
    * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess}
    *
    * @apiUse V1ResponseError
@@ -312,12 +316,16 @@ export default function (app: Application, baseUrl: string) {
    * @apiName UpdateUser
    * @apiGroup User
    *
+   * @apiDescription At least one field must be supplied.  Changing the email address marks it as unconfirmed, and
+   * sends a new confirmation email to the new address.
+   *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} [userName] New full name to set.
-   * @apiParam {String} [password] New password to set.
-   * @apiParam {String} [email] New email to set.
-   * @apiParam {Number} [endUserAgreement] New version of the end user agreement accepted to set.
+   * @apiBody {String} [userName] New full name to set.
+   * @apiBody {String} [password] New password to set.
+   * @apiBody {String} [email] New email to set.  Must not already be in use.
+   * @apiBody {Number} [endUserAgreement] New version of the end user agreement accepted to set.
+   * @apiBody {Object} [settings] New user settings.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -386,11 +394,15 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} api/v1/users/:userEmailOrId Get details for a user
+   * @api {get} /api/v1/users/:userEmailOrId Get details for a user
    * @apiName GetUser
    * @apiGroup User
+   * @apiDescription Users can get their own details.  Super-users with global read permission can get the details
+   * of any user.
    *
    * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {String|Integer} userEmailOrId Email address or id of the user.
    *
    * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess}
    * @apiUse V1ResponseSuccess
@@ -432,12 +444,11 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} api/v1/listUsers List usernames
+   * @api {get} /api/v1/listUsers List usernames
    * @apiName ListUsersLegacy
    * @apiGroup User
-   * @apiDescription Given an authenticated super-user, we need to be able to get
-   * a list of all email addresses on the system, so that we can switch to viewing
-   * as a given user.
+   * @apiDescription Only available to super-users.  Returns all users on the system, so that a super-user can
+   * switch to viewing as a given user.  User settings are not included.
    * @apiDeprecated Use /api/v1/users/list-users
    *
    * @apiUse V1UserAuthorizationHeader
@@ -548,8 +559,13 @@ export default function (app: Application, baseUrl: string) {
    * @api {patch} /api/v1/users/change-password Updates a users password with reset token authentication
    * @apiName ChangePassword
    * @apiGroup User
+   * @apiDescription Sets a new password using the token from a password reset email.  Fails if the password has
+   * already been changed since the token was issued, or if the new password is the same as the old one.  The
+   * user is logged in with the new password.
    * @apiInterface {apiBody::ApiChangePasswordRequestBody}
    * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess} userData
+   * @apiSuccess {String} token JWT for authentication.
+   * @apiSuccess {String} refreshToken Token that can be used to get a new JWT when the current one expires.
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
@@ -561,6 +577,8 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup User
    * @apiInterface {apiBody::ApiChangePasswordRequestBody}
    * @apiInterface {apiSuccess::ApiLoggedInUserResponseSuccess} userData
+   * @apiSuccess {String} token JWT for authentication.
+   * @apiSuccess {String} refreshToken Token that can be used to get a new JWT when the current one expires.
    * @apiDeprecated Use /api/v1/users/change-password
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -814,11 +832,12 @@ export default function (app: Application, baseUrl: string) {
    * @apiName RequestGroupMembership
    * @apiGroup User
    * @apiDescription Request access to a group by providing a group ID. Optionally specify a group admin email, otherwise the request goes to the group owner.
+   * Both the requesting user and the recipient must have confirmed their email addresses.
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Integer} groupId ID of the group to request access to.
-   * @apiParam {String} [groupAdminEmail] Optional email of a group admin to send the request to. If not provided, the request goes to the group owner.
+   * @apiBody {Integer} groupId ID of the group to request access to.
+   * @apiBody {String} [groupAdminEmail] Optional email of a group admin to send the request to. If not provided, the request goes to the group owner.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -849,13 +868,14 @@ export default function (app: Application, baseUrl: string) {
    * @apiName RequestDeviceAccess
    * @apiGroup User
    * @apiDescription Request access to a group by providing either a device ID OR a combination of device name and group name. The request will be sent to access the specified group. If no group admin email is provided, the request goes to the group owner.
+   * Both the requesting user and the recipient must have confirmed their email addresses.
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Integer} [deviceId] ID of the device whose group you want to request access to. Required if deviceName and groupName are not provided.
-   * @apiParam {String} [deviceName] Name of the device in the group you want to request access to. Required if deviceId is not provided.
-   * @apiParam {String} [groupName] Name of the group you want to request access to. Required if deviceId is not provided.
-   * @apiParam {String} [groupAdminEmail] Optional email of a group admin to send the request to. If not provided, the request goes to the group owner.
+   * @apiBody {Integer} [deviceId] ID of the device whose group you want to request access to. Required if deviceName and groupName are not provided.
+   * @apiBody {String} [deviceName] Name of the device in the group you want to request access to. Required if deviceId is not provided.
+   * @apiBody {String} [groupName] Name of the group you want to request access to. Required if deviceId is not provided.
+   * @apiBody {String} [groupAdminEmail] Optional email of a group admin to send the request to. If not provided, the request goes to the group owner.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError

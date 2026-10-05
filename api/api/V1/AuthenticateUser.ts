@@ -149,15 +149,16 @@ export default function (app: Application, baseUrl: string) {
    * @apiName AuthenticateUserLegacy
    * @apiGroup Authentication
    * @apiDescription Checks the email address corresponds to an existing user account
-   * and the password matches the account.
+   * and the password matches the account.  The returned token never expires.
    * @apiDeprecated Use /api/v1/users/authenticate
    *
    * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
    * @apiSuccess {String} refreshToken one time use token to refresh the users' session JWT token
-   * @apiSuccess {Date} expiry ISO formatted dateTime for when token needs to be refreshed before to provide seamless user experience.
    * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
    */
   app.post("/authenticate_user", ...authenticateUserOptions);
 
@@ -167,14 +168,16 @@ export default function (app: Application, baseUrl: string) {
    * @apiName AuthenticateUser
    * @apiGroup Authentication
    * @apiDescription Checks the email address corresponds to an existing user account
-   * and the password matches the account.
+   * and the password matches the account.  The returned token expires after 5 minutes, and should be renewed
+   * using `refreshToken` and `POST /api/v1/users/refresh-session-token`.
    *
    * @apiInterface {apiBody::ApiAuthenticateUserRequestBody}
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
    * @apiSuccess {String} refreshToken one time use token to refresh the users' session JWT token
-   * @apiSuccess {Date} expiry ISO formatted dateTime for when token needs to be refreshed before to provide seamless user experience.
    * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
    */
   app.post(`${apiUrl}/authenticate`, ...authenticateUserOptions);
 
@@ -182,16 +185,18 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/users/refresh-session-token Refresh user JWT
    * @apiName RefreshUserAuthentication
    * @apiGroup Authentication
-   * @apiDescription Returns a refreshed JWT user auth token for the current user
-   * with an updated timeout
+   * @apiDescription Returns a refreshed JWT user auth token for the user the refresh token was issued to,
+   * with an updated timeout.  Each refresh token can only be used once: the response includes a new one.
+   * Refresh tokens that have not been used for 15 days expire.  No authorization header is needed.
    *
    * @apiBody {String} refreshToken Provide current refreshToken
-   * @apiUse V1UserAuthorizationHeader
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
    * @apiSuccess {String} refreshToken One-time use token to refresh JWT session token
    * @apiSuccess {Date} expiry ISO formatted dateTime for when token needs to be refreshed before to provide seamless user experience.
    * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
    */
   app.post(
     `${apiUrl}/refresh-session-token`,
@@ -320,11 +325,14 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiBody {String} email Address identifying a valid user account
+   * @apiBody {String} [email] Address identifying a valid user account (either this or 'userId' must be specified)
+   * @apiBody {Integer} [userId] Id of a valid user account (either this or 'email' must be specified)
    *
-   * @apiSuccess {String} token JWT string to provide to further API requests
-   * @apiSuccess {Date} expiry ISO formatted dateTime for when token needs to be refreshed before to provide seamless user experience.
+   * @apiSuccess {String} token JWT string to provide to further API requests.  This token never expires.
+   * @apiSuccess {Date} expiry ISO formatted dateTime a refreshed token would be due.  Not enforced for this token.
    * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
    */
   app.post(
     "/admin_authenticate_as_other_user",
@@ -340,10 +348,14 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiBody {String} email Address identifying a valid user account
+   * @apiBody {String} [email] Address identifying a valid user account (either this or 'userId' must be specified)
+   * @apiBody {Integer} [userId] Id of a valid user account (either this or 'email' must be specified)
    *
-   * @apiSuccess {String} token JWT string to provide to further API requests
+   * @apiSuccess {String} token JWT string to provide to further API requests.  Expires after 5 minutes.
+   * @apiSuccess {Date} expiry ISO formatted dateTime for when the token expires.
    * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
    */
   app.post(
     `${apiUrl}/admin-authenticate-as-other-user`,
@@ -395,8 +407,12 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/users/reset-password Sends an email to a user for resetting password
    * @apiName ResetPassword
    * @apiGroup Authentication
+   * @apiDescription Sends an email containing a password reset link, if there is an account with the given email
+   * address.  The response is the same whether or not the account exists, so that it can't be used to find out
+   * which email addresses are registered.
    * @apiBody {String} email Email address of user.
    * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
    */
   app.post(`${apiUrl}/reset-password`, ...resetPasswordOptions);
 
@@ -405,8 +421,11 @@ export default function (app: Application, baseUrl: string) {
    * @apiName ResetPasswordLegacy
    * @apiGroup Authentication
    * @apiDeprecated Use /api/v1/users/reset-password instead
+   * @apiDescription Sends an email containing a password reset link, if there is an account with the given email
+   * address.  The response is the same whether or not the account exists.
    * @apiBody {String} email Email address of user.
    * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
    */
   app.post("/resetpassword", ...resetPasswordOptions);
 
@@ -429,6 +448,8 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /validateToken Validates a reset token
    * @apiName ValidateTokenLegacy
    * @apiGroup Authentication
+   * @apiDescription Used by the front-end when following a password reset link from an email to make sure
+   * the link has not already been used to reset a users' password.  Should be used on page load.
    * @apiBody {String} token password reset token to validate
    * @apiDeprecated Use /api/v1/users/validate-reset-token
    * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
@@ -453,9 +474,11 @@ export default function (app: Application, baseUrl: string) {
   /**
    * @api {post} /api/v1/users/resend-email-confirmation-request Resends email confirmation email
    * @apiDescription Resend confirmation email that was originally sent as part of sign-up, or when
-   * changing email addresses.  This should only be used if the original email was lost.
+   * changing email addresses.  This should only be used if the original email was lost.  Fails if the email
+   * address has already been confirmed.
    * @apiName ResendEmailConfirmationRequest
    * @apiGroup Authentication
+   * @apiUse V1UserAuthorizationHeader
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
@@ -533,7 +556,18 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/users/validate-email-confirmation-request Validates token from email confirmation email
    * @apiName ConfirmValidateEmail
    * @apiGroup Authentication
+   * @apiDescription Confirms the user's email address, using the token from the confirmation email.
+   * Fails if the user's email address has changed since the email was sent.
+   * Returns a new set of tokens for the user.
+   *
+   * @apiBody {String} emailConfirmationJWT Token from the email confirmation email.
+   *
    * @apiUse V1ResponseSuccess
+   * @apiSuccess {Boolean} signOutUser `true` if the user's email address had already been confirmed, which means
+   * they have changed it, and should be signed out and asked to sign in again with the new address.
+   * @apiSuccess {String} token JWT string to provide to further API requests
+   * @apiSuccess {String} refreshToken one time use token to refresh the users' session JWT token
+   * @apiInterface {apiSuccess::ApiLoggedInUserResponseData} userData
    * @apiUse V1ResponseError
    */
   app.post(

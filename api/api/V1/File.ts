@@ -71,11 +71,12 @@ export default (app: Application, baseUrl: string) => {
    * @api {get} /api/v1/files/classifications Get classification json file
    * @apiName GetClassificationJsonFile
    * @apiGroup Files
-   * @apiDescription Returns the versioned classification json.
+   * @apiDescription Returns the versioned classification json.  If `version` matches the current version, only
+   * `{ version }` is returned, so clients can avoid downloading the full classification when it hasn't changed.
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiQuery {String} [version] The current version of the classification.
+   * @apiQuery {String} [version] The version of the classification the client already has.
    *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiClassificationResponse} classification.json
@@ -104,17 +105,18 @@ export default (app: Application, baseUrl: string) => {
    * @api {post} /api/v1/files Adds a new file.
    * @apiName PostUserFile
    * @apiGroup Files
-   * @apiDescription This call is used for upload a file, eg an audio bait file.
-   * is required:
+   * @apiDescription This call is used to upload a file, eg an audio bait file.  The request must be a multipart
+   * form, with one `file` part and a `data` part.
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiBody {JSON} data Metadata about the recording in JSON format.  It must include the field 'type' (eg. audioBait).
-   * @apiBody {File} file File of the recording.
+   * @apiBody {JSON} data Metadata about the file in JSON format.  It must include the field 'type' (eg. audioBait),
+   * and can include a 'details' object with further information.
+   * @apiBody {File} file The file to upload.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {String} fileKey S3 object storage key of the uploaded file.
-   * @apiuse V1ResponseError
+   * @apiUse V1ResponseError
    */
   app.post(
     apiUrl,
@@ -210,10 +212,18 @@ export default (app: Application, baseUrl: string) => {
    * @api {get} /api/v1/files List all current audioBait files
    * @apiName QueryFiles
    * @apiGroup Files
-   * @apiHeader {String} Authorization Signed JSON web token for a user or device.
+   * @apiDescription Returns up to 1000 audioBait files.
+   *
+   * @apiUse V1UserAuthorizationHeader
    * @apiQuery {String="audioBait"} type Currently the only type of file you can query is "audioBait"
    *
-   * @apiUse V1ResponseSuccessQuery
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {Number} count Total number of files of this type.
+   * @apiSuccess {Object[]} files The files found.
+   * @apiSuccess {Integer} files.id Id of the file.
+   * @apiSuccess {Object} files.details Details of the file, such as its name and the animal it is used for.
+   * @apiSuccess {Integer} files.userId Id of the user who uploaded the file.
+   * @apiUse V1ResponseError
    */
   app.get(
     apiUrl,
@@ -246,8 +256,8 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1ResponseSuccess
    * @apiSuccess {int} fileSize the number of bytes in the file.
    * @apiSuccess {String} jwt JSON Web Token to use to download the
-   * recording file.
-   * @apiSuccess {JSON} file Metadata for the file.
+   * file.  It expires after 10 minutes.
+   * @apiSuccess {JSON} file Metadata for the file: its `id`, `details` and the `userId` of the uploader.
    *
    * @apiUse V1ResponseError
    */
@@ -292,9 +302,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiGroup Files
    * @apiParam {Integer} id id of the file to delete
    * @apiDescription This call deletes a file.  The user making the
-   * call must have uploaded the file or be an administrator.
-   *
-   * [/api/v1/signedUrl API](#api-SignedUrl-GetFile).
+   * call must have uploaded the file or have global write permission.
    *
    * @apiUse V1UserAuthorizationHeader
    *

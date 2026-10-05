@@ -63,7 +63,7 @@ export interface ApiPostAlertRequestBody {
 }
 
 export interface ApiGetAlertsResponse {
-  Alerts: ApiAlertResponse[];
+  alerts: ApiAlertResponse[];
 }
 
 const mapAlertResponse = (alert: Alert): ApiAlertResponse => {
@@ -87,12 +87,14 @@ export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/alerts`;
 
   /**
-   * @api {post} /api/v1/alerts Create a new alert for a device or station
+   * @api {post} /api/v1/alerts Create a new alert for a device, station or project
    * @apiName PostAlert
    * @apiGroup Alert
    *
-   * @apiDescription Creates a new alert with the user associated with the supplied JWT authentication
-   * token as the admin.
+   * @apiDescription Creates a new alert, owned by the user associated with the supplied JWT authentication
+   * token.  The alert applies to the device, station or project given by `deviceId`, `stationId` or `projectId`.
+   * One of these must be supplied, and the user must have access to it.  If more than one is supplied, the
+   * device takes precedence, then the station.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -110,7 +112,7 @@ export default function (app: Application, baseUrl: string) {
    * }
    * @apiUse V1ResponseSuccess
    * @apiSuccess {number} id Unique id of the newly created alert.
-
+   *
    * @apiUse V1ResponseError
    */
   app.post(
@@ -188,18 +190,18 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/v1/alerts/device/:deviceId Get Alerts
+   * @api {get} /api/v1/alerts/device/:deviceId Get Alerts for a device
    * @apiName GetAlerts
    * @apiGroup Alert
    *
-   * @apiDescription Returns all alerts for the requesting user for a device for requesting user
+   * @apiDescription Returns the alerts on a device that the requesting user can see
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {number} deviceId deviceId of the device to get alerts for
    *
    * @apiUse V1ResponseSuccess
-   * @apiInterface {apiSuccess::ApiGetAlertsResponse} Alerts Array of Alerts
+   * @apiInterface {apiSuccess::ApiGetAlertsResponse} alerts Array of Alerts
    *
    * @apiUse V1ResponseError
    * */
@@ -225,18 +227,18 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/v1/alerts/station/:locationId Get Alerts for a location
+   * @api {get} /api/v1/alerts/station/:stationId Get Alerts for a location
    * @apiName GetAlertsForLocation
    * @apiGroup Alert
    *
-   * @apiDescription Returns all alerts for a location for requesting user
+   * @apiDescription Returns the alerts on a location that the requesting user can see
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {number} locationId locationId of the location to get alerts for
+   * @apiParam {number} stationId id of the location (station) to get alerts for
    *
    * @apiUse V1ResponseSuccess
-   * @apiInterface {apiSuccess::ApiGetAlertsResponse} Alerts Array of Alerts
+   * @apiInterface {apiSuccess::ApiGetAlertsResponse} alerts Array of Alerts
    *
    * @apiUse V1ResponseError
    */
@@ -266,14 +268,14 @@ export default function (app: Application, baseUrl: string) {
    * @apiName GetAlertsForProject
    * @apiGroup Alert
    *
-   * @apiDescription Returns all alerts for a project
+   * @apiDescription Returns the alerts on a project that the requesting user can see
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {number} projectId projectId of the project to get alerts for
    *
    * @apiUse V1ResponseSuccess
-   * @apiInterface {apiSuccess::ApiGetAlertsResponse} Alerts Array of Alerts
+   * @apiInterface {apiSuccess::ApiGetAlertsResponse} alerts Array of Alerts
    *
    * @apiUse V1ResponseError
    */
@@ -300,15 +302,15 @@ export default function (app: Application, baseUrl: string) {
 
   /**
    * @api {get} /api/v1/alerts Get all Alerts for current user
-   * @apiName GetAlertsForStation
+   * @apiName GetAlertsForUser
    * @apiGroup Alert
    *
-   * @apiDescription Returns all alerts for the requesting user
+   * @apiDescription Returns all alerts created by the requesting user.
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiInterface {apiSuccess::ApiGetAlertsResponse} Alerts Array of Alerts
+   * @apiInterface {apiSuccess::ApiGetAlertsResponse} alerts Array of Alerts
    *
    * @apiUse V1ResponseError
    */
@@ -332,7 +334,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {delete} /api/v1/alerts Delete an alert by id
+   * @api {delete} /api/v1/alerts/:id Delete an alert by id
    * @apiName DeleteAlert
    * @apiGroup Alert
    *
@@ -340,7 +342,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {number} alertId alertId of the Alert to delete
+   * @apiParam {number} id id of the Alert to delete
    * @apiUse V1ResponseSuccess
    *
    * @apiUse V1ResponseError

@@ -69,14 +69,13 @@ import type {
 } from "@typedefs/api/group.js";
 import type {
   ApiDeviceAction,
-  ApiDeviceActionResponse,
   ApiDeviceResponse,
 } from "@typedefs/api/device.js";
 import type {
   ApiCreateStationData,
   ApiStationResponse,
 } from "@typedefs/api/station.js";
-import type { ScheduleConfig } from "@typedefs/api/schedule.js";
+import type { ApiScheduleResponse } from "@typedefs/api/schedule.js";
 import { mapSchedule } from "@api/V1/Schedule.js";
 import { mapStation, mapStations } from "./Station.js";
 import { HttpStatusCode } from "@typedefs/api/consts.js";
@@ -207,7 +206,7 @@ export interface ApiStationResponseSuccess {
 }
 
 export interface ApiScheduleConfigs {
-  schedules: ScheduleConfig[];
+  schedules: ApiScheduleResponse[];
 }
 
 export interface ApiGroupSettingsBody {
@@ -242,14 +241,15 @@ export default function (app: Application, baseUrl: string) {
    * @apiName NewGroup
    * @apiGroup Group
    *
-   * @apiDescription Creates a new group with the user used in the JWT as the admin.
+   * @apiDescription Creates a new group, with the requesting user as its admin and owner.  Group names must be
+   * unique, ignoring differences in case and spaces versus hyphens, and some names are reserved.
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {String} groupName Unique group name.
+   * @apiBody {String} groupName Unique group name.
    *
    * @apiUse V1ResponseSuccess
-   *
+   * @apiSuccess {Integer} groupId Id of the newly created group.
    * @apiUse V1ResponseError
    */
   app.post(
@@ -326,6 +326,9 @@ export default function (app: Application, baseUrl: string) {
    * @api {get} /api/v1/groups Get all groups the user has access to
    * @apiName GetGroups
    * @apiGroup Group
+   * @apiDescription Returns the groups the user is a member of, plus any groups they have a pending invitation
+   * to join (marked with `pending: "invited"`).  Pending groups only include the id, name and permissions the
+   * user would have.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -333,10 +336,14 @@ export default function (app: Application, baseUrl: string) {
    * @apiInterface {apiSuccess::ApiGroupsResponseSuccess}
    * @apiSuccessExample {JSON} ApiGroup[]:
    * [{
-   *   "id": 1;
+   *   "id": 1,
    *   "groupName": "My group",
-   *   "lastRecordingTime": "2021-11-09T02:22:57.777Z",
-   *   "admin": false
+   *   "admin": false,
+   *   "owner": false,
+   *   "lastThermalRecordingTime": "2021-11-09T02:22:57.777Z",
+   *   "lastAudioRecordingTime": "2021-11-09T02:22:57.777Z",
+   *   "earliestThermalRecordingTime": "2021-01-01T00:00:00.000Z",
+   *   "earliestAudioRecordingTime": "2021-01-01T00:00:00.000Z"
    * }]
    * @apiUse V1ResponseError
    */
@@ -393,12 +400,12 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/v1/groups/:groupNameOrId Get a group by name or id
+   * @api {get} /api/v1/groups/:groupIdOrName Get a group by name or id
    * @apiName GetGroup
    * @apiGroup Group
    * @apiDescription A group member or an admin member with globalRead permissions can view details of a group.
    *
-   * @apiParam {Number|String} groupIdOrName group id or group name
+   * @apiParam {Integer|String} groupIdOrName group id or group name
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -406,10 +413,14 @@ export default function (app: Application, baseUrl: string) {
    * @apiInterface {apiSuccess::ApiGroupResponseSuccess}
    * @apiSuccessExample {JSON} ApiGroup:
    * {
-   *   "id": 1;
+   *   "id": 1,
    *   "groupName": "My group",
-   *   "lastRecordingTime": "2021-11-09T02:22:57.777Z",
-   *   "admin": false
+   *   "admin": false,
+   *   "owner": false,
+   *   "lastThermalRecordingTime": "2021-11-09T02:22:57.777Z",
+   *   "lastAudioRecordingTime": "2021-11-09T02:22:57.777Z",
+   *   "earliestThermalRecordingTime": "2021-01-01T00:00:00.000Z",
+   *   "earliestAudioRecordingTime": "2021-01-01T00:00:00.000Z"
    * }
    * @apiUse V1ResponseError
    */
@@ -438,6 +449,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {String|Integer} groupIdOrName group id or group name
+   * @apiQuery {Boolean} [only-active=true] Only return active devices.  Set to `false` to include inactive devices.
    *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiGroupDevicesResponseSuccess} devices List of devices associated with the group
@@ -472,7 +484,8 @@ export default function (app: Application, baseUrl: string) {
    * @apiName GetUsersForGroup
    * @apiGroup Group
    * @apiDescription A group member or an admin member with globalRead permissions can view users that belong
-   * to a group.
+   * to a group.  Users who have been invited by email but have not yet created an account are included with
+   * their email address as the `userName`, and a `pending` status of `"invited"`.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -529,12 +542,12 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} api/v1/groups/:groupIdOrName/schedules Get audio bait schedules for a group
+   * @api {get} /api/v1/groups/:groupIdOrName/schedules Get audio bait schedules for a group
    * @apiName GetSchedulesForGroup
    * @apiGroup Schedules
    * @apiDescription This call is used to retrieve the any audio bait schedules for a group.
    * @apiUse V1UserAuthorizationHeader
-   * @apiParam {String|Integer} groupIdOrName Name or id of group to get schedules for
+   * @apiParam {Integer} groupIdOrName Id of group to get schedules for
    *
    * @apiInterface {apiSuccess::ApiScheduleConfigs} schedules Metadata of the schedules.
    * @apiUse V1ResponseSuccess
@@ -559,16 +572,17 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Group
    * @apiDescription This call can add a user to a group. It must be authenticated
    * by an admin from the group or a user with global write permission. It can also be used to update the
-   * admin status of a user for the group by setting admin to true or false.
+   * admin and owner status of an existing group member, or of a user with a pending email invitation.
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiBody {String} [group] name of the group (either this or 'groupId' must be specified).
    * @apiBody {Integer} [groupId] id of the group (either this or 'group' must be specified).
-   * @apiBody {String} email Email address of the user to add to the group.
-   * @apiBody {Boolean} admin If the user should be an admin for the group.
-   * @apiBody {Boolean} [owner] If the user should be marked as a group owner.
-   *a
+   * @apiBody {String} [email] Email address of the user to add to the group (either this or 'userId' must be specified).
+   * @apiBody {Integer} [userId] id of the user to add to the group (either this or 'email' must be specified).
+   * @apiBody {Boolean} [admin=false] If the user should be an admin for the group.
+   * @apiBody {Boolean} [owner=false] If the user should be marked as a group owner.
+   *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
@@ -694,15 +708,16 @@ export default function (app: Application, baseUrl: string) {
    * @api {delete} /api/v1/groups/users Removes a user from a group.
    * @apiName RemoveUserFromGroup
    * @apiGroup Group
-   * @apiDescription This call can remove a user from a group. Has to be authenticated
-   * by an admin from the group or a user with global write permission.
+   * @apiDescription This call can remove a user from a group, or revoke their pending invitation. Has to be
+   * authenticated by an admin from the group or a user with global write permission.
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiBody {String} [group] name of the group (either this or 'groupId' must be specified).
    * @apiBody {Integer} [groupId] id of the group (either this or 'group' must be specified).
    * @apiBody {Integer} [userId] id of the user to remove from the group (must supply either userId or email).
-   * @apiBody {Integer} [email] email of the user to remove from the group (must supply either userId or email).
+   * @apiBody {String} [email] email of the user to remove from the group (must supply either userId or email).
+   * If the email belongs to someone with a pending invitation but no account, the invitation is revoked.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -874,10 +889,11 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {delete} /api/v1/groups/:groupIdOrName/leave-group Removes the calling user from the group, if they are not the last admin user.
+   * @api {delete} /api/v1/groups/:groupIdOrName/leave-group Removes the calling user from the group, if they are not the last admin or owner.
    * @apiName UserLeaveGroup
    * @apiGroup Group
-   * @apiDescription This call can remove a user from a group. The user must be a member of the group, and not the last admin user.
+   * @apiDescription This call can remove a user from a group. The user must be a member of the group,
+   * and cannot be the last admin or the last owner of the group.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -936,18 +952,22 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/groups/:groupIdOrName/station Add a single station.
    * @apiName CreateStation
    * @apiGroup Station
-   * @apiDescription Create a single station
+   * @apiDescription Create a single station.  Requires admin access to the group.  Fails if an active station
+   * with the same name already exists in the group during the station's time window.  If the new station is very
+   * close to another active station, it is still created, but a warning is returned.
    *
    * @apiUse V1UserAuthorizationHeader
    *
+   * @apiParam {Integer|String} groupIdOrName Group name or group id
    * @apiInterface {apiBody::ApiCreateSingleStationDataBody} station ApiStation
-   * @apiParam {Date} [from-date] Start (active from) date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
-   * @apiParam {Date} [until-date] End (retirement) date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
-   * @apiParam {Boolean} [automatic] Station is treated as automatically created, such that the from/until dates are flexible and can be moved if earlier
+   * @apiBody {Date} [from-date=now] Start (active from) date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
+   * @apiBody {Date} [until-date] End (retirement) date/time for the new station as ISO timestamp (e.g. '2021-05-19T02:45:01.236Z')
+   * @apiBody {Boolean} [automatic=false] Station is treated as automatically created, such that the from/until dates are flexible and can be moved if earlier
    * recordings are seen.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Integer} stationId StationId id of new station.
+   * @apiSuccess {String[]} [warnings] Present if the new station is close to other active stations.
    * @apiUse V1ResponseError
    */
   app.post(
@@ -1024,9 +1044,14 @@ export default function (app: Application, baseUrl: string) {
    * @api {get} /api/v1/groups/:groupIdOrName/station/:stationName Get station by name in group
    * @apiName GetStationInGroup
    * @apiGroup Station
-   * @apiDescription Get an *active* station by name in a group.
+   * @apiDescription Get an *active* station by name in a group.  If the station is looked up by id instead of
+   * name, retired stations are also returned unless `only-active` is set.
    *
    * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer|String} groupIdOrName Group name or group id
+   * @apiParam {Integer|String} stationName Station name or station id
+   * @apiQuery {Boolean} [only-active=false] When looking up by station id, only return the station if it is active.
    *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiStationResponseSuccess} station Station.
@@ -1074,13 +1099,16 @@ export default function (app: Application, baseUrl: string) {
    * @apiSuccessExample {JSON} ApiStationResponse:
    * [{
    *   "groupId": 1338,
+   *   "groupName": "My group",
    *   "createdAt": "2021-08-27T21:04:35.851Z",
+   *   "activeAt": "2021-08-27T21:04:35.851Z",
    *   "id": 415,
    *   "lastUpdatedById": 2069,
    *   "location":  {
    *    "lat": -45.0, "lng": 172.9
    *   },
    *   "name": "station1",
+   *   "automatic": false,
    *   "updatedAt": "2021-08-27T21:04:35.855Z"
    * }]
    * @apiUse V1ResponseError
@@ -1180,7 +1208,8 @@ export default function (app: Application, baseUrl: string) {
    * @api {patch} /api/v1/groups/:groupIdOrName/group-settings Update group settings.
    * @apiName UpdateGroupSettings
    * @apiGroup Group
-   * @apiDescription Update the settings for a group specified by the group name or group ID.
+   * @apiDescription Update the settings for a group specified by the group name or group ID.  Requires admin
+   * access to the group.  The supplied settings are merged into the existing settings, rather than replacing them.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -1560,12 +1589,24 @@ export default function (app: Application, baseUrl: string) {
 
   /**
    * @api {get} /api/v1/groups/:groupIdOrName/actions List current device user-action requests for a project
-   * @apiName DeviceActions
+   * @apiName GetGroupDeviceActions
    * @apiGroup Device
+   * @apiDescription Returns the most recent user-action request for each device in the project that has one.
    *
    * @apiUse V1UserAuthorizationHeader
    *
+   * @apiParam {Integer|String} groupIdOrName Group name or group id
+   *
    * @apiUse V1ResponseSuccess
+   * @apiSuccess {Object[]} actions The latest action for each device.
+   * @apiSuccess {String} actions.uuid Id of the action.
+   * @apiSuccess {Integer} actions.deviceId Id of the device the action was requested for.
+   * @apiSuccess {String} actions.deviceName Name of the device.
+   * @apiSuccess {String} actions.status Current status of the action.
+   * @apiSuccess {Object[]} actions.history History of status changes for the action.
+   * @apiSuccess {String} actions.createdAt ISO timestamp of when the action was requested.
+   * @apiSuccess {String} actions.updatedAt ISO timestamp of the last update to the action.
+   * @apiSuccess {Integer} [actions.recordingId] Id of the recording associated with the action, if any.
    * @apiUse V1ResponseError
    */
   app.get(
@@ -1635,9 +1676,11 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {String|Integer} groupIdOrName group id or group name
+   * @apiQuery {Boolean} [only-active=true] Only return active devices.  Set to `false` to include inactive devices.
    *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiGroupDevicesResponseSuccess} devices List of devices with traps associated with the group
+   * @apiSuccess {Object[]} settings The current settings of each device in `devices`, in the same order.
    * @apiUse DevicesList
    * @apiUse V1ResponseError
    */

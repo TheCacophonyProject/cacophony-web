@@ -55,7 +55,7 @@ export default function (app: Application, baseUrl: string) {
      * In some circumstances the number of visits returned may be slightly bigger or smaller than the page-size.
      *
      * @apiUse V1UserAuthorizationHeader
-     * @apiQuery {number|number[]} [devices]  A single device id, or a JSON list of device ids to include.  eg 52, or [23, 42]
+     * @apiQuery {number|number[]} [stations]  A single station (location) id, or a JSON list of station ids to include.  eg 52, or [23, 42]
      * @apiQuery {number|number[]} [groups]  A single group id or a JSON list of group ids to include.  eg 20, or [23, 42]
      * @apiQuery {timestamp} [from]  Retrieve visits after this time
      * @apiQuery {timestamp} [until] Retrieve visits starting on or before this time
@@ -81,8 +81,6 @@ export default function (app: Application, baseUrl: string) {
      * @apiSuccess (Visit Details){number} stationId Id of station where recordings took place (if defined else 0)
      * @apiSuccess (Visit Details){timestamp} timeStart Time visit starts
      * @apiSuccess (Visit Details){timestamp} timeEnd Time visit ends
-     * @apiSuccess (Visit Details){string} timeEnd Time visit ends
-     * @apiSuccess (Visit Details){boolean} timeEnd Time visit ends
      * @apiSuccess (Visit Details){string} classification Cacophony classification.   (This is the best classification we have for this visit)
      * @apiSuccess (Visit Details){string} classificationAi Best classification from AI specified in request params, otherwise best classification from AI Master.
      * @apiSuccess (Visit Details){boolean} classFromUserTag True if the Cacophony classification was made by a user.   False if it was an AI classification
@@ -137,7 +135,6 @@ export default function (app: Application, baseUrl: string) {
      *       ],
      *       "success": true
      *   }
-     * @apiSuccess {JSON} visits Calculated visits with classifications.
      *
      * @apiUse V1ResponseError
      */

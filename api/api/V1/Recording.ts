@@ -349,7 +349,7 @@ export interface ApiTracksResponseSuccess {
   tracks: ApiTrackResponse[];
 }
 
-export interface ApiTracksResponseSuccess {
+export interface ApiTrackResponseSuccess {
   track: ApiTrackResponse;
 }
 
@@ -429,7 +429,7 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiBody {JSON} data Metadata about the recording.   Valid tags are:
    * <ul>
-   * <li>(REQUIRED) type: 'thermalRaw', or 'audio'
+   * <li>(REQUIRED) type: 'thermalRaw', 'audio' or 'irRaw'
    * <li>fileHash - Optional sha1 hexadecimal formatted hash of the file to be uploaded
    * <li>duration
    * <li>recordingDateTime
@@ -483,13 +483,14 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiParam {String} deviceName name of device to add recording for
    * @apiParam {String} groupName name of group to add recording for
+   * @apiQuery {Boolean} [only-active=false] operate only on active devices
    * @apiUse RecordingParams
    *
    * @apiUse RecordingMetaData
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Number} recordingId ID of the recording.
-   * @apiuse V1ResponseError
+   * @apiUse V1ResponseError
    */
 
   app.post(
@@ -519,9 +520,8 @@ export default (app: Application, baseUrl: string) => {
    * device. The user must have permission to view videos from the device or the
    * call will return an error.
    *
-   * @apiParam {Integer} deviceId ID of the device to upload on behalf of. If
-   * you don't have access to the ID the deviceName can be used instead in its
-   * place.
+   * @apiParam {Integer} deviceId ID of the device to upload on behalf of.  If you only have the device's name,
+   * use `POST /api/v1/recordings/device/:deviceName/group/:groupName` instead.
    * @apiQuery {Boolean} [only-active=false] operate only on active devices
    * @apiUse V1UserAuthorizationHeader
    *
@@ -531,7 +531,7 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Number} recordingId ID of the recording.
-   * @apiuse V1ResponseError
+   * @apiUse V1ResponseError
    */
 
   app.post(
@@ -558,14 +558,14 @@ export default (app: Application, baseUrl: string) => {
    * name is unique across all groups. It should not be used for new code.
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiParam {Integer} deviceName
+   * @apiParam {String} deviceName Name of the device to upload on behalf of.
    * @apiUse RecordingParams
    *
    * @apiUse RecordingMetaData
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Number} recordingId ID of the recording.
-   * @apiuse V1ResponseError
+   * @apiUse V1ResponseError
    */
   app.post(
     `${apiUrl}/:deviceName`,
@@ -594,6 +594,7 @@ export default (app: Application, baseUrl: string) => {
    * @api {get} /api/v1/recordings Query available recordings
    * @apiName QueryRecordings
    * @apiGroup Recordings
+   * @apiDeprecated Use GET /api/v1/recordings/for-project/:projectId
    *
    * @apiUse V1UserAuthorizationHeader
    * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a
@@ -601,6 +602,9 @@ export default (app: Application, baseUrl: string) => {
    * @apiQuery {Boolean} [deleted=false] Include only deleted recordings
    * @apiQuery {Boolean} [exclusive=false] Include only top level tagged recording (not children)
    * @apiQuery {Boolean} [countAll=true] Count all query matches rather than just number of results (as much as the limit parameter)
+   * @apiQuery {Boolean} [hideFiltered=false] Only include recordings that have at least one track that has not been
+   * filtered out
+   * @apiQuery {String} [filterModel] When supplied, only track tags marked as used are considered when matching
    * @apiQuery {JSON} [order] Whether the recording should be ascending or descending in time
    * @apiInterface {apiQuery::RecordingProcessingState} [processingState] Current processing state of recordings
    * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
@@ -703,6 +707,7 @@ export default (app: Application, baseUrl: string) => {
    * @api {delete} /api/v1/recordings Deletes Recordings based on query
    * @apiName DeleteRecordings
    * @apiGroup Recordings
+   * @apiDescription Bulk delete is currently disabled for performance reasons: this call always returns an error.
    *
    * @apiUse V1UserAuthorizationHeader
    * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a
@@ -791,9 +796,11 @@ export default (app: Application, baseUrl: string) => {
    * @api {patch} /api/v1/recordings/undelete Restores previously deleted Recordings.
    * @apiName UndeleteRecordings
    * @apiGroup Recordings
+   * @apiDescription Bulk undelete is currently disabled for performance reasons: this call always returns an error.
+   * To restore a single recording, use `PATCH /api/v1/recordings/:id/undelete`.
    *
    * @apiUse V1UserAuthorizationHeader
-   * @apiBody {String[]} [ids] Array of recording ids to undelete
+   * @apiBody {Number[]} ids Array of recording ids to undelete
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
@@ -930,18 +937,20 @@ export default (app: Application, baseUrl: string) => {
    * @api {get} /api/v1/recordings/count Query available recording count
    * @apiName QueryRecordingsCount
    * @apiGroup Recordings
+   * @apiDeprecated Use GET /api/v1/recordings/for-project/:projectId with `count-only=true`
    *
    * @apiUse V1UserAuthorizationHeader
    * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a
    * regular user
    * @apiQuery {Boolean} [deleted=false] Include only deleted recordings
-   * @apiQuery {Boolean} [checkIsGroupAdmin=false] Check if user is admin of group
+   * @apiQuery {Boolean} [checkIsGroupAdmin=true] Only count recordings in groups the user is an admin of
    * @apiInterface {apiQuery::RecordingProcessingState} [processingState]
    * Current processing state of recordings
    * @apiInterface {apiQuery::RecordingType} [type] Type of recordings
    * @apiUse BaseQueryParams
    * @apiUse MoreQueryParams
-   * @apiUse V1ResponseSuccessQuery
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {Number} count Number of recordings which match the query.
    * @apiUse V1ResponseError
    */
   app.get(
@@ -1056,15 +1065,16 @@ export default (app: Application, baseUrl: string) => {
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Object[]} rows List of track tags.
    * @apiSuccess {String} rows.label Name of the track tag.
-   * @apiSuccess {String} rows.labeler Name of the user who created the track tag or AI.
+   * @apiSuccess {String} rows.labeler `id_<userId>` for the user who created the track tag, or `AI`.
    * @apiSuccess {Object} rows.group Group of the track tag.
-   * @apiSuccess {String} rows.group.id Id of the group.
+   * @apiSuccess {Number} rows.group.id Id of the group.
    * @apiSuccess {String} rows.group.name Name of the group.
-   * @apiSuccess {String} rows.station Station of the track tag.
-   * @apiSuccess {String} rows.station.id Id of the station.
+   * @apiSuccess {Object|String} rows.station Station of the track tag, or the string `No Station` if the
+   * recording has no station.
+   * @apiSuccess {Number} rows.station.id Id of the station.
    * @apiSuccess {String} rows.station.name Name of the station.
-   * @apiSuccess {String} rows.device Device of the track tag.
-   * @apiSuccess {String} rows.device.id Id of the device.
+   * @apiSuccess {Object} rows.device Device of the track tag.
+   * @apiSuccess {Number} rows.device.id Id of the device.
    * @apiSuccess {String} rows.device.name Name of the device.
    *
    * @apiUse V1ResponseError
@@ -1114,12 +1124,13 @@ export default (app: Application, baseUrl: string) => {
    * @apiParam {Integer} id Id of the recording to get.
    * @apiQuery {Boolean} [deleted=false] Whether or not to only include deleted
    * recordings.
-   * @apiQuery {Boolean} [requires-signed-url=true] Whether or not to return a signed url with the recording data.
-   * @apiSuccess {int} fileSize the number of bytes in recording file.
-   * @apiSuccess {int} rawSize the number of bytes in raw recording file.
-   * @apiSuccess {String} downloadFileJWT JSON Web Token to use to download the
+   * @apiQuery {Boolean} [requires-signed-url=true] Whether or not to return the download tokens and file sizes
+   * with the recording data.
+   * @apiSuccess {int} [fileSize] the number of bytes in recording file.
+   * @apiSuccess {int} [rawSize] the number of bytes in raw recording file.
+   * @apiSuccess {String} [downloadFileJWT] JSON Web Token to use to download the
    * recording file.
-   * @apiSuccess {String} downloadRawJWT JSON Web Token to use to download
+   * @apiSuccess {String} [downloadRawJWT] JSON Web Token to use to download
    * the raw recording data.
    * @apiInterface {apiSuccess::ApiRecordingResponseSuccess} recording The
    * recording data.
@@ -1211,8 +1222,8 @@ export default (app: Application, baseUrl: string) => {
    * @api {get} /api/v1/recordings/track-tags/count Get track tag counts
    * @apiName GetTrackTagCounts
    * @apiGroup Tracks
-   * @apiDescription Fetches track tag counts grouped by tag, group, station, and user.
-   *                 Filters can be applied to narrow down the results.
+   * @apiDescription Fetches track tag counts grouped by tag, user, group, station and device.
+   * Filters can be applied to narrow down the results.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -1226,17 +1237,16 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {Object[]} rows List of track tag counts.
-   * @apiSuccess {String} rows.label Name of the track tag.
-   * @apiSuccess {Number} rows.userId User ID of the user who tagged or AI.
-   * @apiSuccess {Object} rows.group Group details.
-   * @apiSuccess {Number} rows.group.id ID of the group.
-   * @apiSuccess {String} rows.group.name Name of the group.
-   * @apiSuccess {Object} rows.station Station details.
-   * @apiSuccess {Number} rows.station.id ID of the station.
-   * @apiSuccess {String} rows.station.name Name of the station.
-   * @apiSuccess {Object} rows.device Device details.
-   * @apiSuccess {Number} rows.device.id ID of the device.
-   * @apiSuccess {String} rows.device.name Name of the device.
+   * @apiSuccess {String} rows.what Name of the track tag.
+   * @apiSuccess {Number} rows.UserId Id of the user who made the tag.
+   * @apiSuccess {String} rows.userName Name of the user who made the tag.
+   * @apiSuccess {Number} rows.trackTagCount Number of tags matching this row.
+   * @apiSuccess {Number} rows.groupId Id of the group.
+   * @apiSuccess {String} rows.groupName Name of the group.
+   * @apiSuccess {Number} rows.stationId Id of the station.
+   * @apiSuccess {String} rows.stationName Name of the station.
+   * @apiSuccess {Number} rows.deviceId Id of the device.
+   * @apiSuccess {String} rows.deviceName Name of the device.
    *
    * @apiUse V1ResponseError
    */
@@ -1362,7 +1372,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiDescription Gets a thumbnail png for this recording in Viridis palette
    *
    * @apiParam {Integer} id Id of the recording to get the thumbnail for.
-   * @apiParam {Integer} Optional trackId of recording to get thumbnail of.
+   * @apiQuery {Integer} [trackId] Id of a track to get the thumbnail of, rather than the recording's.
    * @apiQuery {Boolean} [deleted=false] Whether or not to only include deleted
    * recordings.
    * @apiSuccess {file} file Raw data stream of the png.
@@ -1548,9 +1558,9 @@ export default (app: Application, baseUrl: string) => {
    * submitted recording.
    *
    * @apiUse V1UserAuthorizationHeader
-
+   *
    * @apiParam {Integer} id Id of the recording to update.
-   * @apiBody {JSON} [updates] Data containing attributes for tag.
+   * @apiBody {JSON} updates Fields to update.  Only `comment` (String) and `additionalMetadata` (Object) can be updated.
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -1579,12 +1589,10 @@ export default (app: Application, baseUrl: string) => {
    * Undelete an existing soft-deleted recording
    * @apiName UndeleteRecording
    * @apiGroup Recordings
-   * @apiDescription This call is used for updating deletedAt and deletedBy
-   fields of a previously
-   * soft-deleted recording.
+   * @apiDescription This call is used to restore a previously soft-deleted recording.
    *
    * @apiUse V1UserAuthorizationHeader
-
+   *
    * @apiParam {Integer} id Id of the recording to undelete.
    *
    * @apiUse V1ResponseSuccess
@@ -1619,6 +1627,9 @@ export default (app: Application, baseUrl: string) => {
    * Add new track to recording
    * @apiName PostTrack
    * @apiGroup Tracks
+   * @apiDescription Adds a track to a recording.  On a thermal recording, a track that falls entirely inside the
+   * device's mask regions is discarded: the call still succeeds, but returns a `trackId` of 1 which does not
+   * refer to a real track.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -1753,7 +1764,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiParam {Integer} trackId Id of the track
    *
    * @apiUse V1ResponseSuccess
-   * @apiInterface {apiSuccess::ApiTrackResponseSuccess} tracks
+   * @apiInterface {apiSuccess::ApiTrackResponseSuccess} track
    *
    * @apiUse V1ResponseError
    */
@@ -1799,7 +1810,7 @@ export default (app: Application, baseUrl: string) => {
    * @apiParam {Integer} id Id of the recording
    * @apiParam {Integer} trackId id of the recording track to remove
    * @apiQuery {Boolean} [soft-delete=true] Pass false to actually permanently
-   * delete this recording, otherwise by default it will just be marked as
+   * delete this track, otherwise by default it will just be marked as
    * deleted and hidden from the UI.
    *
    * @apiUse V1UserAuthorizationHeader
@@ -1968,7 +1979,8 @@ export default (app: Application, baseUrl: string) => {
   /**
    * @api {patch} /api/v1/recordings/:id/tracks/:trackId/update-data
    * Updates a Track's Data
-   * @apiDescription Updates the "data" column of the specified track.
+   * @apiDescription Updates the data of the specified track.  The supplied data is merged into the existing track
+   * data, and the track's start and end times and frequency range are updated to match.
    * @apiName PutTrackData
    * @apiGroup Tracks
    *
@@ -1978,8 +1990,8 @@ export default (app: Application, baseUrl: string) => {
    * @apiParam {Integer} trackId Id of the recording track to update
    *
    * @apiInterface {apiBody::ApiTrackDataRequest} data Object containing the
-   * new data object to replace the existing one.
-   * @apiBody {JSON} data The new data object to replace the existing one.
+   * data to merge into the existing track data.
+   * @apiBody {JSON} data The data to merge into the existing track data.
    *
    * @apiUse V1ResponseSuccess
    * @apiSuccess {String} message Success message.
@@ -2028,12 +2040,8 @@ export default (app: Application, baseUrl: string) => {
 
   /**
    * @api {patch} /api/v1/recordings/:id/tracks/:trackId/tags/:tagId
-   * Updates a Track Tag with new request body
-   * @apiDescription Adds or Replaces track tag based off:
-   * if tag already exists for this user, ignore request
-   * Add tag if it is an additional tag e.g. "Part"
-   * Add tag if this user hasn't already tagged this track
-   * Replace existing tag, if user has an existing animal tag
+   * Updates the attributes of a Track Tag
+   * @apiDescription Updates the `gender` and/or `maturity` attributes of an existing track tag.
    * @apiName PatchTrackTag
    * @apiGroup Tracks
    *
@@ -2043,12 +2051,11 @@ export default (app: Application, baseUrl: string) => {
    * @apiParam {Integer} trackId id of the recording track to tag
    * @apiParam {Integer} tagId id of the track tag
    *
-   * @apiInterface {apiBody::ApiRecordingUpdateRequestBody} updates Object
-   * containing the fields to update and their new values.
-   * @apiBody {JSON} [updates] Data containing attributes for tag.
+   * @apiBody {JSON} updates Attributes to update on the tag.
+   * @apiBody {String="male","female",null} [updates.gender] Gender of the animal.
+   * @apiBody {String="juvenile","adult",null} [updates.maturity] Maturity of the animal.
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {int} trackTagId Unique id of the newly created track tag.
    *
    * @apiUse V1ResponseError
    */
@@ -2087,12 +2094,11 @@ export default (app: Application, baseUrl: string) => {
    * @api {patch} /api/v1/recordings/:id/tracks/:trackId/undelete
    * Undelete an existing soft-deleted track
    * @apiName UndeleteTrack
-   * @apiGroup Recordings
-   * @apiDescription This call is used for updating archived of a previously
-   * soft-deleted track.
+   * @apiGroup Tracks
+   * @apiDescription This call is used to restore a previously soft-deleted track.
    *
    * @apiUse V1UserAuthorizationHeader
-
+   *
    * @apiParam {Integer} id Id of the recording.
    * @apiParam {Integer} trackId id of the recording track to undelete.
    *
@@ -2107,7 +2113,6 @@ export default (app: Application, baseUrl: string) => {
     fetchUnauthorizedRequiredTrackById(param("trackId")),
     async (_request: Request, response: Response) => {
       await response.locals.track.unarchive();
-      // FIXME(static-visits): recalc
       await Visit.rebuildForRecording(response.locals.recording);
       return successResponse(response, "Undeleted track.");
     },
@@ -2238,6 +2243,12 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    *
+   * @apiParam {Integer} id Id of the recording
+   * @apiParam {Integer} trackId id of the recording track
+   * @apiParam {Integer} trackTagId id of the track tag to delete
+   * @apiQuery {String} [tagJWT] JWT token to delete a tag on a recording/track that the user
+   * would not otherwise have permission to view.
+   *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
@@ -2320,6 +2331,9 @@ export default (app: Application, baseUrl: string) => {
    *
    * @apiUse V1UserAuthorizationHeader
    *
+   * @apiParam {Integer} id Id of the recording
+   * @apiParam {Integer} tagId Id of the recording tag to delete
+   *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
@@ -2379,14 +2393,17 @@ export default (app: Application, baseUrl: string) => {
    * Bulk query recordings by project
    * @apiName BulkQueryRecordingsInProject
    * @apiGroup Recordings
+   * @apiDescription Returns the recordings in a project that match the given filters, most recent first.  To keep
+   * responses fast, the search covers a limited window of time at a time and widens as needed, so unless
+   * `from` and `until` are given the most recent matching recordings are returned first.
    *
    * @apiUse V1UserAuthorizationHeader
    * @apiParam {Integer} projectId Project id to query
    * @apiQuery {String="user"} [view-mode] Allow a super-user to view as a
    * regular user
    * @apiQuery {Boolean} [debug] Output SQL debug information as an HTML response.
-   * @apiQuery {Number} [max-results] Max number of records to be returned.
-   * @apiQuery {String} [tag-mode] Only return recordings with specific types of tags. Valid values:
+   * @apiQuery {Number} [max-results=200] Max number of records to be returned, up to a maximum of 1000.
+   * @apiQuery {String} [tag-mode=any] Only return recordings with specific types of tags. Valid values:
    * <ul>
    * <li>any: match recordings with any (or no) tag
    * <li>untagged: match only recordings with no tags
@@ -2400,18 +2417,22 @@ export default (app: Application, baseUrl: string) => {
    * @apiQuery {String[]} [labelled-with] Recording labels you want to filter on, e.g 'cool'
    * @apiQuery {String} [from] Iso formatted date string for earliest recordingDateTime to query
    * @apiQuery {String} [until] Iso formatted date string for latest recordingDateTime to query
-   * @apiQuery {Number} [duration] Filter out recordings that are less than `duration`
-   * @apiQuery {Boolean} [include-false-positives] Recordings consisting of only false-positives are filtered out by default; set this value to `true` to include them
-   * @apiQuery {Boolean} [time-sensitive] We'd rather get back some results in a reasonable time, than get all the results we asked for.
+   * @apiQuery {Number} [duration=2.5] Filter out recordings that are shorter than `duration` seconds
+   * @apiQuery {Boolean} [include-false-positives=false] Recordings consisting of only false-positives are filtered out by default; set this value to `true` to include them
+   * @apiQuery {Boolean} [time-sensitive=false] We'd rather get back some results in a reasonable time, than get all the results we asked for.
    * @apiQuery {Number[]} [devices] Include only recordings that belong to any of the `DeviceId`s supplied
    * @apiQuery {Boolean} [sub-class-tags] `true` by default, setting this to `false` will turn off hierarchical animal tag matching.
    * @apiQuery {Boolean} [include-deleted] `false` by default, setting this to `true` will include deleted recordings in the query.
-   * @apiQuery {Boolean} [with-total-count] `false` by default, setting this to `true` will return a total count for the query along with recordings.
+   * @apiQuery {Boolean} [status-recordings=false] Only include very short recordings (under 2.5 seconds), which devices make for status checks, instead of applying `duration`.
+   * @apiQuery {Boolean} [count-only=false] Return only a count of the matching recordings, without the recordings
+   * themselves.  The count is limited to `max-results`.
    * @apiQuery {String} [processing-state] Return only recordings matching a given processing state
    * @apiQuery {Number[]} [locations] Include only recordings that are located within any of the `LocationId`s supplied
    * @apiQuery {String[]} [types] Include only recordings that match of one of the `RecordingType`s supplied
    *
    * @apiUse V1ResponseSuccess
+   * @apiSuccess {Object[]} recordings The matching recordings, most recent first.
+   * @apiSuccess {Number} [count] Number of matching recordings, when `count-only` is set.
    * @apiUse V1ResponseError
    */
   app.get(

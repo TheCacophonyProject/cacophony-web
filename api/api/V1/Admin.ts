@@ -47,6 +47,8 @@ export default function (app: Application, baseUrl: string) {
      * @apiUse V1UserAuthorizationHeader
      * @apiName UpdateGlobalPermission
      * @apiGroup Admin
+     * @apiDescription Sets a user's global permission to `write`, `read` or `off`.  The requesting user must be a
+     * super-user with global write permission.
      * @apiParam {String|Number} userEmailOrId email or id of user to update
      * @apiInterface {apiBody::ApiUpdateGlobalPermissionRequestBody}
      * @apiUse V1ResponseSuccess
