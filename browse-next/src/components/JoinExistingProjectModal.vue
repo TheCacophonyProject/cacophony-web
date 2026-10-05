@@ -100,11 +100,13 @@ const getGroupsForAdmin = async () => {
       projectAdminEmailAddress.value.trim(),
     );
   if (projectsResponse.success) {
-    // Filter out any groups we're already a member of.
+    // Filter out any groups we're already a member of.  Groups we've already requested to join are kept,
+    // since the request may be re-sent to a different admin of the same project.
     const groups = projectsResponse.result.groups.filter(
       ({ id }) =>
         !(UserProjects.value || []).find(
-          (existingGroup: ApiProjectResponse) => existingGroup.id === id,
+          (existingGroup: ApiProjectResponse) =>
+            existingGroup.id === id && existingGroup.pending !== "requested",
         ),
     );
     if (groups.length === 0) {

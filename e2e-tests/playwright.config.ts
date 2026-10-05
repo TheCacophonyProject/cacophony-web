@@ -84,7 +84,7 @@ export default defineConfig({
     command: "npm run build-for-tests",
     cwd: "../browse-next/",
     url: "http://localhost:5050",
-    reuseExistingServer: false,
+    reuseExistingServer: true,
     timeout: 120 * 1000,
   },
 });

@@ -341,3 +341,84 @@ test("Existing user (with projects) is able to request to join an existing proje
     await waitToNavigateToProject(page, project1);
   });
 });
+
+test("If someone else already approved a request to join a project, accepting a duplicate request shows that the user was already approved", async ({
+  page,
+}) => {
+  const user1 = uniqueName("Bob");
+  const password1 = uniqueName("pass");
+  const project1 = uniqueName("bobs project");
+
+  const user2 = uniqueName("Alice");
+  const password2 = uniqueName("pass");
+
+  const user3 = uniqueName("Carol");
+  const password3 = uniqueName("pass");
+  const project3 = uniqueName("carols project");
+
+  await test.step(`${user1} creates a project and invites ${user2} as a project admin`, async () => {
+    await registerNewUser(page, user1, password1);
+    await confirmNewUserEmailAddressWhileLoggedIn(page, user1);
+    await createProjectFromInitialSetup(page, project1);
+    await ensureMainNavIsAvailable(page);
+    await page.getByTestId("manage project").click();
+    await expect(page).toHaveURL(`/${urlNormaliseName(project1)}/settings/users`);
+    await page.getByTestId("invite someone to project button").click();
+    await page.getByTestId("invitee email address").fill(getEmail(user2));
+    await page.getByTestId("invite as project admin checkbox").check();
+    await expect(page.getByTestId("invite as project admin checkbox")).toBeChecked();
+    await clickModalOkayButton(page, "invite-someone-modal");
+    await signOut(page);
+  });
+  await test.step(`${user2} accepts the invite by creating a new account, so ${project1} has two admins`, async () => {
+    await openJoinProjectInviteEmailForNewUser(page, user2);
+    await page.getByTestId("new user join project").click();
+    await registerNewUserFromEmailLink(page, user2, password2);
+    await waitToNavigateToProject(page, project1);
+    // Consume the welcome email, so it isn't mistaken for the join request email later.
+    await waitForEmail(user2, "welcome with projects");
+    await signOut(page);
+  });
+  await test.step(`${user3} creates a project, then asks both admins to let them join ${project1}`, async () => {
+    await registerNewUser(page, user3, password3);
+    await confirmNewUserEmailAddressWhileLoggedIn(page, user3);
+    await createProjectFromInitialSetup(page, project3);
+    for (const admin of [user1, user2]) {
+      await ensureMainNavIsAvailable(page);
+      await page.getByTestId("switch or join project button").click();
+      await page.getByTestId("join existing project button").click();
+      await expect(page.getByTestId("join existing project form")).toBeVisible();
+      await page.getByTestId("project admin email address").fill(getEmail(admin));
+      await page.locator(".list-joinable-projects-button").click();
+      // NOTE: Since there is only one project available to join, it won't show a list of options to choose from.
+      await clickModalOkayButton(page, "join-project-modal");
+    }
+    await signOut(page);
+  });
+  await test.step(`${user1} approves the request via email`, async () => {
+    await signInExistingUser(page, user1, password1);
+    await waitToNavigateToProject(page, project1);
+    await openJoinProjectRequestEmail(page, user1);
+    await page.getByTestId("confirm project membership request").click();
+    await waitToNavigateToProject(page, project1);
+    await signOut(page);
+  });
+  await test.step(`${user2} approves the same request via email, and is told ${user3} is already a member`, async () => {
+    await signInExistingUser(page, user2, password2);
+    await waitToNavigateToProject(page, project1);
+    await openJoinProjectRequestEmail(page, user2);
+    await page.getByTestId("confirm project membership request").click();
+    await expect(page.getByTestId("user already member of project")).toBeVisible();
+    // The confirmation page has no main nav, so go back to the app before signing out.
+    await page.goto("/");
+    await waitToNavigateToProject(page, project1);
+    await signOut(page);
+  });
+  await test.step(`${user3} can see ${project1} in their projects list`, async () => {
+    await signInExistingUser(page, user3, password3);
+    await expect(page.getByTestId("switch project button")).toBeAttached();
+    await page.getByTestId("switch project button").click();
+    await page.getByTestId(urlNormaliseName(project1)).click();
+    await waitToNavigateToProject(page, project1);
+  });
+});
