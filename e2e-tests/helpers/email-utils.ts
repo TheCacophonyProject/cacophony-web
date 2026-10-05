@@ -80,6 +80,9 @@ export const waitForEmailAndRenderEmailHtml = async (
   expect(email.error, "email was sent").toBeUndefined();
   await test.step(`${toUser} opens email`, async () => {
     await page.setContent(email.html);
+    // setContent's own snapshot can be taken before the content has rendered, so make a
+    // locator call afterwards to force a snapshot of the rendered email into the trace timeline.
+    await page.locator("body").waitFor({ state: "visible" });
   });
   return email;
 };
