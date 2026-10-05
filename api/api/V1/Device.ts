@@ -610,6 +610,19 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
+  /**
+   * @api {get} /api/v1/devices/latest-software-versions Get latest device software versions
+   * @apiName GetLatestSoftwareVersions
+   * @apiGroup Device
+   * @apiDescription Returns the latest released versions of the software packages that run on devices,
+   * as published in the TheCacophonyProject/salt-version-info repository on GitHub.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiSuccess {Object} versions Map of software package names to their latest released version
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
   app.get(
     `${apiUrl}/latest-software-versions`,
     extractJwtAuthorizedUser,
@@ -630,6 +643,45 @@ export default function (app: Application, baseUrl: string) {
           "Version info not available",
         );
       }
+    },
+  );
+
+  /**
+   * @api {get} /api/v1/devices/device/:id Get a single device by its unique id (legacy path)
+   * @apiName GetDeviceByIdLegacy
+   * @apiGroup Device
+   * @apiDeprecated Use /api/v1/devices/:deviceId
+   * @apiParam {Integer} id Id of the device
+   * @apiQuery {Boolean} [only-active=true] Only return active devices
+   *
+   * @apiDescription Legacy alias of `GET /api/v1/devices/:deviceId`, returning the same response.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiDeviceResponseSuccess} device Device details
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/device/:id`,
+    extractJwtAuthorizedUser,
+    validateFields([
+      idOf(param("id")),
+      query("view-mode").optional().equals("user"),
+      deprecatedField(query("where")), // Sidekick
+      exactlyOneOfOrDefault(false)(
+        query("only-active").optional().isBoolean().toBoolean(),
+        deprecatedField(query("onlyActive")).optional().isBoolean().toBoolean(),
+      ),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("id")),
+    async (_request: Request, response: Response) => {
+      return successResponse(response, "Completed get device query.", {
+        device: mapDeviceResponse(
+          response.locals.device,
+          response.locals.viewAsSuperUser,
+        ),
+      });
     },
   );
 
@@ -676,30 +728,6 @@ export default function (app: Application, baseUrl: string) {
    * }
    * @apiUse V1ResponseError
    */
-  app.get(
-    `${apiUrl}/device/:id`,
-    extractJwtAuthorizedUser,
-    validateFields([
-      idOf(param("id")),
-      query("view-mode").optional().equals("user"),
-      deprecatedField(query("where")), // Sidekick
-      exactlyOneOfOrDefault(false)(
-        query("only-active").optional().isBoolean().toBoolean(),
-        deprecatedField(query("onlyActive")).optional().isBoolean().toBoolean(),
-      ),
-    ]),
-    fetchAuthorizedRequiredDeviceById(param("id")),
-    async (_request: Request, response: Response) => {
-      return successResponse(response, "Completed get device query.", {
-        device: mapDeviceResponse(
-          response.locals.device,
-          response.locals.viewAsSuperUser,
-        ),
-      });
-    },
-  );
-
-  // Alias of /api/v1/devices/:deviceId for consistency reasons
   app.get(
     `${apiUrl}/:id`,
     extractJwtAuthorizedUser,
@@ -788,6 +816,30 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
+  /**
+   * @api {get} /api/v1/devices/:id/tracks-with-tag/:tag Get tracks on a device's recordings with a given tag
+   * @apiName GetDeviceTracksWithTag
+   * @apiGroup Device
+   * @apiParam {Integer} id Id of the device
+   * @apiParam {String} tag Tag (`what`) to match, e.g. `"cat"`
+   * @apiQuery {String} [from-time] ISO8601 formatted date string, only include recordings from this time
+   * @apiQuery {String} [until-time] ISO8601 formatted date string, only include recordings up to this time
+   * @apiQuery {String} [type=thermalRaw] Recording type to search
+   * @apiQuery {Boolean} [only-active=true] Only look up the device if it is active, set to `false` to
+   * also allow inactive devices
+   * @apiQuery {String} [view-mode] `"user"` show only devices assigned to current user where
+   * JWT Authorization supplied is for a superuser (default for superuser is to show all devices)
+   *
+   * @apiDescription Returns the non-archived tracks from the device's non-deleted recordings that have the given
+   * tag applied.  Where a track has both a human and an automatic tag, the human tag takes precedence.
+   * Each track includes its track data.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiSuccess {Object[]} tracks Matching tracks
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
   app.get(
     `${apiUrl}/:id/tracks-with-tag/:tag`,
     extractJwtAuthorizedUser,
@@ -882,7 +934,34 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
-  // Use this with device location history to work out what animals a device has seen in a given time window, and/or at a given station.
+  /**
+   * @api {get} /api/v1/devices/:id/unique-track-tags Get the unique track tags seen by a device
+   * @apiName GetDeviceUniqueTrackTags
+   * @apiGroup Device
+   * @apiParam {Integer} id Id of the device
+   * @apiQuery {String} [from-time] ISO8601 formatted date string, only include recordings from this time
+   * @apiQuery {String} [until-time] ISO8601 formatted date string, only include recordings up to this time
+   * @apiQuery {String} [type=thermalRaw] Recording type to search
+   * @apiQuery {Integer} [stationId] Only include recordings made at this station
+   * @apiQuery {Boolean} [only-active=true] Only look up the device if it is active, set to `false` to
+   * also allow inactive devices
+   * @apiQuery {String} [view-mode] `"user"` show only devices assigned to current user where
+   * JWT Authorization supplied is for a superuser (default for superuser is to show all devices)
+   *
+   * @apiDescription Returns the distinct tags that have been applied to tracks in the device's recordings,
+   * along with how many tracks have each tag.  Where a track has both a human and an automatic tag, the human
+   * tag takes precedence.  Use this with the device location history to work out what animals a device has
+   * seen in a given time window.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiSuccess {Object[]} trackTags Unique tags seen
+   * @apiSuccess {String} trackTags.what The tag
+   * @apiSuccess {String} trackTags.path Classification path of the tag
+   * @apiSuccess {Number} trackTags.count Number of tracks with this tag
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
   app.get(
     `${apiUrl}/:id/unique-track-tags`,
     extractJwtAuthorizedUser,
@@ -939,6 +1018,9 @@ export default function (app: Application, baseUrl: string) {
               DeviceId: response.locals.device.id,
               GroupId: response.locals.device.GroupId,
               type,
+              ...(request.query.stationId && {
+                StationId: request.query.stationId,
+              }),
               ...timeWindow,
             },
             attributes: [],
@@ -2037,7 +2119,24 @@ export default function (app: Application, baseUrl: string) {
     ...getUsersFns,
   );
 
-  // Alias of /api/v1/devices/users for consistency reasons
+  /**
+   * @api {get} /api/v1/devices/:deviceId/users Get all users who can access a device (by path)
+   * @apiName GetDeviceUsersById
+   * @apiGroup Device
+   * @apiDescription Same as `GET /api/v1/devices/users`, but takes the device id as a path parameter rather
+   * than a query parameter.  Returns all users that have access to the device through group membership.
+   * Requires admin access to the device.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} deviceId ID of the device.
+   * @apiQuery {Boolean} [only-active=true] Only return active devices
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiDeviceUsersResponseSuccess} users Array of users who have access to the
+   * device via the devices group.
+   * @apiUse V1ResponseError
+   */
   app.get(
     `${apiUrl}/:deviceId/users`,
     extractJwtAuthorizedUser,

@@ -1942,6 +1942,23 @@ export default (app: Application, baseUrl: string) => {
     ...replaceTrackTagParams,
   );
 
+  /**
+   * @api {post} /api/v1/recordings/:id/tracks/:trackId/replaceTag
+   * Adds/Replaces a Track Tag (legacy path)
+   * @apiName ReplaceTrackTagLegacy
+   * @apiGroup Tracks
+   * @apiDeprecated Use /api/v1/recordings/:id/tracks/:trackId/replace-tag
+   * @apiDescription Legacy alias of `POST /api/v1/recordings/:id/tracks/:trackId/replace-tag`, taking the same
+   * parameters and returning the same response.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} id Id of the recording
+   * @apiParam {Integer} trackId id of the recording track to tag
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
   // TODO: Do any external API consumers use this legacy endpoint, or can it be removed?
   app.post(
     `${apiUrl}/:id/tracks/:trackId/replaceTag`,

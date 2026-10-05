@@ -1154,7 +1154,6 @@ export default function (app: Application, baseUrl: string) {
           },
         });
         if (users.length <= 1) {
-          logging.warning("Returning");
           return next(
             new UnprocessableError(
               "The sole member of a project cannot opt-out of trap action notifications",
@@ -1210,9 +1209,22 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * Called by a new or existing user, optionally with a token from an email, or while logged in,
-   * matching an invitation (created before the user became a member), or a pending invite row in
-   * the GroupUsers table, if the user was invited after they created a user account.
+   * @api {post} /api/v1/groups/:groupIdOrName/accept-invitation Accept an invitation to join a group.
+   * @apiName AcceptGroupInvitation
+   * @apiGroup Group
+   * @apiDescription Accepts a pending invitation for the requesting user to join the group.  The invitation
+   * can be identified by the token from the invitation email, or, if no token is supplied, by the
+   * requesting user's email address.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer|String} groupIdOrName Group name or group ID.
+   * @apiBody {String} [acceptGroupInviteJWT] Token from the invitation email.  Must be for the group in the url.
+   * @apiQuery {Boolean} [existing-member=false] Set when the token is for a new-user invitation but is being
+   * redeemed by an existing user.  Skips the check that the invitation email matches the requesting user's email.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
    */
   app.post(
     `${apiUrl}/:groupIdOrName/accept-invitation`,
@@ -1430,7 +1442,24 @@ export default function (app: Application, baseUrl: string) {
     );
   }
 
-  // TODO (docs + tests)
+  /**
+   * @api {post} /api/v1/groups/:groupIdOrName/invite-user Invite a user to join a group.
+   * @apiName InviteUserToGroup
+   * @apiGroup Group
+   * @apiDescription Sends an email inviting a person to join the group.  The person may or may not already
+   * have an account.  The invitation is accepted by following the link in the email.  Requires admin access
+   * to the group.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer|String} groupIdOrName Group name or group ID.
+   * @apiBody {String} email Email address of the person to invite.
+   * @apiBody {Boolean} [admin=false] Give the invited user administrator access to the group.
+   * @apiBody {Boolean} [owner=false] Make the invited user an owner of the group.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
   app.post(
     `${apiUrl}/:groupIdOrName/invite-user`,
     extractJwtAuthorizedUser,
@@ -1487,7 +1516,6 @@ export default function (app: Application, baseUrl: string) {
             new UnprocessableError("User is already a member of group"),
           );
         }
-        logging.warning(`HERE, invite ${existingGroupUser}`);
         if (
           existingGroupUser === null ||
           (existingGroupUser && existingGroupUser.pending !== null)

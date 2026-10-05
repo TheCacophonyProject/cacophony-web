@@ -601,7 +601,23 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
-  // TODO(docs) - This returns limited info about groups that a user with this email address is admin of.
+  /**
+   * @api {get} /api/v1/users/groups-for-admin-user/:emailAddress Get the groups an email address is an admin of
+   * @apiName GetGroupsForAdminUser
+   * @apiGroup User
+   * @apiDescription Returns limited information (id and name only) about the groups that the user with the
+   * given email address is an administrator of.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {String} emailAddress Email address of the user.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {Object[]} groups The groups the user is an admin of.
+   * @apiSuccess {Integer} groups.id Id of the group.
+   * @apiSuccess {String} groups.groupName Name of the group.
+   * @apiUse V1ResponseError
+   */
   app.get(
     `${apiUrl}/groups-for-admin-user/:emailAddress`,
     extractJwtAuthorizedUser,
@@ -631,6 +647,23 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
+  /**
+   * @api {get} /api/v1/users/groups-for-user/:emailAddress Get the groups an email address is a member of
+   * @apiName GetGroupsForUser
+   * @apiGroup User
+   * @apiDescription Returns limited information (id and name only) about the groups that the user with the
+   * given email address is a member of.  Only available to super-users.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {String} emailAddress Email address of the user.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {Object[]} groups The groups the user is a member of.
+   * @apiSuccess {Integer} groups.id Id of the group.
+   * @apiSuccess {String} groups.groupName Name of the group.
+   * @apiUse V1ResponseError
+   */
   app.get(
     `${apiUrl}/groups-for-user/:emailAddress`,
     extractJwtAuthorizedSuperAdminUser,
@@ -926,6 +959,25 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
+  /**
+   * @api {post} /api/v1/users/validate-group-membership-request Approve a request to join a group
+   * @apiName ValidateGroupMembershipRequest
+   * @apiGroup User
+   * @apiDescription Approves a user's request to join a group, adding them to the group.  The request is
+   * identified by the token from the membership request email sent to a group admin or owner.  Requires
+   * admin access to the group.  The user is notified by email if their email address has been confirmed.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiBody {String} membershipRequestJWT Token from the membership request email.
+   * @apiBody {Boolean} [admin=false] Give the new member administrator access to the group.
+   * @apiBody {Boolean} [owner=false] Make the new member an owner of the group.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {Integer} userId Id of the user added to the group.
+   * @apiSuccess {String} userName Name of the user added to the group.
+   * @apiUse V1ResponseError
+   */
   app.post(
     `${apiUrl}/validate-group-membership-request`,
     extractJwtAuthorizedUser,
