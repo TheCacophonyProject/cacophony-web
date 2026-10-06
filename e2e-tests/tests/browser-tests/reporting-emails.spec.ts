@@ -17,7 +17,83 @@ import {
 } from "@/helpers/recording-uploads";
 import { addDays, addHours, addMinutes } from "@/helpers/date-helpers";
 import { dockerExecNodeScript, dockerExecNodeTestScript } from "@/helpers/docker-exec";
-import { signInExistingUser } from "@/helpers/browse-helpers";
+import {
+  signInExistingUser,
+  urlNormaliseProjectName,
+  waitToNavigateToProject,
+} from "@/helpers/browse-helpers";
+import { ApiGroupResponse as ApiProjectResponse } from "@shared/api/group";
+
+test("Users can opt into fine-grained options of activity digest emails", async ({ page }) => {
+  const project = await createProjectWithUserAndDevice();
+  const adminUser = project.getAdminUser();
+  const AdminUser = project.api();
+  await confirmEmailAddressViaApi(adminUser);
+  await signInExistingUser(page, adminUser.testId);
+  await waitToNavigateToProject(page, project.projectHandle.testId);
+  await page.goto(`/${urlNormaliseProjectName(project.projectHandle.testId)}/my-settings`);
+  await expect(page.getByTestId("activity digest preferences")).toBeVisible();
+
+  const savedPreferences = async () => {
+    const savedProject = await AdminUser.Projects.getProjectById(project.projectHandle.id);
+    return (savedProject as ApiProjectResponse)?.userSettings?.notificationPreferences;
+  };
+
+  for (const interval of ["daily", "weekly"] as const) {
+    const digestKey = `${interval}Digest`;
+    const section = page.getByTestId(`${interval} digest options`);
+    await test.step(`Sub-options for the ${interval} digest are only shown once opted in`, async () => {
+      await expect(section).toBeHidden();
+      await page.getByTestId(`${interval} digest toggle`).check();
+      await expect(section).toBeVisible();
+      for (const report of ["visits report", "audio report", "battery report"]) {
+        await expect(section.getByTestId(report)).toBeChecked();
+      }
+    });
+
+    await test.step(`Opting in saves all sections of the ${interval} digest`, async () => {
+      await expect
+        .poll(async () => (await savedPreferences())?.[digestKey])
+        .toEqual({ visitsReport: true, audioReport: true, batteryReport: true });
+    });
+
+    await test.step(`Deselecting a section is saved for the ${interval} digest`, async () => {
+      await section.getByTestId("audio report").uncheck();
+      await expect
+        .poll(async () => (await savedPreferences())?.[digestKey])
+        .toEqual({ visitsReport: true, audioReport: false, batteryReport: true });
+    });
+  }
+
+  await test.step("Options for each digest are independent of each other", async () => {
+    await expect
+      .poll(async () => (await savedPreferences())?.weeklyDigest)
+      .toEqual({ visitsReport: true, audioReport: false, batteryReport: true });
+    await page.getByTestId("weekly digest options").getByTestId("visits report").uncheck();
+    await expect
+      .poll(async () => (await savedPreferences())?.weeklyDigest)
+      .toEqual({ visitsReport: false, audioReport: false, batteryReport: true });
+    expect((await savedPreferences())?.dailyDigest).toEqual({
+      visitsReport: true,
+      audioReport: false,
+      batteryReport: true,
+    });
+  });
+
+  await test.step("Saved sub-options are restored when the page is reloaded", async () => {
+    await page.reload();
+    const weekly = page.getByTestId("weekly digest options");
+    await expect(weekly.getByTestId("visits report")).not.toBeChecked();
+    await expect(weekly.getByTestId("audio report")).not.toBeChecked();
+    await expect(weekly.getByTestId("battery report")).toBeChecked();
+  });
+
+  await test.step("Opting out of a digest saves it as disabled", async () => {
+    await page.getByTestId("daily digest toggle").uncheck();
+    await expect(page.getByTestId("daily digest options")).toBeHidden();
+    await expect.poll(async () => (await savedPreferences())?.dailyDigest).toEqual(false);
+  });
+});
 
 test("Project activity digest email sent successfully for weekly and daily digests", async ({
   smallCptv,

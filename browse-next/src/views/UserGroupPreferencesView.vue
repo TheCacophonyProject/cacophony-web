@@ -96,18 +96,47 @@ const userProjectSettings = computed<ApiProjectUserSettings>(() => {
     }
   );
 });
-const weeklyDigestEmails = ref<boolean>(false);
-const dailyDigestEmails = ref<boolean>(false);
+interface DigestPreferences {
+  enabled: boolean;
+  visitsReport: boolean;
+  audioReport: boolean;
+  batteryReport: boolean;
+}
+// A digest preference is either a boolean (opted in/out of everything), or an object that opts in
+// to individual sections of the digest, where any section not explicitly set to false is included.
+const parseDigestPreferences = (
+  value: boolean | Record<string, boolean> | undefined,
+): DigestPreferences => {
+  const sections = typeof value === "object" && value !== null ? value : {};
+  return {
+    enabled: !!value,
+    visitsReport: sections.visitsReport !== false,
+    audioReport: sections.audioReport !== false,
+    batteryReport: sections.batteryReport !== false,
+  };
+};
+const serialiseDigestPreferences = ({
+  enabled,
+  visitsReport,
+  audioReport,
+  batteryReport,
+}: DigestPreferences): boolean | Record<string, boolean> =>
+  enabled ? { visitsReport, audioReport, batteryReport } : false;
+
+const weeklyDigest = ref<DigestPreferences>(parseDigestPreferences(false));
+const dailyDigest = ref<DigestPreferences>(parseDigestPreferences(false));
 const stoppedDeviceEmails = ref<boolean>(false);
 const savingDailyDigestSettings = ref<boolean>(false);
 const savingWeeklyDigestSettings = ref<boolean>(false);
 const savingStoppedDeviceSettings = ref<boolean>(false);
 const initialised = ref<boolean>(false);
 onBeforeMount(() => {
-  weeklyDigestEmails.value =
-    userProjectSettings.value.notificationPreferences?.weeklyDigest || false;
-  dailyDigestEmails.value =
-    userProjectSettings.value.notificationPreferences?.dailyDigest || false;
+  weeklyDigest.value = parseDigestPreferences(
+    userProjectSettings.value.notificationPreferences?.weeklyDigest,
+  );
+  dailyDigest.value = parseDigestPreferences(
+    userProjectSettings.value.notificationPreferences?.dailyDigest,
+  );
   const reportStoppedDevices =
     userProjectSettings.value.notificationPreferences?.reportStoppedDevices;
   stoppedDeviceEmails.value =
@@ -119,27 +148,37 @@ onMounted(() => {
   initialised.value = true;
 });
 
-watch(dailyDigestEmails, async (next) => {
-  if (initialised.value) {
-    const settings = JSON.parse(JSON.stringify(userProjectSettings.value));
-    settings.notificationPreferences = settings.notificationPreferences || {};
-    settings.notificationPreferences.dailyDigest = next;
-    savingDailyDigestSettings.value = true;
-    await persistUserProjectSettings(settings);
-    savingDailyDigestSettings.value = false;
-  }
-});
+watch(
+  dailyDigest,
+  async (next) => {
+    if (initialised.value) {
+      const settings = JSON.parse(JSON.stringify(userProjectSettings.value));
+      settings.notificationPreferences = settings.notificationPreferences || {};
+      settings.notificationPreferences.dailyDigest =
+        serialiseDigestPreferences(next);
+      savingDailyDigestSettings.value = true;
+      await persistUserProjectSettings(settings);
+      savingDailyDigestSettings.value = false;
+    }
+  },
+  { deep: true },
+);
 
-watch(weeklyDigestEmails, async (next) => {
-  if (initialised.value) {
-    const settings = JSON.parse(JSON.stringify(userProjectSettings.value));
-    settings.notificationPreferences = settings.notificationPreferences || {};
-    settings.notificationPreferences.weeklyDigest = next;
-    savingWeeklyDigestSettings.value = true;
-    await persistUserProjectSettings(settings);
-    savingWeeklyDigestSettings.value = false;
-  }
-});
+watch(
+  weeklyDigest,
+  async (next) => {
+    if (initialised.value) {
+      const settings = JSON.parse(JSON.stringify(userProjectSettings.value));
+      settings.notificationPreferences = settings.notificationPreferences || {};
+      settings.notificationPreferences.weeklyDigest =
+        serialiseDigestPreferences(next);
+      savingWeeklyDigestSettings.value = true;
+      await persistUserProjectSettings(settings);
+      savingWeeklyDigestSettings.value = false;
+    }
+  },
+  { deep: true },
+);
 
 watch(stoppedDeviceEmails, async (next) => {
   if (initialised.value) {
@@ -424,22 +463,70 @@ const alertItems = computed<AlertItem[]>(() => {
       </p>
     </div>
     <div class="col-lg-9">
-      <section-card>
+      <section-card data-cy="activity digest preferences">
         <template #header-title> Project activity email preferences </template>
-        <b-form-checkbox switch v-model="dailyDigestEmails"
+        <b-form-checkbox
+          switch
+          v-model="dailyDigest.enabled"
+          data-cy="daily digest toggle"
           >I want to receive a daily activity digest<b-spinner
             class="ms-1"
             v-if="savingDailyDigestSettings"
             variant="secondary"
             small
         /></b-form-checkbox>
-        <b-form-checkbox switch v-model="weeklyDigestEmails"
+        <div
+          v-if="dailyDigest.enabled"
+          class="ms-4 mb-2"
+          data-cy="daily digest options"
+        >
+          <b-form-checkbox
+            v-model="dailyDigest.visitsReport"
+            data-cy="visits report"
+            >Include thermal visits</b-form-checkbox
+          >
+          <b-form-checkbox
+            v-model="dailyDigest.audioReport"
+            data-cy="audio report"
+            >Include bird detections</b-form-checkbox
+          >
+          <b-form-checkbox
+            v-model="dailyDigest.batteryReport"
+            data-cy="battery report"
+            >Include device battery status</b-form-checkbox
+          >
+        </div>
+        <b-form-checkbox
+          switch
+          v-model="weeklyDigest.enabled"
+          data-cy="weekly digest toggle"
           >I want to receive a weekly activity digest<b-spinner
             class="ms-1"
             v-if="savingWeeklyDigestSettings"
             variant="secondary"
             small
         /></b-form-checkbox>
+        <div
+          v-if="weeklyDigest.enabled"
+          class="ms-4 mb-2"
+          data-cy="weekly digest options"
+        >
+          <b-form-checkbox
+            v-model="weeklyDigest.visitsReport"
+            data-cy="visits report"
+            >Include thermal visits</b-form-checkbox
+          >
+          <b-form-checkbox
+            v-model="weeklyDigest.audioReport"
+            data-cy="audio report"
+            >Include bird detections</b-form-checkbox
+          >
+          <b-form-checkbox
+            v-model="weeklyDigest.batteryReport"
+            data-cy="battery report"
+            >Include device battery status</b-form-checkbox
+          >
+        </div>
       </section-card>
     </div>
   </div>
