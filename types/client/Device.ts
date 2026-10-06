@@ -811,6 +811,19 @@ const registerDevice =
     >;
   };
 
+const authenticateDevice =
+  (api: CacophonyApiClient) =>
+  (
+    password: string,
+    identifier:
+      | { deviceId: DeviceId }
+      | { deviceName: string; groupName: string },
+  ) =>
+    api.post(null, "/authenticate_device", {
+      password,
+      ...identifier,
+    }) as Promise<FetchResult<{ id: DeviceId; token: JwtToken<DeviceId> }>>;
+
 const reRegisterDeviceWithAdminAuthorization =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (
@@ -1034,6 +1047,7 @@ export default (api: CacophonyApiClient) => {
     getLastKnownDeviceBatteryLevel: getLastKnownDeviceBatteryLevel(api),
     getDeviceModel: getDeviceModel(api),
     registerDevice: registerDevice(api),
+    authenticateDevice: authenticateDevice(api),
     reRegisterDeviceWithAdminAuthorization:
       reRegisterDeviceWithAdminAuthorization(api),
     reRegisterDeviceWithoutAuthorization:

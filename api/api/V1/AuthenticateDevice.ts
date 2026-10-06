@@ -21,10 +21,8 @@ import { body, query } from "express-validator";
 import { successResponse } from "./responseUtil.js";
 import type { Application, NextFunction, Request, Response } from "express";
 import {
-  allOrNoneOf,
   atMostOneOf,
   deprecatedField,
-  exactlyOneOf,
   exactlyOneOfOrDefault,
   idOf,
   validNameOf,
@@ -65,21 +63,17 @@ export default function (app: Application) {
     "/authenticate_device",
     validateFields([
       validPasswordOf(body("password")),
-      exactlyOneOf(
-        atMostOneOf(
-          validNameOf(body("deviceName")).optional(),
-          deprecatedField(validNameOf(body("devicename"))).optional(),
-        ),
-        allOrNoneOf(
-          atMostOneOf(
-            validNameOf(body("groupName")).optional(),
-            deprecatedField(validNameOf(body("groupname"))).optional(),
-          ),
-          atMostOneOf(
-            idOf(body("deviceId")).optional(),
-            deprecatedField(idOf(body("deviceID"))).optional(),
-          ),
-        ),
+      atMostOneOf(
+        validNameOf(body("deviceName")).optional(),
+        deprecatedField(validNameOf(body("devicename"))).optional(),
+      ),
+      atMostOneOf(
+        validNameOf(body("groupName")).optional(),
+        deprecatedField(validNameOf(body("groupname"))).optional(),
+      ),
+      atMostOneOf(
+        idOf(body("deviceId")).optional(),
+        deprecatedField(idOf(body("deviceID"))).optional(),
       ),
       exactlyOneOfOrDefault(false)(
         query("only-active").optional().isBoolean().toBoolean(),
@@ -88,9 +82,16 @@ export default function (app: Application) {
     ]),
     async (request: Request, _response: Response, next: NextFunction) => {
       const b = request.body;
-      if ((b.deviceName || b.devicename) && (b.groupName || b.groupname)) {
-        next();
-      } else if (b.deviceId || b.deviceID) {
+      const hasDeviceName = !!(b.deviceName || b.devicename);
+      const hasGroupName = !!(b.groupName || b.groupname);
+      const hasDeviceId = !!(b.deviceId || b.deviceID);
+      if (hasDeviceId && hasDeviceName) {
+        next(
+          new ClientError(
+            "Supply either a deviceId (optionally with a groupName), or a deviceName and groupName, not both",
+          ),
+        );
+      } else if (hasDeviceId || (hasDeviceName && hasGroupName)) {
         next();
       } else {
         next(

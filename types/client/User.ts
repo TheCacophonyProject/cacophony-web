@@ -58,10 +58,14 @@ const refreshLogin =
 
 const loginOther =
   (api: CacophonyApiClient, authKey: TestHandle | null = null) =>
-  (userName: string) =>
-    api.post(authKey, "/api/v1/users/admin-authenticate-as-other-user", {
-      name: userName,
-    });
+  (emailOrUserId: string | UserId) =>
+    api.post(
+      authKey,
+      "/api/v1/users/admin-authenticate-as-other-user",
+      typeof emailOrUserId === "string"
+        ? { email: emailOrUserId }
+        : { userId: emailOrUserId },
+    ) as Promise<FetchResult<LoggedInUserWithCredentials>>;
 
 const sendPasswordResetRequest =
   (api: CacophonyApiClient, authKey: TestHandle | null = null) =>
