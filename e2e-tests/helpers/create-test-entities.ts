@@ -146,6 +146,7 @@ export const addDeviceToProject = async (
   projectHandle: TestProjectHandle,
   initialDateTime?: Date,
   useExplicitDeviceName: boolean = false,
+  saltId?: number,
 ): Promise<TestDeviceHandle> => {
   const uniqueHandle = getDeviceTestName(deviceName);
   const deviceHandle = useExplicitDeviceName ? deviceName : uniqueHandle;
@@ -155,6 +156,7 @@ export const addDeviceToProject = async (
       deviceHandle,
       "password",
       initialDateTime,
+      saltId,
     );
     expect(deviceResponse.success, "create device").toBe(true);
     if (deviceResponse.success) {

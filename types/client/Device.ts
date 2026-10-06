@@ -803,12 +803,14 @@ const registerDevice =
     deviceName: string,
     password: string,
     initialDateTime?: Date,
+    saltId?: number,
   ) => {
     const payload: {
       deviceName: string;
       group: string;
       password: string;
       fromDateTime?: IsoFormattedDateString;
+      saltId?: number;
     } = {
       deviceName,
       group: projectName,
@@ -816,6 +818,9 @@ const registerDevice =
     };
     if (initialDateTime) {
       payload.fromDateTime = initialDateTime.toISOString();
+    }
+    if (saltId !== undefined) {
+      payload.saltId = saltId;
     }
     return api.post(authKey, "/api/v1/devices", payload) as Promise<
       FetchResult<LoggedInDeviceCredentials>

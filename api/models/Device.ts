@@ -130,9 +130,26 @@ export class Device extends ModelStaticCommon<Device> {
   // Fields that are directly settable by the API.
   static apiSettableFields = ["location", "newConfig"];
 
+  // A device name is free if no other device in the group has the same url-normalised name,
+  // i.e. names that differ only by case, surrounding whitespace or spaces vs hyphens clash.
   static async freeDeviceName(deviceName: string, groupId: GroupId) {
+    const normalisedName = deviceName.trim().replace(/ /g, "-").toLowerCase();
     const device = await this.findOne({
-      where: { deviceName, GroupId: groupId },
+      where: {
+        GroupId: groupId,
+        [Op.and]: Sequelize.where(
+          Sequelize.fn(
+            "lower",
+            Sequelize.fn(
+              "replace",
+              Sequelize.fn("trim", Sequelize.col("deviceName")),
+              " ",
+              "-",
+            ),
+          ),
+          normalisedName,
+        ),
+      },
     });
     return device === null;
   }
