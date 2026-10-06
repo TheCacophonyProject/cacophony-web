@@ -166,7 +166,7 @@ export const sendGroupInviteExistingMemberEmail = async (
     html,
     text,
     userEmailAddress,
-    "You've been invited to join a group on Cacophony Monitoring",
+    "You've been invited to join a project on Cacophony Monitoring",
     await commonAttachments(),
   );
 };
@@ -206,7 +206,7 @@ export const sendGroupInviteNewMemberEmail = async (
     html,
     text,
     userEmailAddress,
-    "You've been invited to join a group on Cacophony Monitoring",
+    "You've been invited to join a project on Cacophony Monitoring",
     await commonAttachments(),
   );
 };

@@ -1,7 +1,7 @@
 import type { CacophonyApiClient } from "./api.js";
 import { unwrapLoadedResource } from "./api.js";
 import type { ApiLoggedInUserResponse } from "../api/user.js";
-import type { GroupId, UserId } from "../api/common.js";
+import type { DeviceId, GroupId, UserId } from "../api/common.js";
 import type {
   FetchResult,
   JwtToken,
@@ -231,13 +231,30 @@ const superUserGetProjectsForUserByEmail =
 
 const requestToJoinProject =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (groupAdminEmail: string, groupId: GroupId, abortable = NO_ABORT) =>
+  (groupAdminEmail: string | undefined, groupId: GroupId, abortable = NO_ABORT) =>
     api.post(
       authKey,
       `/api/v1/users/request-group-membership`,
       {
         groupAdminEmail,
         groupId,
+      },
+      abortable,
+    ) as Promise<FetchResult<void>>;
+
+const requestAccessToProjectWithDevice =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    device: { deviceId: DeviceId } | { deviceName: string; groupName: string },
+    groupAdminEmail?: string,
+    abortable = NO_ABORT,
+  ) =>
+    api.post(
+      authKey,
+      `/api/v1/users/request-device-access`,
+      {
+        ...device,
+        groupAdminEmail,
       },
       abortable,
     ) as Promise<FetchResult<void>>;
@@ -270,6 +287,7 @@ export default (api: CacophonyApiClient) => {
     confirmAddToProjectRequest: confirmAddToProjectRequest(api),
     acceptProjectInvitation: acceptProjectInvitation(api),
     requestToJoinProject: requestToJoinProject(api),
+    requestAccessToProjectWithDevice: requestAccessToProjectWithDevice(api),
     superUserGetProjectsForUserByEmail: superUserGetProjectsForUserByEmail(api),
     list: list(api),
     register: register(api),
@@ -293,6 +311,7 @@ export default (api: CacophonyApiClient) => {
       confirmAddToProjectRequest: confirmAddToProjectRequest(api, authKey),
       acceptProjectInvitation: acceptProjectInvitation(api, authKey),
       requestToJoinProject: requestToJoinProject(api, authKey),
+      requestAccessToProjectWithDevice: requestAccessToProjectWithDevice(api, authKey),
       superUserGetProjectsForUserByEmail: superUserGetProjectsForUserByEmail(
         api,
         authKey,

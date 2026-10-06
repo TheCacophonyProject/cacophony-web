@@ -18,8 +18,9 @@ import {
 import {
   openJoinProjectInviteEmailForExistingUser,
   openJoinProjectInviteEmailForNewUser,
-  openJoinProjectRequestEmail, waitForEmail,
-  waitForEmailAndRenderEmailHtml
+  openJoinProjectRequestEmail,
+  waitForEmail,
+  waitForEmailAndRenderEmailHtml,
 } from "@/helpers/email-utils";
 
 test("Existing new user is able to request to join an existing project from setup view", async ({

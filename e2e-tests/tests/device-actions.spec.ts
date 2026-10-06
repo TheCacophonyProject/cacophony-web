@@ -281,7 +281,7 @@ test("A user gets a notification email if there is a trap action pending, unless
     const email = await waitForEmail(secondUser.testId, "project invite");
     expect(email.error, "user got project invite").toBeUndefined();
     expect(email.headers.subject).toContain(
-      `You've been invited to join a group on Cacophony Monitoring`,
+      `You've been invited to join a project on Cacophony Monitoring`,
     );
   }
   await NormalUser.Users.acceptProjectInvitation(project.projectHandle.id);
@@ -424,7 +424,7 @@ test(
         const email = await waitForEmail(secondUser.testId, "project invite");
         expect(email.error, "user got project invite").toBeUndefined();
         expect(email.headers.subject).toContain(
-          `You've been invited to join a group on Cacophony Monitoring`,
+          `You've been invited to join a project on Cacophony Monitoring`,
         );
       }
       await NormalUser.Users.acceptProjectInvitation(project.projectHandle.id);

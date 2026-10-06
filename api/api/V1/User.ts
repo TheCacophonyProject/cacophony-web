@@ -711,7 +711,7 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
-  // Shared middleware to determine email recipient (admin or owner)
+  // Shared middleware to determine email recipients (the specified admin, or all the group owners)
   const determineEmailRecipient = async (
     request: Request,
     response: Response,
@@ -724,27 +724,25 @@ export default function (app: Application, baseUrl: string) {
           new ClientError("Group not found", HttpStatusCode.NotFound),
         );
       }
-      // Find the owner of the group
-      const groupUserOwner = await GroupUsers.findOne({
+      // Find all the owners of the group, any of whom can approve the request
+      const groupUserOwners = await GroupUsers.findAll({
         where: { GroupId: group.id, owner: true, removedAt: { [Op.eq]: null } },
       });
-      if (!groupUserOwner) {
+      const owners = groupUserOwners.length
+        ? await User.findAll({
+            where: {
+              id: { [Op.in]: groupUserOwners.map(({ UserId }) => UserId) },
+            },
+          })
+        : [];
+      if (!owners.length) {
         return next(
           new ClientError("Group owner not found", HttpStatusCode.NotFound),
         );
       }
-      const owner = await User.findByPk(groupUserOwner.UserId);
-      if (!owner) {
-        return next(
-          new ClientError(
-            "Group owner user record not found",
-            HttpStatusCode.NotFound,
-          ),
-        );
-      }
-      response.locals.requestedOfUser = owner;
+      response.locals.requestedOfUsers = owners;
     } else {
-      response.locals.requestedOfUser = response.locals.user;
+      response.locals.requestedOfUsers = [response.locals.user];
     }
     delete response.locals.user;
     return next();
@@ -755,10 +753,11 @@ export default function (app: Application, baseUrl: string) {
     (contextMessage: string) =>
     async (request: Request, response: Response, next: NextFunction) => {
       const requestingUserPartial = response.locals.requestUser;
-      const emailRecipientUser = response.locals.requestedOfUser as User;
+      const emailRecipientUsers = (response.locals.requestedOfUsers ||
+        []) as User[];
       const group = response.locals.group as Group;
 
-      if (!emailRecipientUser) {
+      if (!emailRecipientUsers.length) {
         return next(
           new ClientError(
             "Target recipient for the email could not be determined.",
@@ -786,10 +785,11 @@ export default function (app: Application, baseUrl: string) {
         );
       }
 
-      if (
-        !emailRecipientUser.emailConfirmed ||
-        !requestingUser.emailConfirmed
-      ) {
+      // Only recipients who have confirmed their email address can be sent the request.
+      const confirmedRecipients = emailRecipientUsers.filter(
+        ({ emailConfirmed }) => emailConfirmed,
+      );
+      if (!confirmedRecipients.length || !requestingUser.emailConfirmed) {
         return next(
           new ClientError(
             "Email recipient and/or requesting user has not activated their account",
@@ -810,15 +810,19 @@ export default function (app: Application, baseUrl: string) {
         group.id,
       );
 
-      const sendSuccess = await sendGroupMembershipRequestEmail(
-        acceptToGroupRequestToken,
-        requestingUser.email,
-        requestingUser.userName,
-        group.groupName,
-        emailRecipientUser.email,
+      const sendResults = await Promise.all(
+        confirmedRecipients.map(({ email }) =>
+          sendGroupMembershipRequestEmail(
+            acceptToGroupRequestToken,
+            requestingUser.email,
+            requestingUser.userName,
+            group.groupName,
+            email,
+          ),
+        ),
       );
 
-      if (sendSuccess) {
+      if (sendResults.every(Boolean)) {
         return successResponse(response, contextMessage);
       } else {
         return next(
