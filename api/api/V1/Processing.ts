@@ -591,10 +591,7 @@ export default function (app: Application, baseUrl: string) {
             pred.tag = "unidentified";
           }
           const what = pred.tag;
-          const path =
-            what in LabelPaths
-              ? (LabelPaths as Record<string, string>)[what]
-              : `all.${what.replace(" ", "_")}`;
+          const path = labelPath(what);
           const tag = {
             TrackId: modelTracks[i].id,
             what,
@@ -983,10 +980,7 @@ export default function (app: Application, baseUrl: string) {
           }
 
           const what = pred.tag;
-          const path =
-            what in LabelPaths
-              ? (LabelPaths as Record<string, string>)[what]
-              : `all.${what.replace(" ", "_")}`;
+          const path = labelPath(what);
           const tag = {
             TrackId: response.locals.track.id,
             what,

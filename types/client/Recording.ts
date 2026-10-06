@@ -31,7 +31,10 @@ import { CacophonyApiClient, optionalQueryString } from "./api.js";
 import { unwrapLoadedResource } from "./api.js";
 import type { ApiRecordingUploadData } from "../api/recording.js";
 import type { NonEmptyArray } from "./utils.js";
-import { MinimalTrackRequestData, MinimalTracksRequestData } from "@typedefs/api/fileProcessing.js";
+import {
+  MinimalTrackRequestData,
+  MinimalTracksRequestData,
+} from "@typedefs/api/fileProcessing.js";
 import { JsonDocument } from "@typedefs/api/event.js";
 
 export interface QueryRecordingsOptions {

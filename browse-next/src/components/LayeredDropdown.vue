@@ -315,6 +315,7 @@ defineExpose({
         @blur="(e) => maybeCloseSelect"
         @input="maybeOpenSelect"
         type="text"
+        data-cy="tag search"
         ref="inputRef"
         v-model="searchTerm"
         :placeholder="placeholder"
@@ -401,6 +402,7 @@ defineExpose({
         >
           <button
             class="options-list-label btn text-start text-capitalize"
+            :data-cy="`tag option ${option.label}`"
             v-if="option.label !== 'No results'"
             @click.prevent="addSelectedOption(option)"
             :disabled="(disabledTags || []).includes(option.label)"

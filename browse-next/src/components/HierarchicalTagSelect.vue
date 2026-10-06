@@ -18,7 +18,7 @@
 <script setup lang="ts">
 import { getClassifications } from "@api/classificationsUtils.ts";
 import LayeredDropdown from "./LayeredDropdown.vue";
-import { onMounted, ref } from "vue";
+import { onMounted, ref, toRaw } from "vue";
 import type { Classification } from "@typedefs/api/trackTag";
 
 const props = withDefaults(
@@ -67,7 +67,10 @@ const updateModel = (val: Classification[]) => {
 const layeredDropdown = ref<typeof LayeredDropdown>();
 const options = ref<Classification>({ label: "", children: [] });
 
-const setClassifications = (classifications: Classification) => {
+const setClassifications = (sharedClassifications: Classification) => {
+  // The classifications tree is shared and cached, and the filtering below mutates the tree, so work on a copy.
+  // NOTE: structuredClone can't clone Vue's reactive proxies, so unwrap first.
+  const classifications = structuredClone(toRaw(sharedClassifications));
   // classifications is a tree, we want to filter out excluded nodes
   if (props.include.length !== 0) {
     if (classifications.children) {

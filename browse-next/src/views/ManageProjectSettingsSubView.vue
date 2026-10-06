@@ -441,6 +441,7 @@ const addInvalidThermalTag = () => {
             <button
               type="button"
               class="btn btn-secondary"
+              data-cy="add invalid thermal tag"
               @click.stop.prevent="addInvalidThermalTag"
             >
               Add
@@ -453,12 +454,14 @@ const addInvalidThermalTag = () => {
           :max-card-width="0"
         >
           <template #_deleteAction="{ cell }">
-            <two-step-action-button
-              :action="() => removeInvalidTag(cell.value, 'camera')"
-              icon="delete"
-              :confirmation-label="`Remove tag`"
-              tooltip-label="Remove"
-            />
+            <span :data-cy="`invalid thermal tag ${cell.value}`">
+              <two-step-action-button
+                :action="() => removeInvalidTag(cell.value, 'camera')"
+                icon="delete"
+                :confirmation-label="`Remove tag`"
+                tooltip-label="Remove"
+              />
+            </span>
           </template>
         </card-table>
       </section-card>
@@ -491,6 +494,7 @@ const addInvalidThermalTag = () => {
             <button
               type="button"
               class="btn btn-secondary"
+              data-cy="add invalid audio tag"
               @click.stop.prevent="addInvalidAudioTag"
             >
               Add
@@ -503,12 +507,14 @@ const addInvalidThermalTag = () => {
           :max-card-width="0"
         >
           <template #_deleteAction="{ cell }">
-            <two-step-action-button
-              :action="() => removeInvalidTag(cell.value, 'audio')"
-              icon="delete"
-              :confirmation-label="`Remove tag`"
-              tooltip-label="Remove"
-            />
+            <span :data-cy="`invalid audio tag ${cell.value}`">
+              <two-step-action-button
+                :action="() => removeInvalidTag(cell.value, 'audio')"
+                icon="delete"
+                :confirmation-label="`Remove tag`"
+                tooltip-label="Remove"
+              />
+            </span>
           </template>
         </card-table>
       </section-card>
@@ -543,43 +549,41 @@ const addInvalidThermalTag = () => {
     @close="resetPendingInvalidTag"
     @esc="resetPendingInvalidTag"
     @ok="() => addPendingInvalidTag(currentGrouping)"
-    :ok-disabled="!pendingInvalidTagIsValid"
-    ok-title="Add invalid tag"
-    ok-variant="secondary"
-    cancel-variant="outline-secondary"
     centered
   >
-    <!--  TODO: Pass enabled tags, as set of outputs from the current model  -->
-    <hierarchical-tag-select
-      class="flex-grow-1"
-      :include="knownAIOutputTags"
-      v-model="pendingInvalidTag"
-      :open-on-mount="false"
-      :disabled-tags="customInvalidThermalTags"
-    />
+    <!-- NOTE: Keyed on the grouping, since the tag select only applies `include` when it mounts. -->
+    <div data-cy="invalid tag select">
+      <hierarchical-tag-select
+        :key="currentGrouping"
+        class="flex-grow-1"
+        :include="knownAIOutputTags"
+        v-model="pendingInvalidTag"
+        :open-on-mount="false"
+        :disabled-tags="
+          currentGrouping === 'camera'
+            ? customInvalidThermalTags
+            : customInvalidAudioTags
+        "
+      />
+    </div>
+    <template #footer="{ ok, cancel }">
+      <button
+        type="button"
+        class="btn btn-outline-secondary"
+        data-cy="cancel add invalid tag"
+        @click="cancel()"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        class="btn btn-secondary"
+        data-cy="confirm add invalid tag"
+        :disabled="!pendingInvalidTagIsValid"
+        @click="ok()"
+      >
+        Add invalid tag
+      </button>
+    </template>
   </b-modal>
-  <!--  <div class="mt-4">-->
-  <!--    <hr />-->
-  <!--    <div-->
-  <!--      class="d-flex flex-column flex-md-row justify-content-md-between mb-3 align-items-center"-->
-  <!--    >-->
-  <!--      <h2 class="h6">Bird recording dashboard classifications</h2>-->
-  <!--      <div class="d-flex align-items-end justify-content-end ms-md-5">-->
-  <!--        <button-->
-  <!--          type="button"-->
-  <!--          class="btn btn-outline-secondary ms-2"-->
-  <!--          @click.stop.prevent="showAddAudioClassificationModal = true"-->
-  <!--        >-->
-  <!--          Add-->
-  <!--        </button>-->
-  <!--        <button-->
-  <!--          type="button"-->
-  <!--          class="btn btn-outline-danger ms-2"-->
-  <!--          @click.stop.prevent="resetAudioClassification"-->
-  <!--        >-->
-  <!--          Reset-->
-  <!--        </button>-->
-  <!--      </div>-->
-  <!--    </div>-->
-  <!--  </div>-->
 </template>
