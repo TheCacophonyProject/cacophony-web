@@ -73,6 +73,17 @@ const getDeviceById =
     );
   };
 
+const getDeviceInProject =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (deviceName: string, projectNameOrId: string | ProjectId) => {
+    return api.get(
+      authKey,
+      `/api/v1/devices/${encodeURIComponent(deviceName)}/in-group/${encodeURIComponent(
+        projectNameOrId,
+      )}`,
+    ) as Promise<FetchResult<{ device: ApiDeviceResponse }>>;
+  };
+
 const getDeviceLocationAtTime =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (deviceId: DeviceId, activeAndInactiveDevices = false, date?: Date) => {
@@ -1009,6 +1020,7 @@ export default (api: CacophonyApiClient) => {
     deleteDevice: deleteDevice(api),
     setDeviceActive: setDeviceActive(api),
     getDeviceById: getDeviceById(api),
+    getDeviceInProject: getDeviceInProject(api),
     getDeviceLocationAtTime: getDeviceLocationAtTime(api),
     getKnownEventTypes: getKnownEventTypes(api),
     getKnownEventTypesForDeviceInLatestMonth:
@@ -1063,6 +1075,7 @@ export default (api: CacophonyApiClient) => {
       deleteDevice: deleteDevice(api, authKey),
       setDeviceActive: setDeviceActive(api, authKey),
       getDeviceById: getDeviceById(api, authKey),
+      getDeviceInProject: getDeviceInProject(api, authKey),
       getDeviceLocationAtTime: getDeviceLocationAtTime(api, authKey),
       getKnownEventTypes: getKnownEventTypes(api, authKey),
       getKnownEventTypesForDeviceInLatestMonth:

@@ -235,7 +235,11 @@ const superUserGetProjectsForUserByEmail =
 
 const requestToJoinProject =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (groupAdminEmail: string | undefined, groupId: GroupId, abortable = NO_ABORT) =>
+  (
+    groupAdminEmail: string | undefined,
+    groupId: GroupId,
+    abortable = NO_ABORT,
+  ) =>
     api.post(
       authKey,
       `/api/v1/users/request-group-membership`,
@@ -315,7 +319,10 @@ export default (api: CacophonyApiClient) => {
       confirmAddToProjectRequest: confirmAddToProjectRequest(api, authKey),
       acceptProjectInvitation: acceptProjectInvitation(api, authKey),
       requestToJoinProject: requestToJoinProject(api, authKey),
-      requestAccessToProjectWithDevice: requestAccessToProjectWithDevice(api, authKey),
+      requestAccessToProjectWithDevice: requestAccessToProjectWithDevice(
+        api,
+        authKey,
+      ),
       superUserGetProjectsForUserByEmail: superUserGetProjectsForUserByEmail(
         api,
         authKey,
