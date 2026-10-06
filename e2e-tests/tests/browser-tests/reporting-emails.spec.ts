@@ -19,7 +19,7 @@ import { addDays, addHours, addMinutes } from "@/helpers/date-helpers";
 import { dockerExecNodeScript, dockerExecNodeTestScript } from "@/helpers/docker-exec";
 import {
   signInExistingUser,
-  urlNormaliseProjectName,
+  urlNormaliseName,
   waitToNavigateToProject,
 } from "@/helpers/browse-helpers";
 import { ApiGroupResponse as ApiProjectResponse } from "@shared/api/group";
@@ -31,7 +31,7 @@ test("Users can opt into fine-grained options of activity digest emails", async 
   await confirmEmailAddressViaApi(adminUser);
   await signInExistingUser(page, adminUser.testId);
   await waitToNavigateToProject(page, project.projectHandle.testId);
-  await page.goto(`/${urlNormaliseProjectName(project.projectHandle.testId)}/my-settings`);
+  await page.goto(`/${urlNormaliseName(project.projectHandle.testId)}/my-settings`);
   await expect(page.getByTestId("activity digest preferences")).toBeVisible();
 
   const savedPreferences = async () => {
@@ -40,7 +40,7 @@ test("Users can opt into fine-grained options of activity digest emails", async 
   };
 
   for (const interval of ["daily", "weekly"] as const) {
-    const digestKey = `${interval}Digest`;
+    const digestKey = `${interval}Digest` as const;
     const section = page.getByTestId(`${interval} digest options`);
     await test.step(`Sub-options for the ${interval} digest are only shown once opted in`, async () => {
       await expect(section).toBeHidden();

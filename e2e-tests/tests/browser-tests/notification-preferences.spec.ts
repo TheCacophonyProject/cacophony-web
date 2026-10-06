@@ -3,7 +3,7 @@ import { createProjectWithUserAndDevice } from "@/helpers/create-test-entities";
 import { confirmEmailAddressViaApi } from "@/helpers/email-utils";
 import {
   signInExistingUser,
-  urlNormaliseProjectName,
+  urlNormaliseName,
   waitToNavigateToProject,
 } from "@/helpers/browse-helpers";
 
@@ -21,7 +21,7 @@ test("Initial user notification preferences visually match the default notificat
   });
 
   await test.step("Go to project preferences", async () => {
-    await page.goto(`/${urlNormaliseProjectName(projectName)}/my-settings`);
+    await page.goto(`/${urlNormaliseName(projectName)}/my-settings`);
     await expect(page.getByText("Project activity email preferences")).toBeVisible();
   });
 
