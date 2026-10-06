@@ -43,6 +43,7 @@ import type { ApiStationResponse } from "@typedefs/api/station";
 import type { LoadedResource } from "@apiClient/types.ts";
 import {
   latLngApproxDistance,
+  locationNameForDevice,
   MAX_DISTANCE_FROM_STATION_FOR_RECORDING,
 } from "@/helpers/Location.ts";
 import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
@@ -234,36 +235,6 @@ const statusForDevice = (device: ApiDeviceResponse): DeviceStatus => {
     : "-";
 };
 
-const locationNameForDevice = (device: ApiDeviceResponse): string => {
-  if (device.location) {
-    const stationDistances = [];
-    for (const station of allLocations.value || []) {
-      // See if any stations match: Looking at the location distance between this recording and the stations.
-      const distanceToStation = latLngApproxDistance(
-        station.location,
-        device.location,
-      );
-      stationDistances.push({ distanceToStation, station });
-    }
-    const validStationDistances = stationDistances.filter(
-      ({ distanceToStation }) =>
-        distanceToStation <= MAX_DISTANCE_FROM_STATION_FOR_RECORDING,
-    );
-
-    // There shouldn't really ever be more than one station within our threshold distance,
-    // since we check that stations aren't too close together when we add them.  However, on the off
-    // chance we *do* get two or more valid stations for a recording, take the closest one.
-    validStationDistances.sort((a, b) => {
-      return b.distanceToStation - a.distanceToStation;
-    });
-    const closest = validStationDistances.pop();
-    if (closest) {
-      return closest.station.name;
-    }
-  }
-  return "";
-};
-
 const colorForStatus = (status: DeviceStatus): string => {
   switch (status) {
     case "-":
@@ -339,7 +310,7 @@ const tableItems = computed<
             : `${lastRecordingTimeForDeviceHumanReadable(device)} (offline device)`,
         ),
         status: statusForDevice(device),
-        location: locationNameForDevice(device),
+        location: locationNameForDevice(device, allLocations.value || []),
         batteryLevel: device,
         _deleteAction: {
           value: device,
@@ -393,7 +364,7 @@ const deviceLocations = computed<NamedPoint[]>(() => {
         name: deviceName,
         project: groupName,
         location: location as LatLng,
-        locationName: locationNameForDevice(device),
+        locationName: locationNameForDevice(device, allLocations.value || []),
         id,
         color: colorForStatus(statusForDevice(device)),
         type: "device",
@@ -429,7 +400,7 @@ const highlightedPoint = computed<NamedPoint | null>(() => {
       name: device.deviceName,
       project: device.groupName,
       location: device.location,
-      locationName: locationNameForDevice(device),
+      locationName: locationNameForDevice(device, allLocations.value || []),
       id: device.id,
     };
   }

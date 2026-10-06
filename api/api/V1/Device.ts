@@ -26,7 +26,7 @@ import {
   UnprocessableError,
 } from "../customErrors.js";
 import {
-  extractJwtAuthorisedDevice,
+  extractJwtAuthorizedDevice,
   extractJwtAuthorizedUser,
   extractJwtAuthorizedUserFromBody,
   extractJwtAuthorizedUserOrDevice,
@@ -54,18 +54,24 @@ import {
   nameOrIdOf,
   optionalDateOf,
   stringOf,
+  uuidOf,
   validNameOf,
   validPasswordOf,
 } from "../validation-middleware.js";
 import { Device } from "@models/Device.js";
 import type {
+  ActionStateTransition,
+  ApiDeviceAction,
+  ApiDeviceActionRequest,
+  ApiDeviceActionUpdateRequest,
   ApiDeviceHistorySettings,
-  ApiDeviceLocationFixup,
   ApiDeviceResponse,
   ImageMimeTypes,
   MaskRegion,
 } from "@typedefs/api/device.js";
 import ApiDeviceHistorySettingsSchema from "@schemas/api/device/ApiDeviceHistorySettings.schema.json" with { type: "json" };
+import ApiDeviceActionRequestSchema from "@schemas/api/device/ApiDeviceActionRequest.schema.json" with { type: "json" };
+import ApiDeviceActionUpdateRequestSchema from "@schemas/api/device/ApiDeviceActionUpdateRequest.schema.json" with { type: "json" };
 import MaskRegionsSchema from "@schemas/api/device/MaskRegions.schema.json" with { type: "json" };
 import logging from "@log";
 import type { ApiGroupUserResponse } from "@typedefs/api/group.js";
@@ -75,6 +81,7 @@ import { DeviceHistory } from "@models/DeviceHistory.js";
 import { Station, TimeInterval } from "@models/Station.js";
 import { Group } from "@models/Group.js";
 import {
+  DeviceActionStatus,
   DeviceType,
   HttpStatusCode,
   RecordingType,
@@ -102,6 +109,8 @@ import {
   greaterDate,
 } from "@api/fileUploaders/uploadGenericRecording.js";
 import { postgresLocationExactlyMatches } from "@api/V1/deviceHistoryUpdates.js";
+import { UUID } from "node:crypto";
+import { DeviceAction } from "@models/DeviceAction.js";
 
 const mapDeviceKind = (device: Device): DeviceType => {
   if (device.lastThermalRecordingTime && device.lastAudioRecordingTime) {
@@ -200,10 +209,6 @@ export interface ApiCreateProxyDeviceRequestBody {
   type: DeviceType;
 }
 
-export interface ApiDeviceLocationFixupBody {
-  setStationAtTime: ApiDeviceLocationFixup;
-}
-
 export interface MaskRegionsDataBody {
   maskRegions: Record<string, MaskRegion[]>;
 }
@@ -242,6 +247,14 @@ export interface ApiDeviceTypeResponseSuccess {
 
 export interface ApiDeviceUsersResponseSuccess {
   users: ApiGroupUserResponse[];
+}
+
+export interface ApiDeviceActionUpdateRequestBody {
+  update: ApiDeviceActionUpdateRequest;
+}
+
+export interface ApiDeviceActionRequestBody {
+  action: ApiDeviceActionRequest;
 }
 
 export default function (app: Application, baseUrl: string) {
@@ -333,15 +346,17 @@ export default function (app: Application, baseUrl: string) {
 
   /**
    * @api {post} /api/v1/devices/reregister-authorized Authorized reregister the device.
-   * @apiName Reregister
+   * @apiName ReregisterAuthorized
    * @apiGroup Device
-   * @apiDescription This call is to reregister authorized a device to change the name and/or group
+   * @apiDescription This call is to reregister a device, authorized by a user, to change the name and/or group.
+   * The user must have access to the group the device is moving to, and, if the group is changing,
+   * be an admin of the group the device is moving from.  At least one of `newName` and `newGroup` must be supplied.
    *
    * @apiUse V1DeviceAuthorizationHeader
    *
-   * @apiBody {String} deviceId id of the device.
-   * @apiBody {String} newName new name of the device.
-   * @apiBody {String} newGroup name of the group you want to move the device to.
+   * @apiBody {String} authorizedToken JWT of the user authorizing the change.
+   * @apiBody {String} [newName] new name of the device.  Defaults to the current name.
+   * @apiBody {String|Integer} [newGroup] name or id of the group you want to move the device to.
    * @apiBody {String} newPassword password for the device
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
@@ -351,7 +366,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/reregister-authorized`,
-    extractJwtAuthorisedDevice,
+    extractJwtAuthorizedDevice,
     extractJwtAuthorizedUserFromBody("authorizedToken"),
     validateFields([
       atLeastOneOf(nameOrIdOf(body("newGroup")), validNameOf(body("newName"))),
@@ -418,7 +433,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1DeviceAuthorizationHeader
    *
    * @apiBody {String} newName new name of the device.
-   * @apiBody {String} newGroup name of the group you want to move the device to.
+   * @apiBody {String|Integer} newGroup name or id of the group you want to move the device to.
    * @apiBody {String} newPassword password for the device
    *
    * @apiSuccess {String} token JWT string to provide to further API requests
@@ -428,7 +443,7 @@ export default function (app: Application, baseUrl: string) {
    */
   app.post(
     `${apiUrl}/reregister`,
-    extractJwtAuthorisedDevice,
+    extractJwtAuthorizedDevice,
     // NOTE: Re-register only works on currently active devices
     validateFields([
       nameOrIdOf(body("newGroup")),
@@ -469,12 +484,17 @@ export default function (app: Application, baseUrl: string) {
    * @apiName DeleteDevice
    * @apiGroup Device
    *
-   * @apiDescription Permanently deletes a device if it has no recordings, or sets the active state
-   * to `false` if it does have recordings.
+   * @apiDescription Sets the device's active state to `false`.  The device and its recordings are retained.
+   * Requires admin access to the group the device belongs to.
    *
    * @apiUse V1UserAuthorizationHeader
    *
+   * @apiParam {Integer} deviceId Id of the device.
+   * @apiBody {String|Integer} group Name or id of the group the device belongs to.
+   * @apiBody {Boolean} [only-active=false] Only look up the device if it is active.
+   *
    * @apiUse V1ResponseSuccess
+   * @apiSuccess {Integer} id Id of the device.
    * @apiUse V1ResponseError
    */
   app.delete(
@@ -513,11 +533,16 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Device
    *
    * @apiDescription If a device was previously set inactive, calling this end-point will reactivate it.
-   * If the device is already active this is a no-op
+   * If the device is already active this is a no-op.  Requires admin access to the group the device belongs to.
    *
    * @apiUse V1UserAuthorizationHeader
    *
+   * @apiParam {Integer} deviceId Id of the device.
+   * @apiBody {String|Integer} group Name or id of the group the device belongs to.
+   * @apiQuery {Boolean} [only-active=false] Only look up the device if it is active.
+   *
    * @apiUse V1ResponseSuccess
+   * @apiSuccess {Integer} id Id of the device.
    * @apiUse V1ResponseError
    */
   app.post(
@@ -548,8 +573,9 @@ export default function (app: Application, baseUrl: string) {
    * @api {get} /api/v1/devices Get list of devices
    * @apiName GetDevices
    * @apiGroup Device
-   * @apiQuery {Boolean} [onlyActive] Only return active devices, defaults to `true`
-   * If we want to return *all* devices this must be present and set to `false`
+   * @apiQuery {Boolean} [only-active=true] Only return active devices.
+   * If we want to return *all* devices this must be present and set to `false`.  The older `onlyActive` form
+   * is deprecated, and cannot be combined with `only-active`.
    * @apiQuery {string} [view-mode] `"user"` show only devices assigned to current user where
    * JWT Authorization supplied is for a superuser (default for superuser is to show all devices)
    *
@@ -597,6 +623,19 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
+  /**
+   * @api {get} /api/v1/devices/latest-software-versions Get latest device software versions
+   * @apiName GetLatestSoftwareVersions
+   * @apiGroup Device
+   * @apiDescription Returns the latest released versions of the software packages that run on devices,
+   * as published in the TheCacophonyProject/salt-version-info repository on GitHub.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiSuccess {Object} versions Map of software package names to their latest released version
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
   app.get(
     `${apiUrl}/latest-software-versions`,
     extractJwtAuthorizedUser,
@@ -621,46 +660,19 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/v1/devices/:deviceId Get a single device by its unique id
-   * @apiName GetDeviceById
+   * @api {get} /api/v1/devices/device/:id Get a single device by its unique id (legacy path)
+   * @apiName GetDeviceByIdLegacy
    * @apiGroup Device
-   * @apiParam {Integer} deviceId Id of the device
-   * @apiQuery {Boolean} [only-active=true] Only return active devices
+   * @apiDeprecated Use /api/v1/devices/:deviceId
+   * @apiParam {Integer} id Id of the device
+   * @apiQuery {Boolean} [only-active=false] Only look up the device if it is active
    *
-   * @apiDescription Returns details of the device if the user can access it either through
-   * group membership or direct assignment to the device.
+   * @apiDescription Legacy alias of `GET /api/v1/devices/:deviceId`, returning the same response.
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiDeviceResponseSuccess} device Device details
-   *
-   * @apiSuccessExample {JSON} device:
-   * {
-   * "deviceName": "device name",
-   *  "groupName": "group name",
-   *  "groupId": 1,
-   *  "deviceId: 2,
-   *  "saltId": 2,
-   *  "active": true,
-   *  "admin": false,
-   *  "type": "thermal",
-   *  "public": "false",
-   *  "lastConnectionTime": "2021-11-09T01:38:22.079Z",
-   *  "lastThermalRecordingTime": "2021-11-07T01:38:48.400Z",
-   *  "lastAudioRecordingTime": "2021-11-07T01:38:48.400Z",
-   *  "earliestThermalRecordingTime": "2021-11-07T01:38:48.400Z",
-   *  "earliestAudioRecordingTime": "2021-11-07T01:38:48.400Z",
-   *  "location": {
-   *   "lat": -43.5338812,
-   *    "lng": 172.6451473
-   *  },
-   *  "users": [{
-   *    "userName": "bob",
-   *    "userId": 10,
-   *    "admin": false,
-   *  }]
-   * }
    * @apiUse V1ResponseError
    */
   app.get(
@@ -686,7 +698,45 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
-  // Alias of /api/v1/devices/:deviceId for consistency reasons
+  /**
+   * @api {get} /api/v1/devices/:deviceId Get a single device by its unique id
+   * @apiName GetDeviceById
+   * @apiGroup Device
+   * @apiParam {Integer} deviceId Id of the device
+   * @apiQuery {Boolean} [only-active=false] Only look up the device if it is active
+   *
+   * @apiDescription Returns details of the device if the user can access it either through
+   * group membership or direct assignment to the device.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiDeviceResponseSuccess} device Device details
+   *
+   * @apiSuccessExample {JSON} device:
+   * {
+   *  "id": 2,
+   *  "deviceName": "device name",
+   *  "groupName": "group name",
+   *  "groupId": 1,
+   *  "saltId": 2,
+   *  "active": true,
+   *  "isHealthy": true,
+   *  "admin": false,
+   *  "type": "thermal",
+   *  "public": true,
+   *  "lastConnectionTime": "2021-11-09T01:38:22.079Z",
+   *  "lastThermalRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "lastAudioRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "earliestThermalRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "earliestAudioRecordingTime": "2021-11-07T01:38:48.400Z",
+   *  "location": {
+   *   "lat": -43.5338812,
+   *    "lng": 172.6451473
+   *  }
+   * }
+   * @apiUse V1ResponseError
+   */
   app.get(
     `${apiUrl}/:id`,
     extractJwtAuthorizedUser,
@@ -714,10 +764,11 @@ export default function (app: Application, baseUrl: string) {
    * @apiName GetDeviceLocationAtTime
    * @apiGroup Device
    * @apiParam {Integer} deviceId Id of the device
-   * @apiQuery {String} [at-time] ISO8601 formatted date string for when the reference image should be current.
+   * @apiQuery {String} [at-time] ISO8601 formatted date string for when the location should be current.
    *
    * @apiDescription Returns the location (station) for a device at a given point in time, or now,
-   * if no date time is specified
+   * if no date time is specified.  Returns an error if the device had no location at that time, or its
+   * location was not matched to a station.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -775,6 +826,30 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
+  /**
+   * @api {get} /api/v1/devices/:id/tracks-with-tag/:tag Get tracks on a device's recordings with a given tag
+   * @apiName GetDeviceTracksWithTag
+   * @apiGroup Device
+   * @apiParam {Integer} id Id of the device
+   * @apiParam {String} tag Tag (`what`) to match, e.g. `"cat"`
+   * @apiQuery {String} [from-time] ISO8601 formatted date string, only include recordings from this time
+   * @apiQuery {String} [until-time] ISO8601 formatted date string, only include recordings up to this time
+   * @apiQuery {String} [type=thermalRaw] Recording type to search
+   * @apiQuery {Boolean} [only-active=false] Only look up the device if it is active, set to `true` to
+   * exclude inactive devices
+   * @apiQuery {String} [view-mode] `"user"` show only devices assigned to current user where
+   * JWT Authorization supplied is for a superuser (default for superuser is to show all devices)
+   *
+   * @apiDescription Returns the non-archived tracks from the device's non-deleted recordings that have the given
+   * tag applied.  Where a track has both a human and an automatic tag, the human tag takes precedence.
+   * Each track includes its track data.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiSuccess {Object[]} tracks Matching tracks
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
   app.get(
     `${apiUrl}/:id/tracks-with-tag/:tag`,
     extractJwtAuthorizedUser,
@@ -869,7 +944,34 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
-  // Use this with device location history to work out what animals a device has seen in a given time window, and/or at a given station.
+  /**
+   * @api {get} /api/v1/devices/:id/unique-track-tags Get the unique track tags seen by a device
+   * @apiName GetDeviceUniqueTrackTags
+   * @apiGroup Device
+   * @apiParam {Integer} id Id of the device
+   * @apiQuery {String} [from-time] ISO8601 formatted date string, only include recordings from this time
+   * @apiQuery {String} [until-time] ISO8601 formatted date string, only include recordings up to this time
+   * @apiQuery {String} [type=thermalRaw] Recording type to search
+   * @apiQuery {Integer} [stationId] Only include recordings made at this station
+   * @apiQuery {Boolean} [only-active=false] Only look up the device if it is active, set to `true` to
+   * exclude inactive devices
+   * @apiQuery {String} [view-mode] `"user"` show only devices assigned to current user where
+   * JWT Authorization supplied is for a superuser (default for superuser is to show all devices)
+   *
+   * @apiDescription Returns the distinct tags that have been applied to tracks in the device's recordings,
+   * along with how many tracks have each tag.  Where a track has both a human and an automatic tag, the human
+   * tag takes precedence.  Use this with the device location history to work out what animals a device has
+   * seen in a given time window.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiSuccess {Object[]} trackTags Unique tags seen
+   * @apiSuccess {String} trackTags.what The tag
+   * @apiSuccess {String} trackTags.path Classification path of the tag
+   * @apiSuccess {Number} trackTags.count Number of tracks with this tag
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
   app.get(
     `${apiUrl}/:id/unique-track-tags`,
     extractJwtAuthorizedUser,
@@ -926,6 +1028,9 @@ export default function (app: Application, baseUrl: string) {
               DeviceId: response.locals.device.id,
               GroupId: response.locals.device.GroupId,
               type,
+              ...(request.query.stationId && {
+                StationId: request.query.stationId,
+              }),
               ...timeWindow,
             },
             attributes: [],
@@ -1063,21 +1168,22 @@ export default function (app: Application, baseUrl: string) {
   const getExtension = (mimeType: string) =>
     MIME_TO_EXTENSION[mimeType] || "webp";
   /**
-   * @api {get} /api/v1/devices/:deviceId/reference-image Get the reference image (if any) for a device
+   * @api {get} /api/v1/devices/:deviceId/reference-image/:exists Get the reference image (if any) for a device
    * @apiName GetDeviceReferenceImageAtTime
    * @apiGroup Device
    * @apiParam {Integer} deviceId Id of the device
-   * @apiParam {String} exists If set to 'exists' returns whether the device has a reference image at the given time.
+   * @apiParam {String} [exists] If the path ends with `/exists`, returns when the reference image became current
+   * (`fromDateTime`), and when it was replaced (`untilDateTime`, if it has been), rather than the image itself.
    * @apiQuery {String} [at-time] ISO8601 formatted date string for when the reference image should be current.
-   * @apiQuery {String} [type] Can be 'pov' for point-of-view reference image or 'in-situ' for a reference image showing device placement in the environment.
+   * @apiQuery {String} [type=pov] Can be 'pov' for point-of-view reference image or 'in-situ' for a reference image showing device placement in the environment.
    *
    * @apiDescription Returns a reference image for a device (if any has been set) at a given point in time, or now,
-   * if no date time is specified
+   * if no date time is specified.  Returns an error if there is no reference image of the requested type.
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess binary data of reference image
+   * @apiSuccess {Binary} body The reference image data, unless `/exists` was requested.
    * @apiUse V1ResponseError
    */
   app.get(
@@ -1198,16 +1304,19 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Device
    * @apiParam {Integer} deviceId Id of the device
    * @apiQuery {String} [at-time] ISO8601 formatted date string for when the reference image should be current.
-   * @apiQuery {String} [type] Can be 'pov' for point-of-view reference image or 'in-situ' for a reference image showing device placement in the environment.
-   * @apiBody {Binary} Binary image file for reference image.
+   * @apiQuery {String} [type=pov] Can be 'pov' for point-of-view reference image or 'in-situ' for a reference image showing device placement in the environment.
+   * @apiHeader {String} Content-Type Image type of the request body: `image/jpeg`, `image/png`, `image/webp` or `image/gif`.
+   * Other values are treated as `image/webp`.
+   * @apiBody {Binary} body Binary image file for reference image.
    *
    * @apiDescription Sets a reference image for a device at a given point in time, or now,
-   * if no date time is specified.
+   * if no date time is specified.  The device must already have a location at that time.
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess binary data of reference image
+   * @apiSuccess {String} key Storage key of the uploaded reference image.
+   * @apiSuccess {Integer} size Size of the uploaded image in bytes.
    * @apiUse V1ResponseError
    */
   app.post(
@@ -1385,10 +1494,11 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Device
    * @apiParam {Integer} deviceId ID of the device
    * @apiQuery {String} [at-time] ISO8601 date for which reference image should be deleted
-   * @apiQuery {String} [type] Image type ('pov' or 'in-situ')
+   * @apiQuery {String} [type=pov] Image type ('pov' or 'in-situ')
    *
    * @apiDescription Deletes the reference image for a device at a specific time.
-   * If no time specified, deletes the current reference image.
+   * If no time specified, deletes the current reference image.  Succeeds without doing anything if there is no
+   * such reference image.
    *
    * @apiUse V1UserAuthorizationHeader
    * @apiUse V1ResponseSuccess
@@ -1499,8 +1609,11 @@ export default function (app: Application, baseUrl: string) {
    * @apiName SetDeviceMaskRegions
    * @apiGroup Device
    * @apiInterface {apiBody::MaskRegionsDataBody} device Mask region data.
-   * @apiDescription Sets mask regions for a device in the DeviceHistory table.
-   * These mask regions will be stored in the settings column as JSON.
+   * @apiDescription Sets the mask regions for a device, replacing any existing mask regions from now on.
+   * Mask regions that applied previously are preserved for earlier points in time.  Supplying an empty set of
+   * mask regions clears them.
+   *
+   * @apiParam {Integer} deviceId Id of the device.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -1580,8 +1693,9 @@ export default function (app: Application, baseUrl: string) {
    * @apiName GetDeviceMaskRegions
    * @apiGroup Device
    * @apiParam {Integer} deviceId Id of the device
-   * @apiQuery {String} [at-time] ISO8601 formatted date string for when the reference image should be current.
-   * @apiDescription Retrieves mask regions for a device from the DeviceHistory table.
+   * @apiQuery {String} [at-time] ISO8601 formatted date string for when the mask regions should be current.
+   * @apiDescription Retrieves the mask regions for a device at a given point in time, or now, if no date time is
+   * specified.  Returns an error if the device has no mask regions.
    *
    * @apiSuccessExample {JSON} device:
    * {
@@ -1601,7 +1715,7 @@ export default function (app: Application, baseUrl: string) {
    *     }
    * }
    *
-   * @apiUse V1UserAuthorizationHeader
+   * @apiUse V1UserOrDeviceAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::MaskRegionsDataBody}
@@ -1649,12 +1763,17 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Device
    * @apiParam {Integer} deviceId Id of the device
    *
-   * @apiDescription Retrieves settings from the DeviceHistory table for a specified device.
+   * @apiDescription Retrieves the settings for a device at a given point in time, or now, if no date time is
+   * specified.
    *
-   * @apiUse V1UserAuthorizationHeader
+   * @apiUse V1UserOrDeviceAuthorizationHeader
+   *
+   * @apiQuery {String} [at-time] ISO8601 formatted date string for when the settings should be current.
+   * @apiQuery {Boolean} [latest-synced=false] Only consider settings that the device has confirmed it has synced.
    *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiDeviceSettingsResponseSuccess}
+   * @apiSuccess {Object} [location] Location of the device at the time of the settings.
    * @apiUse V1ResponseError
    */
 
@@ -1721,12 +1840,21 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Device
    * @apiParam {Integer} deviceId Id of the device
    *
-   * @apiDescription Updates settings, location, and device type in the DeviceHistory and Device tables for a specified device.
+   * @apiDescription Updates the settings and/or location of a device.  Changes are recorded in the device's
+   * history, from the time given by `fromDateTime` (or now).  If a location is supplied, it is matched against
+   * the group's stations.
    *
-   * @apiUse V1UserAuthorizationHeader
+   * @apiUse V1UserOrDeviceAuthorizationHeader
+   *
+   * @apiBody {Object} [settings] Settings to apply, merged with the device's existing settings.
+   * @apiBody {Object} [location] New location of the device.
+   * @apiBody {Number} location.lat Latitude, from -90 to 90.
+   * @apiBody {Number} location.lng Longitude, from -180 to 180.
+   * @apiBody {String} [fromDateTime] ISO8601 date from which the changes apply.  Defaults to now.
    *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiDeviceSettingsResponseSuccess}
+   * @apiSuccess {Object} [location] The new location, if one was supplied.
    * @apiUse V1ResponseError
    */
   app.post(
@@ -1864,7 +1992,7 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiDescription Get the type of device
    *
-   * @apiUse V1UserAuthorizationHeader
+   * @apiUse V1UserOrDeviceAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiDeviceTypeResponseSuccess}
@@ -1889,7 +2017,7 @@ export default function (app: Application, baseUrl: string) {
           type: detectedType,
         });
       } catch (_e) {
-        return;
+        return next(new UnprocessableError("Failed to retrieve device type"));
       }
     },
   );
@@ -1900,7 +2028,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Device
    * @apiParam {string} deviceName Name of the device
    * @apiParam {stringOrInt} groupIdOrName Identifier of group device belongs to
-   * @apiQuery {Boolean} [only-active=true] Only return active devices
+   * @apiQuery {Boolean} [only-active=false] Only look up the device if it is active
    *
    * @apiDescription Returns details of the device if the user can access it through
    * group membership.
@@ -1912,15 +2040,16 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiSuccessExample {JSON} device:
    * {
-   * "deviceName": "device name",
+   *  "id": 2,
+   *  "deviceName": "device name",
    *  "groupName": "group name",
    *  "groupId": 1,
-   *  "deviceId: 2,
    *  "saltId": 2,
    *  "active": true,
+   *  "isHealthy": true,
    *  "admin": false,
    *  "type": "thermal",
-   *  "public": "false",
+   *  "public": true,
    *  "lastConnectionTime": "2021-11-09T01:38:22.079Z",
    *  "lastThermalRecordingTime": "2021-11-07T01:38:48.400Z",
    *  "lastAudioRecordingTime": "2021-11-07T01:38:48.400Z",
@@ -1929,12 +2058,7 @@ export default function (app: Application, baseUrl: string) {
    *  "location": {
    *   "lat": -43.5338812,
    *    "lng": 172.6451473
-   *  },
-   *  "users": [{
-   *    "userName": "bob",
-   *    "userId": 10,
-   *    "admin": false,
-   *  }]
+   *  }
    * }
    * @apiUse V1ResponseError
    */
@@ -1997,7 +2121,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiQuery {Integer} deviceId ID of the device.
-   * @apiQuery {Boolean} [only-active=true] Only return active devices
+   * @apiQuery {Boolean} [only-active=false] Only look up the device if it is active
    *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiDeviceUsersResponseSuccess} users Array of users who have access to the
@@ -2024,7 +2148,24 @@ export default function (app: Application, baseUrl: string) {
     ...getUsersFns,
   );
 
-  // Alias of /api/v1/devices/users for consistency reasons
+  /**
+   * @api {get} /api/v1/devices/:deviceId/users Get all users who can access a device (by path)
+   * @apiName GetDeviceUsersById
+   * @apiGroup Device
+   * @apiDescription Same as `GET /api/v1/devices/users`, but takes the device id as a path parameter rather
+   * than a query parameter.  Returns all users that have access to the device through group membership.
+   * Requires admin access to the device.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} deviceId ID of the device.
+   * @apiQuery {Boolean} [only-active=false] Only look up the device if it is active
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiInterface {apiSuccess::ApiDeviceUsersResponseSuccess} users Array of users who have access to the
+   * device via the devices group.
+   * @apiUse V1ResponseError
+   */
   app.get(
     `${apiUrl}/:deviceId/users`,
     extractJwtAuthorizedUser,
@@ -2042,14 +2183,14 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/devices/:deviceId/assign-schedule Assign a schedule to a device.
    * @apiName AssignScheduleToDevice
    * @apiGroup Schedules
-   * @apiDescription This call assigns a schedule to a device.
+   * @apiDescription This call assigns a schedule to a device.  The schedule must belong to the requesting user,
+   * unless the user has global write permission.
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiParam {Number} deviceId ID of the device.
    * @apiBody {Number} scheduleId ID of the schedule to assign to the device.
-   * @apiBody {Boolean} admin If true, the user should have administrator access to the device.
-   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
+   * @apiQuery {Boolean} [only-active=false] Only operate if the device is active
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -2093,14 +2234,14 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/devices/:deviceId/remove-schedule Remove a schedule from a device.
    * @apiName RemoveScheduleFromDevice
    * @apiGroup Schedules
-   * @apiDescription This call removes a schedule from a device.
+   * @apiDescription This call removes the schedule from a device.  The schedule must belong to the requesting
+   * user, unless the user has global write permission.
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiBody {Number} deviceId ID of the device.
+   * @apiParam {Number} deviceId ID of the device.
    * @apiBody {Number} scheduleId ID of the schedule to remove from the device.
-   * @apiBody {Boolean} admin If true, the user should have administrator access to the device.
-   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
+   * @apiQuery {Boolean} [only-active=false] Only operate if the device is active
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -2153,7 +2294,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiParam {Integer} deviceId ID of the device.
    * @apiQuery {String} [from=now] ISO8601 date string
    * @apiQuery {Integer} [window-size=2160] length of rolling window in hours.  Default is 2160 (90 days)
-   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
+   * @apiQuery {Boolean} [only-active=false] Only operate if the device is active
    * @apiSuccess {Float} cacophonyIndex A number representing the average index over the period `from` minus `window-size`
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -2179,7 +2320,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/v1/devices/{:deviceId}/species-count Get the species breakdown for a device
+   * @api {get} /api/v1/devices/:deviceId/species-count Get the species breakdown for a device
    * @apiName species-count
    * @apiGroup Device
    * @apiDescription Get a species count
@@ -2190,9 +2331,11 @@ export default function (app: Application, baseUrl: string) {
    * @apiParam {Integer} deviceId ID of the device.
    * @apiQuery {String} [from=now] ISO8601 date string
    * @apiQuery {Integer} [window-size=2160] length of window in hours going backwards in time from the `from` param.  Default is 2160 (90 days)
-   * @apiQuery {Boolean} [type=audio] Type of recording to count
-   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
-   * @apiSuccess {Object} #TODO
+   * @apiQuery {String} [type=audio] Type of recording to count: `audio`, `thermalRaw` or `irRaw`
+   * @apiQuery {Boolean} [only-active=false] Only operate if the device is active
+   * @apiSuccess {Object[]} speciesCount Number of tags of each kind within the window
+   * @apiSuccess {String} speciesCount.what The tag
+   * @apiSuccess {Integer} speciesCount.count Number of times the tag was applied
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
@@ -2221,7 +2364,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/v1/devices/{:deviceId}/species-count-bulk Get the species breakdown for a device across a given range of time frames
+   * @api {get} /api/v1/devices/:deviceId/species-count-bulk Get the species breakdown for a device across a given range of time frames
    * @apiName species-count-bulk
    * @apiGroup Device
    * @apiDescription Get a species count
@@ -2232,10 +2375,14 @@ export default function (app: Application, baseUrl: string) {
    * @apiParam {Integer} deviceId ID of the device.
    * @apiQuery {String} [from=now] ISO8601 date string
    * @apiQuery {Integer} [steps=7] Number of time frames to return [default=7]
-   * @apiQuery {String} [interval=days] description of each time frame size
-   * @apiQuery {Boolean} [type=audio] Type of recording to count
-   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
-   * @apiSuccess {Object} #TODO
+   * @apiQuery {String} [interval=days] size of each time frame: `years`, `months`, `weeks`, `days` or `hours`
+   * @apiQuery {String} [type=audio] Type of recording to count: `audio`, `thermalRaw` or `irRaw`
+   * @apiQuery {Boolean} [only-active=false] Only operate if the device is active
+   * @apiSuccess {Object[]} speciesCountBulk Number of tags of each kind within each time frame
+   * @apiSuccess {Integer} speciesCountBulk.deviceId Id of the device
+   * @apiSuccess {String} speciesCountBulk.from ISO timestamp for the end of the time frame
+   * @apiSuccess {String} speciesCountBulk.what The tag
+   * @apiSuccess {Integer} speciesCountBulk.count Number of times the tag was applied within the time frame
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
@@ -2268,7 +2415,7 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * @api {get} /api/v1/devices/{:deviceId}/active-days Get the number of days a device was active across a given date range
+   * @api {get} /api/v1/devices/:deviceId/days-active Get the number of days a device was active across a given date range
    * @apiName active-days
    * @apiGroup Device
    * @apiDescription Get the number of days a device was active across a given date range
@@ -2278,7 +2425,8 @@ export default function (app: Application, baseUrl: string) {
    * @apiParam {Integer} deviceId ID of the device.
    * @apiQuery {String} [from=now] ISO8601 date string
    * @apiQuery {Integer} [window-size=2160] length of window in hours going backwards in time from the `from` param.  Default is 2160 (90 days)
-   * @apiSuccess {Integer} Number of active days
+   * @apiQuery {Boolean} [only-active=false] Only operate if the device is active
+   * @apiSuccess {Integer} activeDaysCount Number of days with at least one recording
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
    */
@@ -2303,20 +2451,22 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-     * @api {post} /api/v1/devices/heartbeat Send device heartbeat
-     * @apiName heartbeat
-     * @apiGroup Device
-     *
-     * @apiUse V1DeviceAuthorizationHeader
-     *
-     * @apiBody {Date} nextHeartbeat time next heartbeat is expected
-
-     * @apiUse V1ResponseSuccess
-     * @apiUse V1ResponseError
-     */
+   * @api {post} /api/v1/devices/heartbeat Send device heartbeat
+   * @apiName heartbeat
+   * @apiGroup Device
+   * @apiDescription Heartbeats are currently disabled: this call validates the request and succeeds, but
+   * records nothing.
+   *
+   * @apiUse V1DeviceAuthorizationHeader
+   *
+   * @apiBody {Date} nextHeartbeat time next heartbeat is expected
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
   app.post(
     `${apiUrl}/heartbeat`,
-    extractJwtAuthorisedDevice,
+    extractJwtAuthorizedDevice,
     validateFields([body("nextHeartbeat").isISO8601().toDate()]),
     async function (request: Request, response: Response) {
       // NOTE: Disable heartbeats
@@ -2328,17 +2478,245 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
+  /**
+   * @api {get} /api/v1/devices/:deviceId/actions/:actionId Get an existing device user-action request
+   * @apiName GetDeviceAction
+   * @apiGroup Device
+   * @apiDescription Returns the current status and history of a device user-action request.
+   *
+   * @apiParam {number} deviceId DeviceId of device that owns this action
+   * @apiParam {string} actionId uuidv4 string of action id
+   *
+   * @apiUse V1UserOrDeviceAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {Object} action The action request
+   * @apiSuccess {String} action.uuid Id of the action
+   * @apiSuccess {Integer} action.deviceId Id of the device
+   * @apiSuccess {String} action.status Current status: `pending`, `requested`, `responded`, `acknowledged`, `completed` or `failed`
+   * @apiSuccess {Object[]} action.history Each status change of the action, in order
+   * @apiSuccess {String} action.createdAt ISO timestamp of when the action was created
+   * @apiSuccess {String} action.updatedAt ISO timestamp of the last update to the action
+   * @apiSuccess {Integer} [action.recordingId] Id of the recording associated with the action, if any
+   * @apiUse V1ResponseError
+   */
+  app.get(
+    `${apiUrl}/:deviceId/actions/:actionId`,
+    extractJwtAuthorizedUserOrDevice,
+    validateFields([idOf(param("deviceId")), uuidOf(param("actionId"))]),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    async function (request, response) {
+      const actionUUID = request.params.actionId as unknown as UUID;
+      const action = await (
+        response.locals.device as Device
+      ).getUserActionRequest(actionUUID);
+      const deviceAction: ApiDeviceAction = {
+        uuid: action.id,
+        deviceId: action.DeviceId,
+        createdAt: action.createdAt.toISOString(),
+        updatedAt: action.updatedAt.toISOString(),
+        history: action.history,
+        status: action.status,
+      };
+      if (action.RecordingId) {
+        deviceAction.recordingId = action.RecordingId;
+      }
+      return successResponse(response, "Got device action", {
+        action: deviceAction,
+      });
+    },
+  );
+
+  /**
+   * @api {put} /api/v1/devices/:deviceId/actions/:actionId Initiate a device user-action request
+   * @apiName CreateDeviceAction
+   * @apiGroup Device
+   * @apiDescription Called by a device to ask for a decision from a user.  The action starts in the `pending`
+   * state.  Fails if an action with the same id already exists, or if no `availableActions` are provided.
+   *
+   * @apiParam {number} deviceId DeviceId of device that owns this action
+   * @apiParam {string} actionId uuidv4 string of action id
+   * @apiInterface {apiBody::ApiDeviceActionRequestBody}
+   *
+   * @apiUse V1DeviceAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {String} id Id of the created action
+   * @apiUse V1ResponseError
+   */
+  app.put(
+    `${apiUrl}/:deviceId/actions/:actionId`,
+    extractJwtAuthorizedDevice,
+    validateFields([
+      idOf(param("deviceId")),
+      uuidOf(param("actionId")),
+      body("action").custom(jsonSchemaOf(ApiDeviceActionRequestSchema)),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    async function (request, response, next) {
+      const actionUUID = request.params.actionId as unknown as UUID;
+      const action = request.body.action as unknown as ApiDeviceActionRequest;
+      await DeviceAction.sequelize.transaction(async (transaction) => {
+        const existingAction = await DeviceAction.findOne({
+          where: { id: actionUUID },
+          transaction,
+        });
+        if (existingAction) {
+          return next(
+            new UnprocessableError(
+              `action with the uuid '${actionUUID}' already exists`,
+            ),
+          );
+        }
+        if (action.availableActions.length === 0) {
+          return next(
+            new UnprocessableError(`no user action options provided`),
+          );
+        }
+        const initialState: ActionStateTransition = {
+          dateTime: action.actionDateTime,
+          state: DeviceActionStatus.pending,
+          classification: action.classification,
+          availableActions: action.availableActions,
+        };
+        if ("confidence" in action) {
+          initialState.confidence = action.confidence;
+        }
+        const createdAction = await DeviceAction.create(
+          {
+            id: actionUUID,
+            status: DeviceActionStatus.pending,
+            history: [initialState],
+            DeviceId: response.locals.device.id,
+          },
+          { transaction },
+        );
+        if (createdAction) {
+          return successResponse(response, "Created action", {
+            id: actionUUID,
+          });
+        }
+        return next(new UnprocessableError("Failed to create action"));
+      });
+    },
+  );
+
+  /**
+   * @api {patch} /api/v1/devices/:deviceId/actions/:actionId Update the status of a device user-action request
+   * @apiName UpdateDeviceAction
+   * @apiGroup Device
+   * @apiDescription Moves a device user-action request to its next state.  States must follow the order
+   * `pending`, `requested`, `responded`, `acknowledged`, then `completed` or `failed`.  Once an action is
+   * `completed` or `failed` it cannot be changed.  A `responded` update must be made by a user, and its
+   * `action` must be one of the options the device offered when creating the action.
+   *
+   * @apiParam {number} deviceId DeviceId of device that owns this action
+   * @apiParam {string} actionId uuidv4 string of action id
+   * @apiInterface {apiBody::ApiDeviceActionUpdateRequestBody}
+   *
+   * @apiUse V1UserOrDeviceAuthorizationHeader
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiUse V1ResponseError
+   */
+  app.patch(
+    `${apiUrl}/:deviceId/actions/:actionId`,
+    extractJwtAuthorizedUserOrDevice,
+    validateFields([
+      idOf(param("deviceId")),
+      uuidOf(param("actionId")),
+      body("update").custom(jsonSchemaOf(ApiDeviceActionUpdateRequestSchema)),
+    ]),
+    fetchAuthorizedRequiredDeviceById(param("deviceId")),
+    async function (request, response, next) {
+      // Update the status of an action
+      const update = request.body.update as ApiDeviceActionUpdateRequest;
+      if (
+        update.state === DeviceActionStatus.responded &&
+        !response.locals.requestUser
+      ) {
+        return next(
+          new UnprocessableError("Responses to actions must come from a user"),
+        );
+      }
+
+      const actionId = request.params.actionId as string;
+      const newStatus = update.state as DeviceActionStatus;
+      const finalStates = [
+        DeviceActionStatus.completed,
+        DeviceActionStatus.failed,
+      ];
+      const action = await DeviceAction.findByPk(actionId);
+      if (!action) {
+        return next(new UnprocessableError(`Action '${actionId}' not found`));
+      }
+      if (finalStates.includes(action.status)) {
+        return next(
+          new UnprocessableError(
+            `Action '${actionId}' is already in the '${action.status}' state, no further changes are possible`,
+          ),
+        );
+      }
+      const allowedStates = Object.values(DeviceActionStatus);
+      // Make sure states can only move from one to another in order
+      const currentState = allowedStates.indexOf(action.status);
+      const expectedNextState = allowedStates[currentState + 1];
+      if (
+        (action.status === DeviceActionStatus.acknowledged &&
+          !finalStates.includes(newStatus)) ||
+        (action.status !== DeviceActionStatus.acknowledged &&
+          newStatus !== expectedNextState)
+      ) {
+        return next(
+          new UnprocessableError(
+            `Invalid action state transition '${action.status}' -> '${newStatus}'`,
+          ),
+        );
+      }
+
+      const newAction: ActionStateTransition = {
+        state: newStatus,
+        dateTime: update.actionDateTime,
+      };
+      if (newStatus === DeviceActionStatus.responded) {
+        // Record what the users' response
+        newAction.action = update.action;
+        const availableActions = action.history[0].availableActions || [];
+        if (!availableActions.includes(update.action)) {
+          return next(
+            new UnprocessableError(
+              `Provided action ${update.action} is not in the available options provided by the device: '${availableActions.join("', '")}'.`,
+            ),
+          );
+        }
+        newAction.userId = response.locals.requestUser.id;
+      }
+
+      await action.update({
+        status: newStatus,
+        history: [...action.history, newAction],
+      } as DeviceAction);
+
+      return successResponse(response, "Updated device action");
+    },
+  );
+
   if (!config.productionEnv) {
     // NOTE: This api is currently for facilitating testing only, and is
     //  not available in production builds.
     /**
-     * @api {post} /api/v1/devices/:deviceId/history Get device history
+     * @api {get} /api/v1/devices/:deviceId/history Get device history
      * @apiName history
      * @apiGroup Device
+     * @apiDescription Returns all history entries for a device, oldest first.  Only available in
+     * non-production environments.
      *
      * @apiUse V1UserAuthorizationHeader
      *
+     * @apiParam {Integer} deviceId Id of the device.
+     *
      * @apiUse V1ResponseSuccess
+     * @apiSuccess {Object[]} history The device's history entries
      * @apiUse V1ResponseError
      */
     app.get(

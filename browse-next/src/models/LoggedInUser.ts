@@ -19,7 +19,7 @@ import type {
 import type { ApiStationResponse as ApiLocationResponse } from "@typedefs/api/station";
 import { urlNormaliseName } from "@/utils";
 import { useWindowSize } from "@vueuse/core";
-import type { ApiDeviceResponse } from "@typedefs/api/device";
+import type { ApiDeviceAction, ApiDeviceResponse } from "@typedefs/api/device";
 import { CurrentViewAbortController } from "@apiClient/api.ts";
 
 export type LoggedInUser = ApiLoggedInUserResponse;
@@ -39,6 +39,11 @@ export const DevicesForCurrentProject =
   ref<LoadedResource<ApiDeviceResponse[]>>(null);
 export const LocationsForCurrentProject =
   ref<LoadedResource<ApiLocationResponse[]>>(null);
+
+// How do we query devices with traps enabled?
+export const CurrentProjectHasEnabledTraps = ref<boolean>(false);
+export const CurrentProjectHasPendingTrapActions = ref<boolean>(false);
+export const CurrentProjectHasFailedTrapActions = ref<boolean>(false);
 
 export const nonPendingUserProjects = computed<ApiProjectResponse[]>(() => {
   if (!UserProjects.value) {
@@ -615,7 +620,6 @@ export const showSideNavBg = computed<boolean>(() => {
   return pinSideNav.value && isSmallScreen.value;
 });
 
-export const rafFps = ref(60);
 // On load:
 // {
 //   if (typeof window !== "undefined") {

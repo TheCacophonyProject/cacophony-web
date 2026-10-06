@@ -45,9 +45,19 @@ export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/visits`;
 
   /**
-   * Retrieve the visit(s) that a single recording is part of.
+   * @api {get} /api/v1/visits/for-recording/:recordingId Get the visits a recording is part of
+   * @apiName GetVisitsForRecording
+   * @apiGroup Visits
+   * @apiDescription Returns the visit or visits that the recording is part of, most recent first.
    *
-   * Finds all visits where recordingIds JSONB array contains recordingId.
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} recordingId Id of the recording.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {Integer} recordingId Id of the recording.
+   * @apiSuccess {Object[]} visits The visits the recording is part of.
+   * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/for-recording/:recordingId`,
@@ -95,7 +105,24 @@ export default function (app: Application, baseUrl: string) {
   );
 
   /**
-   * Get the distribution of visits per day over time.
+   * @api {get} /api/v1/visits/for-project/:projectId/distribution Get the number of visits per day for a project
+   * @apiName GetVisitsDistribution
+   * @apiGroup Visits
+   * @apiDescription Returns the number of visits for each day between `from` and `until`, optionally limited
+   * to particular locations.  Days with no visits are included with a count of zero.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} projectId Id of the project.
+   * @apiQuery {String} from ISO8601 formatted date string, start of the period.  Must not be after `until`.
+   * @apiQuery {String} until ISO8601 formatted date string, end of the period.
+   * @apiQuery {Integer[]} [locations] Only count visits at these location ids.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {Object[]} distribution One entry per day, in date order.
+   * @apiSuccess {String} distribution.day The day, as a date.
+   * @apiSuccess {Number} distribution.itemCount Number of visits starting on that day.
+   * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/for-project/:projectId/distribution`,
@@ -134,7 +161,7 @@ export default function (app: Application, baseUrl: string) {
         `
 select 
   d.day::date, 
-  count(v.id) AS item_count
+  count(v.id)::int AS "itemCount"
 from generate_series(:until - (:numDays || ' days')::interval, :until, interval '1 day') AS d(day)
 left join "Visits" v
   on v."startTime" >= d.day
@@ -161,8 +188,51 @@ order by d.day;
   );
 
   /**
-   * Retrieve the visits for a project between `from` and `until`.
-   * Optionally filter by location, supply max results
+   * @api {get} /api/v1/visits/for-project/:projectId Get the visits for a project
+   * @apiName GetVisitsForProject
+   * @apiGroup Visits
+   * @apiDescription Returns the visits for a project that overlap the period between `from` and `until`,
+   * most recent first.  Optionally limited to particular locations, and to visits that are, or are not,
+   * classified as particular animals.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} projectId Id of the project.
+   * @apiQuery {String} from ISO8601 formatted date string, start of the period.
+   * @apiQuery {String} until ISO8601 formatted date string, end of the period.
+   * @apiQuery {Integer[]} [locations] Only include visits at these location ids.
+   * @apiQuery {String[]} [tagged-with] Only include visits classified as one of these tags.  Each tag also
+   * matches the more specific tags beneath it.
+   * @apiQuery {String[]} [not-tagged-with] Exclude visits classified as any of these tags.  Each tag also
+   * matches the more specific tags beneath it.
+   * @apiQuery {Integer} [max-results=1000] Maximum number of visits to return.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {Object[]} visits The visits found.
+   * @apiUse V1ResponseError
+   */
+
+  /**
+   * @api {get} /api/v1/visits/for-project/:projectId/count Get the number of visits for a project
+   * @apiName GetVisitsCountForProject
+   * @apiGroup Visits
+   * @apiDescription Returns the number of visits that `GET /api/v1/visits/for-project/:projectId` would
+   * match for the same parameters, without returning the visits themselves.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} projectId Id of the project.
+   * @apiQuery {String} from ISO8601 formatted date string, start of the period.
+   * @apiQuery {String} until ISO8601 formatted date string, end of the period.
+   * @apiQuery {Integer[]} [locations] Only count visits at these location ids.
+   * @apiQuery {String[]} [tagged-with] Only count visits classified as one of these tags.  Each tag also
+   * matches the more specific tags beneath it.
+   * @apiQuery {String[]} [not-tagged-with] Exclude visits classified as any of these tags.  Each tag also
+   * matches the more specific tags beneath it.
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {Number} count Number of visits found.
+   * @apiUse V1ResponseError
    */
   app.get(
     `${apiUrl}/for-project/:projectId{/:count}`,

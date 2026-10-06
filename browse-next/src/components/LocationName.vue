@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import type { RouteLocationRaw } from "vue-router";
-import { BLink } from "bootstrap-vue-next";
 import TooltipOnTruncation from "@/components/TooltipOnTruncation.vue";
 const props = withDefaults(
   defineProps<{
@@ -35,13 +34,21 @@ const props = withDefaults(
         v-if="icon"
       />
       <tooltip-on-truncation v-if="truncate">{{ name }}</tooltip-on-truncation>
-      <span v-else>{{ name }}</span>
+      <span v-else class="lh-sm">{{ name }}</span>
     </span>
   </span>
 </template>
 
 <style scoped lang="less">
+.location-name-wrapper {
+  // A flex item's default min-width is `auto` (its content's natural size),
+  // which prevents it ever shrinking small enough for the nested truncated
+  // text to actually ellipsize when this component is used inside a flex
+  // row (e.g. a modal header) alongside other content.
+  min-width: 0;
+}
 .location-name {
   word-break: break-word;
+  min-width: 0;
 }
 </style>

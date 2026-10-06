@@ -2063,6 +2063,8 @@ const refreshActivitySearchUponBulkDeleteCompletion = async () => {
   readyToBulkDelete.value = false;
   if (didBulkDelete) {
     firstLoad.value = true;
+    gotEstimatedCount.value = false;
+    estimatedRecordingCount.value = 0;
     await doSearch();
   }
 };

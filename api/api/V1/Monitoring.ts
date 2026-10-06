@@ -45,6 +45,7 @@ export default function (app: Application, baseUrl: string) {
      * @api {get} /api/v1/monitoring/page Get visits page
      * @apiName MonitoringPage
      * @apiGroup Monitoring
+     * @apiDeprecated Use the visits endpoints, e.g. GET /api/v1/visits/for-project/:projectId
      * @apiDescription Get a page of monitoring visits.   Visits are returned with the most recent ones listed first.
      *
      * As part of this process recordings are sorted into visits and then the best-classification for each visit is calculated.
@@ -54,7 +55,7 @@ export default function (app: Application, baseUrl: string) {
      * In some circumstances the number of visits returned may be slightly bigger or smaller than the page-size.
      *
      * @apiUse V1UserAuthorizationHeader
-     * @apiQuery {number|number[]} [devices]  A single device id, or a JSON list of device ids to include.  eg 52, or [23, 42]
+     * @apiQuery {number|number[]} [stations]  A single station (location) id, or a JSON list of station ids to include.  eg 52, or [23, 42]
      * @apiQuery {number|number[]} [groups]  A single group id or a JSON list of group ids to include.  eg 20, or [23, 42]
      * @apiQuery {timestamp} [from]  Retrieve visits after this time
      * @apiQuery {timestamp} [until] Retrieve visits starting on or before this time
@@ -80,8 +81,6 @@ export default function (app: Application, baseUrl: string) {
      * @apiSuccess (Visit Details){number} stationId Id of station where recordings took place (if defined else 0)
      * @apiSuccess (Visit Details){timestamp} timeStart Time visit starts
      * @apiSuccess (Visit Details){timestamp} timeEnd Time visit ends
-     * @apiSuccess (Visit Details){string} timeEnd Time visit ends
-     * @apiSuccess (Visit Details){boolean} timeEnd Time visit ends
      * @apiSuccess (Visit Details){string} classification Cacophony classification.   (This is the best classification we have for this visit)
      * @apiSuccess (Visit Details){string} classificationAi Best classification from AI specified in request params, otherwise best classification from AI Master.
      * @apiSuccess (Visit Details){boolean} classFromUserTag True if the Cacophony classification was made by a user.   False if it was an AI classification
@@ -136,7 +135,6 @@ export default function (app: Application, baseUrl: string) {
      *       ],
      *       "success": true
      *   }
-     * @apiSuccess {JSON} visits Calculated visits with classifications.
      *
      * @apiUse V1ResponseError
      */
@@ -233,6 +231,32 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
+  /**
+   * @api {get} /api/v1/monitoring/for-project/:projectId Get animal visits for a project
+   * @apiName GetMonitoringVisitsForProject
+   * @apiGroup Monitoring
+   * @apiDeprecated Use GET /api/v1/visits/for-project/:projectId
+   * @apiDescription Returns the animal visits detected by the project's thermal recordings, optionally limited
+   * to particular locations and a time range.  A visit groups together recordings of an animal made at the same
+   * location within a short period of time.  Visits that include recordings still being processed are marked
+   * as incomplete.
+   *
+   * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} projectId Id of the project.
+   * @apiQuery {Integer[]} [locations] Only include visits at these location ids.
+   * @apiQuery {String} [from] ISO8601 formatted date string, only include visits from this time.
+   * @apiQuery {String} [until] ISO8601 formatted date string, only include visits up to this time.
+   * @apiQuery {String[]} [types] Recording types to calculate visits over.  Currently only `thermalRaw`
+   * (or `thermal`) is supported.
+   * @apiQuery {String} [view-mode] `"user"` show only devices assigned to current user where
+   * JWT Authorization supplied is for a superuser (default for superuser is to show all devices)
+   *
+   * @apiUse V1ResponseSuccess
+   * @apiSuccess {Object} params The search criteria that were applied
+   * @apiSuccess {Object[]} visits The visits found
+   * @apiUse V1ResponseError
+   */
   app.get(
     `${apiUrl}/for-project/:projectId`,
     // Validate session

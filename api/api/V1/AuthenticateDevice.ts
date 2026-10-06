@@ -54,9 +54,12 @@ export default function (app: Application) {
    * Returns a JWT authentication token to use for further API requests
    *
    * @apiInterface {apiBody::ApiAuthenticateDeviceRequestBody}
+   * @apiQuery {Boolean} [only-active=false] Only authenticate the device if it is active.
    *
+   * @apiUse V1ResponseSuccess
    * @apiSuccess {String} token JWT string to provide to further API requests
    * @apiSuccess {Integer} id id of device authenticated
+   * @apiUse V1ResponseError
    */
   app.post(
     "/authenticate_device",

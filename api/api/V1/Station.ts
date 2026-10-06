@@ -139,6 +139,8 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
+   * @apiParam {Integer} id Station ID
+   *
    * @apiUse V1ResponseSuccess
    * @apiInterface {apiSuccess::ApiStationResponseSuccess} stations ApiStationResponse showing details of station
    * @apiUse V1ResponseError
@@ -163,16 +165,19 @@ export default function (app: Application, baseUrl: string) {
    * @api {post} /api/v1/stations/recordings-count Get count of recordings for multiple stations using their ids in the request body
    * @apiName GetRecordingsCountForStations
    * @apiGroup Station
-   * @apiDescription Get the count of recordings associated with multiple stations using their ids in the request body
+   * @apiDescription Get the count of recordings associated with multiple stations using their ids in the request body.
+   * Deleted recordings are not counted, and only stations in groups the user is a member of are included.
+   * Stations with no recordings do not appear in the results.
    *
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
-   * @apiInterface {apiSuccess::ApiRecordingsCountResponseSuccess} counts Number of recordings associated with each station
+   * @apiSuccess {Object[]} counts Number of recordings associated with each station
+   * @apiSuccess {Integer} counts.stationId Station ID
+   * @apiSuccess {Integer} counts.count Number of recordings for the station
    * @apiUse V1ResponseError
    *
    * @apiBody {Number[]} stationIds Array of station IDs
-   * @apiBody {String} [from-date] Date the station should be active from
    */
   app.post(
     `${apiUrl}/recordings-count`,
@@ -226,12 +231,14 @@ export default function (app: Application, baseUrl: string) {
    * @api {get} /api/v1/stations/:id/recordings-count Get count of recordings for a station by id
    * @apiName GetRecordingsCountForStation
    * @apiGroup Station
-   * @apiDescription Get the count of recordings associated with a station by its id
+   * @apiDescription Get the count of recordings associated with a station by its id.  Deleted recordings are not counted.
    *
    * @apiUse V1UserAuthorizationHeader
    *
+   * @apiParam {Integer} id Station ID
+   *
    * @apiUse V1ResponseSuccess
-   * @apiInterface {apiSuccess::ApiRecordingsCountResponseSuccess} count Number of recordings associated with the station
+   * @apiSuccess {Integer} count Number of recordings associated with the station
    * @apiUse V1ResponseError
    */
   app.get(
@@ -263,6 +270,9 @@ export default function (app: Application, baseUrl: string) {
    * @apiName UpdateStationById
    * @apiGroup Station
    * @apiDescription Update a single station by id.  Must be an admin of the group that owns this station.
+   * Updating a station means it is no longer treated as automatically created.  If the update would put the station
+   * too close to another active station, it is still updated, but a warning is returned.
+   * @apiParam {Integer} id Station ID
    * @apiInterface {apiBody::ApiUpdateStationData} station-updates ApiUpdateStationData with updated station fields
    * @apiBody {String} [from-date] Date the station should be active from
    * @apiBody {String} [until-date] Date the station should be active until (if retiring station)
@@ -271,6 +281,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
+   * @apiSuccess {String[]} [warnings] Present if the station's new location is close to other active stations.
    * @apiUse V1ResponseError
    */
   app.patch(
@@ -464,8 +475,11 @@ export default function (app: Application, baseUrl: string) {
    * @apiName DeleteStationById
    * @apiGroup Station
    * @apiDescription Delete a single station by id.  Must be an admin of the group that owns this station.
+   * The station's visits are deleted with it, and devices are no longer associated with it in their history.
    *
-   * @apiQuery {Boolean=false} delete-recordings Optionally, delete all recordings that were associated with this station.
+   * @apiParam {Integer} id Station ID
+   * @apiQuery {Boolean=false} delete-recordings Optionally, also mark all recordings that were associated with this
+   * station as deleted.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -504,6 +518,8 @@ export default function (app: Application, baseUrl: string) {
                 transaction,
               },
             );
+            // FIXME: This should recalculate all visits related to these recordings.
+            //  But do clients actually ever call this end-point?
             // Delete this station, and mark delete recordings associated with it as deleted by this user.
             const [affectedCount] = await Recording.update(
               {
@@ -555,14 +571,15 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Station
    * @apiDescription Get a single number Cacophony Index
    * for a given station.  This number is the average of all the Cacophony Index values from a
-   * given time (defaulting to 'Now'), within a given timespan (defaulting to 3 months)
+   * given time (defaulting to 'Now'), within a given timespan (defaulting to 3 months).  Requires admin access
+   * to the group that owns the station.
    *
    * @apiUse V1UserAuthorizationHeader
    *
-   * @apiParam {Integer} station ID of the device.
+   * @apiParam {Integer} stationId ID of the station.
    * @apiQuery {String} [from=now] ISO8601 date string
    * @apiQuery {Integer} [window-size=2160] length of rolling window in hours.  Default is 2160 (90 days)
-   * @apiQuery {Boolean} [only-active=true] Only operate if the device is active
+   * @apiQuery {Boolean} [only-active=true] Only operate if the station is active (not retired)
    * @apiSuccess {Float} cacophonyIndex A number representing the average index over the period `from` minus `window-size`
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -576,6 +593,7 @@ export default function (app: Application, baseUrl: string) {
       integerOfWithDefault(query("window-size"), 2160), // Default to a three month rolling window
       query("only-active").optional().isBoolean().toBoolean(),
     ]),
+    // FIXME: Why would this require admin auth?
     fetchAdminAuthorizedRequiredStationById(param("stationId")),
     async (request: Request, response: Response) => {
       const cacophonyIndex = await Station.getCacophonyIndex(
@@ -609,7 +627,7 @@ export default function (app: Application, baseUrl: string) {
     extractJwtAuthorizedUser,
     validateFields([
       idOf(param("stationId")),
-      booleanOf(param("only-active")).default(true),
+      booleanOf(query("only-active")).default(true),
     ]),
     fetchAuthorizedRequiredStationById(param("stationId")),
     async (req: Request, res: Response) => {

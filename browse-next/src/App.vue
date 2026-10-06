@@ -1,48 +1,26 @@
 <script setup lang="ts">
-import { RouterView, RouterLink, useRoute } from "vue-router";
+import { RouterView, useRoute } from "vue-router";
 
 // TODO only in dev mode, otherwise we need an info button somewhere for production
 import GitReleaseInfoBar from "@/components/GitReleaseInfoBar.vue";
 import NetworkConnectionAlertModal from "@/components/NetworkConnectionAlertModal.vue";
-import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue";
 import {
   euaIsOutOfDate,
-  userHasMultipleProjects,
   isLoggingInAutomatically,
   isFetchingProjects,
-  userIsAdminForCurrentSelectedProject,
   userHasConfirmedEmailAddress,
   showSwitchProject,
   creatingNewProject,
   joiningNewProject,
-  urlNormalisedCurrentProjectName,
-  rafFps,
-  pinSideNav,
-  showSideNavBg,
   isWideScreen,
-  sideNavIsPinned,
-  isSmallScreen,
   showUnimplementedModal,
-  DevicesForCurrentProject,
-  isViewingAsSuperUser,
 } from "@/models/LoggedInUser";
-import type { SelectedProject, LoggedInUser } from "@/models/LoggedInUser";
 import {
   userHasProjects as hasProjects,
   userIsLoggedIn as hasLoggedInUser,
-  currentUser,
-  currentSelectedProject,
 } from "@models/provides.ts";
-import {
-  computed,
-  defineAsyncComponent,
-  inject,
-  onBeforeMount,
-  onMounted,
-  ref,
-  watch,
-} from "vue";
-import type { ComputedRef, Ref } from "vue";
+import { defineAsyncComponent, inject, ref } from "vue";
+import type { ComputedRef } from "vue";
 import { BModal, BSpinner } from "bootstrap-vue-next";
 import SwitchProjectsModal from "@/components/SwitchProjectsModal.vue";
 import AppMainNav from "@/components/AppMainNav.vue";
@@ -63,41 +41,6 @@ const JoinExistingProjectModal = defineAsyncComponent(
 const hasGitReleaseInfoBar = ref(false);
 
 const route = useRoute();
-
-onMounted(() => {
-  // Wait a second so that we know rendering has settled down, then try to work out the display refresh rate.
-  setTimeout(pollFrameTimes, 1000);
-});
-
-const frameTimes: number[] = [];
-const pollFrameTimes = () => {
-  // Initial condition
-  frameTimes.push(performance.now());
-  if (frameTimes.length < 10) {
-    requestAnimationFrame(pollFrameTimes);
-  } else {
-    const diffs = [];
-    for (let i = 1; i < frameTimes.length; i++) {
-      diffs.push((frameTimes[i] as number) - (frameTimes[i - 1] as number));
-    }
-    let total = 0;
-    for (const val of diffs) {
-      total += val;
-    }
-    // Get the average frame time
-    const multiplier = Math.round(1000 / (total / diffs.length) / 30);
-    if (multiplier === 1) {
-      // 30fps
-      rafFps.value = 30;
-    } else if (multiplier === 2 || multiplier === 3) {
-      // 60fps
-      rafFps.value = 60;
-    } else if (multiplier >= 4) {
-      // 120fps
-      rafFps.value = 120;
-    }
-  }
-};
 </script>
 <template>
   <div class="debug">Logged in? {{ userIsLoggedIn }}</div>

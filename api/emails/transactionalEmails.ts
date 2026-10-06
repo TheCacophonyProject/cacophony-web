@@ -497,6 +497,73 @@ export const sendAnimalAlertEmail = async (
   );
 };
 
+export const sendTrapActionRequestEmail = async (
+  groupName: string,
+  deviceName: string,
+  stationName: string,
+  stationId: StationId,
+  recordingDateTime: Date,
+  classification: string,
+  actionId: string,
+  userEmailAddress: string,
+  deviceTimezone: string | null,
+  thumbnail?: Buffer,
+) => {
+  const common = commonInterpolants();
+  const projectRoot = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
+    groupName,
+  )}`;
+  const emailSettingsUrl = `${projectRoot}/my-settings`;
+  const targetTag =
+    classification.charAt(0).toUpperCase() + classification.slice(1);
+  const stationUrl = stationId
+    ? `${projectRoot}/activity?display-mode=visits&recording-mode=cameras&locations=${stationId}&from=any&tag-mode=any`
+    : "";
+  const actionUrl = `${projectRoot}/trap-actions/${actionId}`;
+  // TODO: use device locale?
+  const recordingTime = recordingDateTime.toLocaleDateString("en-NZ", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    weekday: "short",
+    hour12: true,
+    timeZone: deviceTimezone || "Pacific/Auckland",
+  });
+  const { text, html } = await createEmailWithTemplate(
+    "trap-action-request.html",
+    {
+      targetTag,
+      emailSettingsUrl,
+      groupName,
+      deviceName,
+      actionUrl,
+      recordingTime,
+      stationUrl,
+      stationName,
+      ...common,
+    },
+  );
+  // NOTE: At some stage in the future there may be a thumbnail provided from the device when it
+  //  creates a trap user action request.
+  const thumb: EmailImageAttachment[] = thumbnail
+    ? [
+        {
+          buffer: thumbnail,
+          mimeType: "image/png",
+          cid: "thumbnail",
+        },
+      ]
+    : [];
+  return await sendEmail(
+    html,
+    text,
+    userEmailAddress,
+    `🪤 Trap activated for ${targetTag} at ${deviceName}: action required`,
+    [...(await commonAttachments()), ...thumb],
+  );
+};
+
 export const sendPasswordResetEmail = async (
   resetPasswordToken: string,
   userEmailAddress: string,

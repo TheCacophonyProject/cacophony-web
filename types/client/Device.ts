@@ -7,10 +7,15 @@ import type {
   UserId,
 } from "../api/common.js";
 import type {
+  ActionStatus,
+  ApiDeviceActionRequest,
+  ApiDeviceActionResponse,
+  ApiDeviceActionUpdateRequest,
   ApiDeviceHistory,
   ApiDeviceHistorySettings,
   ApiDeviceResponse,
   ApiMaskRegionsData,
+  DeviceActionDecision,
 } from "../api/device.js";
 import type {
   ApiSubmitEventsRequestBody,
@@ -20,7 +25,11 @@ import type {
   DeviceEvent,
   IsoFormattedString,
 } from "../api/event.js";
-import type { DeviceEventType, DeviceTypeUnion } from "../api/consts.js";
+import {
+  DeviceActionStatus,
+  DeviceEventType,
+  DeviceTypeUnion,
+} from "../api/consts.js";
 import type { ApiStationResponse as ApiLocationResponse } from "../api/station.js";
 import type { ApiRecordingResponse } from "../api/recording.js";
 import type { ApiTrackResponse } from "../api/track.js";
@@ -909,6 +918,78 @@ const getDeviceHistoryInTest =
     ) as Promise<LoadedResource<ApiDeviceHistory[]>>;
   };
 
+const createDeviceActionRequest =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    deviceId: DeviceId,
+    uuid: string,
+    actionDateTime: Date,
+    classification: string,
+    availableActions: DeviceActionDecision[],
+  ) => {
+    const action: ApiDeviceActionRequest = {
+      uuid,
+      deviceId,
+      actionDateTime: actionDateTime.toISOString(),
+      classification,
+      availableActions,
+    };
+    return api.put(authKey, `/api/v1/devices/${deviceId}/actions/${uuid}`, {
+      action,
+    });
+  };
+
+const getDeviceActionRequest =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (deviceId: DeviceId, uuid: string) => {
+    return unwrapLoadedResource(
+      api.get(
+        authKey,
+        `/api/v1/devices/${deviceId}/actions/${uuid}`,
+      ) as Promise<FetchResult<{ action: ApiDeviceActionResponse }>>,
+      "action",
+    );
+  };
+
+const updateDeviceActionRequest =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    deviceId: DeviceId,
+    uuid: string,
+    status: ActionStatus,
+    atTime: Date = new Date(),
+  ) => {
+    return api.patch(authKey, `/api/v1/devices/${deviceId}/actions/${uuid}`, {
+      update: {
+        state: status,
+        actionDateTime: atTime.toISOString(),
+      } as ApiDeviceActionUpdateRequest,
+    }) as Promise<FetchResult<void>>;
+  };
+
+const confirmDeviceActionRequest =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    deviceId: DeviceId,
+    uuid: string,
+    action: DeviceActionDecision,
+    actionDateTime = new Date(),
+    NO_ABORT = false,
+  ) => {
+    return api.patch(
+      authKey,
+      `/api/v1/devices/${deviceId}/actions/${uuid}`,
+      {
+        update: {
+          state: DeviceActionStatus.responded,
+          actionDateTime: actionDateTime.toISOString(),
+          action,
+        } as ApiDeviceActionUpdateRequest,
+      },
+      !NO_ABORT,
+    ) as Promise<FetchResult<void>>;
+  };
+
 export default (api: CacophonyApiClient) => {
   // NOTE: this is a bit tedious, but it makes the type inference work for the return type.
   return {
@@ -960,6 +1041,10 @@ export default (api: CacophonyApiClient) => {
     getDeviceHistoryInTest: getDeviceHistoryInTest(api),
     submitEventsFromDevice: submitEventsFromDevice(api),
     submitEventsOnBehalfOfDevice: submitEventsOnBehalfOfDevice(api),
+    createDeviceActionRequest: createDeviceActionRequest(api),
+    getDeviceActionRequest: getDeviceActionRequest(api),
+    updateDeviceActionRequest: updateDeviceActionRequest(api),
+    confirmDeviceActionRequest: confirmDeviceActionRequest(api),
     withAuth: (authKey: TestHandle) => ({
       deleteDevice: deleteDevice(api, authKey),
       setDeviceActive: setDeviceActive(api, authKey),
@@ -1030,6 +1115,10 @@ export default (api: CacophonyApiClient) => {
       getDeviceHistoryInTest: getDeviceHistoryInTest(api, authKey),
       submitEventsFromDevice: submitEventsFromDevice(api, authKey),
       submitEventsOnBehalfOfDevice: submitEventsOnBehalfOfDevice(api, authKey),
+      createDeviceActionRequest: createDeviceActionRequest(api, authKey),
+      getDeviceActionRequest: getDeviceActionRequest(api, authKey),
+      confirmDeviceActionRequest: confirmDeviceActionRequest(api, authKey),
+      updateDeviceActionRequest: updateDeviceActionRequest(api, authKey),
     }),
   };
 };

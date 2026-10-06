@@ -22,7 +22,7 @@ import { successResponse } from "./responseUtil.js";
 import { body, param, query } from "express-validator";
 import type { Application, NextFunction, Request, Response } from "express";
 import {
-  extractJwtAuthorisedDevice,
+  extractJwtAuthorizedDevice,
   extractJwtAuthorizedUser,
   fetchAuthorizedOptionalDeviceById,
   fetchAuthorizedRequiredDeviceById,
@@ -327,7 +327,8 @@ export default function (app: Application, baseUrl: string) {
    * The event can be described by specifying an existing eventDetailId or by
    * the 'description' parameter.
    *
-   * `Either eventDetailId or description is required`
+   * `Either eventDetailId or description is required`.  Events with a time more than 10 minutes in the future
+   * are discarded.
    * @apiUse V1DeviceAuthorizationHeader
    *
    * @apiInterface {apiBody::ApiEventsRequestBody}
@@ -335,13 +336,13 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse EventExampleEventDetailId
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {Integer} eventsAdded Number of events added
+   * @apiSuccess {Integer} eventsAdded Number of events added (events discarded for being in the future are not counted)
    * @apiSuccess {Integer} eventDetailId Id of the Event Detail record used.  May be existing or newly created
-   * @apiuse V1ResponseError
+   * @apiUse V1ResponseError
    */
   app.post(
     apiUrl,
-    extractJwtAuthorisedDevice,
+    extractJwtAuthorizedDevice,
     validateFields(commonEventFields),
     // Extract required resources
     fetchUnAuthorizedOptionalEventDetailSnapshotById(body("eventDetailId")),
@@ -361,7 +362,9 @@ export default function (app: Application, baseUrl: string) {
     uploadEvent,
   );
 
-  /**
+  /*
+   * NOTE: This end-point is currently disabled (see below), so it is deliberately left out of the generated api docs.
+   *
    * @api {post} /api/v1/events/thumbnail Adds a new thumbnail + classification event.
    * @apiName Post Device Thumbnail Classification
    * @apiGroup Events
@@ -431,9 +434,12 @@ export default function (app: Application, baseUrl: string) {
    * @api {get} /api/v1/events/:id/thumbnail Return an event thumbnail given an event id.
    * @apiName GetEventThumbnail
    * @apiGroup Events
-   * @apiDescription Get an event thumbnail given an event id
+   * @apiDescription Get an event thumbnail given an event id.
+   * The thumbnail is returned as a png image.
    *
    * @apiUse V1UserAuthorizationHeader
+   *
+   * @apiParam {Integer} id Id of the event
    *
    * @apiUse V1ResponseSuccess
    * @apiUse V1ResponseError
@@ -472,10 +478,8 @@ export default function (app: Application, baseUrl: string) {
    * the 'description' parameter.
    *
    * `Either eventDetailId or description is required`
-   * @apiParam {String} deviceId ID of the device to upload on behalf of.
-   * If you don't have access to the deviceId, the deviceName can be used instead in it's place -
-   * however note that requests using deviceName will be rejected if multiple devices exist with
-   * the same deviceName. The use of deviceName is `DEPRECATED` and may not be supported in future.
+   * @apiParam {Integer} deviceId ID of the device to upload on behalf of.
+   * @apiQuery {Boolean} [only-active=false] Only operate on active devices.
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiInterface {apiBody::ApiEventsRequestBody}
@@ -483,9 +487,9 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse EventExampleEventDetailId
    *
    * @apiUse V1ResponseSuccess
-   * @apiSuccess {Integer} eventsAdded Number of events added
+   * @apiSuccess {Integer} eventsAdded Number of events added (events discarded for being in the future are not counted)
    * @apiSuccess {Integer} eventDetailId Id of the Event Detail record used.  May be existing or newly created
-   * @apiuse V1ResponseError
+   * @apiUse V1ResponseError
    */
   app.post(
     `${apiUrl}/device/:deviceId`,
@@ -561,14 +565,17 @@ export default function (app: Application, baseUrl: string) {
    * @apiGroup Events
    *
    * @apiUse V1UserAuthorizationHeader
+   * @apiDescription Returns the events for the devices the user can access, oldest first unless `latest` is set.
+   *
+   * @apiUse V1UserAuthorizationHeader
    * @apiQuery {Datetime} [startTime] Return only events on or after this time
    * @apiQuery {Datetime} [endTime] Return only events from before this time
    * @apiQuery {Integer} [deviceId] Return only events for this device id
-   * @apiQuery {Integer} [limit] Limit returned events to this number (default is 100)
-   * @apiQuery {Integer} [offset] Offset returned events by this amount (default is 0)
+   * @apiQuery {Integer} [limit=100] Limit returned events to this number
+   * @apiQuery {Integer} [offset=0] Offset returned events by this amount
    * @apiQuery {String} [type] Alphaonly string describing the type of event wanted
    * @apiQuery {Boolean} [latest] Set to true to see the most recent events recorded listed first
-   * @apiQuery {Boolean} [only-active=true] Only return events for active devices
+   * @apiQuery {Boolean} [only-active=true] When `deviceId` is given, only look up the device if it is active
    * @apiQuery {Boolean} [include-count=true] Get count of all events matching this query
    *
    * @apiUse V1ResponseSuccess
@@ -663,6 +670,7 @@ export default function (app: Application, baseUrl: string) {
    * @apiUse V1UserAuthorizationHeader
    *
    * @apiUse V1ResponseSuccess
+   * @apiSuccess {String[]} eventTypes The distinct event types
    * @apiUse V1ResponseError
    */
   app.get(
@@ -687,7 +695,10 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
+   * @apiParam {Integer} deviceId Id of the device
+   *
    * @apiUse V1ResponseSuccess
+   * @apiSuccess {String[]} eventTypes The distinct event types seen for the device
    * @apiUse V1ResponseError
    */
   app.get(
@@ -728,7 +739,14 @@ export default function (app: Application, baseUrl: string) {
    *
    * @apiUse V1UserAuthorizationHeader
    *
+   * @apiParam {Integer} id Id of the event
+   *
    * @apiUse V1ResponseSuccess
+   * @apiSuccess {Object} event The event
+   * @apiSuccess {Integer} event.id Id of the event
+   * @apiSuccess {String} event.type Type of the event
+   * @apiSuccess {Object} event.details Details of the event
+   * @apiSuccess {String} event.dateTime Time of the event
    * @apiUse V1ResponseError
    */
   app.get(

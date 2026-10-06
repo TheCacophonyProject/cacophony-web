@@ -13,7 +13,13 @@ import type {
   ApiGroupSettings as ApiProjectSettings,
   ApiGroupUserResponse as ApiProjectUserResponse,
 } from "../api/group.js";
-import type { ApiDeviceResponse } from "../api/device.js";
+import type {
+  ApiDeviceAction,
+  ApiDeviceActionResponse,
+  ApiDeviceHistorySettings,
+  ApiDeviceResponse,
+  DeviceActionDecision,
+} from "../api/device.js";
 import type { ApiStationResponse as ApiLocationResponse } from "../api/station.js";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "../api/group.js";
 import { JsonDocument } from "@typedefs/api/event.js";
@@ -37,7 +43,7 @@ const saveProjectSettings =
 
 const getCurrentUserProjects =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (abortable: boolean, shouldViewAsSuperUser = false) => {
+  (abortable = false, shouldViewAsSuperUser = false) => {
     const params = new URLSearchParams();
     if (!shouldViewAsSuperUser) {
       params.append("view-mode", "user");
@@ -49,7 +55,7 @@ const getCurrentUserProjects =
 
 const getAllProjects =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (abortable: boolean) => {
+  (abortable = false) => {
     return api.get(authKey, `/api/v1/groups`, abortable) as Promise<
       FetchResult<{ groups: ApiProjectResponse[] }>
     >;
@@ -87,18 +93,27 @@ const addOrUpdateProjectUser =
 
 const removeProjectUser =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (projectName: string, userId?: UserId, email?: string) => {
+  (
+    projectId?: ProjectId,
+    projectName?: string,
+    userId?: UserId,
+    email?: string,
+  ) => {
     const payload: {
-      group: string | ProjectId;
+      groupId?: ProjectId;
+      group?: string;
       userId?: UserId;
       email?: string;
-    } = {
-      group: projectName,
-    };
+    } = {};
     if (userId) {
       payload.userId = userId;
     } else {
       payload.email = email;
+    }
+    if (projectId) {
+      payload.groupId = projectId;
+    } else if (projectName) {
+      payload.group = projectName;
     }
     return api.delete(authKey, "/api/v1/groups/users", payload) as Promise<
       FetchResult<void>
@@ -175,6 +190,48 @@ const getDevicesForProject =
         !NO_ABORT,
       ) as Promise<FetchResult<{ devices: ApiDeviceResponse[] }>>,
       "devices",
+    );
+  };
+
+const getDevicesWithActiveTrapsForProject =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    projectNameOrId: string | number,
+    activeAndInactive = false,
+    NO_ABORT = false,
+  ): Promise<
+    FetchResult<{
+      devices: ApiDeviceResponse[];
+      settings: ApiDeviceHistorySettings[];
+    }>
+  > => {
+    const params = new URLSearchParams();
+    params.append(
+      "only-active",
+      activeAndInactive ? false.toString() : true.toString(),
+    );
+    return api.get(
+      authKey,
+      `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/devices-with-traps`,
+      !NO_ABORT,
+    ) as Promise<
+      FetchResult<{
+        devices: ApiDeviceResponse[];
+        settings: ApiDeviceHistorySettings[];
+      }>
+    >;
+  };
+
+const getPendingDeviceActionRequests =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (projectNameOrId: string | number, NO_ABORT = false) => {
+    return unwrapLoadedResource(
+      api.get(
+        authKey,
+        `/api/v1/groups/${encodeURIComponent(projectNameOrId)}/actions`,
+        !NO_ABORT,
+      ) as Promise<FetchResult<{ actions: ApiDeviceAction[] }>>,
+      "actions",
     );
   };
 
@@ -270,6 +327,9 @@ export default (api: CacophonyApiClient) => {
     getProjectByName: getProjectByName(api),
     getUsersForProject: getUsersForProject(api),
     getDevicesForProject: getDevicesForProject(api),
+    getDevicesWithActiveTrapsForProject:
+      getDevicesWithActiveTrapsForProject(api),
+    getPendingDeviceActionRequests: getPendingDeviceActionRequests(api),
     getLocationsForProject: getLocationsForProject(api),
     getLocationByNameInProject: getLocationByNameInProject(api),
     inviteSomeoneToProject: inviteSomeoneToProject(api),
@@ -287,6 +347,14 @@ export default (api: CacophonyApiClient) => {
       getProjectByName: getProjectByName(api, authKey),
       getUsersForProject: getUsersForProject(api, authKey),
       getDevicesForProject: getDevicesForProject(api, authKey),
+      getDevicesWithActiveTrapsForProject: getDevicesWithActiveTrapsForProject(
+        api,
+        authKey,
+      ),
+      getPendingDeviceActionRequests: getPendingDeviceActionRequests(
+        api,
+        authKey,
+      ),
       getLocationsForProject: getLocationsForProject(api, authKey),
       getLocationByNameInProject: getLocationByNameInProject(api, authKey),
       inviteSomeoneToProject: inviteSomeoneToProject(api, authKey),

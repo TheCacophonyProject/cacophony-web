@@ -53,10 +53,20 @@ export class DeviceHistory extends ModelStaticCommon<DeviceHistory> {
   declare GroupId: ForeignKey<GroupId>;
   declare settings: CreationOptional<ApiDeviceHistorySettings>;
   declare Station?: NonAttribute<Station>;
+  declare Device?: NonAttribute<Device>;
+  declare Group?: NonAttribute<Group>;
 
   static addAssociations() {
-    this.belongsTo(Device);
-    this.belongsTo(Group);
+    this.belongsTo(Device, {
+      foreignKey: "DeviceId",
+      targetKey: "id",
+      foreignKeyConstraint: true,
+    });
+    this.belongsTo(Group, {
+      foreignKey: "GroupId",
+      targetKey: "id",
+      foreignKeyConstraint: true,
+    });
     this.belongsTo(Station, {
       foreignKey: "stationId",
       targetKey: "id",

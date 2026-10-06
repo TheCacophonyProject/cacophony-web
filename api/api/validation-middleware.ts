@@ -22,6 +22,7 @@ import {
   ResultWithContextImpl,
 } from "express-validator/lib/chain/index.js";
 import { Context, Optional } from "express-validator/lib/context.js";
+import { UUIDV4 } from "sequelize";
 
 export const checkDeviceNameIsUniqueInGroup =
   (device: ValidationChain) =>
@@ -122,6 +123,10 @@ export const integerOf = (
 
 export const idOf = (field: ValidationChain): ValidationChain =>
   integerOf(field);
+
+export const uuidOf = (field: ValidationChain): ValidationChain => {
+  return field.isUUID(4).bail().withMessage(expectedTypeOf("uuidv4"));
+};
 
 export const optionalDateOf = (field: ValidationChain): ValidationChain =>
   field
