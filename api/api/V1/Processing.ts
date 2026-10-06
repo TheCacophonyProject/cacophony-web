@@ -55,9 +55,45 @@ import LabelPaths from "@/classifications/label_paths.json" with { type: "json" 
 import { RecordingId, type TrackId } from "@typedefs/api/common.js";
 import { ApiThermalRecordingMetadataResponse } from "@typedefs/api/recording.js";
 import { initSequelize } from "@models/index.js";
+import { Group } from "@models/Group.js";
 
 const sequelize = await initSequelize();
 const NULL_TRACK_ID = 1;
+
+const labelPath = (label: string): string =>
+  (LabelPaths as Record<string, string>)[label] ??
+  `all.${label.replace(" ", "_")}`;
+
+// A tag is ignored by a project if it, or any of its ancestors in the
+// classification hierarchy, is in the project's list of invalid tags.
+const makeIgnoredTagMatcher = (
+  ignoredTags: string[] | undefined,
+): ((tag: string) => boolean) => {
+  if (!ignoredTags || ignoredTags.length === 0) {
+    return () => false;
+  }
+  const ignoredPaths = ignoredTags.map(labelPath);
+  return (tag: string) => {
+    const path = labelPath(tag);
+    return ignoredPaths.some(
+      (ignored) => path === ignored || path.startsWith(`${ignored}.`),
+    );
+  };
+};
+
+const getProjectIgnoredTagMatcher = async (
+  recording: Recording,
+): Promise<(tag: string) => boolean> => {
+  const group = await Group.findByPk(recording.GroupId, {
+    attributes: ["id", "settings"],
+  });
+  const settings = group?.settings;
+  return makeIgnoredTagMatcher(
+    recording.type === RecordingType.Audio
+      ? settings?.regionInvalidAudioTags
+      : settings?.regionInvalidThermalTags,
+  );
+};
 
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/processing`;
@@ -508,6 +544,7 @@ export default function (app: Application, baseUrl: string) {
       const atTime = recording.recordingDateTime;
 
       const mask = await getMask(deviceId, groupId, atTime);
+      const isIgnoredTag = await getProjectIgnoredTagMatcher(recording);
       // NOTE: Masked tracks are skipped, so keep the data for the tracks we *do* save in an array that lines up
       //  with `tracks` (and therefore with the created models below).
       const unmaskedData: MinimalTracksRequestData = [];
@@ -522,6 +559,7 @@ export default function (app: Application, baseUrl: string) {
           recording,
           trackData,
           request.body.algorithmId,
+          isIgnoredTag,
         );
         tracks.push(track);
       }
@@ -545,7 +583,10 @@ export default function (app: Application, baseUrl: string) {
             confidence = Math.round(100 * confidence);
           }
           const predData = pred as TrackTagData;
-          if (!pred.confident) {
+          if (
+            predData.raw_tag === undefined &&
+            (!pred.confident || isIgnoredTag(pred.tag))
+          ) {
             predData.raw_tag = pred.tag;
             pred.tag = "unidentified";
           }
@@ -639,6 +680,7 @@ export default function (app: Application, baseUrl: string) {
     recording: Recording,
     trackData: MinimalTrackRequestData,
     algorithmId: number,
+    isIgnoredTag: (tag: string) => boolean = () => false,
   ): MinimalTrack => {
     let trackIsFiltered = true;
     {
@@ -646,7 +688,7 @@ export default function (app: Application, baseUrl: string) {
       const tags = [];
       for (const pred of trackData.predictions) {
         const predData = pred as TrackTagData;
-        if (!pred.confident) {
+        if (!pred.confident || isIgnoredTag(pred.tag)) {
           predData.raw_tag = pred.tag;
           pred.tag = "unidentified";
         }
@@ -848,11 +890,23 @@ export default function (app: Application, baseUrl: string) {
     parseJSONField(body("data")),
     async (request: Request, response: Response) => {
       if (!response.locals.skip) {
+        let what = request.body.what as string;
+        let data = response.locals.data;
+        const recording = await Recording.findByPk(
+          request.params.id as unknown as RecordingId,
+        );
+        if (recording && (await getProjectIgnoredTagMatcher(recording))(what)) {
+          data =
+            data && typeof data === "object"
+              ? { ...data, raw_tag: what }
+              : { raw_tag: what };
+          what = "unidentified";
+        }
         const tag = await response.locals.track.addTag(
-          request.body.what,
+          what,
           request.body.confidence,
           true,
-          response.locals.data,
+          data,
           null,
           false,
         );
@@ -904,10 +958,16 @@ export default function (app: Application, baseUrl: string) {
         next();
       }
     },
-    async (_request: Request, response: Response) => {
+    async (request: Request, response: Response) => {
       if (!response.locals.skip) {
         const trackTags: TrackTag[] = [];
         const trackTagData = [];
+        const recording = await Recording.findByPk(
+          request.params.id as unknown as RecordingId,
+        );
+        const isIgnoredTag = recording
+          ? await getProjectIgnoredTagMatcher(recording)
+          : () => false;
         for (const pred of response.locals.data) {
           const modelName = pred.name;
           const used = modelName === AI_MASTER;
@@ -917,7 +977,7 @@ export default function (app: Application, baseUrl: string) {
             confidence = Math.round(100 * confidence);
           }
           const predData = pred as TrackTagData;
-          if (!pred.confident) {
+          if (!pred.confident || isIgnoredTag(pred.tag)) {
             predData.raw_tag = pred.tag;
             pred.tag = "unidentified";
           }

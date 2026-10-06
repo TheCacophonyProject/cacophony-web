@@ -31,7 +31,7 @@ import { CacophonyApiClient, optionalQueryString } from "./api.js";
 import { unwrapLoadedResource } from "./api.js";
 import type { ApiRecordingUploadData } from "../api/recording.js";
 import type { NonEmptyArray } from "./utils.js";
-import { MinimalTracksRequestData } from "@typedefs/api/fileProcessing.js";
+import { MinimalTrackRequestData, MinimalTracksRequestData } from "@typedefs/api/fileProcessing.js";
 import { JsonDocument } from "@typedefs/api/event.js";
 
 export interface QueryRecordingsOptions {
@@ -583,6 +583,59 @@ const submitProcessingTracksAndTags =
     ) as Promise<LoadedResource<TrackId[]>>;
   };
 
+// NOTE: The following three are the older, deprecated per-track processing routes, which some clients still use.
+const submitProcessingTrack =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    recordingId: RecordingId,
+    track: MinimalTrackRequestData,
+    algorithmId: number,
+  ) => {
+    return api.post(authKey, `/api/v1/processing/${recordingId}/tracks`, {
+      data: track,
+      algorithmId,
+    }) as Promise<FetchResult<{ trackId: TrackId }>>;
+  };
+
+const submitProcessingTrackTag =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    recordingId: RecordingId,
+    trackId: TrackId,
+    what: string,
+    confidence: number,
+    data?: JsonDocument,
+  ) => {
+    return api.post(
+      authKey,
+      `/api/v1/processing/${recordingId}/tracks/${trackId}/tags`,
+      {
+        what,
+        confidence,
+        ...(data ? { data: JSON.stringify(data) } : {}),
+      },
+    ) as Promise<FetchResult<{ trackTagId: number }>>;
+  };
+
+const submitProcessingTrackTagsBulk =
+  (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
+  (
+    recordingId: RecordingId,
+    trackId: TrackId,
+    predictions: {
+      name: string;
+      tag: string;
+      confidence: number;
+      confident: boolean;
+    }[],
+  ) => {
+    return api.post(
+      authKey,
+      `/api/v1/processing/${recordingId}/tracks/${trackId}/tags-bulk`,
+      { data: predictions },
+    ) as Promise<FetchResult<{ trackTagIds: number[] }>>;
+  };
+
 const getAlgorithmId =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
   (algorithmJson: JsonDocument) => {
@@ -666,6 +719,9 @@ export default (api: CacophonyApiClient) => {
     getThumbnail: getThumbnail(api),
     getOneRecordingForProcessing: getOneRecordingForProcessing(api),
     submitProcessingTracksAndTags: submitProcessingTracksAndTags(api),
+    submitProcessingTrack: submitProcessingTrack(api),
+    submitProcessingTrackTag: submitProcessingTrackTag(api),
+    submitProcessingTrackTagsBulk: submitProcessingTrackTagsBulk(api),
     finishProcessingJob: finishProcessingJob(api),
     getAlgorithmId: getAlgorithmId(api),
     withAuth: (authKey: TestHandle) => ({
@@ -707,6 +763,12 @@ export default (api: CacophonyApiClient) => {
       updateResizedTrack: updateResizedTrack(api, authKey),
       getOneRecordingForProcessing: getOneRecordingForProcessing(api, authKey),
       submitProcessingTracksAndTags: submitProcessingTracksAndTags(
+        api,
+        authKey,
+      ),
+      submitProcessingTrack: submitProcessingTrack(api, authKey),
+      submitProcessingTrackTag: submitProcessingTrackTag(api, authKey),
+      submitProcessingTrackTagsBulk: submitProcessingTrackTagsBulk(
         api,
         authKey,
       ),
