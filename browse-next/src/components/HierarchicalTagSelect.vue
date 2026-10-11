@@ -107,7 +107,6 @@ const setClassifications = (sharedClassifications: Classification) => {
   options.value = classifications;
 };
 onMounted(async () => {
-  console.log("Mounted", props);
   // Get our own copy of classifications since we're going to mutate it.
   const classifications = (await getClassifications(
     setClassifications,

@@ -1,10 +1,5 @@
 import { ModelStaticCommon } from "@models/index.js";
-import type {
-  DeviceId,
-  RecordingId,
-  IsoFormattedDateString,
-  UserId,
-} from "@typedefs/api/common.js";
+import type { DeviceId, RecordingId } from "@typedefs/api/common.js";
 import { Device } from "./Device.js";
 import { DeviceActionStatus } from "@typedefs/api/consts.js";
 import Sequelize, {

@@ -1,7 +1,6 @@
 import log from "@log";
 import { BadRequestError, UnprocessableError } from "@api/customErrors.js";
 import {
-  DeviceActionStatus,
   RecordingProcessingState,
   RecordingType,
 } from "@typedefs/api/consts.js";

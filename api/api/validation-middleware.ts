@@ -21,7 +21,6 @@ import {
   ResultWithContextImpl,
 } from "express-validator/lib/chain/index.js";
 import { Context, Optional } from "express-validator/lib/context.js";
-import { UUIDV4 } from "sequelize";
 
 export const checkDeviceNameIsUniqueInGroup =
   (device: ValidationChain) =>
