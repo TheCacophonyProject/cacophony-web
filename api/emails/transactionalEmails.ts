@@ -519,7 +519,7 @@ export const sendTrapActionRequestEmail = async (
   const stationUrl = stationId
     ? `${projectRoot}/activity?display-mode=visits&recording-mode=cameras&locations=${stationId}&from=any&tag-mode=any`
     : "";
-  const actionUrl = `${projectRoot}/trap-actions/${actionId}`;
+  const actionUrl = `${projectRoot}/traps/${actionId}`;
   // TODO: use device locale?
   const recordingTime = recordingDateTime.toLocaleDateString("en-NZ", {
     month: "short",

@@ -15,7 +15,10 @@ import {
   urlNormaliseName,
   waitToNavigateToProject,
 } from "@/helpers/browse-helpers";
+import { createProject, createUser } from "@/helpers/create-test-entities";
+import { TestApiImpl } from "@shared/client";
 import {
+  confirmEmailAddressViaApi,
   openJoinProjectInviteEmailForExistingUser,
   openJoinProjectInviteEmailForNewUser,
   openJoinProjectRequestEmail,
@@ -421,5 +424,28 @@ test("If someone else already approved a request to join a project, accepting a 
     await page.getByTestId("switch project button").click();
     await page.getByTestId(urlNormaliseName(project1)).click();
     await waitToNavigateToProject(page, project1);
+  });
+});
+
+test("A user added directly to a project can follow the 'View project' button in the notification email", async ({
+  page,
+}) => {
+  const adminUser = await createUser("admin");
+  const project = await createProject("project", adminUser);
+  const addedUser = await createUser("added");
+  await confirmEmailAddressViaApi(addedUser);
+
+  await test.step("Add the user to the project", async () => {
+    const addResponse = await TestApiImpl.Projects.withAuth(
+      adminUser.testId,
+    ).addOrUpdateProjectUser(project.testId, false, false, addedUser.id);
+    expect(addResponse.success, "add user to project succeeded").toBe(true);
+  });
+  await test.step("Follow the button in the email, and sign in", async () => {
+    await waitForEmailAndRenderEmailHtml(page, addedUser.testId, "project added notification");
+    await page.getByTestId("go to project").click();
+    await signInExistingUser(page, addedUser.testId);
+    await waitToNavigateToProject(page, project.testId);
+    await ensureMainNavIsAvailable(page);
   });
 });

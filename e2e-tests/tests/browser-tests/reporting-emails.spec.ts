@@ -18,6 +18,7 @@ import {
 import { addDays, addHours, addMinutes } from "@/helpers/date-helpers";
 import { dockerExecNodeScript, dockerExecNodeTestScript } from "@/helpers/docker-exec";
 import {
+  ensureMainNavIsAvailable,
   signInExistingUser,
   urlNormaliseName,
   waitToNavigateToProject,
@@ -795,4 +796,81 @@ test("Animal alert emails are sent and render correctly", async ({ page, smallCp
     await expect(page.getByTestId("recording view")).toBeVisible();
     await expect(page.getByTestId("track 0")).toContainText("possum");
   });
+});
+
+test("The activity buttons in the daily digest email lead to matching activity searches with results", async ({
+  page,
+  smallCptv,
+  standardAudio,
+}) => {
+  const project = await createProjectWithUserAndDevice();
+  const adminUser = project.getAdminUser();
+  const deviceHandle = project.getDevice();
+  await confirmEmailAddressViaApi(adminUser);
+  await project.api().Projects.saveProjectUserSettings(project.projectHandle.id, {
+    notificationPreferences: { dailyDigest: true },
+  });
+
+  // The buttons link to a range relative to now, so the activity needs to be recent.
+  const runTime = new Date();
+  const activityTime = addHours(runTime, -2);
+  await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
+    [{ tracks: ["rodent"], recordingDateTime: activityTime }],
+    deviceHandle,
+    project.locationBase,
+    smallCptv,
+  );
+  await uploadAudioRecordingsFromDeviceWithTimesAndDurations(
+    [
+      {
+        tracks: ["kea"],
+        durationSeconds: 40,
+        recordingDateTime: addMinutes(activityTime, 5),
+      },
+    ],
+    deviceHandle,
+    project.locationBase,
+    standardAudio,
+  );
+  await dockerExecNodeScript("project-activity-digest.js", [
+    "--force",
+    `--group-id=${project.projectHandle.id}`,
+    `--at-time=${runTime.toISOString()}`,
+  ]);
+
+  const email = await waitForEmailAndRenderEmailHtml(
+    page,
+    adminUser.testId,
+    "project daily activity digest",
+    undefined,
+    "Daily activity report",
+  );
+  for (const [button, recordingMode] of [
+    ["view thermal activity", "cameras"],
+    ["view audio activity", "audio"],
+  ] as const) {
+    await test.step(`Follow '${button}' from the digest email`, async () => {
+      await page.setContent(email.html);
+      await page.getByTestId(button).click();
+      if (button === "view thermal activity") {
+        // Only need to sign in the first time around.
+        await signInExistingUser(page, adminUser.testId);
+      }
+      await expect(page).toHaveURL(
+        new RegExp(
+          `/${urlNormaliseName(project.projectHandle.testId)}/activity\\?.*recording-mode=${recordingMode}`,
+        ),
+      );
+      await ensureMainNavIsAvailable(page);
+      await expect(page.getByTestId("no results")).not.toBeVisible();
+      // Visits are listed for the thermal link, and a recordings count for the audio one.
+      await expect(
+        page
+          .getByTestId(
+            button === "view thermal activity" ? "visit count" : "search results estimate count",
+          )
+          .first(),
+      ).toBeVisible();
+    });
+  }
 });

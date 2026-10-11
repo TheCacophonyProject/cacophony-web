@@ -11,6 +11,7 @@ import {
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import { computed, inject, onBeforeMount, type Ref, ref, watch } from "vue";
 import { useIntervalFn, useWindowSize } from "@vueuse/core";
+import { useRoute, useRouter } from "vue-router";
 import { MaterialSymbol } from "@dbetka/vue-material-symbols";
 import CardTable from "@/components/CardTable.vue";
 import DeviceName from "@/components/DeviceName.vue";
@@ -48,6 +49,8 @@ const projectHasTraps = computed<boolean>(() => {
   return traps.value.length !== 0;
 });
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
+const route = useRoute();
+const router = useRouter();
 const allLocations = inject(allHistoricLocations) as Ref<
   LoadedResource<ApiStationResponse[]>
 >;
@@ -171,6 +174,13 @@ onBeforeMount(async () => {
   loading.value = true;
   await refreshTrapActions();
   loading.value = false;
+  // Arriving from a trap action request email, the action to respond to is
+  // identified in the url, so open it straight away.
+  const linkedActionId = route.params.actionId;
+  if (linkedActionId) {
+    selectedAction.value =
+      traps.value.find((trap) => trap.actionUuid === linkedActionId) || null;
+  }
 });
 
 // Once an action reaches one of these, the device can't transition it any
@@ -367,6 +377,17 @@ watch(selectedAction, async (newVal) => {
     resumeTrapActionPolling();
   }
 });
+
+const onTrapActionsModalHidden = () => {
+  selectedAction.value = null;
+  if (route.params.actionId) {
+    // Drop the action id from the url, so reloading doesn't reopen it.
+    router.replace({
+      name: "traps",
+      params: { projectName: route.params.projectName },
+    });
+  }
+};
 
 const killConfirmationInput = ref<string>("");
 
@@ -620,7 +641,7 @@ const confirmKill = async () => {
       centered
       no-footer
       body-class="p-0"
-      @hidden="() => (selectedAction = null)"
+      @hidden="onTrapActionsModalHidden"
     >
       <template #header="{ close }">
         <div

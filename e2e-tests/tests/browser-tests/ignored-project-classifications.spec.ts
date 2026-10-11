@@ -252,6 +252,19 @@ test.describe("Ignored project classifications in processing", () => {
     standardAudio,
   }) => {
     const project = await createProjectWithUserAndDevice({ initialDateTime });
+    // "house sparrow" is one of browse-next's AUDIO_AI_OUTPUTS, and contains a space.
+    await setIgnoredTags(project, { regionInvalidAudioTags: ["house sparrow"] });
+    const whats = await uploadAndProcessAudio(project, standardAudio, [
+      "house sparrow",
+      "bellbird",
+    ]);
+    expect(whats.sort()).toEqual(["bellbird", "unidentified"]);
+  });
+
+  test("Ignoring a parent audio classification also ignores its children", async ({
+    standardAudio,
+  }) => {
+    const project = await createProjectWithUserAndDevice({ initialDateTime });
     await setIgnoredTags(project, { regionInvalidAudioTags: ["albatross"] });
     const whats = await uploadAndProcessAudio(project, standardAudio, [
       "wandering albatross",

@@ -293,7 +293,7 @@ const router = createRouter({
       beforeEnter: cancelPendingRequests,
     },
     {
-      path: "/:projectName/traps",
+      path: "/:projectName/traps/:actionId?",
       name: "traps",
       meta: { requiresLogin: true, title: "Trap actions for :projectName" },
       component: () => import("@views/TrapsView.vue"),

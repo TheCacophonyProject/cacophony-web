@@ -1,7 +1,11 @@
 import { expect, test } from "@/helpers/upload-tests";
 import { addDays, addHours, addSeconds } from "@/helpers/date-helpers";
 import { createProjectWithUserAndDevice, ProjectBundle } from "@/helpers/create-test-entities";
-import { confirmEmailAddressViaApi, waitForEmail } from "@/helpers/email-utils";
+import {
+  confirmEmailAddressViaApi,
+  waitForEmail,
+  waitForEmailAndRenderEmailHtml,
+} from "@/helpers/email-utils";
 import {
   clickModalOkayButton,
   ensureMainNavIsAvailable,
@@ -442,5 +446,52 @@ test("A kill action results in the user having to do two step confirmation", asy
     // Taking action resolves the pending state for this trap.
     await expect(trapCard.getByTestId("trap action pending")).not.toBeVisible();
     await expect(trapCard.getByTestId("take action")).toBeDisabled();
+  });
+});
+
+test("A user can follow the 'Take action' link in the trap action request email to the pending trap action", async ({
+  page,
+  smallCptv,
+}) => {
+  const now = new Date();
+  now.setHours(11, 16, 0);
+  const initialDateTime = addDays(now, -5);
+  const project = await test.step("Init project, sign in user, enable trap", async () => {
+    const project = await createProjectWithUserAndDevice({ initialDateTime });
+    await uploadInitialRecording(project, addDays(initialDateTime, 1), smallCptv);
+    await signInNewAdminUserAndEnableATrap(page, project);
+    return project;
+  });
+  const deviceHandle = project.getDevice();
+
+  await test.step("Simulate trap triggering", async () => {
+    const device = new DeviceSim(deviceHandle);
+    await device.syncSettings();
+    const captureTime = addHours(addDays(initialDateTime, 4), 10);
+    await device.trapActivation(crypto.randomUUID(), "possum", ["release"], captureTime);
+    await uploadThermalRecordingFromDevice({
+      deviceHandle,
+      location: { ...project.locationBase },
+      file: smallCptv,
+      recordingDateTime: addSeconds(captureTime, -10),
+      duration: 120,
+      uploadTime: addSeconds(captureTime, 150),
+    });
+  });
+
+  await test.step("Open the action request email, and follow the 'Take action' button", async () => {
+    await waitForEmailAndRenderEmailHtml(
+      page,
+      project.getAdminUser().testId,
+      "device action request",
+    );
+    await page.getByTestId("take trap action").click();
+  });
+
+  await test.step("The user lands on the pending trap action, ready to respond", async () => {
+    await ensureMainNavIsAvailable(page);
+    await expect(page).toHaveURL(new RegExp(`/traps/[0-9a-f-]{36}$`));
+    await expect(page.getByTestId("trap action recording ready")).toBeAttached();
+    await expect(page.getByTestId("trap action release")).toBeVisible();
   });
 });
