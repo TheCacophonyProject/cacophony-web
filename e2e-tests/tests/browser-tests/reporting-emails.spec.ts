@@ -811,9 +811,14 @@ test("The activity buttons in the daily digest email lead to matching activity s
     notificationPreferences: { dailyDigest: true },
   });
 
-  // The buttons link to a range relative to now, so the activity needs to be recent.
+  // The digest script always reports on the 24 hours up to 9am, and the buttons link to a range
+  // relative to now, so run it for the most recent 9am, with activity just before that.
   const runTime = new Date();
-  const activityTime = addHours(runTime, -2);
+  runTime.setHours(9, 0, 0, 0);
+  if (runTime > new Date()) {
+    runTime.setDate(runTime.getDate() - 1);
+  }
+  const activityTime = addMinutes(runTime, -20);
   await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [{ tracks: ["rodent"], recordingDateTime: activityTime }],
     deviceHandle,
