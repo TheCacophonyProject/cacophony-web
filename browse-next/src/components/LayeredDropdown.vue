@@ -6,7 +6,7 @@ import {
   displayLabelForClassificationLabel,
   getClassificationForLabel,
 } from "@api/classificationsUtils.ts";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import { BTooltip } from "bootstrap-vue-next";
 
 const props = withDefaults(

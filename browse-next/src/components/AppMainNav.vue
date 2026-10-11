@@ -19,7 +19,7 @@ import {
   userIsAdminForCurrentSelectedProject,
 } from "@models/LoggedInUser.ts";
 import IconCacophonyLogoFull from "@/components/icons/IconCacophonyLogoFull.vue";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import { RouterLink } from "vue-router";
 import {
   computed,

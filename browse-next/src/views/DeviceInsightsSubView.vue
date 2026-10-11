@@ -26,7 +26,7 @@ import {
   BFormSelect,
   BSpinner,
 } from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 
 const devices = inject(selectedProjectDevices) as Ref<
   ApiDeviceResponse[] | null

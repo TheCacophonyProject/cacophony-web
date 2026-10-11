@@ -62,7 +62,7 @@ import type {
   TrackTagId,
 } from "@typedefs/api/common";
 import { DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS } from "@/consts.ts";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import {
   ActivitySearchDisplayMode,
   ActivitySearchRecordingMode,

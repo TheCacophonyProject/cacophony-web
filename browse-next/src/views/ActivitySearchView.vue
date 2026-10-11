@@ -103,10 +103,9 @@ import {
   BProgressBar,
   BSpinner,
 } from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import { CurrentViewAbortController } from "@apiClient/api.ts";
-import type { IconsProp } from "@dbetka/vue-material-symbols/dist/jscache/icons-names";
 import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
 import { recordingUpdatedInVisitsContext } from "@/helpers/patch-visits-context.ts";
 import { createRecordingsCsv, createVisitsCsv } from "@/helpers/csv-exports.ts";

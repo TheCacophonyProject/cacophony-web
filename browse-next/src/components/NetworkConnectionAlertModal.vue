@@ -3,7 +3,7 @@ import { BModal } from "bootstrap-vue-next";
 import { ref, watch } from "vue";
 import { MAX_RETRY_COUNT, networkConnectionError } from "@/api";
 import { delayMs, delayMsThen } from "@/utils";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 const countDownInterval = ref(0);
 const countDown = ref(networkConnectionError.retryInterval / 1000);
 const show = ref(true);

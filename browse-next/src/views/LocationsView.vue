@@ -17,7 +17,7 @@ import type { LoadedResource } from "@apiClient/types";
 import { ClientApi } from "@/api";
 import { useElementBounding, useWindowSize } from "@vueuse/core";
 import { BPopover, BSpinner } from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import { latLngApproxDistance } from "@/helpers/Location.ts";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;

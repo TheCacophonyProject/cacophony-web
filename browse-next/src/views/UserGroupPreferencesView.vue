@@ -51,7 +51,7 @@ import {
   BSpinner,
 } from "bootstrap-vue-next";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import LocationName from "@/components/LocationName.vue";
 
 const currentProject = inject(currentActiveProject) as ComputedRef<

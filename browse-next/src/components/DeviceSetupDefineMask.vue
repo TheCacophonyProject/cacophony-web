@@ -25,7 +25,7 @@ import {
   BFormInvalidFeedback,
   BModal,
 } from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 interface Point {
   x: number;

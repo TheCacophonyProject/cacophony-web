@@ -18,7 +18,7 @@ import {
 } from "bootstrap-vue-next";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import { userIsProjectAdmin } from "@models/provides.ts";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import { ClientApi } from "@/api";
 
 const { location } = defineProps<{ location: ApiLocationResponse }>();

@@ -42,7 +42,7 @@ import type {
   ApiHumanTrackTagResponse,
   ApiTrackTagResponse,
 } from "@typedefs/api/trackTag";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 
 const props = defineProps<{
   userSelectedTrack?: ApiTrackResponse;

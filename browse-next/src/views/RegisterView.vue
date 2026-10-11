@@ -17,7 +17,7 @@ import {
 } from "@apiClient/types";
 import type { FormInputValue, FormInputValidationState } from "@/utils";
 import { useRoute, useRouter } from "vue-router";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 
 // ---------- userName ------------
 const userName: FormInputValue = formFieldInputText();

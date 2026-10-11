@@ -10,7 +10,7 @@ import type { TagId } from "@typedefs/api/common";
 import CardTable from "@/components/CardTable.vue";
 import { DateTime } from "luxon";
 import type { LoggedInUser } from "@models/LoggedInUser.ts";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 
 const CurrentUser = inject(currentUser) as Ref<LoggedInUser | null>;
 const props = withDefaults(

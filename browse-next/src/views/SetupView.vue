@@ -37,7 +37,7 @@ import {
   BFormInvalidFeedback,
   BLink,
 } from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 
 const CurrentUser = inject(currentUser) as Ref<LoggedInUser | null>;
 

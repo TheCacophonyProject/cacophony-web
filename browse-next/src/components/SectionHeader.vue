@@ -5,7 +5,7 @@ import { useRoute } from "vue-router";
 import { Comment, computed, Fragment, inject, useSlots } from "vue";
 import type { Ref } from "vue";
 import { currentSelectedProject } from "@models/provides";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import { useMediaQuery } from "@vueuse/core";
 
 const props = withDefaults(

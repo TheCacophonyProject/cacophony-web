@@ -49,9 +49,8 @@ import {
 import DeviceBatteryLevel from "@/components/DeviceBatteryLevel.vue";
 import LocationName from "@/components/LocationName.vue";
 import { BBadge, BButton, BFormCheckbox, BSpinner } from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import { useMediaQuery } from "@vueuse/core";
-import type { IconsProp } from "@dbetka/vue-material-symbols/dist/jscache/icons-names";
 import { ActivitySearchRecordingMode } from "@/components/activitySearchUtils.ts";
 
 const activeProjectDevices = inject(selectedProjectDevices) as Ref<
@@ -603,7 +602,7 @@ const isDevicesRoot = computed(() => {
 
 const isMobileView = useMediaQuery("(max-width: 575px)");
 
-const iconForPowerStatus = (powerStatus: DeviceStatus): IconsProp => {
+const iconForPowerStatus = (powerStatus: DeviceStatus): string => {
   switch (powerStatus) {
     case "online":
       return "power_settings_new";

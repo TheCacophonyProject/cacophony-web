@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import type { RouteLocationRaw } from "vue-router";
 import TooltipOnTruncation from "@/components/TooltipOnTruncation.vue";
 const props = withDefaults(

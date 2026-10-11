@@ -10,7 +10,7 @@ import {
   watch,
 } from "vue";
 import { useElementSize } from "@vueuse/core";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import { BDropdown, BDropdownItem } from "bootstrap-vue-next";
 
 const navList = ref<HTMLUListElement>();

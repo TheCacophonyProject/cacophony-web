@@ -6,7 +6,7 @@ import {
   BTooltip,
   type PopoverPlacement,
 } from "bootstrap-vue-next";
-import { MaterialSymbol, type SymbolsProp } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 
 const popover = ref<typeof BPopover>();
 const actionBtn = ref<typeof BButton | null>(null);
@@ -39,7 +39,7 @@ const props = withDefaults(
     btnVariantClass?: string;
     confirmationBtnVariantClass?: string;
     classes?: string[];
-    icon?: SymbolsProp | null;
+    icon?: string | null;
     color?: string;
     rotate?: 90 | 180 | 270 | null;
     placement?: PopoverPlacement;
@@ -110,13 +110,7 @@ const computedConfirmationLabel = computed<string>(() => {
             :aria-label="computedTooltipLabel"
             :disabled="disabled"
           >
-            <material-symbol
-              :name="icon"
-              size="1.25rem"
-              v-if="icon"
-              :color="color || 'inherit'"
-              :rotation="rotate || null"
-            />
+            <material-symbol :name="icon" size="1.25rem" v-if="icon" />
 
             <span
               v-if="computedLabel"

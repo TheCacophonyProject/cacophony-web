@@ -3,7 +3,7 @@ import { computed } from "vue";
 import { currentSelectedProject } from "@models/LoggedInUser";
 import type { SelectedProject } from "@models/LoggedInUser";
 import { BModal } from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 
 const leaveProject = () => {
   // TODO: Implement leave project logic!

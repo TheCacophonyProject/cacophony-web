@@ -61,7 +61,7 @@ import {
 import sunCalc from "suncalc";
 import { capitalize } from "@/utils.ts";
 import SpectrogramViewer from "@/components/SpectrogramViewer.vue";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import RecordingViewMetadata from "@/components/RecordingViewMetadata.vue";
 import RecordingViewTabs from "@/components/RecordingViewTabs.vue";
 import { BModal, BTooltip } from "bootstrap-vue-next";
