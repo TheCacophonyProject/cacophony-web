@@ -9,7 +9,7 @@ import {
   BModal,
   BSpinner,
 } from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import SectionCard from "@/components/SectionCard.vue";
 import {
   computed,

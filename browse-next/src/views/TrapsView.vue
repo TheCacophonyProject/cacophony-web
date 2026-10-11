@@ -12,7 +12,7 @@ import MapWithPoints from "@/components/MapWithPoints.vue";
 import { computed, inject, onBeforeMount, type Ref, ref, watch } from "vue";
 import { useIntervalFn, useWindowSize } from "@vueuse/core";
 import { useRoute, useRouter } from "vue-router";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import CardTable from "@/components/CardTable.vue";
 import DeviceName from "@/components/DeviceName.vue";
 import LocationName from "@/components/LocationName.vue";
