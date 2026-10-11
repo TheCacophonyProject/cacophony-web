@@ -22,8 +22,10 @@ import {
   getClassifications,
 } from "@api/classificationsUtils.ts";
 import {
+  AUDIO_AI_OUTPUTS,
   DEFAULT_AUDIO_RECORDING_LABELS,
   DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS,
+  THERMAL_AI_OUTPUTS,
 } from "@/consts.ts";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import SectionCard from "@/components/SectionCard.vue";
@@ -73,9 +75,9 @@ const addPendingInvalidTag = async (grouping: "camera" | "audio") => {
 
 const knownAIOutputTags = computed(() => {
   if (currentGrouping.value === "camera") {
-    return ["possum", "cat", "mustelid"];
+    return THERMAL_AI_OUTPUTS;
   } else {
-    return ["bellbird"];
+    return AUDIO_AI_OUTPUTS;
   }
 });
 
