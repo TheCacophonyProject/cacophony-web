@@ -99,17 +99,23 @@ export const userHasProjectsIncludingPending = computed<boolean>(() => {
 
 export const persistUserProjectSettings = async (
   userSettings: ApiProjectUserSettings,
-) => {
+): Promise<boolean> => {
   if (currentSelectedProject.value) {
     const localProjectToUpdate = nonPendingUserProjects.value.find(
       ({ id }) => id === (currentSelectedProject.value as SelectedProject).id,
     );
     if (localProjectToUpdate) {
+      const previousSettings = localProjectToUpdate.userSettings;
       localProjectToUpdate.userSettings = userSettings;
-      await ClientApi.Projects.saveProjectUserSettings(
+      const response = await ClientApi.Projects.saveProjectUserSettings(
         localProjectToUpdate.id,
         userSettings,
       );
+      if (!response.success) {
+        // The server rejected the change, so don't keep it locally.
+        localProjectToUpdate.userSettings = previousSettings;
+      }
+      return response.success;
     } else if (isViewingAsSuperUser.value) {
       const nonUserProjectToUpdate = (NonUserProjects.value || []).find(
         ({ id }) => id === (currentSelectedProject.value as SelectedProject).id,
@@ -119,6 +125,7 @@ export const persistUserProjectSettings = async (
       }
     }
   }
+  return true;
 };
 
 export const persistProjectSettings = async (settings: ApiProjectSettings) => {

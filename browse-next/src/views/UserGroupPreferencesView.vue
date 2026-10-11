@@ -126,6 +126,16 @@ const serialiseDigestPreferences = ({
 const weeklyDigest = ref<DigestPreferences>(parseDigestPreferences(false));
 const dailyDigest = ref<DigestPreferences>(parseDigestPreferences(false));
 const stoppedDeviceEmails = ref<boolean>(false);
+const trapActionEmails = ref<boolean>(false);
+const savingTrapActionSettings = ref<boolean>(false);
+const trapActionEmailsError = ref<string>("");
+// Users who have never saved any settings for a project are notified of trap actions by default.
+const savedTrapActionEmails = computed<boolean>(() => {
+  const savedSettings = (currentProject.value as SelectedProject).userSettings;
+  return savedSettings
+    ? (savedSettings.notificationPreferences?.trapActions ?? false)
+    : true;
+});
 const savingDailyDigestSettings = ref<boolean>(false);
 const savingWeeklyDigestSettings = ref<boolean>(false);
 const savingStoppedDeviceSettings = ref<boolean>(false);
@@ -143,6 +153,7 @@ onBeforeMount(() => {
     reportStoppedDevices === undefined
       ? userIsAdminForCurrentSelectedProject.value
       : reportStoppedDevices;
+  trapActionEmails.value = savedTrapActionEmails.value;
 });
 onMounted(() => {
   initialised.value = true;
@@ -188,6 +199,26 @@ watch(stoppedDeviceEmails, async (next) => {
     savingStoppedDeviceSettings.value = true;
     await persistUserProjectSettings(settings);
     savingStoppedDeviceSettings.value = false;
+  }
+});
+
+watch(trapActionEmails, async (next) => {
+  const savedValue = savedTrapActionEmails.value;
+  if (initialised.value && next !== savedValue) {
+    const settings = JSON.parse(JSON.stringify(userProjectSettings.value));
+    settings.notificationPreferences = settings.notificationPreferences || {};
+    settings.notificationPreferences.trapActions = next;
+    trapActionEmailsError.value = "";
+    savingTrapActionSettings.value = true;
+    const saved = await persistUserProjectSettings(settings);
+    savingTrapActionSettings.value = false;
+    if (!saved) {
+      // Someone in the project always needs to be notified about trap actions, so the server
+      // refuses to let the last user receiving them opt out.
+      trapActionEmailsError.value =
+        "At least one user in a project must receive trap email alerts.";
+      trapActionEmails.value = savedValue;
+    }
   }
 });
 
@@ -460,19 +491,29 @@ const alertItems = computed<AlertItem[]>(() => {
       <h3 class="section-card-heading">Trap email alert settings</h3>
       <p class="text-secondary pb-1">
         Send an email when the Cacophony AI recognises a target species near or
-        in an high-interaction rate trap.
+        in a high-interaction rate trap.
       </p>
     </div>
     <div class="col-lg-9">
       <section-card>
         <template #header-title>Trap email alerts </template>
-        <b-form-checkbox switch
+        <b-form-checkbox
+          switch
+          v-model="trapActionEmails"
+          data-cy="trap email alerts toggle"
           >Send email alerts for traps<b-spinner
             class="ms-1"
-            v-if="savingStoppedDeviceSettings"
+            v-if="savingTrapActionSettings"
             variant="secondary"
             small
         /></b-form-checkbox>
+        <p
+          v-if="trapActionEmailsError"
+          class="text-danger fs-7 mt-2 mb-0"
+          data-cy="trap email alerts error"
+        >
+          {{ trapActionEmailsError }}
+        </p>
       </section-card>
     </div>
   </div>

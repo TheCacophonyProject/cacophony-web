@@ -232,6 +232,40 @@ const RESERVED_GROUP_NAMES = [
   "setup",
 ];
 
+// Users who haven't explicitly saved any settings are notified of trap actions by default.
+const receivesTrapActionEmails = (member: GroupUsers): boolean =>
+  !member.settings ||
+  member.settings.notificationPreferences?.trapActions === true;
+
+// A project must always have at least one admin, so check whether the given user is the only one.
+const isSoleProjectAdmin = async (
+  groupId: GroupId,
+  userId: UserId,
+): Promise<boolean> => {
+  const admins = await GroupUsers.findAll({
+    where: {
+      GroupId: groupId,
+      admin: true,
+      removedAt: { [Op.eq]: null },
+      pending: { [Op.eq]: null },
+    },
+    attributes: ["UserId"],
+  });
+  return admins.length === 1 && admins[0].UserId === userId;
+};
+
+const getConfirmedProjectMembers = async (
+  groupId: GroupId,
+): Promise<GroupUsers[]> =>
+  GroupUsers.findAll({
+    where: {
+      GroupId: groupId,
+      removedAt: { [Op.eq]: null },
+      pending: { [Op.eq]: null },
+    },
+    include: [{ model: User, attributes: [], where: { emailConfirmed: true } }],
+  });
+
 export default function (app: Application, baseUrl: string) {
   const apiUrl = `${baseUrl}/groups`;
 
@@ -658,6 +692,13 @@ export default function (app: Application, baseUrl: string) {
 
       const asAdmin = request.body.admin;
       const asOwner = request.body.owner;
+      if (!asAdmin && (await isSoleProjectAdmin(group.id, user.id))) {
+        return next(
+          new UnprocessableError(
+            "The sole admin of a project cannot have their admin permissions removed",
+          ),
+        );
+      }
       const { action, permissionChanges, added } =
         await Group.addOrUpdateGroupUser(group, user, asAdmin, asOwner, null);
 
@@ -750,6 +791,19 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       let removed = false;
       let wasPending = false;
+      if (
+        response.locals.user &&
+        (await isSoleProjectAdmin(
+          response.locals.group.id,
+          response.locals.user.id,
+        ))
+      ) {
+        return next(
+          new UnprocessableError(
+            "The sole admin of a project cannot be removed from it",
+          ),
+        );
+      }
       if (response.locals.user) {
         const success = await Group.removeUserFromGroup(
           response.locals.group,
@@ -792,62 +846,16 @@ export default function (app: Application, baseUrl: string) {
 
       if (removed) {
         // Was this user the last user in the project with trapAction notifications enabled?
-        // If so, enable them for any remaining users.
-        const remainingUsersWithTrapNotificationsEnabled: User[] =
-          await response.locals.group.getUsers({
-            attributes: [],
-            where: { emailConfirmed: true },
-            through: {
-              include: [
-                {
-                  model: Group,
-                  include: [{ model: GroupUsers, attributes: ["settings"] }],
-                },
-              ],
-              where: {
-                removedAt: { [Op.eq]: null },
-                pending: { [Op.eq]: null },
-                settings: {
-                  [Op.or]: [
-                    {
-                      notificationPreferences: {
-                        trapActions: true,
-                      },
-                    },
-                    null,
-                  ],
-                },
-              },
-            },
-          });
-        if (remainingUsersWithTrapNotificationsEnabled.length === 0) {
-          // Update all remaining user settings to have trap actions set
-          const remainingUsers: User[] = await response.locals.group.getUsers({
-            attributes: [],
-            where: { emailConfirmed: true },
-            through: {
-              include: [
-                {
-                  model: Group,
-                  include: [{ model: GroupUsers, attributes: ["settings"] }],
-                },
-              ],
-              where: {
-                removedAt: { [Op.eq]: null },
-                pending: { [Op.eq]: null },
-                settings: {
-                  notificationPreferences: {
-                    trapActions: false,
-                  },
-                },
-              },
-            },
-          });
-          for (const user of remainingUsers) {
+        // If so, enable them for the remaining admins, so that someone is always notified.
+        const members = await getConfirmedProjectMembers(
+          response.locals.group.id,
+        );
+        if (!members.some(receivesTrapActionEmails)) {
+          for (const member of members.filter((member) => member.admin)) {
             const settings =
-              user.GroupUsers.settings ||
+              member.settings ||
               ({ notificationPreferences: {} } as ApiGroupUserSettings);
-            await user.GroupUsers.update({
+            await member.update({
               settings: {
                 ...settings,
                 notificationPreferences: {
@@ -1168,25 +1176,33 @@ export default function (app: Application, baseUrl: string) {
       });
       const settings = response.locals.settings as ApiGroupUserSettings;
       if (settings.notificationPreferences?.trapActions === false) {
-        // Someone needs to be getting notifications to trap actions, so make sure there's at least one other
-        // email verified user in the project.
-        const users: User[] = await response.locals.group.getUsers({
-          attributes: [],
-          where: { emailConfirmed: true },
-          through: {
-            where: {
-              removedAt: { [Op.eq]: null },
-              pending: { [Op.eq]: null },
-            },
-          },
-        });
-        if (users.length <= 1) {
+        // Someone needs to be notified of trap actions at all times, so at least one other user must
+        // still be opted in.
+        const members = await getConfirmedProjectMembers(
+          response.locals.group.id,
+        );
+        const others = members.filter(
+          (member) => member.UserId !== response.locals.requestUser.id,
+        );
+        if (!others.some(receivesTrapActionEmails)) {
           return next(
             new UnprocessableError(
-              "The sole member of a project cannot opt-out of trap action notifications",
+              "At least one user in a project must receive trap action notifications",
             ),
           );
         }
+      }
+
+      if (
+        !groupUser.settings &&
+        settings.notificationPreferences?.trapActions === undefined
+      ) {
+        // A user without any saved settings is notified of trap actions by default, so keep that
+        // when settings are first stored, rather than silently opting them out.
+        settings.notificationPreferences = {
+          ...settings.notificationPreferences,
+          trapActions: true,
+        };
       }
 
       await groupUser.update(

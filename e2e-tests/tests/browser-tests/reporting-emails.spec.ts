@@ -874,3 +874,43 @@ test("The activity buttons in the daily digest email lead to matching activity s
     });
   }
 });
+
+test("The last user receiving trap email alerts can't opt out of them", async ({ page }) => {
+  const project = await createProjectWithUserAndDevice();
+  const adminUser = project.getAdminUser();
+  await confirmEmailAddressViaApi(adminUser);
+  await signInExistingUser(page, adminUser.testId);
+  await waitToNavigateToProject(page, project.projectHandle.testId);
+  const settingsUrl = `/${urlNormaliseName(project.projectHandle.testId)}/my-settings`;
+  const trapToggle = page.getByTestId("trap email alerts toggle");
+  const savedTrapActions = async () => {
+    const saved = await project.api().Projects.getProjectById(project.projectHandle.id);
+    return (saved as ApiProjectResponse)?.userSettings?.notificationPreferences?.trapActions;
+  };
+
+  await test.step("A user with no saved settings is opted in by default, but can't opt out as the only user", async () => {
+    await page.goto(settingsUrl);
+    await expect(trapToggle).toBeChecked();
+    await trapToggle.uncheck();
+    await expect(page.getByTestId("trap email alerts error")).toBeVisible();
+    await expect(trapToggle).toBeChecked();
+    expect(await savedTrapActions()).toBeUndefined();
+  });
+
+  await test.step("Saving other settings keeps the user opted in to trap alerts", async () => {
+    await page.getByTestId("daily digest toggle").check();
+    await expect.poll(savedTrapActions).toBe(true);
+    await page.reload();
+    await expect(trapToggle).toBeChecked();
+  });
+
+  await test.step("Once another user is notified, the admin can opt out", async () => {
+    const otherUser = await createUser("other user");
+    await confirmEmailAddressViaApi(otherUser);
+    await addUserToProject(project, otherUser);
+    await page.goto(settingsUrl);
+    await trapToggle.uncheck();
+    await expect(page.getByTestId("trap email alerts error")).toBeHidden();
+    await expect.poll(savedTrapActions).toBe(false);
+  });
+});

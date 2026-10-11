@@ -1,6 +1,7 @@
 import { expect, test } from "@/helpers/upload-tests";
 import {
   addDeviceToProject,
+  addUserToProject,
   createProjectWithUserAndDevice,
   createUser,
 } from "@/helpers/create-test-entities";
@@ -399,6 +400,83 @@ test("The last/only user in a project can't opt out from trap email notification
     },
   );
   expect(optedOutResponse.success, "Couldn't apply settings").toBe(false);
+});
+
+test("A user can only opt out of trap email notifications while another user in the project still receives them", async () => {
+  const initialDateTime = new Date("2026-08-01T10:00:00Z");
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const AdminUser = project.api();
+  await confirmEmailAddressViaApi(project.getAdminUser());
+  const secondUser = await createUser("second");
+  await confirmEmailAddressViaApi(secondUser);
+  await addUserToProject(project, secondUser);
+
+  const optOut = { notificationPreferences: { trapActions: false } };
+  await test.step("The sole admin can opt out, as a normal member is still notified", async () => {
+    const response = await AdminUser.Projects.saveProjectUserSettings(
+      project.projectHandle.id,
+      optOut,
+    );
+    expect(response.success, "Sole admin opt-out succeeded").toBe(true);
+  });
+  await test.step("The remaining member can't opt out, as they're now the only one notified", async () => {
+    const response = await project
+      .api(secondUser)
+      .Projects.saveProjectUserSettings(project.projectHandle.id, optOut);
+    expect(response.success, "Member opt-out was refused").toBe(false);
+  });
+});
+
+// TODO: This test probably doesn't really belong in this file
+test("A project can never be left without an admin", async () => {
+  const initialDateTime = new Date("2026-08-01T10:00:00Z");
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const AdminUser = project.api();
+  const adminUser = project.getAdminUser();
+  await confirmEmailAddressViaApi(adminUser);
+  const secondUser = await createUser("second");
+  await confirmEmailAddressViaApi(secondUser);
+  await addUserToProject(project, secondUser);
+
+  await test.step("The sole admin can't be removed from the project", async () => {
+    const response = await AdminUser.Projects.removeProjectUser(
+      project.projectHandle.id,
+      undefined,
+      adminUser.id,
+    );
+    expect(response.success, "Removing the sole admin was refused").toBe(false);
+  });
+  await test.step("The sole admin can't have their admin permissions removed", async () => {
+    const response = await AdminUser.Projects.addOrUpdateProjectUser(
+      project.projectHandle.testId,
+      false,
+      false,
+      adminUser.id,
+    );
+    expect(response.success, "Demoting the sole admin was refused").toBe(false);
+  });
+  await test.step("Once there is another admin, the original admin can step down", async () => {
+    const promote = await AdminUser.Projects.addOrUpdateProjectUser(
+      project.projectHandle.testId,
+      true,
+      false,
+      secondUser.id,
+    );
+    expect(promote.success, "Second user made admin").toBe(true);
+    const demote = await AdminUser.Projects.addOrUpdateProjectUser(
+      project.projectHandle.testId,
+      false,
+      false,
+      adminUser.id,
+    );
+    expect(demote.success, "Original admin demoted").toBe(true);
+  });
+  await test.step("The new sole admin is now protected in turn", async () => {
+    const response = await project
+      .api(secondUser)
+      .Projects.removeProjectUser(project.projectHandle.id, undefined, secondUser.id);
+    expect(response.success, "Removing the new sole admin was refused").toBe(false);
+  });
 });
 
 test(
