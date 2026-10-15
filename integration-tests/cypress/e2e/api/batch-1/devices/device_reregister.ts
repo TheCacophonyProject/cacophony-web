@@ -241,8 +241,7 @@ describe("Device reregister", () => {
       "RR_group5",
       GENERATE_PASSWORD,
       GENERATE_UNIQUE_NAME,
-      HttpStatusCode.BadRequest,
-      //HttpStatusCode.Unprocessable
+      HttpStatusCode.Unprocessable,
     ).then(() => {
       cy.log("check old device unaltered");
       cy.apiDevicesCheckContains("RR_user5", [expectedDevice5a]);

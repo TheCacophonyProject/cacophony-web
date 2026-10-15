@@ -6,12 +6,9 @@ import {
 } from "@/emails/htmlEmailUtils.js";
 import { sendEmail } from "@/emails/sendEmail.js";
 import config from "@config";
+import Handlebars from "handlebars";
 import logger from "@/logging.js";
-import path from "path";
-import { fileURLToPath } from "url";
 import type { DeviceId, StationId } from "@typedefs/api/common.js";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 import type { GroupedServiceErrors } from "@/scripts/report-service-errors.js";
 import { flatClassifications } from "@/classifications/classifications.js";
 
@@ -561,6 +558,85 @@ export const sendTrapActionRequestEmail = async (
     userEmailAddress,
     `🪤 Trap activated for ${targetTag} at ${deviceName}: action required`,
     [...(await commonAttachments()), ...thumb],
+  );
+};
+
+export const TRAP_EVENT_TYPES = [
+  "trapEnableCommand",
+  "trapDisableCommand",
+  "trapTriggered",
+];
+export type TrapEventType = (typeof TRAP_EVENT_TYPES)[number];
+
+const trapEventSummaries: Record<
+  TrapEventType,
+  { subject: (deviceName: string) => string; heading: string; body: string }
+> = {
+  trapEnableCommand: {
+    subject: (deviceName) => `🪤 Trap enabled at ${deviceName}`,
+    heading: "Trap enabled",
+    body: "sent a command to <strong>enable</strong> its trap",
+  },
+  trapDisableCommand: {
+    subject: (deviceName) => `🪤 Trap disabled at ${deviceName}`,
+    heading: "Trap disabled",
+    body: "sent a command to <strong>disable</strong> its trap",
+  },
+  trapTriggered: {
+    subject: (deviceName) => `🪤 Trap triggered at ${deviceName}`,
+    heading: "Trap triggered",
+    body: "reported that its trap was <strong>triggered</strong>",
+  },
+};
+
+export const sendTrapEventEmail = async (
+  eventType: TrapEventType,
+  groupName: string,
+  deviceName: string,
+  eventDateTimes: Date[],
+  reason: string | undefined,
+  userEmailAddresses: string[],
+  deviceTimezone: string | null,
+) => {
+  const common = commonInterpolants();
+  const projectRoot = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
+    groupName,
+  )}`;
+  const emailSettingsUrl = `${projectRoot}/my-settings`;
+  const summary = trapEventSummaries[eventType];
+  const eventTimes = eventDateTimes.map((eventDateTime) =>
+    eventDateTime.toLocaleDateString("en-NZ", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      weekday: "short",
+      hour12: true,
+      timeZone: deviceTimezone || "Pacific/Auckland",
+    }),
+  );
+  const { text, html } = await createEmailWithTemplate(
+    "trap-event-notification.html",
+    {
+      heading: summary.heading,
+      eventDescription: summary.body,
+      emailSettingsUrl,
+      groupName,
+      deviceName,
+      eventTimes,
+      // Templates are compiled with `noEscape`, and the reason is device-supplied text.
+      reason: reason && Handlebars.escapeExpression(reason),
+      ...common,
+    },
+  );
+  // Recipients go in bcc so that they can't see each other's addresses.
+  return await sendEmail(
+    html,
+    text,
+    "",
+    summary.subject(deviceName),
+    await commonAttachments(),
+    userEmailAddresses,
   );
 };
 

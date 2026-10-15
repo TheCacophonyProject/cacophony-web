@@ -55,9 +55,78 @@ import { maybeUpdateDeviceHistoryLocation } from "@api/V1/deviceHistoryUpdates.j
 import { DeviceHistory } from "@/models/DeviceHistory.js";
 import { greaterDate } from "@api/fileUploaders/uploadGenericRecording.js";
 import { GroupUsers } from "@models/GroupUsers.js";
+import { User } from "@models/User.js";
+import { Group } from "@models/Group.js";
+import {
+  sendTrapEventEmail,
+  TRAP_EVENT_TYPES,
+  type TrapEventType,
+} from "@/emails/transactionalEmails.js";
+import tzLookup from "tz-lookup-oss";
 
 const sequelize = await initSequelize();
 const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
+
+// Email users who have opted in to trap notifications about trap-related device events.
+const notifyTrapEvent = async (
+  eventType: TrapEventType,
+  events: { DeviceId: DeviceId; dateTime: Date }[],
+  details: Record<string, JsonDocument>,
+) => {
+  // Events may (rarely) be attributed to different devices, so send one email per device.
+  const eventTimesByDevice = new Map<DeviceId, Date[]>();
+  for (const { DeviceId: deviceId, dateTime } of events) {
+    const times = eventTimesByDevice.get(deviceId) || [];
+    times.push(dateTime);
+    eventTimesByDevice.set(deviceId, times);
+  }
+  for (const [deviceId, dateTimes] of eventTimesByDevice) {
+    const eventDevice = await Device.findByPk(deviceId);
+    if (!eventDevice) {
+      continue;
+    }
+    const groupId = eventDevice.GroupId;
+    const users = await User.findAll({
+      where: { emailConfirmed: true },
+      include: [
+        {
+          model: Group,
+          attributes: [],
+          where: { id: groupId },
+          required: true,
+          through: {
+            where: {
+              [Op.or]: [
+                {
+                  "settings.notificationPreferences.trapActions": {
+                    [Op.eq]: true,
+                  },
+                },
+                { settings: null },
+              ],
+            },
+          },
+        },
+      ],
+    });
+    if (!users.length) {
+      continue;
+    }
+    const group = await Group.findByPk(groupId, { attributes: ["groupName"] });
+    const deviceTimezone = eventDevice.location
+      ? tzLookup(eventDevice.location.lat, eventDevice.location.lng)
+      : null;
+    await sendTrapEventEmail(
+      eventType,
+      group.groupName,
+      eventDevice.deviceName,
+      dateTimes,
+      typeof details?.reason === "string" ? details.reason : undefined,
+      users.map((user) => user.email),
+      deviceTimezone,
+    );
+  }
+};
 
 const uploadEvent = async (
   request: Request,
@@ -78,6 +147,11 @@ const uploadEvent = async (
   }
 
   let detailsId = response.locals.detailsnapshot?.id;
+  let eventType: string = response.locals.detailsnapshot?.type;
+  let eventDetails = response.locals.detailsnapshot?.details as Record<
+    string,
+    JsonDocument
+  >;
   let env: EventEnv = EventEnv.Unknown;
   if (!detailsId) {
     const description: EventDescription = request.body.description;
@@ -109,6 +183,8 @@ const uploadEvent = async (
       resolvedDetails,
     );
     detailsId = detail.id;
+    eventType = description.type;
+    eventDetails = resolvedDetails;
 
     // Maybe update the device history entry on config change if location has updated.
     if (description.type === "config") {
@@ -273,6 +349,18 @@ const uploadEvent = async (
       message = (e as Error).message;
     }
     return next(new ClientError(`Failed to record events. ${message}`));
+  }
+  if (TRAP_EVENT_TYPES.includes(eventType)) {
+    try {
+      await notifyTrapEvent(
+        eventType as TrapEventType,
+        eventList,
+        eventDetails,
+      );
+    } catch (e) {
+      // The events are recorded, so don't fail the upload if notification fails.
+      logger.error("Failed to send trap event notifications: %s", e);
+    }
   }
   return successResponse(response, "Added events.", {
     eventsAdded: count,

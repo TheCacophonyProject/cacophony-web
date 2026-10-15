@@ -336,7 +336,7 @@ describe("Devices deleted, inactive, and reassigned", () => {
                   group2,
                   adminUser,
                   null,
-                  HttpStatusCode.BadRequest,
+                  HttpStatusCode.Unprocessable,
                 );
               });
             });
