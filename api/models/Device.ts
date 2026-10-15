@@ -509,6 +509,10 @@ where
               }
             } else {
               // Device is being reassigned to the same group it's currently in.
+              if (conflictingDevice === null || conflictingDevice.id !== this.id) {
+                // The old device is superseded by the new/taken-over one.
+                await this.update({ active: false }, { transaction });
+              }
               if (conflictingDevice !== null) {
                 // Create a new device in the new group, which becomes the existing device, inheriting its history.
                 await conflictingDevice.update(

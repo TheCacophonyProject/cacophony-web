@@ -376,9 +376,19 @@ export default function (app: Application, baseUrl: string) {
       // NOTE: Primarily used in testing, allows us to backdate the creation of a device
       optionalDateOf(body("fromDateTime")),
     ]),
-    fetchAuthorizedRequiredGroupByNameOrId(body("newGroup")),
     async (request: Request, response: Response, next: NextFunction) => {
-      // The user should be the admin of both groups
+      if (request.body.newGroup) {
+        // The user should control the group the device is moving into
+        await fetchAuthorizedRequiredGroupByNameOrId(body("newGroup"))(
+          request,
+          response,
+          next,
+        );
+      } else {
+        return next();
+      }
+    },
+    async (request: Request, response: Response, next: NextFunction) => {
       const requestDevice: Device = await Device.findByPk(
         response.locals.requestDevice.id,
       );
@@ -390,8 +400,9 @@ export default function (app: Application, baseUrl: string) {
         );
       }
       response.locals.requestDevice = requestDevice;
-      response.locals.destGroup = response.locals.group;
-      if (response.locals.group.id !== response.locals.requestDevice.GroupId) {
+      if (!response.locals.group) {
+        // There's no destination group specified, so we want to use the existing group, which
+        // the authorizing user is an admin of.
         await fetchAdminAuthorizedRequiredGroupByNameOrId(
           requestDevice.GroupId,
         )(request, response, next);
@@ -403,15 +414,15 @@ export default function (app: Application, baseUrl: string) {
       const newDevice = await response.locals.requestDevice.reRegister(
         request.body.newName ||
           (response.locals.requestDevice as Device).deviceName,
-        response.locals.destGroup,
+        response.locals.group,
         request.body.newPassword,
         true,
         request.body.fromDateTime,
       );
       if (newDevice === false) {
         return next(
-          new ClientError(
-            `already a device in group '${response.locals.destGroup.groupName}' with the name '${request.body.newName}'`,
+          new UnprocessableError(
+            `already a device in group '${response.locals.group.groupName}' with the name '${request.body.newName}'`,
           ),
         );
       }
@@ -467,7 +478,7 @@ export default function (app: Application, baseUrl: string) {
       );
       if (device === false) {
         return next(
-          new ClientError(
+          new UnprocessableError(
             `already a device in group '${response.locals.group.groupName}' with the name '${request.body.newName}'`,
           ),
         );

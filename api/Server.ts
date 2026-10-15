@@ -567,7 +567,7 @@ const grafanaLabelRestart = async () => {
       const devices = await Device.findAll({
         where: {},
         attributes: ["id", "deviceName"],
-        include: [{ model: Group, attributes: ["groupName"] }],
+        include: [{ model: Group, attributes: ["groupName"], required: true }],
       });
       for (const device of devices) {
         DeviceNamesById.set(device.id, device.deviceName);
@@ -596,6 +596,7 @@ const grafanaLabelRestart = async () => {
     await openHttpServer(app);
     await grafanaLabelRestart();
   } catch (error) {
+    console.log(error);
     log.error(error.toString());
     process.exit(2);
   }

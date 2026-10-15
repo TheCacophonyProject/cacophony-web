@@ -42,8 +42,8 @@ import {
   locationHasAudioRecordings,
   locationHasThermalRecordings,
 } from "@/utils.ts";
-import IconTrap from "@/components/icons/iconTrap.vue";
-import IconTrapFilled from "@/components/icons/iconTrapFilled.vue";
+import IconTrap from "@/components/icons/IconTrap.vue";
+import IconTrapFilled from "@/components/icons/IconTrapFilled.vue";
 
 const fallibleCurrentSelectedProject = inject(
   currentSelectedProject,

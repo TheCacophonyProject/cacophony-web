@@ -7,7 +7,7 @@ import type { LoadedResource } from "@apiClient/types.ts";
 import { BNav, BNavItem, BSpinner } from "bootstrap-vue-next";
 import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import { useMediaQuery } from "@vueuse/core";
-import IconTrapSettings from "@/components/icons/iconTrapSettings.vue";
+import IconTrapSettings from "@/components/icons/IconTrapSettings.vue";
 const route = useRoute();
 
 const emit = defineEmits<{

@@ -849,11 +849,6 @@ const reRegisterDeviceWithAdminAuthorization =
     newDeviceName?: string,
     newDevicePassword?: string,
   ) => {
-    if (!projectNameOrId && !newDeviceName && !newDevicePassword) {
-      throw new Error(
-        "Must have one of 'projectNameOrId', 'newDeviceName', 'newDevicePassword'",
-      );
-    }
     const payload: {
       newName?: string;
       newGroup?: string | ProjectId;
