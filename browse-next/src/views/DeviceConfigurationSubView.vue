@@ -157,26 +157,26 @@ const isDesktopView = useMediaQuery("(min-width: 992px)");
               <span class="d-none d-md-inline"> Mask regions</span>
             </span>
           </b-nav-item>
-          <b-nav-item
-            :to="{ name: 'trap-settings' }"
-            :active="activeTabPath.includes('trap-settings')"
-            :link-class="{ 'py-2 px-1': isMobileView }"
-            data-cy="trap settings"
-          >
-            <span
-              class="d-flex"
-              :class="{
-                'justify-content-center align-items-center': !isDesktopView,
-              }"
-            >
-              <icon-trap-settings
-                class="me-2"
-                :style="isMobileView ? 'width: 1.25rem' : 'width: 1.5rem'"
-              />
-              <span class="d-md-none">Trap</span>
-              <span class="d-none d-md-inline">Trap settings</span>
-            </span>
-          </b-nav-item>
+          <!--          <b-nav-item-->
+          <!--            :to="{ name: 'trap-settings' }"-->
+          <!--            :active="activeTabPath.includes('trap-settings')"-->
+          <!--            :link-class="{ 'py-2 px-1': isMobileView }"-->
+          <!--            data-cy="trap settings"-->
+          <!--          >-->
+          <!--            <span-->
+          <!--              class="d-flex"-->
+          <!--              :class="{-->
+          <!--                'justify-content-center align-items-center': !isDesktopView,-->
+          <!--              }"-->
+          <!--            >-->
+          <!--              <icon-trap-settings-->
+          <!--                class="me-2"-->
+          <!--                :style="isMobileView ? 'width: 1.25rem' : 'width: 1.5rem'"-->
+          <!--              />-->
+          <!--              <span class="d-md-none">Trap</span>-->
+          <!--              <span class="d-none d-md-inline">Trap settings</span>-->
+          <!--            </span>-->
+          <!--          </b-nav-item>-->
         </b-nav>
       </div>
       <router-view
