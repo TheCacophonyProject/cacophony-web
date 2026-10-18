@@ -234,7 +234,6 @@ describe("Device reregister", () => {
     cy.apiDeviceAdd("RR_cam5", "RR_group5");
 
     cy.log("attempt to rename camera with duplicate name rejected");
-    //TODO: Issue 110 - This should really return 422-Unprocessable.  It is not malformed - just  breaks our rules
     cy.apiDeviceReregister(
       "RR_cam5a",
       "RR_cam5",
