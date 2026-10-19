@@ -31,7 +31,29 @@ interface SpeciesCount {
 interface BatteryReport {
   deviceName: string;
   batteryLevel: number;
+  recordedAgo: string;
 }
+
+// A short, human readable description of how long before `now` something happened,
+// e.g. "4 hours ago".
+const timeAgo = (then: Date, now: Date): string => {
+  const minutes = Math.max(
+    0,
+    Math.floor((now.getTime() - then.getTime()) / (60 * 1000)),
+  );
+  const [value, unit] =
+    minutes < 1
+      ? [0, "minute"]
+      : minutes < 60
+        ? [minutes, "minute"]
+        : minutes < 60 * 48
+          ? [Math.floor(minutes / 60), "hour"]
+          : [Math.floor(minutes / (60 * 24)), "day"];
+  if (value === 0) {
+    return "just now";
+  }
+  return `${value} ${unit}${value === 1 ? "" : "s"} ago`;
+};
 
 const allVisitsForProjectInTimespan = async (
   projectId: GroupId,
@@ -94,19 +116,17 @@ const allVisitsForProjectInTimespan = async (
     .sort((a, b) => b.count - a.count);
 };
 
-const allBatteryReportsForProjectInTimespan = async (
+const lastBatteryReportsForActiveDevicesInProject = async (
   projectId: GroupId,
-  from: Date,
-  until: Date,
+  now: Date,
 ): Promise<BatteryReport[]> => {
   // The device firmware already computes a 0-100 percentage and sends it as part of the
   // "rpiBattery" event details - there's no voltage/chemistry conversion to do here, we just
-  // need the latest one per device in the period.  Mirrors `getLastKnownDeviceBatteryLevel` in
+  // need the last recorded one per active, non-stopped device, regardless of when it was
+  // recorded (so it's always included in the digest).  Mirrors `getLastKnownDeviceBatteryLevel` in
   // `types/client/Device.ts`, which `DeviceBatteryLevel.vue` uses to display this value.
+  const stoppedDeviceIds = (await Device.stoppedDevices(now)).map((d) => d.id);
   const events = await Event.findAll({
-    where: {
-      dateTime: { [Op.gte]: from, [Op.lte]: until },
-    },
     include: [
       {
         model: DetailSnapshot,
@@ -118,7 +138,11 @@ const allBatteryReportsForProjectInTimespan = async (
       {
         model: Device,
         attributes: ["deviceName"],
-        where: { GroupId: projectId },
+        where: {
+          GroupId: projectId,
+          active: true,
+          id: { [Op.notIn]: stoppedDeviceIds },
+        },
         required: true,
       },
     ],
@@ -146,6 +170,7 @@ const allBatteryReportsForProjectInTimespan = async (
     batteryReports.push({
       deviceName: event.Device.deviceName,
       batteryLevel: details.battery,
+      recordedAgo: timeAgo(event.dateTime, now),
     });
   }
   return batteryReports;
@@ -422,7 +447,7 @@ try {
             )
           : [],
         batteryReportsList: forRecipients.some((r) => r.batteryReport)
-          ? await allBatteryReportsForProjectInTimespan(group.id, from, until)
+          ? await lastBatteryReportsForActiveDevicesInProject(group.id, until)
           : [],
       });
 

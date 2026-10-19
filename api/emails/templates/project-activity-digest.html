@@ -191,6 +191,13 @@
       Devices Status
     </div>
     <br>
+    {{#hasNoBatteryReadings}}
+    <div class="body-text" style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;line-height:160%;text-align:left;color:#252921 !important;">
+      No battery data available for active devices.
+      <br><br>
+    </div>
+    {{/hasNoBatteryReadings}}
+    {{#hasBatteryReadings}}
     <div class="body-text" style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;line-height:160%;text-align:left;color:#252921 !important;">
       <table border="0" cellspacing="0" cellpadding="0" width="100%">
         <thead>
@@ -211,6 +218,7 @@
             </td>
             <td class="battery-status-cell" style="padding-top:10px;padding-bottom:10px;border-bottom: 1px solid #eeeeee;line-height: 1.3">
               <span style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#252921;">{{batteryLevel}}%</span>
+              <span style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#777875;">&nbsp;({{recordedAgo}})</span>
             </td>
           </tr>
           {{/batteryReport}}
@@ -218,6 +226,7 @@
       </table>
       <br><br>
     </div>
+    {{/hasBatteryReadings}}
 
     <!-- Devices' status ends -->
     {{/hasBatteryReport}}

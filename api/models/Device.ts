@@ -154,9 +154,9 @@ export class Device extends ModelStaticCommon<Device> {
     return device === null;
   }
 
-  static async stoppedDevices() {
-    const oneDayAgo = new Date();
-    const twoDaysAgo = new Date();
+  static async stoppedDevices(now: Date = new Date()) {
+    const oneDayAgo = new Date(now);
+    const twoDaysAgo = new Date(now);
     const audioOnlyDeviceIds: { DeviceId: DeviceId }[] =
       await this.sequelize.query(
         `

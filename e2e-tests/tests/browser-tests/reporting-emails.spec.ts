@@ -5,7 +5,7 @@ import {
   createUser,
 } from "@/helpers/create-test-entities";
 import { TestApiImpl } from "@shared/client";
-import { TestUserHandle } from "@shared/client/types";
+import { TestDeviceHandle, TestUserHandle } from "@shared/client/types";
 import {
   confirmEmailAddressViaApi,
   waitForEmail,
@@ -24,6 +24,22 @@ import {
   waitToNavigateToProject,
 } from "@/helpers/browse-helpers";
 import { ApiGroupResponse as ApiProjectResponse } from "@shared/api/group";
+
+// Battery events are submitted by the device itself (rather than on its behalf), as that's what
+// updates its lastConnectionTime.  Digests only report on devices that aren't considered stopped.
+const submitBatteryEventFromDevice = (
+  deviceHandle: TestDeviceHandle,
+  battery: number,
+  voltage: number,
+  atTime: Date,
+) =>
+  TestApiImpl.Devices.withAuth(deviceHandle.testId).submitEventsFromDevice(
+    {
+      description: { type: "rpiBattery", details: { battery, voltage } },
+      dateTimes: [atTime.toISOString()],
+    },
+    atTime,
+  );
 
 test("Users can opt into fine-grained options of activity digest emails", async ({ page }) => {
   const project = await createProjectWithUserAndDevice();
@@ -151,13 +167,12 @@ test("Project activity digest email sent successfully for weekly and daily diges
     { hoursBeforeScriptRun: 20, battery: 60, voltage: 3.9 }, // inside the daily window, but not the latest
     { hoursBeforeScriptRun: 2, battery: latestBatteryLevel, voltage: 3.6 }, // the latest reading in both windows
   ]) {
-    await AdminUser.Devices.submitEventsOnBehalfOfDevice(deviceHandle.id, {
-      description: {
-        type: "rpiBattery",
-        details: { battery, voltage },
-      },
-      dateTimes: [addHours(scriptRunTime, -hoursBeforeScriptRun).toISOString()],
-    });
+    await submitBatteryEventFromDevice(
+      deviceHandle,
+      battery,
+      voltage,
+      addHours(scriptRunTime, -hoursBeforeScriptRun),
+    );
   }
   {
     // Daily
@@ -176,7 +191,7 @@ test("Project activity digest email sent successfully for weekly and daily diges
     );
     // The device name text also matches ancestor <tr> layout rows, so narrow to the innermost one.
     await expect(page.locator("tr", { hasText: deviceHandle.testId }).last()).toContainText(
-      `${latestBatteryLevel}%`,
+      `${latestBatteryLevel}% (2 hours ago)`,
     );
   }
   {
@@ -197,7 +212,7 @@ test("Project activity digest email sent successfully for weekly and daily diges
     );
     // The device name text also matches ancestor <tr> layout rows, so narrow to the innermost one.
     await expect(page.locator("tr", { hasText: deviceHandle.testId }).last()).toContainText(
-      `${latestBatteryLevel}%`,
+      `${latestBatteryLevel}% (2 hours ago)`,
     );
   }
 });
@@ -556,13 +571,7 @@ test("Battery status digest emails are always sent when there is battery activit
   };
   const withinPeriod = (period: number) => addHours(runTimeForPeriod(period), -2);
   const submitBattery = (period: number, battery: number) =>
-    AdminUser.Devices.submitEventsOnBehalfOfDevice(deviceHandle.id, {
-      description: {
-        type: "rpiBattery",
-        details: { battery, voltage: 3.8 },
-      },
-      dateTimes: [withinPeriod(period).toISOString()],
-    });
+    submitBatteryEventFromDevice(deviceHandle, battery, 3.8, withinPeriod(period));
   const runDigest = (period: number) =>
     dockerExecNodeScript("project-activity-digest.js", [
       "--force",
@@ -599,12 +608,13 @@ test("Battery status digest emails are always sent when there is battery activit
     await renderDigest();
     // The device name text also matches ancestor <tr> layout rows, so narrow to the innermost one.
     await expect(page.locator("tr", { hasText: deviceHandle.testId }).last()).toContainText(
-      `${battery}%`,
+      `${battery}% (2 hours ago)`,
     );
   }
 
-  // Period 3: only thermal activity, which the user isn't opted into, so there's no activity
-  // that they care about.  Period 2 had some, so we get a single "no activity" email.
+  // Period 3: only thermal activity, which the user isn't opted into.  The device is still
+  // connected though, so its last battery reading (from period 2) is always included, even though
+  // it's older than the digest window.
   await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [{ tracks: ["rodent"], recordingDateTime: withinPeriod(3) }],
     deviceHandle,
@@ -612,21 +622,75 @@ test("Battery status digest emails are always sent when there is battery activit
     smallCptv,
   );
   await runDigest(3);
+  await renderDigest();
+  await expect(page.locator("tr", { hasText: deviceHandle.testId }).last()).toContainText(
+    "42% (26 hours ago)",
+  );
+
+  // Period 4: the device hasn't connected for over 25 hours, so is considered stopped and its
+  // battery reading is no longer included.  Period 3 had activity, so we get a single "no
+  // activity" email.
+  await runDigest(4);
   const noActivityEmail = await renderDigest();
   expect(
     noActivityEmail.html,
     "no battery readings listed in the 'no activity' email",
   ).not.toContain(deviceHandle.testId);
 
-  // Period 4: still nothing, and we've already said so.
-  await runDigest(4);
+  // Period 5: still nothing, and we've already said so.
+  await runDigest(5);
   await expectNoDigest("no repeated 'no activity' email");
 
-  // Period 5: battery activity again, so emails resume.
-  await submitBattery(5, 30);
-  await runDigest(5);
+  // Period 6: the device connects and reports a battery level again, so emails resume.
+  await submitBattery(6, 30);
+  await runDigest(6);
   await renderDigest();
-  await expect(page.locator("tr", { hasText: deviceHandle.testId }).last()).toContainText("30%");
+  await expect(page.locator("tr", { hasText: deviceHandle.testId }).last()).toContainText(
+    "30% (2 hours ago)",
+  );
+});
+
+test("Battery status digest says when there is no battery data for active devices", async ({
+  standardAudio,
+  page,
+}) => {
+  const initialDateTime = new Date("2026-05-01T10:00:00Z");
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const adminUserHandle = project.getAdminUser();
+  await confirmEmailAddressViaApi(adminUserHandle);
+  const deviceHandle = project.getDevice();
+  const noBatteryDataText = "No battery data available for active devices";
+
+  // Opted into bird detections and battery status, so the email is sent because of the bird
+  // detections, but the device has never reported a battery level.
+  await project.api().Projects.saveProjectUserSettings(project.projectHandle.id, {
+    notificationPreferences: {
+      dailyDigest: { visitsReport: false, audioReport: true, batteryReport: true },
+    },
+  });
+  const scriptRunTime = addDays(initialDateTime, 1);
+  scriptRunTime.setHours(9);
+  await uploadAudioRecordingsFromDeviceWithTimesAndDurations(
+    [{ tracks: ["kea"], durationSeconds: 40, recordingDateTime: addHours(scriptRunTime, -2) }],
+    deviceHandle,
+    project.locationBase,
+    standardAudio,
+  );
+  await dockerExecNodeScript("project-activity-digest.js", [
+    "--force",
+    `--group-id=${project.projectHandle.id}`,
+    `--at-time=${scriptRunTime.toISOString()}`,
+  ]);
+  const email = await waitForEmailAndRenderEmailHtml(
+    page,
+    adminUserHandle.testId,
+    "project daily activity digest",
+    undefined,
+    "Daily activity report",
+  );
+  expect(email.html).toContain("Devices Status");
+  expect(email.html).toContain(noBatteryDataText);
+  expect(email.html).not.toContain("Battery Status");
 });
 
 test("No activity is worked out per recipient, based on the categories each of them has opted into", async ({
@@ -669,13 +733,7 @@ test("No activity is worked out per recipient, based on the categories each of t
       smallCptv,
     );
   const batteryActivity = (period: number) =>
-    project.api().Devices.submitEventsOnBehalfOfDevice(deviceHandle.id, {
-      description: {
-        type: "rpiBattery",
-        details: { battery: 50, voltage: 3.8 },
-      },
-      dateTimes: [withinPeriod(period).toISOString()],
-    });
+    submitBatteryEventFromDevice(deviceHandle, 50, 3.8, withinPeriod(period));
   const runDigest = (period: number) =>
     dockerExecNodeScript("project-activity-digest.js", [
       "--force",
@@ -724,18 +782,19 @@ test("No activity is worked out per recipient, based on the categories each of t
   expect(await digestFor(userA)).toContain(noThermalText);
   expect(await digestFor(userB)).toContain(deviceHandle.testId);
 
-  // Period 3: only thermal activity.  A gets a digest.  B has no activity, but had some in
-  // period 2, so gets a single "no activity" email, without any battery readings.
+  // Period 3: only thermal activity.  A gets a digest.  The device is still connected, so B gets
+  // a digest with its last battery reading (from period 2).
   await thermalActivity(3);
   await runDigest(3);
   expect(await digestFor(userA)).not.toContain(noThermalText);
-  expect(await digestFor(userB)).not.toContain(deviceHandle.testId);
+  expect(await digestFor(userB)).toContain(deviceHandle.testId);
 
-  // Period 4: no activity at all.  A had some in period 3, so gets a "no activity" email, but
-  // B has already been told.
+  // Period 4: no activity at all, and the device is now considered stopped, so there are no
+  // battery readings.  A had some activity in period 3, so gets a "no activity" email.  B had
+  // some in period 3 too, so also gets a single "no activity" email, without any battery readings.
   await runDigest(4);
   expect(await digestFor(userA)).toContain(noThermalText);
-  await noDigestFor(userB, "B isn't sent a second 'no activity' email");
+  expect(await digestFor(userB)).not.toContain(deviceHandle.testId);
 
   // Period 5: still nothing, so no emails for anyone.
   await runDigest(5);

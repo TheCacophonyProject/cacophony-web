@@ -835,7 +835,11 @@ export const sendProjectActivityDigestEmail = async (
   }[],
   thermalVisits: SpeciesListItem[],
   birdDetections: SpeciesListItem[],
-  batteryReportsList: { deviceName: string; batteryLevel: number }[],
+  batteryReportsList: {
+    deviceName: string;
+    batteryLevel: number;
+    recordedAgo: string;
+  }[],
 ) => {
   const common = commonInterpolants();
   const projectRoot = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
@@ -960,6 +964,8 @@ export const sendProjectActivityDigestEmail = async (
         frequencyIsWeekly,
         hasAudioReport: recipient.audioReport,
         hasBatteryReport: recipient.batteryReport,
+        hasBatteryReadings: batteryReportsList.length !== 0,
+        hasNoBatteryReadings: batteryReportsList.length === 0,
         hasVisitsReport: recipient.visitsReport,
         batteryReport: batteryReportsList,
         ...common,
