@@ -44,6 +44,20 @@ erDiagram
     User ||--o{ TrackTag : "tagged by"
     User ||--o{ Alert : owns
     Visit }o--o| TrackTag : "AI / human classification"
+
+    classDef user fill:#6b46c1,stroke:#44337a,color:#fff
+    classDef group fill:#c53030,stroke:#822727,color:#fff
+    classDef device fill:#2f855a,stroke:#22543d,color:#fff
+    classDef station fill:#b7791f,stroke:#744210,color:#fff
+    classDef recording fill:#2b6cb0,stroke:#1a365d,color:#fff
+    classDef recordingChild fill:#6f87a1,stroke:#4a5d73,color:#fff
+
+    class User user
+    class Group group
+    class Device device
+    class Station station
+    class Recording recording
+    class Track,TrackTag recordingChild
 ```
 
 **Users** belong to **Groups** (many-to-many). A **Group** owns
