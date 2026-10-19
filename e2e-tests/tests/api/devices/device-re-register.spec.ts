@@ -12,6 +12,9 @@ import { TestApiImpl } from "@shared/client";
 import { JwtToken, TestDeviceHandle, TestUserHandle } from "@shared/client/types";
 import { ProjectId, UserId } from "@shared/api/common";
 import { DeviceType, HttpStatusCode } from "@shared/api/consts";
+import { ApiRecordingResponse } from "@shared/api/recording";
+import { addSeconds } from "@/helpers/date-helpers";
+import { DeviceSim } from "@/helpers/device-sim";
 
 // Attempts to re-register `device` into `project`, authenticated as the device itself (`/devices/reregister`),
 // with the given new name and password.
@@ -448,8 +451,6 @@ test.describe("Device re-register (user authorized)", () => {
   });
 
   test("Re-registering within the same project with the name of an existing device takes over that device", async () => {
-    // TODO: Check with PM on this - seems like we might also want this to take over the existing device?
-
     const project = await createProjectWithUserAndDevice();
     const projectHandle = project.projectHandle;
     const adminUser = project.getAdminUser();
@@ -468,6 +469,80 @@ test.describe("Device re-register (user authorized)", () => {
         otherDevice.id,
       );
     }
+  });
+
+  test("Taking over an existing device in the same project transfers the old device's recordings, events and history", async ({
+    oneFrameCptv,
+  }) => {
+    const project = await createProjectWithUserAndDevice();
+    const projectHandle = project.projectHandle;
+    const adminUser = project.getAdminUser();
+    const AdminUser = project.api();
+    const device = project.getDevice();
+    const otherDevice = await addDeviceToProject("other", projectHandle);
+
+    const recordingId = await uploadThermalRecordingFromDevice({
+      file: oneFrameCptv,
+      location: { lat: -42, lng: 170 },
+      deviceHandle: device,
+      recordingDateTime: new Date(),
+    });
+    const eventTime = new Date();
+    const deviceSim = new DeviceSim(device);
+    deviceSim.addEvent({ type: "rpi-power-on" }, eventTime);
+    await deviceSim.uploadEvents(addSeconds(eventTime, 30));
+
+    const response = await reRegisterAuthorized(
+      adminUser,
+      device,
+      projectHandle.id,
+      otherDevice.testId,
+    );
+    expect(response.success, "re-register device").toBe(true);
+    if (!response.success) {
+      return;
+    }
+    expect(response.result.id, "became the device with the conflicting name").toEqual(
+      otherDevice.id,
+    );
+
+    const recordings = (await AdminUser.Recordings.getRecordingsForDeviceInProject(
+      otherDevice.id,
+      projectHandle.id,
+    )) as ApiRecordingResponse[];
+    expect(
+      recordings.map(({ id }) => id),
+      "recording moved to the taken-over device",
+    ).toEqual([recordingId]);
+    expect(recordings[0].deviceId).toEqual(otherDevice.id);
+
+    const events = await AdminUser.Devices.getLatestEventsByDeviceId(otherDevice.id, {
+      type: "rpi-power-on",
+    });
+    expect(events.success, "fetched events").toBe(true);
+    if (events.success) {
+      expect(events.result.rows, "event moved to the taken-over device").toHaveLength(1);
+    }
+
+    const history = await AdminUser.Devices.getDeviceHistoryInTest(otherDevice.id);
+    expect(history, "device history was fetched").toBeTruthy();
+    expect(
+      (history || []).filter(({ setBy }) => setBy === "register"),
+      "history of both the old and taken-over device is kept",
+    ).toHaveLength(2);
+    const reRegisterEntries = (history || []).filter(({ setBy }) => setBy === "re-register");
+    expect(reRegisterEntries, "a re-register history entry was created").toHaveLength(1);
+    expect(reRegisterEntries[0]).toMatchObject({
+      DeviceId: otherDevice.id,
+      GroupId: projectHandle.id,
+      deviceName: otherDevice.testId,
+    });
+
+    const devices = await getActiveDevicesForUser(adminUser);
+    expect(
+      devices.map(({ id }) => id),
+      "old device was removed",
+    ).toEqual([otherDevice.id]);
   });
 
   test("Re-registering within the same project with a new name creates a new device and deactivates the old one", async () => {

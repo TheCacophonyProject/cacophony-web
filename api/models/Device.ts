@@ -509,6 +509,8 @@ where
               }
             } else {
               // Device is being reassigned to the same group it's currently in.
+
+              const oldId = this.id;
               if (
                 conflictingDevice === null ||
                 conflictingDevice.id !== this.id
@@ -532,6 +534,30 @@ where
                   },
                   { transaction },
                 );
+                if (oldId !== conflictingDevice.id) {
+                  // Transfer the old device's recordings and events to the device that has taken over.
+                  await Recording.update(
+                    { DeviceId: conflictingDevice.id },
+                    { where: { DeviceId: oldId }, transaction },
+                  );
+                  await Event.update(
+                    { DeviceId: conflictingDevice.id },
+                    { where: { DeviceId: oldId }, transaction },
+                  );
+                  await Alert.update(
+                    { DeviceId: conflictingDevice.id },
+                    { where: { DeviceId: oldId }, transaction },
+                  );
+                  await DeviceHistory.update(
+                    { DeviceId: conflictingDevice.id },
+                    { where: { DeviceId: oldId }, transaction },
+                  );
+                  await DeviceAction.update(
+                    { DeviceId: conflictingDevice.id },
+                    { where: { DeviceId: oldId }, transaction },
+                  );
+                  await this.destroy({ transaction });
+                }
                 newDevice = conflictingDevice;
               } else {
                 newDevice = await Device.create(
