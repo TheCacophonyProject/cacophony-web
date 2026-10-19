@@ -1,0 +1,17 @@
+{
+  "extends": ["../.oxlintrc.json"],
+  "env": { "node": true },
+  "ignorePatterns": ["node_modules/**", "**/*.js", "**/*.cjs"],
+  "options": { "typeAware": true },
+  "rules": {
+    "typescript/no-floating-promises": "error",
+    "typescript/unbound-method": "warn",
+    "typescript/no-base-to-string": "warn",
+    "typescript/await-thenable": "warn",
+    "typescript/no-useless-default-assignment": "off",
+    "typescript/restrict-template-expressions": "off",
+    "typescript/no-misused-spread": "off",
+    "typescript/no-duplicate-type-constituents": "off",
+    "typescript/no-redundant-type-constituents": "off"
+  }
+}
