@@ -15,3 +15,4 @@
 **/*.js.map
 /types/**/*.js
 **/dist
+/browse/**/*.js
