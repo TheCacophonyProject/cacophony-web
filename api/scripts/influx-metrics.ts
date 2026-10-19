@@ -1,5 +1,6 @@
 import * as Influx from "influx";
 import { InfluxDB } from "influx";
+import log from "../logging.js";
 import process from "process";
 import { Client as PgClient, QueryResult } from "pg";
 import moment from "moment";

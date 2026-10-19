@@ -1,3 +1,4 @@
+import log from "../logging.js";
 import { sendAlerts } from "../api/V1/recordingUtil.js";
 import { initSequelize } from "@models/index.js";
 

@@ -262,7 +262,7 @@ const thumbnailSrcForVisit = (
   const recId =
     visit.humanClassificationRecordingId || visit.aiClassificationRecordingId;
   const trackId =
-    visit.humanClassificationTrackId || visit.humanClassificationTrackId;
+    visit.humanClassificationTrackId || visit.aiClassificationTrackId;
   if (recId && trackId && !prevUrl) {
     return `${ClientApi.getApiRoot()}/api/v1/recordings/${recId}/thumbnail?trackId=${trackId}`;
   } else if (recId) {

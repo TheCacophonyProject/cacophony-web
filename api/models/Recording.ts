@@ -652,14 +652,14 @@ export class Recording extends ModelStaticCommon<Recording> {
     irRaw: [
       RecordingProcessingState.ReTrack,
       RecordingProcessingState.Tracking,
-      RecordingProcessingState.AnalyseThermal,
+      RecordingProcessingState.Analyse,
       RecordingProcessingState.Finished,
     ],
     thermalRaw: [
       RecordingProcessingState.ReTrack,
       RecordingProcessingState.TrackAndAnalyse,
       RecordingProcessingState.Tracking,
-      RecordingProcessingState.AnalyseThermal,
+      RecordingProcessingState.Analyse,
       RecordingProcessingState.Finished,
     ],
     audio: [

@@ -407,7 +407,7 @@ describe("Recording filtering", () => {
         JSON.stringify(TEMPLATE_THERMAL_RECORDING),
       );
       recording8.metadata.tracks = [];
-      recording8.processingState = RecordingProcessingState.AnalyseThermal;
+      recording8.processingState = RecordingProcessingState.Analyse;
       const track8: ApiTrackDataRequest = JSON.parse(
         JSON.stringify(trackApiTrackTemplate),
       );
@@ -470,7 +470,7 @@ describe("Recording filtering", () => {
         JSON.stringify(TEMPLATE_THERMAL_RECORDING),
       );
       recording9.metadata.tracks = [];
-      recording9.processingState = RecordingProcessingState.AnalyseThermal;
+      recording9.processingState = RecordingProcessingState.Analyse;
       const track9: ApiTrackDataRequest = JSON.parse(
         JSON.stringify(trackApiTrackTemplate),
       );
@@ -881,7 +881,7 @@ describe("Recording filtering", () => {
         JSON.stringify(TEMPLATE_THERMAL_RECORDING),
       );
       recording20.metadata.tracks = [];
-      recording20.processingState = RecordingProcessingState.AnalyseThermal;
+      recording20.processingState = RecordingProcessingState.Analyse;
       const track20: ApiTrackDataRequest = JSON.parse(
         JSON.stringify(trackApiTrackTemplate),
       );
@@ -969,7 +969,7 @@ describe("Recording filtering", () => {
         JSON.stringify(TEMPLATE_THERMAL_RECORDING),
       );
       recording21.metadata.tracks = [];
-      recording21.processingState = RecordingProcessingState.AnalyseThermal;
+      recording21.processingState = RecordingProcessingState.Analyse;
       const track21: ApiTrackDataRequest = JSON.parse(
         JSON.stringify(trackApiTrackTemplate),
       );

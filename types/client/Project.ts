@@ -15,10 +15,8 @@ import type {
 } from "../api/group.js";
 import type {
   ApiDeviceAction,
-  ApiDeviceActionResponse,
   ApiDeviceHistorySettings,
   ApiDeviceResponse,
-  DeviceActionDecision,
 } from "../api/device.js";
 import type { ApiStationResponse as ApiLocationResponse } from "../api/station.js";
 import type { ApiGroupUserSettings as ApiProjectUserSettings } from "../api/group.js";

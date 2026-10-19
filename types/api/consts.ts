@@ -85,19 +85,14 @@ export enum RecordingProcessingState {
   Tracking = "tracking",
   TrackAndAnalyse = "trackAndAnalyse",
   ReTrack = "retrack",
-  AnalyseThermal = "analyse",
   Finished = "FINISHED",
   FinishedFailed = "FINISHED.failed",
-  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
   Analyse = "analyse",
   Reprocess = "reprocess",
   ReTrackFailed = "retrack.failed",
   TrackingFailed = "tracking.failed",
-  AnalyseThermalFailed = "analyse.failed",
-  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
   AnalyseFailed = "analyse.failed",
   ReprocessFailed = "reprocess.failed",
-
   AnalyseTest = "analyse.test", // Value only used for testing, should not be processed.
 }
 

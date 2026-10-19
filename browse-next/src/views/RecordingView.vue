@@ -162,7 +162,7 @@ const recordingIsProcessing = computed<boolean>(() => {
     return ![
       RecordingProcessingState.ReTrackFailed,
       RecordingProcessingState.TrackingFailed,
-      RecordingProcessingState.AnalyseThermalFailed,
+      RecordingProcessingState.AnalyseFailed,
       RecordingProcessingState.FinishedFailed,
       RecordingProcessingState.AnalyseFailed,
       RecordingProcessingState.ReprocessFailed,

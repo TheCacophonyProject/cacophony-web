@@ -535,7 +535,7 @@ provide(
 );
 
 const allLocations = computed<ApiLocationResponse[]>(() => {
-  return (locations.value && (locations.value as ApiLocationResponse[])) || [];
+  return (locations.value as ApiLocationResponse[]) || [];
 });
 
 const loadLocations = async () => {

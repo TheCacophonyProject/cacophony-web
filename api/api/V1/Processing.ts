@@ -141,7 +141,7 @@ export default function (app: Application, baseUrl: string) {
             .toArray()
             .isIn([
               RecordingProcessingState.Reprocess,
-              RecordingProcessingState.AnalyseThermal,
+              RecordingProcessingState.Analyse,
               RecordingProcessingState.TrackAndAnalyse,
               RecordingProcessingState.Tracking,
               RecordingProcessingState.ReTrack,

@@ -68,7 +68,7 @@ describe("Get recordings for processing", () => {
           RecordingType.ThermalRaw,
           [
             RecordingProcessingState.TrackAndAnalyse,
-            RecordingProcessingState.AnalyseThermal,
+            RecordingProcessingState.Analyse,
           ],
         );
       const processing2 =
@@ -76,7 +76,7 @@ describe("Get recordings for processing", () => {
           RecordingType.ThermalRaw,
           [
             RecordingProcessingState.TrackAndAnalyse,
-            RecordingProcessingState.AnalyseThermal,
+            RecordingProcessingState.Analyse,
           ],
         );
       // The third call should return nothing to process
@@ -85,7 +85,7 @@ describe("Get recordings for processing", () => {
           RecordingType.ThermalRaw,
           [
             RecordingProcessingState.TrackAndAnalyse,
-            RecordingProcessingState.AnalyseThermal,
+            RecordingProcessingState.Analyse,
           ],
         );
       expect(processing3.status).to.equal(HttpStatusCode.OkNoContent);
@@ -100,7 +100,7 @@ describe("Get recordings for processing", () => {
       expect(
         rec1.recording.processingState,
         "prioritise 'analyse' state",
-      ).to.equal(RecordingProcessingState.AnalyseThermal);
+      ).to.equal(RecordingProcessingState.Analyse);
       expect(rec2.recording.processingState).to.equal(
         RecordingProcessingState.TrackAndAnalyse,
       );
