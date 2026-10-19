@@ -27,6 +27,7 @@ const deviceEvents = computed<DeviceEvent[]>(() => {
 const oneMonthAgo = ref<Date>(
   new Date(new Date().setDate(new Date().getDate() - 30)),
 );
+const latestEventTime = ref<Date>(new Date());
 let needsObserverUpdate = false;
 let currentObserver: { stop: () => void } | null;
 
@@ -131,22 +132,19 @@ onBeforeMount(async () => {
       limit: 1,
     },
   );
-  let now = new Date();
   if (latestEvent.success && latestEvent.result.rows.length !== 0) {
-    now = new Date(latestEvent.result.rows[0].dateTime);
-    oneMonthAgo.value = new Date(now.setDate(now.getDate() - 30));
+    latestEventTime.value = new Date(latestEvent.result.rows[0].dateTime);
+    oneMonthAgo.value = new Date(
+      latestEventTime.value.getTime() - 30 * 24 * 60 * 60 * 1000,
+    );
   }
   const types =
     await ClientApi.Devices.getKnownEventTypesForDeviceInLatestMonth(
       deviceId.value,
-      now,
+      latestEventTime.value,
     );
   if (types.success) {
     knownEventTypes.value = types.result.eventTypes;
-  }
-  if (latestEvent.success) {
-    const now = new Date(latestEvent.result.rows[0].dateTime);
-    oneMonthAgo.value = new Date(now.setDate(now.getDate() - 30));
   }
   await reloadEvents();
 });
@@ -155,7 +153,10 @@ const reloadEvents = async (newEvents?: string[]) => {
   currentObserver && currentObserver.stop();
   currentObserver = null;
   loadedDeviceEvents.value = [];
-  loadedBackUntilDateTime.value = new Date();
+  // Start from the device's latest event rather than "now", so devices whose
+  // last event is over a month old still load their latest month of events.
+  // endTime is exclusive, so step just past the latest event to include it.
+  loadedBackUntilDateTime.value = new Date(latestEventTime.value.getTime() + 1);
   await loadSomeEvents(newEvents);
 };
 
