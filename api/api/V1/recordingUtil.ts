@@ -381,8 +381,8 @@ export async function getCPTVFrames(
       currentFrame++;
     }
     return frames;
-  } catch (_err) {
-    log.warning(`CPTV thumbnail read error: ${_err}`);
+  } catch (err) {
+    log.warning(`CPTV thumbnail read error: ${(err as Error).toString()}`);
     return;
   } finally {
     if (decoder && decoder.close) {
@@ -418,13 +418,13 @@ export async function saveThumbnailInfo(
   if (recording.type == RecordingType.InfraredVideo) {
     frames = await getIRFrame(recording, frameNumbers);
     if (!frames) {
-      throw new Error(`Failed to extract frames ${frameNumbers}`);
+      throw new Error(`Failed to extract frames ${[...frameNumbers]}`);
     }
   } else {
     frames = await getCPTVFrames(recording, frameNumbers);
     log.info("Got %s CPTV Frame(s)", Object.values(frames).length);
     if (!frames) {
-      throw new Error(`Failed to extract frames ${frameNumbers}`);
+      throw new Error(`Failed to extract frames ${[...frameNumbers]}`);
     }
   }
   const frameUploads = [];
@@ -432,8 +432,10 @@ export async function saveThumbnailInfo(
     const frame = frames[track.data.thumbnail?.region?.frame_number];
     if (!frame) {
       frameUploads.push(
-        Error(
-          `Failed to extract CPTV frame for track ${track.id}, frame  ${track.data.thumbnail?.region?.frame_number}`,
+        Promise.resolve(
+          new Error(
+            `Failed to extract CPTV frame for track ${track.id}, frame  ${track.data.thumbnail?.region?.frame_number}`,
+          ),
         ),
       );
       continue;
@@ -464,7 +466,11 @@ export async function saveThumbnailInfo(
     const frame = frames[clip_thumbnail.frame_number];
     if (!frame) {
       frameUploads.push(
-        Error(`Failed to extract CPTV frame ${clip_thumbnail.frame_number}`),
+        Promise.resolve(
+          new Error(
+            `Failed to extract CPTV frame ${clip_thumbnail.frame_number}`,
+          ),
+        ),
       );
     } else {
       let thumb: ThumbnailData;
@@ -762,7 +768,7 @@ export async function getTrackTags(
   userId: UserId,
   viewAsSuperUser: boolean,
   includeAI: boolean,
-  recordingType: string,
+  recordingType: RecordingType,
   excludeTags: string[] = [],
   offset?: number,
   limit?: number,
@@ -1058,67 +1064,73 @@ export const tracksFromMeta = async (
         newTrack.maxFreqHz = trackMeta.maxFreq || 0;
       }
       promises.push(
-        new Promise((resolve, _reject) => {
-          recording.addTrack(newTrack, trackMeta).then((track) => {
-            if (!trackMeta.predictions || trackMeta.predictions.length === 0) {
-              track.updateIsFiltered().then(resolve);
-            } else {
-              tracks.push(track);
-              const trackPromises = [];
-              for (const prediction of trackMeta.predictions) {
-                let modelName = "unknown";
-                if (prediction.model_id) {
-                  if (metadata.models) {
-                    const model = metadata.models.find(
-                      (model) => model.id == prediction.model_id,
-                    );
-                    if (model) {
-                      modelName = model.name;
+        new Promise((resolve, reject) => {
+          recording
+            .addTrack(newTrack, trackMeta)
+            .then((track) => {
+              if (
+                !trackMeta.predictions ||
+                trackMeta.predictions.length === 0
+              ) {
+                track.updateIsFiltered().then(resolve).catch(reject);
+              } else {
+                tracks.push(track);
+                const trackPromises = [];
+                for (const prediction of trackMeta.predictions) {
+                  let modelName = "unknown";
+                  if (prediction.model_id) {
+                    if (metadata.models) {
+                      const model = metadata.models.find(
+                        (model) => model.id == prediction.model_id,
+                      );
+                      if (model) {
+                        modelName = model.name;
+                      }
                     }
+                  } else if (prediction.model_used) {
+                    // This is really only true in testing, where we don't know the id up front of the "Master" model,
+                    // so we just say that we're using the "Master" model when we submit the test tracks.
+                    modelName = prediction.model_used;
                   }
-                } else if (prediction.model_used) {
-                  // This is really only true in testing, where we don't know the id up front of the "Master" model,
-                  // so we just say that we're using the "Master" model when we submit the test tracks.
-                  modelName = prediction.model_used;
-                }
 
-                // FIXME: Nail down what the classifier actually outputs, or just make this a generic black box.
-                const tag_data: TrackTagData = { name: modelName };
-                if (prediction.clarity) {
-                  tag_data.clarity = prediction.clarity;
-                }
-                if (prediction.classify_time) {
-                  tag_data.classify_time = prediction.classify_time;
-                }
-                //GP 2025 Dec dont think we are using this at all
-                // if (prediction.predictions) {
-                //   tag_data["predictions"] = prediction["predictions"];
-                // }
+                  // FIXME: Nail down what the classifier actually outputs, or just make this a generic black box.
+                  const tag_data: TrackTagData = { name: modelName };
+                  if (prediction.clarity) {
+                    tag_data.clarity = prediction.clarity;
+                  }
+                  if (prediction.classify_time) {
+                    tag_data.classify_time = prediction.classify_time;
+                  }
+                  //GP 2025 Dec dont think we are using this at all
+                  // if (prediction.predictions) {
+                  //   tag_data["predictions"] = prediction["predictions"];
+                  // }
 
-                if (prediction.all_class_confidences) {
-                  tag_data.all_class_confidences =
-                    prediction.all_class_confidences;
-                }
-                let tag = "unidentified";
-                if (prediction.confident_tag) {
-                  tag = prediction.confident_tag;
-                }
-                if (prediction.label) {
-                  tag_data.raw_tag = prediction.label;
-                } else {
-                  tag_data.raw_tag = prediction.tag;
-                }
-                if (prediction.confident) {
-                  tag = prediction.tag;
-                }
+                  if (prediction.all_class_confidences) {
+                    tag_data.all_class_confidences =
+                      prediction.all_class_confidences;
+                  }
+                  let tag = "unidentified";
+                  if (prediction.confident_tag) {
+                    tag = prediction.confident_tag;
+                  }
+                  if (prediction.label) {
+                    tag_data.raw_tag = prediction.label;
+                  } else {
+                    tag_data.raw_tag = prediction.tag;
+                  }
+                  if (prediction.confident) {
+                    tag = prediction.tag;
+                  }
 
-                trackPromises.push(
-                  track.addTag(tag, prediction.confidence, true, tag_data),
-                );
+                  trackPromises.push(
+                    track.addTag(tag, prediction.confidence, true, tag_data),
+                  );
+                }
+                Promise.all(trackPromises).then(resolve).catch(reject);
               }
-              Promise.all(trackPromises).then(resolve);
-            }
-          });
+            })
+            .catch(reject);
         }),
       );
     }
@@ -1128,8 +1140,7 @@ export const tracksFromMeta = async (
     }
   } catch (err) {
     log.error(
-      "Error creating recording tracks from metadata: %s",
-      err.toString(),
+      `Error creating recording tracks from metadata: ${(err as Error).toString()}`,
     );
   }
   return true;

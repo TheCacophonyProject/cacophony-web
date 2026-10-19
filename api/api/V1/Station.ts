@@ -367,7 +367,7 @@ export default function (app: Application, baseUrl: string) {
 
       const updates = {
         ...mapStation(response.locals.station),
-        ...(stationUpdates || {}),
+        ...stationUpdates,
         lastUpdatedById: response.locals.requestUser.id,
       };
       delete updates.lat;

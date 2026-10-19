@@ -33,7 +33,6 @@ import ApiTrackDataRequestSchema from "@schemas/api/track/ApiTrackDataRequest.sc
 import ApiAlgorithmDataRequestSchema from "@schemas/api/track/AlgorithmRequest.schema.json" with { type: "json" };
 import ApiTrackTagAttributesSchema from "@schemas/api/trackTag/ApiTrackTagAttributes.schema.json" with { type: "json" };
 import {
-  HttpStatusCode,
   RecordingProcessingState,
   RecordingType,
   TagMode,
@@ -60,7 +59,7 @@ import type { Application, NextFunction, Request, Response } from "express";
 import { body, param, query } from "express-validator";
 import type { JwtPayload } from "jsonwebtoken";
 import jwt from "jsonwebtoken";
-import { FindAndCountOptions, FindAttributeOptions, Op } from "sequelize";
+import { FindAndCountOptions, Op } from "sequelize";
 import LabelPaths from "../../classifications/label_paths.json" with { type: "json" };
 
 import {
@@ -96,7 +95,6 @@ import {
 
 import {
   addTag,
-  bulkDelete,
   updateRecordingTimeBookkeeping,
   getThumbnail,
   getTrackTags,
@@ -149,11 +147,9 @@ const mapTrackTag = (
   }
   if (trackTag.TrackTagUserDatum) {
     trackTagBase.data = {
-      ...(trackTagBase.data || {}),
-      ...{
-        gender: trackTag.TrackTagUserDatum.gender,
-        maturity: trackTag.TrackTagUserDatum.maturity,
-      },
+      ...trackTagBase.data,
+      gender: trackTag.TrackTagUserDatum.gender,
+      maturity: trackTag.TrackTagUserDatum.maturity,
     };
   }
   if (trackTag.automatic) {
@@ -662,15 +658,16 @@ export default (app: Application, baseUrl: string) => {
           where.deletedAt = { [Op.eq]: null };
         }
       }
-      const useFilteredModel: string | false =
-        (filterModel && (filterModel as string)) || false;
+      const useFilteredModel: string | false = (filterModel as string) || false;
 
       if (
         type &&
         !Object.values(RecordingType).includes(type as RecordingType)
       ) {
         return next(
-          new BadRequestError(`Invalid recording type '${type}' supplied`),
+          new BadRequestError(
+            `Invalid recording type '${type as RecordingType}' supplied`,
+          ),
         );
       }
 
@@ -746,14 +743,14 @@ export default (app: Application, baseUrl: string) => {
     parseJSONField(query("order")),
     parseJSONField(query("where")),
     parseJSONField(query("tags")),
-    async (request: Request, response: Response, next: NextFunction) => {
+    async (_request: Request, _response: Response, next: NextFunction) => {
       return next(
         new ClientError(
           "Bulk delete is currently disabled for performance reasons",
         ),
       );
 
-      const { viewAsSuperUser, tags = [], order, where = {} } = response.locals;
+      /*const { viewAsSuperUser, tags = [], order, where = {} } = response.locals;
       const { tagMode, limit, offset, type, hideFiltered, exclusive } =
         request.query;
       const parsedLimit = limit ? parseInt(limit as string) : 1000;
@@ -788,7 +785,7 @@ export default (app: Application, baseUrl: string) => {
           message = (e as Error).message;
         }
         return next(new ClientError(message));
-      }
+      }*/
     },
   );
 
@@ -815,7 +812,7 @@ export default (app: Application, baseUrl: string) => {
           "Bulk undelete is currently disabled for performance reasons",
         ),
       );
-      const { ids } = request.body;
+      /*const { ids } = request.body;
       const { viewAsSuperUser } = response.locals;
       const userId = response.locals.requestUser.id;
       try {
@@ -902,7 +899,7 @@ export default (app: Application, baseUrl: string) => {
             HttpStatusCode.Unprocessable,
           ),
         );
-      }
+      }*/
     },
   );
 
@@ -999,7 +996,9 @@ export default (app: Application, baseUrl: string) => {
         !Object.values(RecordingType).includes(type as RecordingType)
       ) {
         return next(
-          new BadRequestError(`Invalid recording type '${type}' supplied`),
+          new BadRequestError(
+            `Invalid recording type '${type as RecordingType}' supplied`,
+          ),
         );
       }
       const options = {
@@ -1100,7 +1099,7 @@ export default (app: Application, baseUrl: string) => {
         response.locals.requestUser.id,
         response.locals.viewAsSuperUser,
         Boolean(request.query.includeAI),
-        request.query.type.toString(),
+        request.query.type as string as RecordingType,
         response.locals.exclude,
         request.query.offset && parseInt(request.query.offset as string),
         request.query.limit && parseInt(request.query.limit as string),
@@ -1272,7 +1271,7 @@ export default (app: Application, baseUrl: string) => {
         userId: response.locals.requestUser.id,
         viewAsSuperUser: response.locals.viewAsSuperUser,
         includeAI: Boolean(request.query.includeAI),
-        recordingType: request.query.type.toString() as RecordingType,
+        recordingType: request.query.type as string as RecordingType,
         exclude: response.locals.exclude,
         offset:
           request.query.offset && parseInt(request.query.offset as string),
@@ -2027,7 +2026,9 @@ export default (app: Application, baseUrl: string) => {
           return successResponse(response, "Track data updated.");
         } catch (e) {
           return next(
-            new FatalError(`Server error updating track data: ${e.toString()}`),
+            new FatalError(
+              `Server error updating track data: ${(e as Error).toString()}`,
+            ),
           );
         }
       } else {

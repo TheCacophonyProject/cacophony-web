@@ -1,4 +1,14 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
-  "ignorePatterns": []
+  "printWidth": 100,
+  "ignorePatterns": [
+    "**/*.html",
+    "**/*.md",
+    "**/*.json",
+    "**/*.cjs",
+    "**/*.js",
+    "**/*.d.ts",
+    "**/*.less",
+    "**/*.webmanifest"
+  ]
 }

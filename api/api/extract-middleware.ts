@@ -773,7 +773,7 @@ const getDevices =
     }
     if (context.onlyActive) {
       getDeviceOptions.where = {
-        ...(getDeviceOptions.where || {}),
+        ...getDeviceOptions.where,
         active: true,
       };
     }
@@ -840,13 +840,13 @@ const getStations =
 
     if (context.onlyActive) {
       getStationsOptions.where = {
-        ...(getStationsOptions.where || {}),
+        ...getStationsOptions.where,
         retiredAt: null,
       };
     }
     if (context.withRecordings) {
       getStationsOptions.where = {
-        ...(getStationsOptions.where || {}),
+        ...getStationsOptions.where,
         [Op.and]: [
           {
             [Op.or]: [
@@ -986,7 +986,7 @@ const getStation =
 
     if (context.onlyActive || !stationIsId) {
       getStationOptions.where = {
-        ...(getStationOptions.where || {}),
+        ...getStationOptions.where,
         retiredAt: null,
       };
     }
@@ -1465,7 +1465,7 @@ const getDevice =
     //  will be inactive.  Maybe we should change the name of the inactive device to disambiguate it?
     if (context.onlyActive) {
       getDeviceOptions.where = {
-        ...(getDeviceOptions.where || {}),
+        ...getDeviceOptions.where,
         active: true,
       };
     }

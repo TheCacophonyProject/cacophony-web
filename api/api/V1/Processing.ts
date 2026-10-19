@@ -3,7 +3,7 @@ import { validateFields } from "../middleware.js";
 import log from "@log";
 import logging from "@log";
 import { body, oneOf, param, query } from "express-validator";
-import _ from "lodash";
+import merge from "lodash/merge.js";
 import {
   saveThumbnailInfo,
   sendAlerts,
@@ -266,7 +266,7 @@ export default function (app: Application, baseUrl: string) {
             // NOTE: We used to re-match stations here if location changed, but really there's no good reason
             //  why file processing should update the location.
             delete result.fieldUpdates.location;
-            _.merge(recording, result.fieldUpdates);
+            merge(recording, result.fieldUpdates);
             for (const [key, value] of Object.entries(recording.dataValues)) {
               if (typeof value === "object" && key in result.fieldUpdates) {
                 // We need to let sequelize know that deep json values have changed, since it doesn't
@@ -878,7 +878,11 @@ export default function (app: Application, baseUrl: string) {
       const trackId = param("trackId");
       const id = Number(extractValFromRequest(request, trackId));
       if (id !== NULL_TRACK_ID) {
-        fetchUnauthorizedRequiredTrackById(trackId)(request, response, next);
+        void fetchUnauthorizedRequiredTrackById(trackId)(
+          request,
+          response,
+          next,
+        );
       } else {
         response.locals.skip = true;
         next();
@@ -949,7 +953,11 @@ export default function (app: Application, baseUrl: string) {
       const trackId = param("trackId");
       const id = Number(extractValFromRequest(request, trackId));
       if (id !== NULL_TRACK_ID) {
-        fetchUnauthorizedRequiredTrackById(trackId)(request, response, next);
+        void fetchUnauthorizedRequiredTrackById(trackId)(
+          request,
+          response,
+          next,
+        );
       } else {
         response.locals.skip = true;
         next();
@@ -1233,9 +1241,7 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, _next: NextFunction) => {
       const atTime =
-        (request.query["at-time"] &&
-          (request.query["at-time"] as unknown as Date)) ||
-        new Date();
+        (request.query["at-time"] as unknown as Date) || new Date();
       const device = response.locals.device;
       const deviceHistoryEntry: DeviceHistory = await DeviceHistory.findOne({
         where: {

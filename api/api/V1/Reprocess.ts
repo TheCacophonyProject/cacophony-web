@@ -30,12 +30,10 @@ import { successResponse } from "./responseUtil.js";
 import type { NextFunction } from "express-serve-static-core";
 import { ClientError, BadRequestError } from "../customErrors.js";
 import { arrayOf, jsonSchemaOf } from "../schema-validation.js";
-import lodash from "lodash";
 import RecordingIdSchema from "@schemas/api/common/RecordingId.schema.json" with { type: "json" };
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 import { Visit } from "@models/Visit.js";
 
-const { uniq: dedupe } = lodash;
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/reprocess`;
 
@@ -133,7 +131,7 @@ export default (app: Application, baseUrl: string) => {
       //  currently, but should be with the exception of users with globalRead permissions?
       const recordings = response.locals.recordings;
       // NOTE: Dedupe array when length checking in case the user specified the same recordingId more than once.
-      if (recordings.length !== dedupe(request.body.recordings).length) {
+      if (recordings.length !== new Set(request.body.recordings).size) {
         return next(
           new ClientError(
             "Could not find all recordingIds for user that were supplied to be reprocessed. No recordings where reprocessed",

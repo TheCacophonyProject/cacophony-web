@@ -215,7 +215,7 @@ const extractFieldDataAndValidationResults = async (
     for (const dataItem of data) {
       if (dataItem.path !== dataItem.originalPath) {
         throw new Error(
-          `Unexpected data.path !== data.originalPath: ${dataItem}`,
+          `Unexpected data.path !== data.originalPath: ${JSON.stringify(dataItem)}`,
         );
       }
       const errors = result.array();

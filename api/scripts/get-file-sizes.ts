@@ -47,70 +47,79 @@ const checkOnlyInstanceOfScriptRunning = async () => {
   }
 };
 
-(async function main() {
-  await checkOnlyInstanceOfScriptRunning();
+try {
+  await (async function main() {
+    await checkOnlyInstanceOfScriptRunning();
 
-  program
-    .option("--config <path>", "Configuration file", "./config/app.js")
-    .option("--delete", "Actually delete objects (dry run by default)")
-    .parse(process.argv);
-  const options = program.opts();
+    program
+      .option("--config <path>", "Configuration file", "./config/app.js")
+      .option("--delete", "Actually delete objects (dry run by default)")
+      .parse(process.argv);
+    const options = program.opts();
 
-  const Config = {
-    ...config.default,
-    ...(await loadConfig(options.config)),
-  };
+    const Config = {
+      ...config.default,
+      ...(await loadConfig(options.config)),
+    };
 
-  if (!("s3Archive" in Config)) {
-    log.warning(
-      "An archive target and bucket needs to be configured in config/app.js in order to archive old recordings",
-    );
-    process.exit(0);
-  }
+    if (!("s3Archive" in Config)) {
+      log.warning(
+        "An archive target and bucket needs to be configured in config/app.js in order to archive old recordings",
+      );
+      process.exit(0);
+    }
 
-  if (!("rootPath" in Config.s3Local)) {
-    log.warning(
-      "No object storage 'rootPath' property found in s3Local config - this is a required field",
-    );
-    process.exit(0);
-  }
+    if (!("rootPath" in Config.s3Local)) {
+      log.warning(
+        "No object storage 'rootPath' property found in s3Local config - this is a required field",
+      );
+      process.exit(0);
+    }
 
-  const client = await pgConnect(Config.database);
-  const s3 = openS3();
-  let run = true;
-  while (run) {
-    const result = await client.query(`select id, "rawFileKey"
+    const client = await pgConnect(Config.database);
+    const s3 = openS3();
+    let run = true;
+    while (run) {
+      const result = await client.query(`select id, "rawFileKey"
          from "Recordings"
          where "rawFileSize" is null
         and "rawFileKey" is not null
          order by id limit 50`);
-    if (result.rows.length) {
-      const p = [];
-      for (const row of result.rows) {
-        p.push(s3.headObject(row["rawFileKey"]));
+      if (result.rows.length) {
+        const p = [];
+        for (const row of result.rows) {
+          p.push(s3.headObject(row["rawFileKey"]));
+        }
+        const stats = await Promise.all(p);
+        const j = [];
+        for (let i = 0; i < stats.length; i++) {
+          const length = stats[i].ContentLength;
+          j.push(
+            client.query(
+              `update "Recordings"
+               set "rawFileSize" = ${length}
+               where id = ${result.rows[i]["id"]}`,
+            ),
+          );
+          log.info(
+            "Set rawFileSize %s for %s, %s",
+            length,
+            result.rows[i]["id"],
+            result.rows[i]["rawFileKey"],
+          );
+        }
+        await Promise.all(j);
+      } else {
+        log.notice("No more recordings with rawFileSize unset");
+        run = false;
+        break;
       }
-      const stats = await Promise.all(p);
-      const j = [];
-      for (let i = 0; i < stats.length; i++) {
-        const length = stats[i].ContentLength;
-        j.push(
-          client.query(
-            `update "Recordings" set "rawFileSize" = ${length} where id = ${result.rows[i]["id"]}`,
-          ),
-        );
-        log.info(
-          "Set rawFileSize %s for %s, %s",
-          length,
-          result.rows[i]["id"],
-          result.rows[i]["rawFileKey"],
-        );
-      }
-      await Promise.all(j);
-    } else {
-      log.notice("No more recordings with rawFileSize unset");
-      run = false;
-      break;
     }
-  }
+    process.exit(0);
+  })();
+} catch (e) {
+  log.error(e);
+  console.trace(e);
+} finally {
   process.exit(0);
-})();
+}

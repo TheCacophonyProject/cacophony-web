@@ -855,7 +855,7 @@ export const sendProjectActivityDigestEmail = async (
     yellow: "#f9f1e0",
     grey: "#f3f3f3",
   };
-  for (const species of [...thermalVisits]) {
+  for (const species of thermalVisits) {
     // ...birdDetections (removed, only thermal detections have images right now)
     let iconExists = await embedImage(
       species.species,

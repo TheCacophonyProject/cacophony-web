@@ -159,11 +159,11 @@ async function main() {
   });
 }
 
-main()
-  .catch((e) => {
-    log.error(e);
-    console.trace(e);
-  })
-  .then(() => {
-    process.exit(0);
-  });
+try {
+  await main();
+} catch (e) {
+  log.error(e);
+  console.trace(e);
+} finally {
+  process.exit(0);
+}

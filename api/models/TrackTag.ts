@@ -27,6 +27,7 @@ import Sequelize, {
 import { ModelStaticCommon } from "./index.js";
 import LabelPaths from "../classifications/label_paths.json" with { type: "json" };
 import { TrackTagUserData } from "@models/TrackTagUserData.js";
+import log from "@log";
 export const AI_MASTER = "Master";
 export type TrackTagId = number;
 import { Track } from "@models/Track.js";
@@ -94,12 +95,18 @@ export class TrackTag extends ModelStaticCommon<TrackTag> {
         what in LabelPaths
           ? (LabelPaths as Record<string, string>)[what]
           : `all.${what.replace(" ", "_")}`;
-      this.sequelize.query(
-        `UPDATE "TrackTags"
+      // Deliberately not awaited: this runs inside model hooks, and waiting on
+      // a separate connection could block on the row lock of an open transaction.
+      trackTag.sequelize
+        .query(
+          `UPDATE "TrackTags"
            SET "path" = text2ltree(:path)
            WHERE "id" = :id`,
-        { replacements: { path, id: trackTag.id } },
-      );
+          { replacements: { path, id: trackTag.id } },
+        )
+        .catch((err) => {
+          log.error("Failed to update TrackTag path: %s", err.toString());
+        });
     }
   }
 
@@ -146,8 +153,8 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
     },
     sequelize: sequelizeInstance,
     hooks: {
-      afterUpdate: TrackTag.addPath,
-      afterCreate: TrackTag.addPath,
+      afterUpdate: (trackTag: TrackTag) => TrackTag.addPath(trackTag),
+      afterCreate: (trackTag: TrackTag) => TrackTag.addPath(trackTag),
     },
   });
   return TrackTag;

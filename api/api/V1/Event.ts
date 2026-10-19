@@ -703,7 +703,7 @@ export default function (app: Application, baseUrl: string) {
       if (request.query.deviceId && !response.locals.device) {
         return next(
           new ClientError(
-            `Could not find a device with an id of '${request.query.deviceId} for user`,
+            `Could not find a device with an id of '${request.query.deviceId as unknown as number} for user`,
             HttpStatusCode.Forbidden,
           ),
         );
@@ -714,8 +714,7 @@ export default function (app: Application, baseUrl: string) {
     // Extract device if any, and check that user has permissions to access it
     async (request: Request, response: Response) => {
       const query = request.query;
-      const offset: number =
-        (query.offset && (query.offset as unknown as number)) || 0;
+      const offset: number = (query.offset as unknown as number) || 0;
       const includeCount = query["include-count"] as unknown as boolean;
       const result = await Event.query(
         response.locals.requestUser.id,

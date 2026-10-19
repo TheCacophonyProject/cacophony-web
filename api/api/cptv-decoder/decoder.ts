@@ -59,10 +59,10 @@ class DecoderWorkerPool {
     });
 
     worker.unref();
-    worker.on("error", (err) => {
+    worker.on("error", async (err) => {
       logging.error(`CPTV Decoder worker error: ${err.message}`);
       try {
-        worker.terminate();
+        await worker.terminate();
       } finally {
         let brokenWorker;
         for (const pooledWorker of Array.from(this.busyWorkers)) {

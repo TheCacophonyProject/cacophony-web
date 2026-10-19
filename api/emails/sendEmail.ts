@@ -39,7 +39,7 @@ export async function sendEmail(
     }
     await client.sendAsync(message);
   } catch (err) {
-    log.error(err.toString());
+    log.error((err as Error).toString());
     return false;
   }
   return true;

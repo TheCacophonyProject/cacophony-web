@@ -16,7 +16,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-import _ from "lodash";
+import { pick } from "@models/util/util.js";
 import { ModelStaticCommon } from "./index.js";
 import Sequelize, {
   BelongsTo,
@@ -82,7 +82,7 @@ export class Tag extends ModelStaticCommon<Tag> {
   }
 
   static buildSafely(fields: ApiRecordingTagRequest) {
-    return this.build(_.pick(fields, this.apiSettableFields));
+    return this.build(pick(fields, this.apiSettableFields));
   }
 }
 

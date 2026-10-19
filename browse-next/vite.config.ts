@@ -8,7 +8,6 @@ import {
   ViteDevServer,
 } from "vite";
 import vue from "@vitejs/plugin-vue";
-import eslintPlugin from "vite-plugin-eslint";
 import Components from "unplugin-vue-components/vite";
 import { BootstrapVueNextResolver } from "bootstrap-vue-next";
 import { IncomingMessage, ServerResponse } from "node:http";
@@ -44,10 +43,6 @@ export default defineConfig({
   plugins: [
     Components({
       resolvers: [BootstrapVueNextResolver()],
-    }),
-    eslintPlugin({
-      failOnError: false,
-      exclude: ["**/consts.ts", "**/node_modules/**", "**/*.js"],
     }),
     crossOriginIsolation,
     vue({

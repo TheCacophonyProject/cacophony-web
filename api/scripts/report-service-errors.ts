@@ -577,11 +577,11 @@ async function main() {
   );
 }
 
-main()
-  .catch((e) => {
-    console.trace(e);
-    log.error(e);
-  })
-  .then(() => {
-    process.exit(0);
-  });
+try {
+  await main();
+} catch (e) {
+  log.error(e);
+  console.trace(e);
+} finally {
+  process.exit(0);
+}

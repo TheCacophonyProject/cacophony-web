@@ -1,5 +1,1 @@
-{
-  "rules": {
-    "no-empty-pattern": "off"
-  }
-}
+{ "extends": ["../.oxlintrc.json"] }

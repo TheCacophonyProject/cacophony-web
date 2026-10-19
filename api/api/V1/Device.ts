@@ -799,9 +799,7 @@ export default function (app: Application, baseUrl: string) {
     fetchAuthorizedRequiredDeviceById(param("id")),
     async (request: Request, response: Response, next: NextFunction) => {
       const atTime =
-        (request.query["at-time"] &&
-          (request.query["at-time"] as unknown as Date)) ||
-        new Date();
+        (request.query["at-time"] as unknown as Date) || new Date();
       const device = response.locals.device as Device;
       const deviceHistoryEntry = await DeviceHistory.findOne({
         where: {
@@ -882,13 +880,12 @@ export default function (app: Application, baseUrl: string) {
       const tag = request.params.tag;
       const fromTime = device.minTimeForRecordingType(
         type,
-        request.query["from-time"] &&
-          (request.query["from-time"] as unknown as Date),
+        request.query["from-time"] as unknown as Date,
       );
       const untilTime = device.maxTimeForRecordingType(
         type,
-        request.query["until-time"] &&
-          (request.query["until-time"] as unknown as Date),
+
+        request.query["until-time"] as unknown as Date,
       );
       const timeWindow: Sequelize.WhereOptions = {};
       if (fromTime) {
@@ -1003,13 +1000,13 @@ export default function (app: Application, baseUrl: string) {
       const type = request.query.type as RecordingType;
       const fromTime = device.minTimeForRecordingType(
         type,
-        request.query["from-time"] &&
-          (request.query["from-time"] as unknown as Date),
+
+        request.query["from-time"] as unknown as Date,
       );
       const untilTime = device.maxTimeForRecordingType(
         type,
-        request.query["until-time"] &&
-          (request.query["until-time"] as unknown as Date),
+
+        request.query["until-time"] as unknown as Date,
       );
 
       // We only want to get tracks that are not falsified by a human.
@@ -1212,9 +1209,7 @@ export default function (app: Application, baseUrl: string) {
     async (request: Request, response: Response, next: NextFunction) => {
       const checkIfExists = request.params.exists === "exists";
       const atTime =
-        (request.query["at-time"] &&
-          (request.query["at-time"] as unknown as Date)) ||
-        new Date();
+        (request.query["at-time"] as unknown as Date) || new Date();
       const device = response.locals.device as Device;
       const kind = (request.query.type as string) || "pov";
       const deviceHistoryEntry =
@@ -1575,7 +1570,7 @@ export default function (app: Application, baseUrl: string) {
         let someChanged = false;
         for (const entry of deviceHistoryEntries) {
           // Delete from all entries that contain a reference to this reference image.
-          let updatedSettings = { ...(entry.settings || {}) };
+          let updatedSettings = { ...entry.settings };
           let changed = false;
           if (referenceType === "pov") {
             if (updatedSettings.referenceImagePOV === imageKey) {

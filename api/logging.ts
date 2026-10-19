@@ -52,7 +52,7 @@ export const consoleTransport = new winston.transports.Console({
           // Give each requestId a unique colour
           const stub = requestId.split("-")[0];
           const requestIdStub = `${getContrastingBackgroundAnsi(hash8(stub))}${stub}\x1b[0m`;
-          const lines = `${info.message}`.split("\n");
+          const lines = `${JSON.stringify(info.message)}`.split("\n");
           const allLines = [];
           const isFinalRequestMessage = lines.some((line) =>
             line.includes("UA:"),

@@ -146,7 +146,7 @@ export default (app: Application, baseUrl: string) => {
         }
         if (!validData) {
           for await (const { stream } of files) {
-            await stream.resume();
+            stream.resume();
           }
           return next(
             new UnprocessableError(
@@ -183,7 +183,7 @@ export default (app: Application, baseUrl: string) => {
                 uploadSucceeded = false;
               });
           } else {
-            await stream.resume();
+            stream.resume();
           }
         }
         if (uploadSucceeded) {

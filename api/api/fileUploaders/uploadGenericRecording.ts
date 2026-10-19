@@ -189,7 +189,7 @@ const validateDataPart = async (
   // If the recordingDateTime data field is set, it must be a valid date.
   if (typeof data !== "object") {
     for await (const { stream } of files) {
-      await stream.resume();
+      stream.resume();
     }
     throw new UnprocessableError(
       `Could not validate data part: ${JSON.stringify(data)}`,
@@ -201,7 +201,7 @@ const validateDataPart = async (
   if ("recordingDateTime" in dataObj) {
     if (isNaN(Date.parse((dataObj.recordingDateTime || "").toString()))) {
       for await (const { stream } of files) {
-        await stream.resume();
+        stream.resume();
       }
       throw new UnprocessableError(
         `Invalid recordingDateTime '${dataObj.recordingDateTime}'`,
@@ -214,7 +214,7 @@ const validateDataPart = async (
     const duration = Number(dataObj.duration);
     if (isNaN(duration) || duration <= 0) {
       for await (const { stream } of files) {
-        await stream.resume();
+        stream.resume();
       }
       throw new UnprocessableError(
         `Invalid recording duration '${dataObj.duration}'`,
@@ -236,7 +236,7 @@ const validateDataPart = async (
         `Recording with hash ${dataObj.fileHash} for device #${uploadingDeviceId} already exists, discarding duplicate`,
       );
       for await (const { stream } of files) {
-        await stream.resume();
+        stream.resume();
       }
       dataObj.duplicate = existingRecordingWithHashForDevice;
     }
@@ -300,7 +300,7 @@ const processUploadedFileStream = async (
     // Future zero-sized files should *not* be flagged as duplicates.
 
     // Consume the stream first.
-    await fileStream.resume();
+    fileStream.resume();
     return {
       isCorrupt: true,
       embeddedMetadata: {
@@ -634,7 +634,7 @@ export const uploadGenericRecording =
       } of files) {
         if (file.field === "file") {
           recordingData = {
-            ...(recordingData || {}),
+            ...recordingData,
             filename: originalFilename,
           } as RecordingUploadSuppliedData;
           uploadResult = await processUploadedFileStream(
@@ -645,7 +645,7 @@ export const uploadGenericRecording =
           );
           uploadResult.fileName = originalFilename;
         } else {
-          await stream.resume();
+          stream.resume();
         }
       }
     } catch (err) {

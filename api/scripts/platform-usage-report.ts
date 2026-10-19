@@ -437,7 +437,7 @@ const xAxis = (
     dates.push(new Date(new Date(now).setDate(now.getDate() - 7 * i)));
   }
   dates.push(now);
-  const xP = new Array(numWeeks)
+  const xP = Array.from({ length: numWeeks })
     .fill(0)
     .map((_, index) => index * (width / numValues));
   let axis = `
@@ -859,8 +859,10 @@ async function main() {
   );
 }
 
-main()
-  .catch(log.error)
-  .then(() => {
-    process.exit(0);
-  });
+try {
+  await main();
+} catch (e) {
+  log.error(e);
+} finally {
+  process.exit(0);
+}

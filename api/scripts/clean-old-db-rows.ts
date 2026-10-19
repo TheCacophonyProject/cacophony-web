@@ -106,11 +106,11 @@ async function main() {
   // Also remove old expired user sessions, and maybe write out some stats about user agents?
 }
 
-main()
-  .catch((e) => {
-    log.error(e);
-    console.trace(e);
-  })
-  .then(() => {
-    process.exit(0);
-  });
+try {
+  await main();
+} catch (e) {
+  log.error(e);
+  console.trace(e);
+} finally {
+  process.exit(0);
+}

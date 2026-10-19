@@ -289,196 +289,200 @@ const currentHourInTimezone = (timeZone: string, now: Date): number => {
   return Number(formattedOutput);
 };
 
-(async () => {
-  const args = process.argv.slice(2); // Remove the first two default paths
-  const forceRun = args.includes("--force");
-  if (config.cronScriptProcessingHostname !== os.hostname() && !forceRun) {
-    return;
-  }
-  const sequelize = await initSequelize(!forceRun);
-  // Default to daily, but can pass "weekly" on the command line for weekly behaviour.
-  let daily = args.includes("daily");
-  const weekly = args.includes("weekly");
-  const suppliedNow = args.find((item) => item.includes("--at-time="));
-  // In testing, we can restrict the digest to a single project, so that concurrent tests
-  // don't send each other's digests.
-  const suppliedGroupId = args.find((item) => item.startsWith("--group-id="));
-  const onlyGroupId = suppliedGroupId
-    ? Number(suppliedGroupId.replace("--group-id=", ""))
-    : undefined;
-  let numDays = 1;
-  if (weekly) {
-    console.log("weekly", weekly);
-    numDays = 7;
-  } else {
-    daily = true;
-  }
-  let now;
-  let suppliedNowDate = new Date();
-  if (suppliedNow) {
-    // In testing, we can supply a current time.
-    now = new Date(suppliedNow.replace("--at-time=", ""));
-    suppliedNowDate = new Date(now);
-    console.log(`Set time to ${now.toISOString()}`);
-  } else {
-    now = new Date();
-  }
-  // We send the email at 9.10am, but let's make it so it's only up to 9am.
-  now.setHours(9, 0, 0, 0);
-  console.log(`Script run at ${now.toISOString()}`);
-  const startOfPeriod = new Date(now);
-  startOfPeriod.setHours(startOfPeriod.getHours() - 24 * numDays);
-  console.log(`Start of period ${startOfPeriod.toISOString()}`);
-  const digestKey = daily ? "dailyDigest" : "weeklyDigest";
-  const digestGroups = await Group.findAll({
-    attributes: ["groupName", "id"],
-    ...(onlyGroupId !== undefined ? { where: { id: onlyGroupId } } : {}),
-    include: [
-      {
-        model: User,
-        through: {
-          attributes: ["settings"],
-          where: {
-            [`settings.notificationPreferences.${digestKey}`]: {
-              [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: "false" }],
+try {
+  await (async () => {
+    const args = process.argv.slice(2); // Remove the first two default paths
+    const forceRun = args.includes("--force");
+    if (config.cronScriptProcessingHostname !== os.hostname() && !forceRun) {
+      return;
+    }
+    const sequelize = await initSequelize(!forceRun);
+    // Default to daily, but can pass "weekly" on the command line for weekly behaviour.
+    let daily = args.includes("daily");
+    const weekly = args.includes("weekly");
+    const suppliedNow = args.find((item) => item.includes("--at-time="));
+    // In testing, we can restrict the digest to a single project, so that concurrent tests
+    // don't send each other's digests.
+    const suppliedGroupId = args.find((item) => item.startsWith("--group-id="));
+    const onlyGroupId = suppliedGroupId
+      ? Number(suppliedGroupId.replace("--group-id=", ""))
+      : undefined;
+    let numDays = 1;
+    if (weekly) {
+      console.log("weekly", weekly);
+      numDays = 7;
+    } else {
+      daily = true;
+    }
+    let now;
+    let suppliedNowDate = new Date();
+    if (suppliedNow) {
+      // In testing, we can supply a current time.
+      now = new Date(suppliedNow.replace("--at-time=", ""));
+      suppliedNowDate = new Date(now);
+      console.log(`Set time to ${now.toISOString()}`);
+    } else {
+      now = new Date();
+    }
+    // We send the email at 9.10am, but let's make it so it's only up to 9am.
+    now.setHours(9, 0, 0, 0);
+    console.log(`Script run at ${now.toISOString()}`);
+    const startOfPeriod = new Date(now);
+    startOfPeriod.setHours(startOfPeriod.getHours() - 24 * numDays);
+    console.log(`Start of period ${startOfPeriod.toISOString()}`);
+    const digestKey = daily ? "dailyDigest" : "weeklyDigest";
+    const digestGroups = await Group.findAll({
+      attributes: ["groupName", "id"],
+      ...(onlyGroupId !== undefined ? { where: { id: onlyGroupId } } : {}),
+      include: [
+        {
+          model: User,
+          through: {
+            attributes: ["settings"],
+            where: {
+              [`settings.notificationPreferences.${digestKey}`]: {
+                [Op.and]: [{ [Op.ne]: null }, { [Op.ne]: "false" }],
+              },
+              removedAt: { [Op.eq]: null },
+              pending: { [Op.eq]: null },
             },
-            removedAt: { [Op.eq]: null },
-            pending: { [Op.eq]: null },
           },
+          required: true,
         },
-        required: true,
-      },
-    ],
-  });
-  for (const group of digestGroups) {
-    const groupTimezoneRecording = await Recording.findOne({
-      where: { GroupId: group.id, location: { [Op.ne]: null } },
-      attributes: ["location"],
-      order: [["recordingDateTime", "DESC"]],
-      limit: 1,
+      ],
     });
-    if (groupTimezoneRecording) {
-      const timeZone = tzLookup(
-        groupTimezoneRecording.location.lat,
-        groupTimezoneRecording.location.lng,
+    for (const group of digestGroups) {
+      const groupTimezoneRecording = await Recording.findOne({
+        where: { GroupId: group.id, location: { [Op.ne]: null } },
+        attributes: ["location"],
+        order: [["recordingDateTime", "DESC"]],
+        limit: 1,
+      });
+      if (groupTimezoneRecording) {
+        const timeZone = tzLookup(
+          groupTimezoneRecording.location.lat,
+          groupTimezoneRecording.location.lng,
+        );
+        // NOTE: We ignore the possibility of a project having devices in multiple timezones,
+        // or that the timezone of the project may not reflect the timezone of the recipient.
+        if (currentHourInTimezone(timeZone, suppliedNowDate) !== 9) {
+          // It's not time for this projects' email
+          continue;
+        }
+      }
+      const recipients = group.Users.map(({ email, userName, GroupUsers }) => {
+        const settings: ApiGroupUserSettings = GroupUsers?.settings || {};
+        const notificationPreferences = settings.notificationPreferences || {};
+        let audioReport = true;
+        let batteryReport = true;
+        let visitsReport = true;
+        if (
+          notificationPreferences[digestKey] &&
+          typeof notificationPreferences[digestKey] === "object"
+        ) {
+          if (notificationPreferences[digestKey].audioReport === false) {
+            audioReport = false;
+          }
+          if (notificationPreferences[digestKey].visitsReport === false) {
+            visitsReport = false;
+          }
+          if (notificationPreferences[digestKey].batteryReport === false) {
+            batteryReport = false;
+          }
+        }
+        return {
+          email,
+          userName,
+          audioReport,
+          visitsReport,
+          batteryReport,
+        };
+      }).filter(
+        (item) => item.batteryReport || item.visitsReport || item.audioReport,
       );
-      // NOTE: We ignore the possibility of a project having devices in multiple timezones,
-      // or that the timezone of the project may not reflect the timezone of the recipient.
-      if (currentHourInTimezone(timeZone, suppliedNowDate) !== 9) {
-        // It's not time for this projects' email
+      if (recipients.length === 0) {
         continue;
       }
-    }
-    const recipients = group.Users.map(({ email, userName, GroupUsers }) => {
-      const settings: ApiGroupUserSettings = GroupUsers?.settings || {};
-      const notificationPreferences = settings.notificationPreferences || {};
-      let audioReport = true;
-      let batteryReport = true;
-      let visitsReport = true;
-      if (
-        notificationPreferences[digestKey] &&
-        typeof notificationPreferences[digestKey] === "object"
-      ) {
-        if (notificationPreferences[digestKey].audioReport === false) {
-          audioReport = false;
-        }
-        if (notificationPreferences[digestKey].visitsReport === false) {
-          visitsReport = false;
-        }
-        if (notificationPreferences[digestKey].batteryReport === false) {
-          batteryReport = false;
-        }
+      // Loads activity for the categories that at least one of the given recipients has opted
+      // into.  The queries are per project, rather than per recipient.
+      const loadActivity = async (
+        from: Date,
+        until: Date,
+        forRecipients: Recipient[],
+      ): Promise<ActivityLists> => ({
+        thermalVisitsList: forRecipients.some((r) => r.visitsReport)
+          ? await allVisitsForProjectInTimespan(group.id, from, until)
+          : [],
+        birdSpeciesList: forRecipients.some((r) => r.audioReport)
+          ? await allBirdSpeciesDetectionsForProjectInTimespan(
+              sequelize,
+              group.id,
+              from,
+              until,
+            )
+          : [],
+        batteryReportsList: forRecipients.some((r) => r.batteryReport)
+          ? await allBatteryReportsForProjectInTimespan(group.id, from, until)
+          : [],
+      });
+
+      const currentActivity = await loadActivity(
+        startOfPeriod,
+        now,
+        recipients,
+      );
+
+      // NOTE: Whether there was activity is decided per recipient, based only on the categories
+      //  that recipient has opted into.  A recipient with no activity gets an email saying so only
+      //  if this is the *first* period with no activity for them (i.e. the previous period had
+      //  some), and doesn't get another until there is activity again.
+      const recipientsWithoutActivity = recipients.filter(
+        (recipient) => !recipientHasActivity(recipient, currentActivity),
+      );
+      let recipientsToEmail = recipients.filter((recipient) =>
+        recipientHasActivity(recipient, currentActivity),
+      );
+      if (recipientsWithoutActivity.length !== 0) {
+        // Check previous timespan for activity
+        const previousFrom = new Date(startOfPeriod);
+        const previousUntil = new Date(now);
+        previousFrom.setHours(startOfPeriod.getHours() - 24 * numDays);
+        previousUntil.setHours(now.getHours() - 24 * numDays);
+        const previousActivity = await loadActivity(
+          previousFrom,
+          previousUntil,
+          recipientsWithoutActivity,
+        );
+        recipientsToEmail = [
+          ...recipientsToEmail,
+          ...recipientsWithoutActivity.filter((recipient) =>
+            recipientHasActivity(recipient, previousActivity),
+          ),
+        ];
       }
-      return {
-        email,
-        userName,
-        audioReport,
-        visitsReport,
-        batteryReport,
-      };
-    }).filter(
-      (item) => item.batteryReport || item.visitsReport || item.audioReport,
-    );
-    if (recipients.length === 0) {
-      continue;
+      if (recipientsToEmail.length !== 0) {
+        // Make an email, then send it to all the users
+        // ✅ Generate a visits summary across species.
+        // Do we want a location by location break-down?
+        // Do we want some graphs?
+        // ✅ Link to the preferences, same as the alert email.
+        // Tagging activity.
+        // New controversial or flagged for review tags.
+        // New cool tags?
+        await sendProjectActivityDigestEmail(
+          weekly ? "Weekly" : "Daily",
+          group.groupName,
+          recipientsToEmail,
+          currentActivity.thermalVisitsList,
+          currentActivity.birdSpeciesList,
+          currentActivity.batteryReportsList,
+        );
+      }
     }
-    // Loads activity for the categories that at least one of the given recipients has opted
-    // into.  The queries are per project, rather than per recipient.
-    const loadActivity = async (
-      from: Date,
-      until: Date,
-      forRecipients: Recipient[],
-    ): Promise<ActivityLists> => ({
-      thermalVisitsList: forRecipients.some((r) => r.visitsReport)
-        ? await allVisitsForProjectInTimespan(group.id, from, until)
-        : [],
-      birdSpeciesList: forRecipients.some((r) => r.audioReport)
-        ? await allBirdSpeciesDetectionsForProjectInTimespan(
-            sequelize,
-            group.id,
-            from,
-            until,
-          )
-        : [],
-      batteryReportsList: forRecipients.some((r) => r.batteryReport)
-        ? await allBatteryReportsForProjectInTimespan(group.id, from, until)
-        : [],
-    });
-
-    const currentActivity = await loadActivity(startOfPeriod, now, recipients);
-
-    // NOTE: Whether there was activity is decided per recipient, based only on the categories
-    //  that recipient has opted into.  A recipient with no activity gets an email saying so only
-    //  if this is the *first* period with no activity for them (i.e. the previous period had
-    //  some), and doesn't get another until there is activity again.
-    const recipientsWithoutActivity = recipients.filter(
-      (recipient) => !recipientHasActivity(recipient, currentActivity),
-    );
-    let recipientsToEmail = recipients.filter((recipient) =>
-      recipientHasActivity(recipient, currentActivity),
-    );
-    if (recipientsWithoutActivity.length !== 0) {
-      // Check previous timespan for activity
-      const previousFrom = new Date(startOfPeriod);
-      const previousUntil = new Date(now);
-      previousFrom.setHours(startOfPeriod.getHours() - 24 * numDays);
-      previousUntil.setHours(now.getHours() - 24 * numDays);
-      const previousActivity = await loadActivity(
-        previousFrom,
-        previousUntil,
-        recipientsWithoutActivity,
-      );
-      recipientsToEmail = [
-        ...recipientsToEmail,
-        ...recipientsWithoutActivity.filter((recipient) =>
-          recipientHasActivity(recipient, previousActivity),
-        ),
-      ];
-    }
-    if (recipientsToEmail.length !== 0) {
-      // Make an email, then send it to all the users
-      // ✅ Generate a visits summary across species.
-      // Do we want a location by location break-down?
-      // Do we want some graphs?
-      // ✅ Link to the preferences, same as the alert email.
-      // Tagging activity.
-      // New controversial or flagged for review tags.
-      // New cool tags?
-      await sendProjectActivityDigestEmail(
-        weekly ? "Weekly" : "Daily",
-        group.groupName,
-        recipientsToEmail,
-        currentActivity.thermalVisitsList,
-        currentActivity.birdSpeciesList,
-        currentActivity.batteryReportsList,
-      );
-    }
-  }
-})()
-  .catch((e) => {
-    console.trace(e);
-    log.error(e);
-  })
-  .then(() => {
-    process.exit(0);
-  });
+  })();
+} catch (e) {
+  log.error(e);
+  console.trace(e);
+} finally {
+  process.exit(0);
+}

@@ -88,7 +88,9 @@ export class Alert extends ModelStaticCommon<Alert> {
         if (device) {
           groupId = device.Group.id;
         } else {
-          logger.error(`Couldn't find Group for device ${where.DeviceId}`);
+          logger.error(
+            `Couldn't find Group for device ${JSON.stringify(where.DeviceId)}`,
+          );
           return [];
         }
       } else if ("StationId" in where) {
@@ -99,7 +101,9 @@ export class Alert extends ModelStaticCommon<Alert> {
         if (station) {
           groupId = station.Group.id;
         } else {
-          logger.error(`Couldn't find Group for station ${where.StationId}`);
+          logger.error(
+            `Couldn't find Group for station ${JSON.stringify(where.StationId)}`,
+          );
           return [];
         }
       }
