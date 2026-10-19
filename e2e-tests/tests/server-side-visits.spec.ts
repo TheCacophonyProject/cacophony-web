@@ -87,8 +87,6 @@ test("A single recording, with multiple animal tags chooses the correct overall 
   const initialDateTime = new Date("2026-05-01T10:00:00Z");
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
-  const projectHandle = project.projectHandle;
-  const User = project.api();
   await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
@@ -473,7 +471,7 @@ test.skip("Multiple recordings with a mixture of AI and human classifications, c
   const secondUser = await createUser("second user");
   await addUserToProject(project, secondUser);
   const UserB = project.api(secondUser);
-  const [visitA, visitB] = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
+  const [visitA, _visitB] = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 2),
@@ -690,7 +688,7 @@ test("AI tags in the discarded/filtered list make 'none/null' visits", async ({ 
   const now = new Date();
   const project = await createProjectWithUserAndDevice({ initialDateTime });
   const AdminUser = project.api();
-  const uploads = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
+  const _uploads = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [
       {
         recordingDateTime: addMinutes(initialDateTime, 2),

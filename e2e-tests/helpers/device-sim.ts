@@ -107,7 +107,7 @@ export class DeviceSim {
     classification: string,
     availableActions: DeviceActionDecision[],
     atTime: Date,
-    thumbnail?: ArrayBuffer,
+    _thumbnail?: ArrayBuffer,
   ): Promise<void> {
     // TODO: Device tells API that it caught something!
     // Thumbnail can be added to the event later as a separate request, using the same UUID to patch it.
@@ -250,7 +250,7 @@ export class DeviceSim {
           this.events.shift();
         }
         // Batch upload events with the same payload.
-        for (const [type, events] of eventsByPayload) {
+        for (const events of eventsByPayload.values()) {
           const dateTimes = events.map((e) => e.atTime.toISOString());
           const response = await TestApiImpl.Devices.withAuth(
             this.deviceHandle.testId,

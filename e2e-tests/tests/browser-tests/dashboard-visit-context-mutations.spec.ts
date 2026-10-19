@@ -22,19 +22,18 @@ test("Human classifying recordings correctly updates visits context", async ({
       const project = await createProjectWithUserAndDevice({ initialDateTime });
       const adminUser = project.getAdminUser();
       const projectName = project.projectHandle.testId;
-      const [{ recordingId, tracks }] =
-        await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
-          [
-            {
-              recordingDateTime: addMinutes(initialDateTime, 2),
-              durationSeconds: 40,
-              tracks: [aiClassification],
-            },
-          ],
-          project.getDevice(),
-          project.locationBase,
-          oneFrameCptv,
-        );
+      const [{ recordingId }] = await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
+        [
+          {
+            recordingDateTime: addMinutes(initialDateTime, 2),
+            durationSeconds: 40,
+            tracks: [aiClassification],
+          },
+        ],
+        project.getDevice(),
+        project.locationBase,
+        oneFrameCptv,
+      );
       await test.step("Sign in user", async () => {
         await confirmEmailAddressViaApi(adminUser);
         // Log in user.
