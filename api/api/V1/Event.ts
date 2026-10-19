@@ -806,7 +806,7 @@ export default function (app: Application, baseUrl: string) {
           inner join "Events" e
         on ds.id = e."EventDetailId"
         where e."DeviceId" = ${response.locals.device.id}
-        and e."dateTime" > :now - interval '1 month' 
+        and e."dateTime" > (:now)::timestamptz - interval '1 month' 
       `,
         {
           type: QueryTypes.SELECT,
