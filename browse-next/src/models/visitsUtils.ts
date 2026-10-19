@@ -26,7 +26,7 @@ const tagPrecedence = [
   "leporidae",
 ];
 
-(async () => {
+void (async () => {
   await getClassifications();
   // Fill in tagPrecedence with any children of pre-set tags:
   if (flatClassifications.value) {

@@ -279,7 +279,7 @@ export class DeviceSim {
   public offloadRecordingsToSidekick(latestOnly = false): RecordingStoredInSidekick[] {
     if (latestOnly) {
       throw new Error("Offload latest not implemented in sidekick currently");
-      if (this.recordings.length === 0) {
+      /*if (this.recordings.length === 0) {
         return [];
       }
       return [
@@ -287,7 +287,7 @@ export class DeviceSim {
           ...this.recordings[this.recordings.length - 1],
           deviceId: this.deviceHandle.id,
         },
-      ];
+      ];*/
     }
     return this.recordings.map((recording) => ({
       ...recording,

@@ -50,7 +50,7 @@ const credentialsResolvers = {
         // Token is about to expire, so refresh.
         loggedInUserCredentials.refreshingToken = new Promise(
           (resolve, reject) => {
-            Users.withAuth(authKey)
+            void Users.withAuth(authKey)
               .refreshLogin(loggedInUserCredentials.refreshToken)
               .then((newCredentialsResponse) => {
                 delete loggedInUserCredentials.refreshingToken;

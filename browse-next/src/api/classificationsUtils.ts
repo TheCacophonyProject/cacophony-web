@@ -169,7 +169,7 @@ export const getClassifications = async (
     const cached = localStorage.getItem("classifications");
     if (cached && !loadedClassificationsThisSession.value) {
       const parsed = JSON.parse(cached);
-      ClientApi.Classifications.apiGetClassifications(parsed.version).then(
+      void ClientApi.Classifications.apiGetClassifications(parsed.version).then(
         async (res) => {
           if (res && res.success && res.result.version !== parsed.version) {
             const classifications = await getFreshClassifications();

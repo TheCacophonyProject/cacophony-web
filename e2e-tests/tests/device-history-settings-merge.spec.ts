@@ -412,7 +412,7 @@ test("Adding a reference image to already synced settings should leave them sync
 
 test("Adding mask settings to already synced settings should set unsynced", async () => {
   // TODO
-  const initialDateTime = new Date("2026-01-01T00:00:00Z");
+  const _initialDateTime = new Date("2026-01-01T00:00:00Z");
 });
 
 test("Adding ratthresh to already synced settings should leave synced", async () => {

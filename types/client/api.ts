@@ -535,7 +535,7 @@ export const unwrapLoadedResource = <T>(
   responseKey: string,
 ): Promise<LoadedResource<T>> => {
   return new Promise((resolve) => {
-    apiCall.then((response) => {
+    void apiCall.then((response) => {
       if (response && response.success) {
         resolve((response.result as never)[responseKey] as T);
       } else {

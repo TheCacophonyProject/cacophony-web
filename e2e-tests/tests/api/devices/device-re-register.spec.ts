@@ -240,9 +240,10 @@ test.describe("Device re-register", () => {
     expect(response.status).toBe(HttpStatusCode.Unprocessable);
 
     const activeDevices = await getActiveDevicesForUser(project.getAdminUser());
-    expect(activeDevices.map(({ id }) => id).sort(), "both devices are unaltered").toEqual(
-      [device.id, otherDevice.id].sort(),
-    );
+    expect(
+      activeDevices.map(({ id }) => id).sort((a, b) => a - b),
+      "both devices are unaltered",
+    ).toEqual([device.id, otherDevice.id].sort((a, b) => a - b));
     expect(activeDevices.find(({ id }) => id === device.id)).toMatchObject({
       deviceName: device.testId,
       saltId: device.id,

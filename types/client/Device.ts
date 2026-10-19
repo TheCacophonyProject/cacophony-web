@@ -86,7 +86,11 @@ const getDeviceInProject =
 
 const getDeviceLocationAtTime =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId, activeAndInactiveDevices = false, date?: Date) => {
+  async (
+    deviceId: DeviceId,
+    activeAndInactiveDevices = false,
+    date?: Date,
+  ): Promise<ApiLocationResponse | false> => {
     const params = new URLSearchParams();
     if (date) {
       params.append("at-time", date.toISOString());
@@ -94,20 +98,11 @@ const getDeviceLocationAtTime =
     if (activeAndInactiveDevices) {
       params.append("only-active", false.toString());
     }
-    return new Promise((resolve) => {
-      (
-        api.get(
-          authKey,
-          `/api/v1/devices/${deviceId}/location${optionalQueryString(params)}`,
-        ) as Promise<FetchResult<{ location: ApiLocationResponse }>>
-      ).then((response) => {
-        if (response.success) {
-          resolve(response.result.location);
-        } else {
-          resolve(false);
-        }
-      });
-    }) as Promise<ApiLocationResponse | false>;
+    const response = (await api.get(
+      authKey,
+      `/api/v1/devices/${deviceId}/location${optionalQueryString(params)}`,
+    )) as FetchResult<{ location: ApiLocationResponse }>;
+    return response.success ? response.result.location : false;
   };
 
 export interface EventApiParams {
@@ -193,39 +188,35 @@ const getLastStoppedEvent =
 
 const getDeviceNodeGroup =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId) => {
-    return new Promise((resolve) => {
-      getLatestEventsByDeviceId(api, authKey)(deviceId, {
-        type: "salt-update",
-        limit: 1,
-      }).then((response) => {
-        if (response.success && response.result.rows.length) {
-          let details = response.result.rows[0].EventDetail.details;
-          if (typeof details === "string") {
-            try {
-              details = details
-                .trim()
-                // eslint-disable-next-line no-control-regex
-                .replace(/[\u0000-\u001F\u007F-\u009F]/g, "")
-                .replace(/\\\\/g, "\\");
-              details = JSON.parse(details);
-            } catch (e) {
-              console.warn(e);
-              // Do nothing
-            }
-          }
-          resolve(
-            (
-              details as {
-                nodegroup: string;
-              }
-            ).nodegroup || "tc2-prod",
-          );
-        } else {
-          resolve(false);
+  async (deviceId: DeviceId): Promise<string | false> => {
+    const response = await getLatestEventsByDeviceId(api, authKey)(deviceId, {
+      type: "salt-update",
+      limit: 1,
+    });
+    if (response.success && response.result.rows.length) {
+      let details = response.result.rows[0].EventDetail.details;
+      if (typeof details === "string") {
+        try {
+          details = details
+            .trim()
+            // eslint-disable-next-line no-control-regex
+            .replace(/[\u0000-\u001F\u007F-\u009F]/g, "")
+            .replace(/\\\\/g, "\\");
+          details = JSON.parse(details);
+        } catch (e) {
+          console.warn(e);
+          // Do nothing
         }
-      });
-    }) as Promise<string | false>;
+      }
+      return (
+        (
+          details as {
+            nodegroup: string;
+          }
+        ).nodegroup || "tc2-prod"
+      );
+    }
+    return false;
   };
 
 const latestEventDateFromResponse = (
@@ -336,24 +327,18 @@ const getEarliestEventAfterTime =
 
 const getDeviceVersionInfo =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId) => {
-    return new Promise((resolve) => {
-      getLatestEventsByDeviceId(api, authKey)(deviceId, {
-        type: "versionData",
-        limit: 1,
-      }).then((response) => {
-        if (response.success && response.result.rows.length) {
-          resolve(
-            response.result.rows[0].EventDetail.details as Record<
-              string,
-              string
-            >,
-          );
-        } else {
-          resolve(false);
-        }
-      });
-    }) as Promise<Record<string, string> | false>;
+  async (deviceId: DeviceId): Promise<Record<string, string> | false> => {
+    const response = await getLatestEventsByDeviceId(api, authKey)(deviceId, {
+      type: "versionData",
+      limit: 1,
+    });
+    if (response.success && response.result.rows.length) {
+      return response.result.rows[0].EventDetail.details as Record<
+        string,
+        string
+      >;
+    }
+    return false;
   };
 
 const getDeviceLatestVersionInfo =
@@ -406,93 +391,81 @@ const getActiveDevicesForCurrentUser =
 
 const getDeviceConfig =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId) => {
-    return new Promise((resolve) => {
-      getLatestEventsByDeviceId(api, authKey)(deviceId, {
-        type: "config",
-        limit: 1,
-      }).then((response) => {
-        if (response && response.success && response.result.rows.length) {
-          resolve(
-            response.result.rows[0].EventDetail.details as DeviceConfigDetail,
-          );
-        } else {
-          resolve(false);
-        }
-      });
-    }) as Promise<DeviceConfigDetail | false>;
+  async (deviceId: DeviceId): Promise<DeviceConfigDetail | false> => {
+    const response = await getLatestEventsByDeviceId(api, authKey)(deviceId, {
+      type: "config",
+      limit: 1,
+    });
+    if (response && response.success && response.result.rows.length) {
+      return response.result.rows[0].EventDetail.details as DeviceConfigDetail;
+    }
+    return false;
   };
 
 const getLatestStatusRecordingForDevice =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId, projectId: ProjectId, use2SecondRecordings = true) => {
-    return new Promise((resolve) => {
-      const params = new URLSearchParams();
-      params.append("max-results", "1");
-      params.append("types", "thermal");
-      params.append("include-false-positives", true.toString());
-      params.append("devices", deviceId.toString());
-      if (use2SecondRecordings) {
-        params.append("status-recordings", true.toString());
-      }
-      (
-        api.get(
-          authKey,
-          `/api/v1/recordings/for-project/${projectId}/${optionalQueryString(
-            params,
-          )}`,
-        ) as Promise<FetchResult<{ recordings: ApiRecordingResponse[] }>>
-      ).then((response) => {
-        if (response.success) {
-          if (response.result.recordings.length) {
-            resolve(response.result.recordings[0]);
-          } else {
-            if (use2SecondRecordings) {
-              // 2 Second recording may not be available, get the latest regular recording:
-              getLatestStatusRecordingForDevice(api, authKey)(
-                deviceId,
-                projectId,
-                false,
-              ).then(resolve);
-            } else {
-              resolve(false);
-            }
-          }
-        } else {
-          resolve(false);
-        }
-      });
-    }) as Promise<ApiRecordingResponse | false>;
+  async (
+    deviceId: DeviceId,
+    projectId: ProjectId,
+    use2SecondRecordings = true,
+  ): Promise<ApiRecordingResponse | false> => {
+    const params = new URLSearchParams();
+    params.append("max-results", "1");
+    params.append("types", "thermal");
+    params.append("include-false-positives", true.toString());
+    params.append("devices", deviceId.toString());
+    if (use2SecondRecordings) {
+      params.append("status-recordings", true.toString());
+    }
+    const response = (await api.get(
+      authKey,
+      `/api/v1/recordings/for-project/${projectId}/${optionalQueryString(
+        params,
+      )}`,
+    )) as FetchResult<{ recordings: ApiRecordingResponse[] }>;
+    if (!response.success) {
+      return false;
+    }
+    if (response.result.recordings.length) {
+      return response.result.recordings[0];
+    }
+    if (use2SecondRecordings) {
+      // 2 Second recording may not be available, get the latest regular recording:
+      return getLatestStatusRecordingForDevice(api, authKey)(
+        deviceId,
+        projectId,
+        false,
+      );
+    }
+    return false;
   };
 
 const getDeviceLastPoweredOff =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId) => {
-    return new Promise((resolve) => {
-      Promise.all(
-        ["daytime-power-off", "powered-off"].map((type) =>
-          getLatestEventsByDeviceId(api, authKey)(deviceId, {
-            type: type as DeviceEventType,
-            limit: 1,
-          }),
-        ),
-      ).then(([r1, r2]) => resolve(latestEventDateFromResponse(r1, r2)));
-    }) as Promise<Date | false>;
+  async (deviceId: DeviceId): Promise<Date | false> => {
+    const [r1, r2] = await Promise.all(
+      ["daytime-power-off", "powered-off"].map((type) =>
+        getLatestEventsByDeviceId(api, authKey)(deviceId, {
+          type: type as DeviceEventType,
+          limit: 1,
+        }),
+      ),
+    );
+    return latestEventDateFromResponse(r1, r2);
   };
 
 const getDeviceLastPoweredOn =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId) => {
-    return new Promise((resolve) => {
-      Promise.all(
-        ["rpi-power-on", "power-on-test"].map((type) =>
-          getLatestEventsByDeviceId(api, authKey)(deviceId, {
-            type: type as DeviceEventType,
-            limit: 1,
-          }),
-        ),
-      ).then(([r1, r2]) => resolve(latestEventDateFromResponse(r1, r2)));
-    }) as Promise<Date | false>;
+  async (deviceId: DeviceId): Promise<Date | false> => {
+    const [r1, r2] = await Promise.all(
+      ["rpi-power-on", "power-on-test"].map((type) =>
+        getLatestEventsByDeviceId(api, authKey)(deviceId, {
+          type: type as DeviceEventType,
+          limit: 1,
+        }),
+      ),
+    );
+    return latestEventDateFromResponse(r1, r2);
   };
 
 const assignScheduleToDevice =
@@ -535,7 +508,7 @@ const removeScheduleFromDevice =
 
 const getUniqueTrackTagsForDeviceInProject =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (
+  async (
     deviceId: DeviceId,
     fromDateTime?: Date,
     untilDateTime?: Date,
@@ -549,24 +522,15 @@ const getUniqueTrackTagsForDeviceInProject =
     if (untilDateTime) {
       params.append("until-time", untilDateTime.toISOString());
     }
-    return new Promise((resolve, _reject) => {
-      (
-        api.get(
-          authKey,
-          `/api/v1/devices/${deviceId}/unique-track-tags?${params}`,
-        ) as Promise<
-          FetchResult<{
-            trackTags: { path: string; what: string; count: number }[];
-          }>
-        >
-      ).then((result) => {
-        if (result.success) {
-          resolve(result.result.trackTags.sort((a, b) => b.count - a.count));
-        } else {
-          resolve(false);
-        }
-      });
-    });
+    const result = (await api.get(
+      authKey,
+      `/api/v1/devices/${deviceId}/unique-track-tags?${params}`,
+    )) as FetchResult<{
+      trackTags: { path: string; what: string; count: number }[];
+    }>;
+    return result.success
+      ? result.result.trackTags.sort((a, b) => b.count - a.count)
+      : false;
   };
 
 const getTracksWithTagForDeviceInProject =
@@ -771,21 +735,24 @@ const hasReferenceImageForDeviceAtTime =
 
 const getLastKnownDeviceBatteryLevel =
   (api: CacophonyApiClient, authKey: TestHandle | null = DEFAULT_AUTH_ID) =>
-  (deviceId: DeviceId): Promise<BatteryInfoEventAndDate | false | null> => {
+  async (
+    deviceId: DeviceId,
+  ): Promise<BatteryInfoEventAndDate | false | null> => {
     const lastThirtyDays = new Date();
     lastThirtyDays.setDate(lastThirtyDays.getDate() - 30);
-    return new Promise((resolve) => {
-      getBatteryInfo(api, authKey)(deviceId, lastThirtyDays, 1, 1).then(
-        (result) => {
-          if (result === null) {
-            resolve(null);
-          } else if (result === false || result.length === 0) {
-            resolve(false);
-          }
-          resolve((result as BatteryInfoEventAndDate[])[0]);
-        },
-      );
-    });
+    const result = await getBatteryInfo(api, authKey)(
+      deviceId,
+      lastThirtyDays,
+      1,
+      1,
+    );
+    if (result === null) {
+      return null;
+    }
+    if (result === false || result.length === 0) {
+      return false;
+    }
+    return (result as BatteryInfoEventAndDate[])[0];
   };
 
 const getDeviceModel =

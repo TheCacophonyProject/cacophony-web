@@ -143,7 +143,7 @@ class IsoFormattedDateStringParser implements SubNodeParser {
 }
 
 // We configure the parser an add our custom parser to it.
-(async () => {
+void (async () => {
   console.log("Generating schemas");
   const files = await readdir("api");
 

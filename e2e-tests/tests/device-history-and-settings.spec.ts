@@ -1949,8 +1949,8 @@ test("Test deleting reference images, apparently you can actually do that, maybe
     messages: ["Reference image deleted successfully"],
   });
 
-  const deviceSettings = await AdminUser.Devices.getSettingsForDevice(deviceHandle.id);
-  const deviceHistory = await AdminUser.Devices.getDeviceHistoryInTest(deviceHandle.id);
+  const _deviceSettings = await AdminUser.Devices.getSettingsForDevice(deviceHandle.id);
+  const _deviceHistory = await AdminUser.Devices.getDeviceHistoryInTest(deviceHandle.id);
   // TODO: Flesh out assertions
   const referenceImageResponse = await AdminUser.Devices.getReferenceImageForDeviceAtTime(
     deviceHandle.id,
