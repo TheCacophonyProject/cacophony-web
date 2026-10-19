@@ -132,7 +132,7 @@ onBeforeMount(async () => {
     },
   );
   let now = new Date();
-  if (latestEvent.success) {
+  if (latestEvent.success && latestEvent.result.rows.length !== 0) {
     now = new Date(latestEvent.result.rows[0].dateTime);
     oneMonthAgo.value = new Date(now.setDate(now.getDate() - 30));
   }

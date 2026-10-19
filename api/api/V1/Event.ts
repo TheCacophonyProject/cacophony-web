@@ -791,7 +791,10 @@ export default function (app: Application, baseUrl: string) {
   app.get(
     `${apiUrl}/event-types/for-device/:deviceId`,
     extractJwtAuthorizedUser,
-    validateFields([optionalDateOf(query("latest-time"))]),
+    validateFields([
+      idOf(param("deviceId")),
+      optionalDateOf(query("latest-time")),
+    ]),
     fetchAuthorizedRequiredDeviceById(param("deviceId")),
     async (request: Request, response: Response) => {
       const latestEventTime = request.query["latest-time"] as unknown as Date;
