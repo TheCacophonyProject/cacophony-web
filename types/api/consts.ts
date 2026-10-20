@@ -18,6 +18,55 @@ export enum AudioRecordingMode {
   Disabled = "Disabled",
 }
 
+export enum DeviceActionStatus {
+  pending = "pending", // Device action asking for user input has been created
+  requested = "requested", // User input has been requested (once an associated recording is received)
+  responded = "responded", // User has provided input
+  acknowledged = "acknowledged", // Device has acknowledged receipt of user instructions
+  completed = "completed", // Device has completed user instructions
+  failed = "failed", // Completing provided instructions failed.
+}
+
+export enum DeviceThermalModelOutputLabel {
+  bird = "bird",
+  cat = "cat",
+  deer = "deer",
+  dog = "dog",
+  "false-positive" = "false-positive",
+  hedgehog = "hedgehog",
+  human = "human",
+  kiwi = "kiwi",
+  leporidae = "leporidae",
+  mustelid = "mustelid",
+  penguin = "penguin",
+  possum = "possum",
+  rodent = "rodent",
+  sheep = "sheep",
+  vehicle = "vehicle",
+  wallaby = "wallaby",
+}
+
+export enum ServerThermalModelOutputLabel {
+  bird = "bird",
+  cat = "cat",
+  chicken = "chicken",
+  deer = "deer",
+  dog = "dog",
+  "false-positive" = "false-positive",
+  hedgehog = "hedgehog",
+  human = "human",
+  kiwi = "kiwi",
+  leporidae = "leporidae",
+  mustelid = "mustelid",
+  penguin = "penguin",
+  possum = "possum",
+  rodent = "rodent",
+  sheep = "sheep",
+  vehicle = "vehicle",
+  wallaby = "wallaby",
+  weka = "weka",
+}
+
 export enum TagMode {
   Any = "any",
   UnTagged = "untagged",
@@ -36,19 +85,14 @@ export enum RecordingProcessingState {
   Tracking = "tracking",
   TrackAndAnalyse = "trackAndAnalyse",
   ReTrack = "retrack",
-  AnalyseThermal = "analyse",
   Finished = "FINISHED",
   FinishedFailed = "FINISHED.failed",
-  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
   Analyse = "analyse",
   Reprocess = "reprocess",
   ReTrackFailed = "retrack.failed",
   TrackingFailed = "tracking.failed",
-  AnalyseThermalFailed = "analyse.failed",
-  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
   AnalyseFailed = "analyse.failed",
   ReprocessFailed = "reprocess.failed",
-
   AnalyseTest = "analyse.test", // Value only used for testing, should not be processed.
 }
 

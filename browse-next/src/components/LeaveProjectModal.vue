@@ -3,9 +3,10 @@ import { computed } from "vue";
 import { currentSelectedProject } from "@models/LoggedInUser";
 import type { SelectedProject } from "@models/LoggedInUser";
 import { BModal } from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 
 const leaveProject = () => {
+  // TODO: Implement leave project logic!
   // If we're not an admin of the group, or we're an admin but not the *last* admin
   // If we leave the group, redirect to the next group, or setup screen.
 };

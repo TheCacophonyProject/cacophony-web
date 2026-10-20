@@ -4,6 +4,7 @@ import { TestApi, TestApiImpl } from "@shared/client";
 import { testLocation } from "@/helpers/location-helpers";
 import { expect, test } from "@playwright/test";
 import { FileFixtures } from "@/helpers/upload-tests";
+import { SUPER_USER } from "@/helpers/config";
 import { getEmail } from "@/helpers/browse-helpers";
 
 export interface ProjectBundle {
@@ -47,11 +48,8 @@ export const getProjectTestName = (str: string) => getTestName(`cy_project-${str
 //     }
 //     return loadedFixtures;
 // };
-export const loginSuperAdminUser = async (
-  userName: string,
-  email: string,
-  password: string,
-): Promise<TestUserHandle> => {
+export const loginSuperAdminUser = async (): Promise<TestUserHandle> => {
+  const { userName, email, password } = SUPER_USER;
   const testId = `cy_user-${userName}`;
 
   const userResponse = await TestApiImpl.Users.login(email, password);
@@ -146,6 +144,7 @@ export const addDeviceToProject = async (
   projectHandle: TestProjectHandle,
   initialDateTime?: Date,
   useExplicitDeviceName: boolean = false,
+  saltId?: number,
 ): Promise<TestDeviceHandle> => {
   const uniqueHandle = getDeviceTestName(deviceName);
   const deviceHandle = useExplicitDeviceName ? deviceName : uniqueHandle;
@@ -155,6 +154,7 @@ export const addDeviceToProject = async (
       deviceHandle,
       "password",
       initialDateTime,
+      saltId,
     );
     expect(deviceResponse.success, "create device").toBe(true);
     if (deviceResponse.success) {
@@ -204,7 +204,7 @@ export const createProjectWithUserAndDevice = async (options?: {
       return deviceHandles[0];
     },
     getTestSuperUser: async (): Promise<TestUserHandle> => {
-      return await loginSuperAdminUser("admin_test", "admin@email.com", "admin_test");
+      return await loginSuperAdminUser();
     },
     getNonAdmin: (): TestUserHandle | null => {
       // There may not be non-admin users.

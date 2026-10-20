@@ -5,26 +5,44 @@ import {
   hasAcceptedSomeEUA,
   euaIsOutOfDate,
   currentEUAVersion,
+  setLoggedInUserData,
+  type LoggedInUser,
 } from "@models/LoggedInUser";
-import { ClientApi } from "@/api";
+import { ClientApi, CurrentUser } from "@/api";
 
 const acceptedEUA = ref(false);
 const submitting = ref(false);
 
+const errorMessage = ref("");
+
 const acceptEndUserAgreement = async () => {
   submitting.value = true;
-  await ClientApi.Users.updateUserFields({
-    endUserAgreement: currentEUAVersion.value,
-  });
-  submitting.value = false;
-  showModal.value = false;
-};
-const onHidden = () => {
-  // FIXME(auth): Make this work again
-  // setLoggedInUserData({
-  //   ...(CurrentUser.value as LoggedInUser),
-  //   endUserAgreement: currentEUAVersion.value,
-  // });
+  errorMessage.value = "";
+  try {
+    // currentEUAVersion isn't populated elsewhere, so always ask the api for the latest version.
+    const latestResponse = await ClientApi.Users.getEUAVersion();
+    if (!latestResponse.success) {
+      errorMessage.value = "Unable to fetch the latest end user agreement.";
+      return;
+    }
+    const euaVersion = latestResponse.result.euaVersion;
+    const response = await ClientApi.Users.updateUserFields({
+      endUserAgreement: euaVersion,
+    });
+    if (!response.success) {
+      errorMessage.value =
+        "Unable to save your acceptance of the end user agreement, please try again.";
+      return;
+    }
+    currentEUAVersion.value = euaVersion;
+    setLoggedInUserData({
+      ...(CurrentUser.value as LoggedInUser),
+      endUserAgreement: euaVersion,
+    });
+    showModal.value = false;
+  } finally {
+    submitting.value = false;
+  }
 };
 const showModal = ref<boolean>(false);
 onMounted(() => {
@@ -41,7 +59,6 @@ onMounted(() => {
     no-close-on-esc
     no-footer
     hide-header-close
-    @hidden="onHidden"
   >
     <p v-if="!hasAcceptedSomeEUA">
       Welcome back! It looks like you haven't been here in a while.
@@ -54,7 +71,7 @@ onMounted(() => {
       End&nbsp;User&nbsp;Agreement
     </p>
 
-    <b-form @submit.stop.prevent="acceptEndUserAgreement">
+    <b-form data-cy="eua form" @submit.stop.prevent="acceptEndUserAgreement">
       <div class="input-group mb-3">
         <b-form-checkbox v-model="acceptedEUA" :disabled="submitting" required>
           <span class="small">
@@ -67,10 +84,18 @@ onMounted(() => {
           </span>
         </b-form-checkbox>
       </div>
+      <div
+        v-if="errorMessage"
+        class="text-danger small mb-3"
+        data-cy="eua error"
+      >
+        {{ errorMessage }}
+      </div>
       <div class="d-flex justify-content-center">
         <button
           type="submit"
           class="btn btn-primary flex-fill"
+          data-cy="accept eua button"
           :disabled="!acceptedEUA || submitting"
         >
           <span v-if="submitting">

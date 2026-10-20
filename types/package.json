@@ -3,8 +3,8 @@
     "version": "1.0.0",
     "scripts": {
         "generate-schemas": "./node_modules/.bin/tsc && node build-schemas.js",
-        "lint": "eslint -c ./eslint.config.ts || (echo \"Please run 'npm run lint:fix' to clean up formatting of files.\"; false)",
-        "lint:fix": "eslint -c ./eslint.config.ts --fix"
+        "lint": "oxlint . && oxfmt -c ../.oxfmtrc.json --check .",
+        "lint:fix": "oxlint --fix . && oxfmt -c ../.oxfmtrc.json ."
     },
     "type": "module",
     "dependencies": {
@@ -12,14 +12,12 @@
         "ts-json-schema-generator": "^2.4.0"
     },
     "devDependencies": {
-        "@types/recursive-readdir": "^2.2.0",
         "@types/node": "^24.10.0",
-        "typescript": "^5.9.3",
-        "eslint": "^9.39.1",
+        "@types/recursive-readdir": "^2.2.0",
         "jiti": "^2.6.1",
-        "@eslint/compat": "^2.0.0",
-        "eslint-config-prettier": "^10.1.8",
-        "eslint-plugin-prettier": "^5.5.5",
-        "typescript-eslint": "^8.46.3"
+        "oxfmt": "^0.73.0",
+        "oxlint": "^1.88.0",
+        "oxlint-tsgolint": "^7.0.2004",
+        "typescript": "^5.9.3"
     }
 }

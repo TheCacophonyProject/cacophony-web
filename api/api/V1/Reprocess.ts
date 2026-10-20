@@ -30,21 +30,20 @@ import { successResponse } from "./responseUtil.js";
 import type { NextFunction } from "express-serve-static-core";
 import { ClientError, BadRequestError } from "../customErrors.js";
 import { arrayOf, jsonSchemaOf } from "../schema-validation.js";
-import lodash from "lodash";
 import RecordingIdSchema from "@schemas/api/common/RecordingId.schema.json" with { type: "json" };
 import { HttpStatusCode } from "@typedefs/api/consts.js";
 import { Visit } from "@models/Visit.js";
 
-const { uniq: dedupe } = lodash;
 export default (app: Application, baseUrl: string) => {
   const apiUrl = `${baseUrl}/reprocess`;
 
   /**
    * @api {get} /api/v1/reprocess/retry-failed/:id Retry processing a single recording which is in a failed state
-   * @apiName Reprocess
+   * @apiName RetryFailedReprocess
    * @apiGroup Recordings
-   * @apiParam {Integer} id of recording to retry
-   * @apiDescription Retries processing a recording that's in a failed state
+   * @apiParam {Integer} id Id of the recording to retry
+   * @apiDescription Retries processing a recording that's in a failed state.  Returns an error if the recording
+   * hasn't failed processing.
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -80,9 +79,9 @@ export default (app: Application, baseUrl: string) => {
    * @api {get} /api/v1/reprocess/:id Reprocess a single recording
    * @apiName Reprocess
    * @apiGroup Recordings
-   * @apiParam {Integer} id of recording to reprocess
-   * @apiDescription Marks a recording for reprocessing (tracking) and archives existing tracks.
-   * Used if tracking algorithms have changed
+   * @apiParam {Integer} id Id of the recording to reprocess
+   * @apiDescription Marks a recording for reprocessing (tracking), removes the recording's tags (keeping a copy in
+   * its additional metadata) and archives the tags on its existing tracks.  Used if tracking algorithms have changed
    *
    * @apiUse V1UserAuthorizationHeader
    *
@@ -105,11 +104,11 @@ export default (app: Application, baseUrl: string) => {
    * @api {post} /api/v1/reprocess Mark recordings for reprocessing
    * @apiName ReprocessMultiple
    * @apiGroup Recordings
-   * @apiParam {Integer[]} recordings an array of recording ids to reprocess
+   * @apiBody {Integer[]} recordings an array of recording ids to reprocess
    *
    * @apiDescription Mark one or more recordings for reprocessing,
-   * archiving any tracks and recording tags that are associated with
-   * them.
+   * removing the recordings' tags (keeping a copy in their additional metadata) and archiving the tags on their
+   * existing tracks.  If the user can't access every recording supplied, none are reprocessed and an error is returned.
    *
    * @apiUse V1UserAuthorizationHeader
    * @apiUse V1ResponseSuccess
@@ -132,7 +131,7 @@ export default (app: Application, baseUrl: string) => {
       //  currently, but should be with the exception of users with globalRead permissions?
       const recordings = response.locals.recordings;
       // NOTE: Dedupe array when length checking in case the user specified the same recordingId more than once.
-      if (recordings.length !== dedupe(request.body.recordings).length) {
+      if (recordings.length !== new Set(request.body.recordings).size) {
         return next(
           new ClientError(
             "Could not find all recordingIds for user that were supplied to be reprocessed. No recordings where reprocessed",

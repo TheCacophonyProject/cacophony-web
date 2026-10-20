@@ -149,7 +149,7 @@ import type {
   GenericCardTableValue,
 } from "@/components/CardTableTypes";
 import { useElementSize } from "@vueuse/core";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 
 const props = withDefaults(
   defineProps<{

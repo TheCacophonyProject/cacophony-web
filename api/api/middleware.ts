@@ -263,7 +263,7 @@ export const parseBool = function (value: unknown): boolean {
     return false;
   }
   if (typeof value === "string" || typeof value === "object") {
-    return value.toString().toLowerCase() === "true";
+    return JSON.stringify(value).toLowerCase() === "true";
   }
   return false;
 };
@@ -285,7 +285,7 @@ export const expectedTypeOf =
     if (typeOf === "undefined" && val === undefined) {
       return `${meta.location}.${meta.path}: Expected ${type[0]}, got ${typeOf}`;
     }
-    return `${meta.location}.${meta.path}: Expected ${type[0]}, got ${typeOf} : (${val})`;
+    return `${meta.location}.${meta.path}: Expected ${type[0]}, got ${typeOf} : (${JSON.stringify(val)})`;
   };
 
 export const isIntArray = (val: unknown) => {
@@ -296,7 +296,7 @@ export const isIntArray = (val: unknown) => {
   }
   return !(
     isNaN(parseInt(val as string)) ||
-    parseInt(val as string).toString() !== String(val)
+    parseInt(val as string).toString() !== String(val as number)
   );
 };
 

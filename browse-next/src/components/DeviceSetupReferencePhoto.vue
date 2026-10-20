@@ -12,7 +12,7 @@ import { useElementSize } from "@vueuse/core";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
 import type { LoadedResource } from "@apiClient/types.ts";
 import SectionCard from "@/components/SectionCard.vue";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import { BAlert, BFormGroup, BFormInput, BSpinner } from "bootstrap-vue-next";
 
 /**

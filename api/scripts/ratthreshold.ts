@@ -6,6 +6,7 @@ import type {
   RecordingId,
   TrackId,
 } from "@typedefs/api/common.js";
+import log from "../logging.js";
 import { initSequelize } from "@models/index.js";
 import { QueryTypes } from "sequelize";
 import { DeviceHistory } from "@models/DeviceHistory.js";
@@ -324,10 +325,11 @@ async function getRodentData(
   }[];
 }
 
-main()
-  .catch((err) => {
-    console.trace(err);
-  })
-  .then(() => {
-    process.exit(0);
-  });
+try {
+  await main();
+} catch (e) {
+  log.error(e);
+  console.trace(e);
+} finally {
+  process.exit(0);
+}

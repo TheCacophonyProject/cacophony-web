@@ -168,13 +168,13 @@ const grafanaLabelRestart = async () => {
     } catch (e) {
       log.warning(
         "Failed to set restart annotation in grafana: %s",
-        e.toString(),
+        (e as Error).toString(),
       );
     }
   }
 };
 
-(async () => {
+void (async () => {
   log.notice("Starting Full Noise.");
   await loadCacophonyWebVersion();
   // Check if any of the Cacophony type definitions have changed, and need recompiling?
@@ -387,7 +387,7 @@ const grafanaLabelRestart = async () => {
         }
         return `${request.method}(${colourForStatusCode(response.statusCode)}) ${safeUrl}\nUA: ${userAgentString}\n${requesterInfo}${
           dbQueryCount
-            ? `\x1b[2;37m${dbQueryCount} DB queries taking ${dbQueryTime}ms, \x1b[0m`
+            ? `\x1b[2;37m${dbQueryCount as number} DB queries taking ${dbQueryTime as number}ms, \x1b[0m`
             : ""
         }\x1b[2;37m${(response as { responseTime?: number }).responseTime || 0}ms total response time${
           wasRateLimited ? ", was rate limited" : ""
@@ -567,7 +567,7 @@ const grafanaLabelRestart = async () => {
       const devices = await Device.findAll({
         where: {},
         attributes: ["id", "deviceName"],
-        include: [{ model: Group, attributes: ["groupName"] }],
+        include: [{ model: Group, attributes: ["groupName"], required: true }],
       });
       for (const device of devices) {
         DeviceNamesById.set(device.id, device.deviceName);
@@ -596,7 +596,8 @@ const grafanaLabelRestart = async () => {
     await openHttpServer(app);
     await grafanaLabelRestart();
   } catch (error) {
-    log.error(error.toString());
+    console.log(error);
+    log.error((error as Error).toString());
     process.exit(2);
   }
 })();

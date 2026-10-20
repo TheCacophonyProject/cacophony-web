@@ -6,12 +6,9 @@ import {
 } from "@/emails/htmlEmailUtils.js";
 import { sendEmail } from "@/emails/sendEmail.js";
 import config from "@config";
+import Handlebars from "handlebars";
 import logger from "@/logging.js";
-import path from "path";
-import { fileURLToPath } from "url";
 import type { DeviceId, StationId } from "@typedefs/api/common.js";
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 import type { GroupedServiceErrors } from "@/scripts/report-service-errors.js";
 import { flatClassifications } from "@/classifications/classifications.js";
 
@@ -166,7 +163,7 @@ export const sendGroupInviteExistingMemberEmail = async (
     html,
     text,
     userEmailAddress,
-    "You've been invited to join a group on Cacophony Monitoring",
+    "You've been invited to join a project on Cacophony Monitoring",
     await commonAttachments(),
   );
 };
@@ -206,7 +203,7 @@ export const sendGroupInviteNewMemberEmail = async (
     html,
     text,
     userEmailAddress,
-    "You've been invited to join a group on Cacophony Monitoring",
+    "You've been invited to join a project on Cacophony Monitoring",
     await commonAttachments(),
   );
 };
@@ -497,6 +494,152 @@ export const sendAnimalAlertEmail = async (
   );
 };
 
+export const sendTrapActionRequestEmail = async (
+  groupName: string,
+  deviceName: string,
+  stationName: string,
+  stationId: StationId,
+  recordingDateTime: Date,
+  classification: string,
+  actionId: string,
+  userEmailAddress: string,
+  deviceTimezone: string | null,
+  thumbnail?: Buffer,
+) => {
+  const common = commonInterpolants();
+  const projectRoot = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
+    groupName,
+  )}`;
+  const emailSettingsUrl = `${projectRoot}/my-settings`;
+  const targetTag =
+    classification.charAt(0).toUpperCase() + classification.slice(1);
+  const stationUrl = stationId
+    ? `${projectRoot}/activity?display-mode=visits&recording-mode=cameras&locations=${stationId}&from=any&tag-mode=any`
+    : "";
+  const actionUrl = `${projectRoot}/traps/${actionId}`;
+  // TODO: use device locale?
+  const recordingTime = recordingDateTime.toLocaleDateString("en-NZ", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    weekday: "short",
+    hour12: true,
+    timeZone: deviceTimezone || "Pacific/Auckland",
+  });
+  const { text, html } = await createEmailWithTemplate(
+    "trap-action-request.html",
+    {
+      targetTag,
+      emailSettingsUrl,
+      groupName,
+      deviceName,
+      actionUrl,
+      recordingTime,
+      stationUrl,
+      stationName,
+      ...common,
+    },
+  );
+  // NOTE: At some stage in the future there may be a thumbnail provided from the device when it
+  //  creates a trap user action request.
+  const thumb: EmailImageAttachment[] = thumbnail
+    ? [
+        {
+          buffer: thumbnail,
+          mimeType: "image/png",
+          cid: "thumbnail",
+        },
+      ]
+    : [];
+  return await sendEmail(
+    html,
+    text,
+    userEmailAddress,
+    `🪤 Trap activated for ${targetTag} at ${deviceName}: action required`,
+    [...(await commonAttachments()), ...thumb],
+  );
+};
+
+export const TRAP_EVENT_TYPES = [
+  "trapEnableCommand",
+  "trapDisableCommand",
+  "trapTriggered",
+];
+export type TrapEventType = (typeof TRAP_EVENT_TYPES)[number];
+
+const trapEventSummaries: Record<
+  TrapEventType,
+  { subject: (deviceName: string) => string; heading: string; body: string }
+> = {
+  trapEnableCommand: {
+    subject: (deviceName) => `🪤 Trap enabled at ${deviceName}`,
+    heading: "Trap enabled",
+    body: "sent a command to <strong>enable</strong> its trap",
+  },
+  trapDisableCommand: {
+    subject: (deviceName) => `🪤 Trap disabled at ${deviceName}`,
+    heading: "Trap disabled",
+    body: "sent a command to <strong>disable</strong> its trap",
+  },
+  trapTriggered: {
+    subject: (deviceName) => `🪤 Trap triggered at ${deviceName}`,
+    heading: "Trap triggered",
+    body: "reported that its trap was <strong>triggered</strong>",
+  },
+};
+
+export const sendTrapEventEmail = async (
+  eventType: TrapEventType,
+  groupName: string,
+  deviceName: string,
+  eventDateTimes: Date[],
+  reason: string | undefined,
+  userEmailAddresses: string[],
+  deviceTimezone: string | null,
+) => {
+  const common = commonInterpolants();
+  const projectRoot = `${common.cacophonyBrowseUrl}/${urlNormaliseName(
+    groupName,
+  )}`;
+  const emailSettingsUrl = `${projectRoot}/my-settings`;
+  const summary = trapEventSummaries[eventType];
+  const eventTimes = eventDateTimes.map((eventDateTime) =>
+    eventDateTime.toLocaleDateString("en-NZ", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      weekday: "short",
+      hour12: true,
+      timeZone: deviceTimezone || "Pacific/Auckland",
+    }),
+  );
+  const { text, html } = await createEmailWithTemplate(
+    "trap-event-notification.html",
+    {
+      heading: summary.heading,
+      eventDescription: summary.body,
+      emailSettingsUrl,
+      groupName,
+      deviceName,
+      eventTimes,
+      // Templates are compiled with `noEscape`, and the reason is device-supplied text.
+      reason: reason && Handlebars.escapeExpression(reason),
+      ...common,
+    },
+  );
+  // Recipients go in bcc so that they can't see each other's addresses.
+  return await sendEmail(
+    html,
+    text,
+    "",
+    summary.subject(deviceName),
+    await commonAttachments(),
+    userEmailAddresses,
+  );
+};
+
 export const sendPasswordResetEmail = async (
   resetPasswordToken: string,
   userEmailAddress: string,
@@ -672,15 +815,30 @@ export const sendDailyServiceErrorsEmail = async (
   );
 };
 
+interface SpeciesListItem {
+  species: string;
+  speciesDisplayName: string;
+  count: number;
+  hasIcon?: boolean;
+  iconColor?: string;
+}
+
 export const sendProjectActivityDigestEmail = async (
   frequency: "Daily" | "Weekly",
   projectName: string,
-  recipients: { email: string; userName: string }[],
-  visitsInfo: {
-    species: string;
-    speciesDisplayName: string;
-    count: number;
-    hasIcon?: boolean;
+  recipients: {
+    email: string;
+    userName: string;
+    audioReport: boolean;
+    visitsReport: boolean;
+    batteryReport: boolean;
+  }[],
+  thermalVisits: SpeciesListItem[],
+  birdDetections: SpeciesListItem[],
+  batteryReportsList: {
+    deviceName: string;
+    batteryLevel: number;
+    recordedAgo: string;
   }[],
 ) => {
   const common = commonInterpolants();
@@ -690,9 +848,19 @@ export const sendProjectActivityDigestEmail = async (
   const emailFrequency = frequency.toLowerCase();
   const emailSettingsUrl = `${projectRoot}/my-settings`;
   const timespan = frequency === "Weekly" ? "1-week-ago" : "24-hours-ago";
-  const activityUrl = `${projectRoot}/activity?display-mode=visits&recording-mode=cameras&locations=any&from=${timespan}&tag-mode=any`;
+  const frequencyIsDaily = frequency === "Daily";
+  const frequencyIsWeekly = frequency === "Weekly";
+  const thermalActivityUrl = `${projectRoot}/activity?display-mode=visits&recording-mode=cameras&locations=any&from=${timespan}&tag-mode=any`;
+  const audioActivityUrl = `${projectRoot}/activity?display-mode=recordings&recording-mode=audio&locations=any&from=${timespan}&tag-mode=any`;
   const imageAttachments = [...(await commonAttachments())];
-  for (const species of visitsInfo) {
+  const iconColors = {
+    red: "#f6e3e3",
+    orange: "#f6eae1",
+    yellow: "#f9f1e0",
+    grey: "#f3f3f3",
+  };
+  for (const species of thermalVisits) {
+    // ...birdDetections (removed, only thermal detections have images right now)
     let iconExists = await embedImage(
       species.species,
       imageAttachments,
@@ -720,24 +888,90 @@ export const sendProjectActivityDigestEmail = async (
       }
     }
     species.hasIcon = iconExists !== false;
+    if (species.species === "mustelid") {
+      species.iconColor = iconColors.red;
+    } else if (["possum", "cat"].includes(species.species)) {
+      species.iconColor = iconColors.orange;
+    } else if (
+      ["rodent", "hedgehog", "mouse", "rat"].includes(species.species)
+    ) {
+      species.iconColor = iconColors.yellow;
+    } else {
+      species.iconColor = iconColors.grey;
+    }
   }
-  const { text, html } = await createEmailWithTemplate(
-    "project-activity-digest.html",
-    {
-      emailSettingsUrl,
-      projectName,
-      emailFrequency,
-      visitsInfo,
-      hasVisitsInPeriod: visitsInfo.length !== 0,
-      hasNoVisitsInPeriod: visitsInfo.length === 0,
-      activityUrl,
-      ...common,
-    },
-  );
+  // Because we have two columns, we need to split our array into two
+  const visits = [...thermalVisits].sort((a, b) => b.count - a.count);
+  const visitsInfoCol1 = [];
+  const visitsInfoCol2 = [];
+  while (visits.length !== 0) {
+    const a = visits.shift();
+    if (a) {
+      visitsInfoCol1.push(a);
+    }
+    const b = visits.shift();
+    if (b) {
+      visitsInfoCol2.push(b);
+    }
+  }
+  const birdDetectionsB = [...birdDetections];
+  const birdDetectionOne = birdDetectionsB.shift();
+  const birdDetectionTwo = birdDetectionsB.shift();
+  const birdDetectionThree = birdDetectionsB.shift();
 
-  // TODO: How much info should we try to cram into these reports?
+  let topThreeTableItemWidth = "100%";
+  const length = [
+    birdDetectionOne,
+    birdDetectionTwo,
+    birdDetectionThree,
+  ].filter((item) => !!item).length;
+  if (length === 3) {
+    topThreeTableItemWidth = "33%";
+  } else if (length === 2) {
+    topThreeTableItemWidth = "50%";
+  } else if (length === 1) {
+    topThreeTableItemWidth = "100%";
+  }
+
   const recipientPromises = [];
   for (const recipient of recipients) {
+    // Each recipient may get a slightly different report, depending on their notification prefs.
+
+    // Think about how we should handle the case where there was no activity for a section last
+    //  week, and there's still no activity this week.  Do we still send the report?
+
+    const { text, html } = await createEmailWithTemplate(
+      "project-activity-digest.html",
+      {
+        emailSettingsUrl,
+        projectName,
+        emailFrequency,
+        visitsInfoCol1,
+        visitsInfoCol2,
+        hasVisitsInPeriod: thermalVisits.length !== 0,
+        hasNoVisitsInPeriod: thermalVisits.length === 0,
+        hasNoBirdDetectionsInPeriod: birdDetections.length === 0,
+        hasBirdDetectionsInPeriod: birdDetections.length !== 0,
+        hasExtendedBirdDetections: birdDetectionsB.length > 0,
+        birdDetectionOne: birdDetectionOne ? [birdDetectionOne] : [],
+        birdDetectionTwo: birdDetectionTwo ? [birdDetectionTwo] : [],
+        birdDetectionThree: birdDetectionThree ? [birdDetectionThree] : [],
+        extendedBirdDetections: birdDetectionsB,
+        topThreeTableItemWidth,
+        thermalActivityUrl,
+        audioActivityUrl,
+        frequencyIsDaily,
+        frequencyIsWeekly,
+        hasAudioReport: recipient.audioReport,
+        hasBatteryReport: recipient.batteryReport,
+        hasBatteryReadings: batteryReportsList.length !== 0,
+        hasNoBatteryReadings: batteryReportsList.length === 0,
+        hasVisitsReport: recipient.visitsReport,
+        batteryReport: batteryReportsList,
+        ...common,
+      },
+    );
+
     recipientPromises.push(
       sendEmail(
         html,

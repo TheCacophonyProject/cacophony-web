@@ -61,7 +61,7 @@ import {
 import sunCalc from "suncalc";
 import { capitalize } from "@/utils.ts";
 import SpectrogramViewer from "@/components/SpectrogramViewer.vue";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import RecordingViewMetadata from "@/components/RecordingViewMetadata.vue";
 import RecordingViewTabs from "@/components/RecordingViewTabs.vue";
 import { BModal, BTooltip } from "bootstrap-vue-next";
@@ -162,7 +162,7 @@ const recordingIsProcessing = computed<boolean>(() => {
     return ![
       RecordingProcessingState.ReTrackFailed,
       RecordingProcessingState.TrackingFailed,
-      RecordingProcessingState.AnalyseThermalFailed,
+      RecordingProcessingState.AnalyseFailed,
       RecordingProcessingState.FinishedFailed,
       RecordingProcessingState.AnalyseFailed,
       RecordingProcessingState.ReprocessFailed,
@@ -1190,7 +1190,7 @@ const onScroll = (e: Event) => {
   }
 };
 
-const locationName = (
+const getLocationName = (
   visitOrRecording: ApiStaticVisitResponse | ApiRecordingResponse,
 ): string => {
   if ("stationName" in visitOrRecording) {
@@ -1231,7 +1231,7 @@ const locationName = (
             truncate
             v-if="isMobileView && (selectedVisit || recording)"
             :name="
-              locationName(
+              getLocationName(
                 (selectedVisit as ApiStaticVisitResponse) ||
                   (recording as ApiRecordingResponse),
               )
@@ -1290,12 +1290,10 @@ const locationName = (
       </div>
       <button
         data-cy="close recording view"
-        type="button"
-        class="btn btn-icon d-flex align-items-center"
+        class="btn-close p-3"
         @click.stop.prevent="() => emit('close')"
-      >
-        <material-symbol name="close" />
-      </button>
+        aria-label="Close"
+      ></button>
     </header>
     <!--  Camera recording  -->
     <div

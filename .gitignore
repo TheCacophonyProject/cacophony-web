@@ -12,3 +12,7 @@
 .vscode
 /test-results/.last-run.json
 /test_output.txt
+**/*.js.map
+/types/**/*.js
+**/dist
+/browse/**/*.js

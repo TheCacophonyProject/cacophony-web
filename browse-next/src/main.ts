@@ -4,8 +4,8 @@ import { createApp } from "vue";
 import App from "./App.vue";
 import router from "./router";
 import { createBootstrap } from "bootstrap-vue-next";
-import materialSymbolsPlugin from "@dbetka/vue-material-symbols";
-import "material-symbols/index.css";
+//import "material-symbols/index.css";
+import "material-symbols/outlined.css";
 import {
   currentSelectedProject,
   currentUser,
@@ -32,7 +32,6 @@ import { CurrentUser } from "@/api";
 const app = createApp(App);
 app.use(router);
 app.use(createBootstrap());
-app.use(materialSymbolsPlugin);
 
 app.provide(selectedProjectDevices, DevicesForCurrentProject);
 app.provide(allHistoricLocations, LocationsForCurrentProject);

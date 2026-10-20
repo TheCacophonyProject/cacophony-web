@@ -6,7 +6,7 @@ import {
   displayLabelForClassificationLabel,
   getClassificationForLabel,
 } from "@api/classificationsUtils.ts";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import { BTooltip } from "bootstrap-vue-next";
 
 const props = withDefaults(
@@ -315,6 +315,7 @@ defineExpose({
         @blur="(e) => maybeCloseSelect"
         @input="maybeOpenSelect"
         type="text"
+        data-cy="tag search"
         ref="inputRef"
         v-model="searchTerm"
         :placeholder="placeholder"
@@ -349,7 +350,7 @@ defineExpose({
             size="1.25rem"
           />
         </button>
-        <b-tooltip target="pin-btn">
+        <b-tooltip target="pin-btn" v-if="canBePinned">
           <span v-if="singleSelectionIsPinned"> Unpin tag </span>
           <span v-else> Pin tag </span>
         </b-tooltip>
@@ -401,6 +402,7 @@ defineExpose({
         >
           <button
             class="options-list-label btn text-start text-capitalize"
+            :data-cy="`tag option ${option.label}`"
             v-if="option.label !== 'No results'"
             @click.prevent="addSelectedOption(option)"
             :disabled="(disabledTags || []).includes(option.label)"

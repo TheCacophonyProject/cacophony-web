@@ -17,7 +17,7 @@ import {
 } from "@api/classificationsUtils.ts";
 import ImageLoader from "@/components/ImageLoader.vue";
 import { BSpinner } from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import LocationName from "@/components/LocationName.vue";
 import type { ApiStaticVisitResponse } from "@typedefs/api/visit";
 // TODO: Change this to just after sunset - we should show the new in progress night, with no activity.
@@ -262,7 +262,7 @@ const thumbnailSrcForVisit = (
   const recId =
     visit.humanClassificationRecordingId || visit.aiClassificationRecordingId;
   const trackId =
-    visit.humanClassificationTrackId || visit.humanClassificationTrackId;
+    visit.humanClassificationTrackId || visit.aiClassificationTrackId;
   if (recId && trackId && !prevUrl) {
     return `${ClientApi.getApiRoot()}/api/v1/recordings/${recId}/thumbnail?trackId=${trackId}`;
   } else if (recId) {

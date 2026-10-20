@@ -1,0 +1,34 @@
+<tr>
+    <td class="container-padding content" align="left" style="border-radius:8px;box-shadow:rgba(0, 0, 0, 0.075) 0px 2px 4px 0px;padding-left:24px;padding-right:24px;padding-top:12px;padding-bottom:12px;background-color:#ffffff">
+        <br>
+        <div style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:21px;font-weight:650;padding-bottom:12px;color:#252921;padding-right:24px">
+            {{ heading }} for '{{ deviceName }}'
+        </div>
+        <br>
+        <div class="body-text" style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;line-height:160%;text-align:left;color:#252921 !important;">
+            Your device <strong>'{{ deviceName }}'</strong> {{{ eventDescription }}}:
+            <ul>
+                {{#each eventTimes}}
+                <li data-cy="trap event time">{{ this }}</li>
+                {{/each}}
+            </ul>
+            {{#if reason}}
+            Reason: <strong data-cy="trap event reason">{{ reason }}</strong>
+            <br><br>
+            {{/if}}
+            <span style="color:#777875">&ndash; The Cacophony Team</span>
+            <br><br>
+        </div>
+    </td>
+</tr>
+<tr>
+    <td class="container-padding footer-text" align="left" style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:12px;line-height:180%;text-align:center;color:#90908F;padding-left:24px;padding-right:24px">
+        <br><br>
+        <span>You are receiving this email because you are subscribed to trap notifications for <strong>'{{ groupName }}'</strong>. You can <a href="{{ emailSettingsUrl }}" style="color:#90908F">update your email preferences</a> on the Cacophony Monitoring Platform.</span>
+        <br><br>
+
+        <strong style="font-weight: 500">The Cacophony Project</strong><br>
+        <a href="{{ cacophonyBrowseUrl }}" style="color:#aaaaaa">{{ cacophonyDisplayUrl }}</a><br>
+        <br><br>
+    </td>
+</tr>

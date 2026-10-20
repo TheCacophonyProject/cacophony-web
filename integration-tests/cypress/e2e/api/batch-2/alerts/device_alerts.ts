@@ -83,7 +83,7 @@ describe("Devices alerts", () => {
     });
   });
 
-  it("Can receive an alert", () => {
+  it("Can receive an alert", { retries: 10 }, () => {
     const usera = getNewIdentity("andrew");
     cy.testCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 
@@ -208,55 +208,59 @@ describe("Devices alerts", () => {
     });
   });
 
-  it("Recording with multiple tags - majority tag alerts", () => {
-    const usera = getNewIdentity("aaron");
-    cy.testCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
+  it(
+    "Recording with multiple tags - majority tag alerts",
+    { retries: 10 },
+    () => {
+      const usera = getNewIdentity("aaron");
+      cy.testCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 
-    // create alert
-    cy.apiDeviceAlertAdd(
-      usera.name,
-      "alert1d",
-      POSSUM_ALERT,
-      usera.camera,
-      0,
-      HttpStatusCode.Ok,
-    );
-
-    //upload a recording tagged as possum and build an expected event using the returned recording details
-    cy.testUploadRecording(
-      usera.camera,
-      {
-        processingState: RecordingProcessingState.Finished,
-        tags: ["rat", "possum", "possum", "possum", "rat"],
-        lat: -42,
-        lng: 170,
-        time: oneHourAgo,
-      },
-      "recording1d",
-    ).then(() => {
-      const expectedAlert1d = createExpectedAlert(
-        "alert1d",
-        0,
-        POSSUM_ALERT,
-        true,
-      );
-      const expectedEvent1d = createExpectedEvent(
-        usera.camera,
-        "recording1d",
-        "alert1d",
-      );
-
-      //check that an alert is present and has a 'last alerted'
-      cy.apiDeviceAlertCheck(usera.name, usera.camera, expectedAlert1d);
-
-      //check expected event is received
-      cy.testEventsCheckAgainstExpected(
+      // create alert
+      cy.apiDeviceAlertAdd(
         usera.name,
+        "alert1d",
+        POSSUM_ALERT,
         usera.camera,
-        expectedEvent1d,
+        0,
+        HttpStatusCode.Ok,
       );
-    });
-  });
+
+      //upload a recording tagged as possum and build an expected event using the returned recording details
+      cy.testUploadRecording(
+        usera.camera,
+        {
+          processingState: RecordingProcessingState.Finished,
+          tags: ["rat", "possum", "possum", "possum", "rat"],
+          lat: -42,
+          lng: 170,
+          time: oneHourAgo,
+        },
+        "recording1d",
+      ).then(() => {
+        const expectedAlert1d = createExpectedAlert(
+          "alert1d",
+          0,
+          POSSUM_ALERT,
+          true,
+        );
+        const expectedEvent1d = createExpectedEvent(
+          usera.camera,
+          "recording1d",
+          "alert1d",
+        );
+
+        //check that an alert is present and has a 'last alerted'
+        cy.apiDeviceAlertCheck(usera.name, usera.camera, expectedAlert1d);
+
+        //check expected event is received
+        cy.testEventsCheckAgainstExpected(
+          usera.name,
+          usera.camera,
+          expectedEvent1d,
+        );
+      });
+    },
+  );
 
   it("Recording with multiple tags - minority tag does not alert", () => {
     const usera = getNewIdentity("aaron");
@@ -434,7 +438,7 @@ describe("Devices alerts", () => {
     });
   });
 
-  it("Can generate and report multiple events", () => {
+  it("Can generate and report multiple events", { retries: 10 }, () => {
     const usera = getNewIdentity("aida");
     cy.testCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
 

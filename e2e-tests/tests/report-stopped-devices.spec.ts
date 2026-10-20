@@ -13,7 +13,13 @@ test("Stopped devices report script executes without errors, sends email if your
   await confirmEmailAddressViaApi(project.getAdminUser());
   await dockerExecNodeTestScript("test-stopped-devices.js", ["--deviceId", device.id.toString()]);
   await dockerExecNodeScript("report-stopped-devices.js", ["--force"]);
-  const email = await waitForEmail(project.getAdminUser().testId, "stopped devices report");
+  const email = await waitForEmail(
+    project.getAdminUser().testId,
+    "stopped devices report",
+    undefined,
+    false,
+    "stopped or offline device",
+  );
   expect(email.headers.subject, "email subject is correct").toEqual(
     `💔 Possible stopped or offline device in '${project.projectHandle.testId}'`,
   );
@@ -27,6 +33,8 @@ test("Stopped devices report script executes without errors, sends email if your
     project.getAdminUser().testId,
     "stopped devices report",
     500,
+    false,
+    "stopped or offline device",
   );
   expect(secondEmail.error, "second email not sent").toBeDefined();
 });
@@ -50,7 +58,13 @@ test("Stopped devices report script executes without errors, admin who opts out 
   await dockerExecNodeTestScript("test-stopped-devices.js", ["--deviceId", device.id.toString()]);
   await dockerExecNodeScript("report-stopped-devices.js", ["--force"]);
 
-  const email = await waitForEmail(project.getAdminUser().testId, "stopped devices report", 500);
+  const email = await waitForEmail(
+    project.getAdminUser().testId,
+    "stopped devices report",
+    500,
+    false,
+    "stopped or offline device",
+  );
   expect(email.error, "email not sent").toBeDefined();
 });
 
@@ -64,6 +78,12 @@ test("Stopped devices report script executes without errors, does not send email
   await dockerExecNodeTestScript("test-stopped-devices.js", ["--deviceId", device.id.toString()]);
   await dockerExecNodeScript("report-stopped-devices.js", ["--force"]);
 
-  const email = await waitForEmail(project.getAdminUser().testId, "stopped devices report", 500);
+  const email = await waitForEmail(
+    project.getAdminUser().testId,
+    "stopped devices report",
+    500,
+    false,
+    "stopped or offline device",
+  );
   expect(email.error, "email not sent").toBeDefined();
 });

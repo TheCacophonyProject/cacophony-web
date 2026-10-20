@@ -213,30 +213,27 @@ const uploadRecordingsFromDeviceWithTimesAndDurations = async (
   return test.step("Upload recordings and processing classifications", async () => {
     if (!sequentially) {
       return Promise.all(
-        recordingSpecs.map((rec) => {
+        recordingSpecs.map(async (rec) => {
           const uploadTime = new Date(rec.recordingDateTime);
           const durationSeconds = rec.durationSeconds || 30;
           uploadTime.setSeconds(uploadTime.getSeconds() + durationSeconds);
-          return new Promise<{ recordingId: RecordingId; tracks: TrackId[] }>((resolve, reject) => {
-            uploader({
-              file,
-              recordingDateTime: rec.recordingDateTime,
-              location,
-              deviceHandle,
-              uploadTime: addMinutes(uploadTime, 1),
-              duration: rec.durationSeconds, // >2 Needed so we aren't filtered out of visits
-            }).then((recordingId) => {
-              if (shouldProcess) {
-                processRecordingWithTracksAndTags(recordingId, rec.tracks, durationSeconds).then(
-                  (trackIds) => {
-                    resolve({ recordingId, tracks: trackIds });
-                  },
-                );
-              } else {
-                resolve({ recordingId, tracks: [] });
-              }
-            });
+          const recordingId = await uploader({
+            file,
+            recordingDateTime: rec.recordingDateTime,
+            location,
+            deviceHandle,
+            uploadTime: addMinutes(uploadTime, 1),
+            duration: rec.durationSeconds, // >2 Needed so we aren't filtered out of visits
           });
+          if (shouldProcess) {
+            const tracks = await processRecordingWithTracksAndTags(
+              recordingId,
+              rec.tracks,
+              durationSeconds,
+            );
+            return { recordingId, tracks };
+          }
+          return { recordingId, tracks: [] };
         }),
       );
     } else {

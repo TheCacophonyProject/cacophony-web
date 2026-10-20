@@ -81,22 +81,22 @@ const updateAll = async (groups: Group[] = []): Promise<void> => {
   );
 };
 
-(async () => {
-  await initSequelize(true);
+try {
+  await (async () => {
+    await initSequelize(true);
 
-  // const group = await Group.findOne({
-  //   where: {
-  //     groupName: "orton bradley park",
-  //   },
-  // });
-  //await updateAll([group]);
+    // const group = await Group.findOne({
+    //   where: {
+    //     groupName: "orton bradley park",
+    //   },
+    // });
+    //await updateAll([group]);
 
-  await updateAll();
-})()
-  .catch((e) => {
-    console.trace(e);
-    log.error(e);
-  })
-  .then(() => {
-    process.exit(0);
-  });
+    await updateAll();
+  })();
+} catch (e) {
+  console.trace(e);
+  log.error(e);
+} finally {
+  process.exit(0);
+}

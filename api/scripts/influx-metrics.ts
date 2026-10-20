@@ -1,5 +1,6 @@
 import * as Influx from "influx";
 import { InfluxDB } from "influx";
+import log from "../logging.js";
 import process from "process";
 import { Client as PgClient, QueryResult } from "pg";
 import moment from "moment";
@@ -20,8 +21,8 @@ const countStates = Object.values(RecordingProcessingState).filter(
 ) as string[];
 const timeout = 1000;
 
-(async function main() {
-  try {
+try {
+  await (async function main() {
     const pgClient = await pgConnect();
     const measurements = [stateCount, measureProcessingWaitTime, inPast24];
     const results = await Promise.all(
@@ -44,11 +45,13 @@ const timeout = 1000;
       );
       console.log("finished logging metrics");
     }
-  } catch (e) {
-    console.log("error with logging metrics:", e);
-  }
+  })();
+} catch (e) {
+  log.error(e);
+  console.trace(e);
+} finally {
   process.exit(0);
-})();
+}
 
 async function pgQuery(client: PgClient, query: string) {
   const result = await client.query({

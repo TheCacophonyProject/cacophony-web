@@ -43,8 +43,7 @@ import {
   DeviceType as ConcreteDeviceType,
 } from "@typedefs/api/consts.ts";
 import type { RouteLocationRaw } from "vue-router";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
-import type { IconsProp } from "@dbetka/vue-material-symbols/dist/jscache/icons-names";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import { BLink } from "bootstrap-vue-next";
 
 const props = defineProps<{
@@ -59,7 +58,7 @@ const props = defineProps<{
 }>();
 const slots = useSlots();
 
-const deviceTypeIcon = computed<IconsProp | "">(() => {
+const deviceTypeIcon = computed<string>(() => {
   switch (props.type) {
     case ConcreteDeviceType.Audio:
       return "music_note";

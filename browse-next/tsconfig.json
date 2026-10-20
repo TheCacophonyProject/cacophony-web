@@ -9,7 +9,6 @@
   ],
   "compilerOptions": {
     "lib": ["esnext", "dom", "dom.iterable"],
-    "baseUrl": "./",
     "paths": {
       "@/*": ["./src/*"],
       "@api/*": ["./src/api/*"],

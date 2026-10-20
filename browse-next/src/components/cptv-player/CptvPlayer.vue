@@ -69,7 +69,7 @@ import {
   BProgress,
   BSpinner,
 } from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
   SelectedProject | false

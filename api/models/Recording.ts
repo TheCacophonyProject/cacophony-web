@@ -34,7 +34,6 @@ import Sequelize, {
 } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 import config from "../config.js";
-import _ from "lodash";
 import { ModelStaticCommon } from "./index.js";
 import { Tag } from "./Tag.js";
 import { Device } from "./Device.js";
@@ -65,7 +64,7 @@ import type {
   CacophonyIndex,
 } from "@typedefs/api/recording.js";
 import labelPath from "../classifications/label_paths.json" with { type: "json" };
-import { locationField } from "@models/util/util.js";
+import { locationField, pick } from "@models/util/util.js";
 import type { ApiTrackPosition } from "@typedefs/api/track.js";
 import { User } from "@models/User.js";
 import { MinimalTrackRequestData } from "@typedefs/api/fileProcessing.js";
@@ -653,14 +652,14 @@ export class Recording extends ModelStaticCommon<Recording> {
     irRaw: [
       RecordingProcessingState.ReTrack,
       RecordingProcessingState.Tracking,
-      RecordingProcessingState.AnalyseThermal,
+      RecordingProcessingState.Analyse,
       RecordingProcessingState.Finished,
     ],
     thermalRaw: [
       RecordingProcessingState.ReTrack,
       RecordingProcessingState.TrackAndAnalyse,
       RecordingProcessingState.Tracking,
-      RecordingProcessingState.AnalyseThermal,
+      RecordingProcessingState.Analyse,
       RecordingProcessingState.Finished,
     ],
     audio: [
@@ -699,7 +698,7 @@ export class Recording extends ModelStaticCommon<Recording> {
 
   static buildSafely(fields: Record<string, unknown>): Recording {
     return Recording.build(
-      _.pick(fields, Recording.apiSettableFields),
+      pick(fields, Recording.apiSettableFields),
     ) as Recording;
   }
 

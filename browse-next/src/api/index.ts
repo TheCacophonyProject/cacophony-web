@@ -148,7 +148,7 @@ const credentialsResolvers = {
         // Token is about to expire, so refresh.
         refreshingToken.value = new Promise((resolve) => {
           if (credentials.value) {
-            Users.refreshLogin(credentials.value.refreshToken).then(
+            void Users.refreshLogin(credentials.value.refreshToken).then(
               (newCredentialsResponse) => {
                 if (credentials.value) {
                   if (

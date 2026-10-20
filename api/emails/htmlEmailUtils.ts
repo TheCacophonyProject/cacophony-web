@@ -16,6 +16,18 @@ export interface EmailImageAttachment {
 
 const SEPARATOR_LINE = "-----------";
 
+Handlebars.registerHelper(
+  "gt",
+  function (
+    this: unknown,
+    a: number,
+    b: number,
+    options: Handlebars.HelperOptions,
+  ) {
+    return Number(a) > Number(b) ? options.fn(this) : "";
+  },
+);
+
 const depthFirstTraversal = (emailRootElement: HTMLElement) => {
   let rawText = "";
   const nodesToVisit = [];
@@ -110,7 +122,7 @@ export const createEmailWithTemplate = async (
     const plainText = scrapePlainTextFromHtml(html);
     return { text: plainText, html };
   } catch (e) {
-    console.log("Template compile error: ", e);
+    console.warn("Template compile error: ", e);
   }
 };
 

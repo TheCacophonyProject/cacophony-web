@@ -18,13 +18,14 @@
 <script setup lang="ts">
 import { getClassifications } from "@api/classificationsUtils.ts";
 import LayeredDropdown from "./LayeredDropdown.vue";
-import { onMounted, ref } from "vue";
+import { onMounted, ref, toRaw } from "vue";
 import type { Classification } from "@typedefs/api/trackTag";
 
 const props = withDefaults(
   defineProps<{
     disabled?: boolean;
     exclude?: string[];
+    include?: string[];
     placeholder?: string;
     multiselect?: boolean;
     canBePinned?: boolean;
@@ -38,6 +39,7 @@ const props = withDefaults(
   {
     disabled: false,
     exclude: () => [],
+    include: () => [],
     placeholder: "Search tags",
     multiselect: false,
     withAudioContext: false,
@@ -65,19 +67,42 @@ const updateModel = (val: Classification[]) => {
 const layeredDropdown = ref<typeof LayeredDropdown>();
 const options = ref<Classification>({ label: "", children: [] });
 
-const setClassifications = (classifications: Classification) => {
+const setClassifications = (sharedClassifications: Classification) => {
+  // The classifications tree is shared and cached, and the filtering below mutates the tree, so work on a copy.
+  // NOTE: structuredClone can't clone Vue's reactive proxies, so unwrap first.
+  const classifications = structuredClone(toRaw(sharedClassifications));
   // classifications is a tree, we want to filter out excluded nodes
-  const filter = (node: Classification) => {
-    if (props.exclude.includes(node.label)) {
-      return false;
+  if (props.include.length !== 0) {
+    if (classifications.children) {
+      const filterInclude = (node: Classification): boolean => {
+        const matches = props.include.includes(node.label);
+        if (node.children && node.children.length) {
+          node.children = node.children.filter(filterInclude);
+          if (node.children.length === 0) {
+            // TODO: Should we delete children, or should we include, assuming that if a user doesn't want to see
+            //  stoat, they might want to pick that rather than `mustelid`?
+            delete node.children;
+          }
+        }
+
+        // keep node if it matches or it still has kept descendants
+        return matches || (!!node.children && node.children.length > 0);
+      };
+      classifications.children = classifications.children.filter(filterInclude);
     }
-    if (node.children) {
-      node.children = node.children.filter(filter);
+  } else if (props.exclude.length !== 0) {
+    if (classifications.children) {
+      const filterExclude = (node: Classification): boolean => {
+        if (props.exclude.includes(node.label)) {
+          return false;
+        }
+        if (node.children) {
+          node.children = node.children.filter(filterExclude);
+        }
+        return true;
+      };
+      classifications.children = classifications.children.filter(filterExclude);
     }
-    return true;
-  };
-  if (classifications.children) {
-    classifications.children = classifications.children.filter(filter);
   }
   options.value = classifications;
 };

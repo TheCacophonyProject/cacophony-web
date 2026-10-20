@@ -1231,7 +1231,6 @@ export default defineComponent({
       const state = props.recording.processingState.toLowerCase();
       return (
         (state === RecordingProcessingState.Analyse ||
-          state === RecordingProcessingState.AnalyseThermal ||
           state === RecordingProcessingState.Tracking ||
           state === RecordingProcessingState.Reprocess) &&
         !props.recording.processing

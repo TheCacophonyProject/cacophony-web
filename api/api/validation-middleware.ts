@@ -14,7 +14,6 @@ import {
 } from "express-validator/lib/base.js";
 import { expectedTypeOf } from "./middleware.js";
 import { extractValFromRequest } from "./extract-middleware.js";
-import { urlNormaliseName } from "@/emails/htmlEmailUtils.js";
 import { Device } from "@models/Device.js";
 import type { ValidationError } from "express-validator/lib/base.d.ts";
 import {
@@ -35,17 +34,11 @@ export const checkDeviceNameIsUniqueInGroup =
     if (!group) {
       return next(new ClientError("No group specified"));
     }
-    let nameIsFree = await Device.freeDeviceName(
+    // NOTE: This compares url-normalised names, so "my device" clashes with "My-Device"
+    const nameIsFree = await Device.freeDeviceName(
       deviceName,
       response.locals.group.id,
     );
-    if (nameIsFree) {
-      // Check the url normalised version
-      nameIsFree = await Device.freeDeviceName(
-        urlNormaliseName(deviceName),
-        response.locals.group.id,
-      );
-    }
 
     if (nameIsFree) {
       // Check that the device name is not a reserved api path fragment:
@@ -67,7 +60,7 @@ export const checkDeviceNameIsUniqueInGroup =
           "location-history",
           "unique-track-tags",
           "tracks-with-tag",
-        ].includes(deviceName)
+        ].includes(deviceName.trim().replace(/ /g, "-").toLowerCase())
       ) {
         return next(new ClientError(`Device name ${deviceName} reserved`));
       }
@@ -122,6 +115,10 @@ export const integerOf = (
 
 export const idOf = (field: ValidationChain): ValidationChain =>
   integerOf(field);
+
+export const uuidOf = (field: ValidationChain): ValidationChain => {
+  return field.isUUID(4).bail().withMessage(expectedTypeOf("uuidv4"));
+};
 
 export const optionalDateOf = (field: ValidationChain): ValidationChain =>
   field
@@ -218,7 +215,7 @@ const extractFieldDataAndValidationResults = async (
     for (const dataItem of data) {
       if (dataItem.path !== dataItem.originalPath) {
         throw new Error(
-          `Unexpected data.path !== data.originalPath: ${dataItem}`,
+          `Unexpected data.path !== data.originalPath: ${JSON.stringify(dataItem)}`,
         );
       }
       const errors = result.array();

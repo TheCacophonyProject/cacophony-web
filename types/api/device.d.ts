@@ -3,11 +3,18 @@ import type {
   GroupId,
   IsoFormattedDateString,
   LatLng,
+  RecordingId,
   SaltId,
   ScheduleId,
   StationId,
+  UserId,
 } from "./common.ts";
-import { AudioRecordingMode, type DeviceType } from "./consts.ts";
+import {
+  AudioRecordingMode,
+  DeviceActionStatus,
+  DeviceThermalModelOutputLabel,
+  type DeviceType,
+} from "./consts.ts";
 import { type ApiGroupUserResponse } from "./group.ts";
 
 export type DeviceBatteryChargeState =
@@ -48,12 +55,6 @@ export interface ApiMaskRegionsData {
   maskRegions: Record<string, MaskRegion>;
 }
 
-export interface ApiDeviceLocationFixup {
-  fromDateTime: IsoFormattedDateString;
-  stationId: StationId;
-  location?: LatLng; // Supply a location to map to the station
-}
-
 interface SettingsBase {
   updated: IsoFormattedDateString;
 }
@@ -78,6 +79,20 @@ export type BatterySettings = {
   chemistry?: string;
   manualCellCount?: number;
 } & SettingsBase;
+
+export type DeviceModelOutput = keyof typeof DeviceThermalModelOutputLabel;
+
+export type TrapMode = "armed" | "safe";
+export type TrapSettings = {
+  protect: DeviceModelOutput[];
+  target: DeviceModelOutput[];
+  // This setting is about whether the trap will trigger before there is any
+  // AI classification, or if it waits for a positive classification before triggering.
+  defaultState: TrapMode;
+  hasKillMechanism: boolean;
+  enabled: boolean;
+} & SettingsBase;
+
 export type ImageMimeTypes =
   | "image/jpeg"
   | "image/png"
@@ -104,9 +119,8 @@ export interface ApiDeviceHistorySettings extends Record<string, unknown> {
   audioRecording?: AudioRecordingSettings;
   windows?: WindowsSettings;
   battery?: BatterySettings;
-
+  trap?: TrapSettings;
   location?: LatLng;
-
   synced?: boolean;
 }
 
@@ -129,4 +143,55 @@ export interface ApiDeviceHistory {
   settings: ApiDeviceHistorySettings | null;
   DeviceId: DeviceId;
   GroupId: GroupId;
+}
+
+export type DeviceActionDecision =
+  | "release" // "reset"?
+  | "dispatch"
+  | "hold"
+  | "wait"
+  | "more-info";
+export type ActionStatus = keyof typeof DeviceActionStatus;
+
+export interface ApiDeviceActionRequest {
+  uuid: string;
+  deviceId: DeviceId;
+  classification: string;
+  availableActions: DeviceActionDecision[];
+  actionDateTime: IsoFormattedDateString;
+  confidence?: number;
+}
+
+export interface ApiDeviceActionUpdateRequest {
+  state: ActionStatus;
+  action?: DeviceActionDecision;
+  actionDateTime: IsoFormattedDateString;
+}
+
+export interface ApiDeviceActionResponse {
+  uuid: string;
+  deviceId: DeviceId;
+  status: ActionStatus;
+  chosenAction?: DeviceActionDecision;
+  availableActions: DeviceActionDecision[];
+}
+
+export interface ActionStateTransition {
+  state: ActionStatus;
+  dateTime: IsoFormattedDateString;
+  userId?: UserId;
+  action?: DeviceActionDecision;
+  availableActions?: DeviceActionDecision[];
+  classification?: string;
+  confidence?: number;
+}
+
+export interface ApiDeviceAction {
+  uuid: string;
+  history: ActionStateTransition[];
+  status: ActionStatus;
+  deviceId: DeviceId;
+  createdAt: IsoFormattedDateString;
+  updatedAt: IsoFormattedDateString;
+  recordingId?: RecordingId;
 }

@@ -12,6 +12,8 @@ export async function sendEmail(
   imageAttachments: EmailImageAttachment[] = [],
   adminEmails: string[] = [],
 ): Promise<boolean> {
+  // NOTE: Pass an empty `to` and put recipients in `adminEmails` to send to a list of
+  //  recipients who shouldn't see each other's addresses.
   const client = new SMTPClient(config.smtpDetails);
   log.info(`Sending email with subject ${subject} to ${to}`);
   try {
@@ -37,7 +39,7 @@ export async function sendEmail(
     }
     await client.sendAsync(message);
   } catch (err) {
-    log.error(err.toString());
+    log.error((err as Error).toString());
     return false;
   }
   return true;

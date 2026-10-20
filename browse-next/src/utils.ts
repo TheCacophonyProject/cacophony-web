@@ -45,7 +45,7 @@ export const delayMs = (ms: number): CancelableDelay => {
   return {
     promise: new Promise((resolve) => {
       const id = setTimeout(resolve, ms);
-      token.token.then(() => clearTimeout(id));
+      void token.token.then(() => clearTimeout(id));
     }),
     cancel: () => canceller.cancel(),
   };

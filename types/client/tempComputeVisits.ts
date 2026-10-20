@@ -65,7 +65,7 @@ const getTimespanAndRecordings = (visitRows: RawVisitRow[]) => {
     recordingIds.add(row.recordingId);
   }
   const ids = Array.from(recordingIds);
-  ids.sort();
+  ids.sort((a, b) => a - b);
   return { startTime, endTime, recordingIds: ids };
 };
 

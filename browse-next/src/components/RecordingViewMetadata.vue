@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import TooltipOnTruncation from "@/components/TooltipOnTruncation.vue";
 import MapWithPoints from "@/components/MapWithPoints.vue";
 import LocationName from "@/components/LocationName.vue";

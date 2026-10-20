@@ -46,7 +46,7 @@ import {
   getClassifications,
 } from "@api/classificationsUtils.ts";
 import { BSpinner, BTooltip } from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import { useElementSize } from "@vueuse/core";
 
 const props = defineProps<{

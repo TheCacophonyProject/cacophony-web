@@ -16,6 +16,11 @@
  */
 
 /**
+ * @apiDefine V1UserOrDeviceAuthorizationHeader
+ * @apiHeader {String} Authorization Signed JSON web token for a user *or* a device.
+ */
+
+/**
  * @apiDefine V1DeviceAuthorizationHeader
  * @apiHeader {String} Authorization Signed JSON web token for a device.
  */
@@ -36,33 +41,26 @@
  * @apiDefine DevicesList
  * @apiSuccessExample {JSON} devices:
  * [{
- * "deviceName": "device name",
+ *  "id": 2,
+ *  "deviceName": "device name",
  *  "groupName": "group name",
  *  "groupId": 1,
- *  "deviceId: 2,
  *  "saltId": 2,
  *  "active": true,
+ *  "isHealthy": true,
  *  "admin": false,
  *  "type": "thermal",
- *  "public": "false",
+ *  "public": true,
  *  "lastConnectionTime": "2021-11-09T01:38:22.079Z",
- *  "lastRecordingTime": "2021-11-07T01:38:48.400Z",
+ *  "lastThermalRecordingTime": "2021-11-07T01:38:48.400Z",
+ *  "lastAudioRecordingTime": "2021-11-07T01:38:48.400Z",
+ *  "earliestThermalRecordingTime": "2021-11-07T01:38:48.400Z",
+ *  "earliestAudioRecordingTime": "2021-11-07T01:38:48.400Z",
  *  "location": {
  *   "lat": -43.5338812,
  *    "lng": 172.6451473
- *  },
- *  "users": [{
- *    "userName": "bob",
- *    "userId": 10,
- *    "admin": false
- *  }]
+ *  }
  * }]
- */
-
-/**
- * @apiDefine RecordingOrder
- * @apiParam {JSON} [order] Sorting order for records.
- * * For example, ["recordingDateTime"] or [["recordingDateTime", "ASC"]].
  */
 
 /**
@@ -124,8 +122,8 @@
  * @apiParamExample {json} Using description:
  *  {
  *    "description": {
- *      "type": "example"
- *      "details": {"foo": "bar"},
+ *      "type": "example",
+ *      "details": {"foo": "bar"}
  *    },
  *    "dateTimes": ["2017-11-13T00:47:51.160Z"]
  *  }
@@ -137,37 +135,5 @@
  *  {
  *    "eventDetailId": 1,
  *    "dateTimes": ["2017-11-13T00:47:51.160Z"]
- *  }
- */
-/**
- * @apiDefine ApiGroupUserRelation
- * @apiSuccessExample {json} ApiGroupUserRelation
- *  {
- *    id: 123,
- *    userName: "name of user making query",
- *    GroupUsers: {
- *      admin: true,
- *      createdAt: "2017-11-13T00:47:51.160Z",
- *      updatedAt: "2017-11-13T00:47:51.160Z",
- *      GroupId: 234,
- *      UserId: 123
- *    }
- *  }
- */
-/**
- * @apiDefine ApiGroupUser
- * @apiSuccessExample {json} ApiGroupUser
- *  {
- *    userName: "name-of-a-group-member",
- *    id: 1234,
- *    isAdmin: false
- *  }
- */
-/**
- * @apiDefine ApiDeviceIdAndName
- * @apiSuccessExample {json} ApiDeviceIdAndName
- *  {
- *    id: 123456,
- *    deviceName: "test-camera"
  *  }
  */

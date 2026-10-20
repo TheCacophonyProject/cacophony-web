@@ -259,3 +259,11 @@ export function locationField(fieldName = "location") {
     },
   };
 }
+
+export const pick = <T extends object>(
+  obj: T,
+  keys: readonly string[],
+): Partial<T> =>
+  Object.fromEntries(
+    keys.filter((key) => key in obj).map((key) => [key, obj[key as keyof T]]),
+  ) as Partial<T>;

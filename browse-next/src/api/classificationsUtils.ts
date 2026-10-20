@@ -36,7 +36,7 @@ const flattenNodes = (
     if (child.status) {
       childInfo.status = child.status;
     }
-    acc[child.label] = childInfo;
+    acc[child.label.replaceAll("-", "").replaceAll(" ", "_")] = childInfo;
     if (child.aliases) {
       for (const alias of child.aliases) {
         acc[alias] = childInfo;
@@ -169,7 +169,7 @@ export const getClassifications = async (
     const cached = localStorage.getItem("classifications");
     if (cached && !loadedClassificationsThisSession.value) {
       const parsed = JSON.parse(cached);
-      ClientApi.Classifications.apiGetClassifications(parsed.version).then(
+      void ClientApi.Classifications.apiGetClassifications(parsed.version).then(
         async (res) => {
           if (res && res.success && res.result.version !== parsed.version) {
             const classifications = await getFreshClassifications();
@@ -197,7 +197,7 @@ export const displayLabelForClassificationLabel = (
   if (!label) {
     return "";
   }
-  label = label.toLowerCase();
+  label = label.toLowerCase().replaceAll("_", " ");
   if (label === "unclassified") {
     return "AI Queued";
   }

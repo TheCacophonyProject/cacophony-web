@@ -9,12 +9,14 @@
   "main": "index.js",
   "scripts": {
     "ui-tests": "playwright test --ui --debug",
-    "lint:fix": "oxlint --fix --fix-suggestions . && oxfmt ."
+    "lint:fix": "oxlint --fix --fix-suggestions . && oxfmt .",
+    "lint": "oxlint . && oxfmt --check ."
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
     "@types/node": "^25.5.0",
-    "oxfmt": "^0.44.0",
-    "oxlint": "^1.59.0"
+    "oxfmt": "^0.73.0",
+    "oxlint": "^1.88.0",
+    "oxlint-tsgolint": "^7.0.2004"
   }
 }

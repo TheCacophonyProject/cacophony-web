@@ -18,7 +18,7 @@ import {
   BDropdownItemButton,
   BTooltip,
 } from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 
 const props = withDefaults(
   defineProps<{

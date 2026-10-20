@@ -1,0 +1,61 @@
+{
+  "extends": [
+    "../.oxlintrc.json"
+  ],
+  "plugins": [
+    "typescript",
+    "oxc",
+    "vue"
+  ],
+  "env": {
+    "browser": true,
+    "node": true
+  },
+  "globals": {
+    "defineProps": "readonly",
+    "defineEmits": "readonly",
+    "defineExpose": "readonly",
+    "defineModel": "readonly",
+    "defineSlots": "readonly",
+    "defineOptions": "readonly",
+    "withDefaults": "readonly"
+  },
+  "options": {
+    "typeAware": true
+  },
+  "rules": {
+    "typescript/no-floating-promises": "error",
+    "typescript/unbound-method": "warn",
+    "typescript/no-base-to-string": "warn",
+    "typescript/await-thenable": "warn",
+    "typescript/no-useless-default-assignment": "off",
+    "typescript/restrict-template-expressions": "off",
+    "typescript/no-misused-spread": "off",
+    "typescript/no-duplicate-type-constituents": "off",
+    "typescript/no-redundant-type-constituents": "off",
+    "no-undef": "warn",
+    "no-unused-expressions": "off",
+    "no-unused-vars": "off",
+    "curly": [
+      "warn",
+      "all"
+    ],
+    "no-console": [
+      "warn",
+      {
+        "allow": [
+          "warn",
+          "error",
+          "assert"
+        ]
+      }
+    ]
+  },
+  "ignorePatterns": [
+    "node_modules/**",
+    "dist/**",
+    "public/**",
+    "**/*.d.ts",
+    "**/*.js"
+  ]
+}

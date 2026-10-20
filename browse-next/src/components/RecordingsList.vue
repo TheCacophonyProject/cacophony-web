@@ -297,7 +297,7 @@ import type { ApiTrackTag } from "@typedefs/api/trackTag";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import DeviceName from "@/components/DeviceName.vue";
 import { ClientApi } from "@/api";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import LocationName from "@/components/LocationName.vue";
 import { BSpinner } from "bootstrap-vue-next";
 

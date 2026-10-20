@@ -31,6 +31,7 @@ import type {
 import {
   persistUserProjectSettings,
   type SelectedProject,
+  userIsAdminForCurrentSelectedProject,
 } from "@models/LoggedInUser.ts";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import Multiselect from "@vueform/multiselect";
@@ -50,7 +51,7 @@ import {
   BSpinner,
 } from "bootstrap-vue-next";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import LocationName from "@/components/LocationName.vue";
 
 const currentProject = inject(currentActiveProject) as ComputedRef<
@@ -95,48 +96,100 @@ const userProjectSettings = computed<ApiProjectUserSettings>(() => {
     }
   );
 });
-const weeklyDigestEmails = ref<boolean>(false);
-const dailyDigestEmails = ref<boolean>(false);
+interface DigestPreferences {
+  enabled: boolean;
+  visitsReport: boolean;
+  audioReport: boolean;
+  batteryReport: boolean;
+}
+// A digest preference is either a boolean (opted in/out of everything), or an object that opts in
+// to individual sections of the digest, where any section not explicitly set to false is included.
+const parseDigestPreferences = (
+  value: boolean | Record<string, boolean> | undefined,
+): DigestPreferences => {
+  const sections = typeof value === "object" && value !== null ? value : {};
+  return {
+    enabled: !!value,
+    visitsReport: sections.visitsReport !== false,
+    audioReport: sections.audioReport !== false,
+    batteryReport: sections.batteryReport !== false,
+  };
+};
+const serialiseDigestPreferences = ({
+  enabled,
+  visitsReport,
+  audioReport,
+  batteryReport,
+}: DigestPreferences): boolean | Record<string, boolean> =>
+  enabled ? { visitsReport, audioReport, batteryReport } : false;
+
+const weeklyDigest = ref<DigestPreferences>(parseDigestPreferences(false));
+const dailyDigest = ref<DigestPreferences>(parseDigestPreferences(false));
 const stoppedDeviceEmails = ref<boolean>(false);
+const trapActionEmails = ref<boolean>(false);
+const savingTrapActionSettings = ref<boolean>(false);
+const trapActionEmailsError = ref<string>("");
+// Users who have never saved any settings for a project are notified of trap actions by default.
+const savedTrapActionEmails = computed<boolean>(() => {
+  const savedSettings = (currentProject.value as SelectedProject).userSettings;
+  return savedSettings
+    ? (savedSettings.notificationPreferences?.trapActions ?? false)
+    : true;
+});
 const savingDailyDigestSettings = ref<boolean>(false);
 const savingWeeklyDigestSettings = ref<boolean>(false);
 const savingStoppedDeviceSettings = ref<boolean>(false);
 const initialised = ref<boolean>(false);
 onBeforeMount(() => {
-  weeklyDigestEmails.value =
-    userProjectSettings.value.notificationPreferences?.weeklyDigest || false;
-  dailyDigestEmails.value =
-    userProjectSettings.value.notificationPreferences?.dailyDigest || false;
-  // TODO: Set this to true in the DB for all group admins who currently have emailConfirmed
+  weeklyDigest.value = parseDigestPreferences(
+    userProjectSettings.value.notificationPreferences?.weeklyDigest,
+  );
+  dailyDigest.value = parseDigestPreferences(
+    userProjectSettings.value.notificationPreferences?.dailyDigest,
+  );
+  const reportStoppedDevices =
+    userProjectSettings.value.notificationPreferences?.reportStoppedDevices;
   stoppedDeviceEmails.value =
-    userProjectSettings.value.notificationPreferences?.reportStoppedDevices ||
-    false;
+    reportStoppedDevices === undefined
+      ? userIsAdminForCurrentSelectedProject.value
+      : reportStoppedDevices;
+  trapActionEmails.value = savedTrapActionEmails.value;
 });
 onMounted(() => {
   initialised.value = true;
 });
 
-watch(dailyDigestEmails, async (next) => {
-  if (initialised.value) {
-    const settings = JSON.parse(JSON.stringify(userProjectSettings.value));
-    settings.notificationPreferences = settings.notificationPreferences || {};
-    settings.notificationPreferences.dailyDigest = next;
-    savingDailyDigestSettings.value = true;
-    await persistUserProjectSettings(settings);
-    savingDailyDigestSettings.value = false;
-  }
-});
+watch(
+  dailyDigest,
+  async (next) => {
+    if (initialised.value) {
+      const settings = JSON.parse(JSON.stringify(userProjectSettings.value));
+      settings.notificationPreferences = settings.notificationPreferences || {};
+      settings.notificationPreferences.dailyDigest =
+        serialiseDigestPreferences(next);
+      savingDailyDigestSettings.value = true;
+      await persistUserProjectSettings(settings);
+      savingDailyDigestSettings.value = false;
+    }
+  },
+  { deep: true },
+);
 
-watch(weeklyDigestEmails, async (next) => {
-  if (initialised.value) {
-    const settings = JSON.parse(JSON.stringify(userProjectSettings.value));
-    settings.notificationPreferences = settings.notificationPreferences || {};
-    settings.notificationPreferences.weeklyDigest = next;
-    savingWeeklyDigestSettings.value = true;
-    await persistUserProjectSettings(settings);
-    savingWeeklyDigestSettings.value = false;
-  }
-});
+watch(
+  weeklyDigest,
+  async (next) => {
+    if (initialised.value) {
+      const settings = JSON.parse(JSON.stringify(userProjectSettings.value));
+      settings.notificationPreferences = settings.notificationPreferences || {};
+      settings.notificationPreferences.weeklyDigest =
+        serialiseDigestPreferences(next);
+      savingWeeklyDigestSettings.value = true;
+      await persistUserProjectSettings(settings);
+      savingWeeklyDigestSettings.value = false;
+    }
+  },
+  { deep: true },
+);
 
 watch(stoppedDeviceEmails, async (next) => {
   if (initialised.value) {
@@ -146,6 +199,26 @@ watch(stoppedDeviceEmails, async (next) => {
     savingStoppedDeviceSettings.value = true;
     await persistUserProjectSettings(settings);
     savingStoppedDeviceSettings.value = false;
+  }
+});
+
+watch(trapActionEmails, async (next) => {
+  const savedValue = savedTrapActionEmails.value;
+  if (initialised.value && next !== savedValue) {
+    const settings = JSON.parse(JSON.stringify(userProjectSettings.value));
+    settings.notificationPreferences = settings.notificationPreferences || {};
+    settings.notificationPreferences.trapActions = next;
+    trapActionEmailsError.value = "";
+    savingTrapActionSettings.value = true;
+    const saved = await persistUserProjectSettings(settings);
+    savingTrapActionSettings.value = false;
+    if (!saved) {
+      // Someone in the project always needs to be notified about trap actions, so the server
+      // refuses to let the last user receiving them opt out.
+      trapActionEmailsError.value =
+        "At least one user in a project must receive trap email alerts.";
+      trapActionEmails.value = savedValue;
+    }
   }
 });
 
@@ -281,7 +354,7 @@ const alertItems = computed<AlertItem[]>(() => {
 
   <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
     <div class="col-lg-3">
-      <h3 class="section-card-heading">Email alert settings</h3>
+      <h3 class="section-card-heading">Monitoring email alert settings</h3>
       <p class="text-secondary pb-1">
         Send an email when the Cacophony AI recognises something that you're
         interested in for a newly processed recording.
@@ -289,7 +362,7 @@ const alertItems = computed<AlertItem[]>(() => {
     </div>
     <div class="col-lg-9">
       <section-card>
-        <template #header-title> Email alerts </template>
+        <template #header-title>Monitoring email alerts </template>
         <template #header-action>
           <b-button
             variant="outline-secondary"
@@ -297,7 +370,8 @@ const alertItems = computed<AlertItem[]>(() => {
             class="d-flex align-items-center"
           >
             <material-symbol name="add" size="1.25rem" class="me-2" />
-            Create email alert
+            Create
+            <span class="d-none d-sm-inline-block">&nbsp;email alert</span>
           </b-button>
         </template>
         <div v-if="loadingAlerts" class="d-flex justify-content-center my-4">
@@ -414,6 +488,38 @@ const alertItems = computed<AlertItem[]>(() => {
 
   <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
     <div class="col-lg-3">
+      <h3 class="section-card-heading">Trap email alert settings</h3>
+      <p class="text-secondary pb-1">
+        Send an email when the Cacophony AI recognises a target species near or
+        in a high-interaction rate trap.
+      </p>
+    </div>
+    <div class="col-lg-9">
+      <section-card>
+        <template #header-title>Trap email alerts </template>
+        <b-form-checkbox
+          switch
+          v-model="trapActionEmails"
+          data-cy="trap email alerts toggle"
+          >Send email alerts for traps<b-spinner
+            class="ms-1"
+            v-if="savingTrapActionSettings"
+            variant="secondary"
+            small
+        /></b-form-checkbox>
+        <p
+          v-if="trapActionEmailsError"
+          class="text-danger fs-7 mt-2 mb-0"
+          data-cy="trap email alerts error"
+        >
+          {{ trapActionEmailsError }}
+        </p>
+      </section-card>
+    </div>
+  </div>
+
+  <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
+    <div class="col-lg-3">
       <h3 class="section-card-heading">Activity summary</h3>
       <p class="text-secondary pb-1">
         Get daily or weekly break-downs of activity in your project &ndash;
@@ -421,22 +527,70 @@ const alertItems = computed<AlertItem[]>(() => {
       </p>
     </div>
     <div class="col-lg-9">
-      <section-card>
+      <section-card data-cy="activity digest preferences">
         <template #header-title> Project activity email preferences </template>
-        <b-form-checkbox switch v-model="dailyDigestEmails"
+        <b-form-checkbox
+          switch
+          v-model="dailyDigest.enabled"
+          data-cy="daily digest toggle"
           >I want to receive a daily activity digest<b-spinner
             class="ms-1"
             v-if="savingDailyDigestSettings"
             variant="secondary"
             small
         /></b-form-checkbox>
-        <b-form-checkbox switch v-model="weeklyDigestEmails"
+        <div
+          v-if="dailyDigest.enabled"
+          class="ms-4 mb-2"
+          data-cy="daily digest options"
+        >
+          <b-form-checkbox
+            v-model="dailyDigest.visitsReport"
+            data-cy="visits report"
+            >Include thermal visits</b-form-checkbox
+          >
+          <b-form-checkbox
+            v-model="dailyDigest.audioReport"
+            data-cy="audio report"
+            >Include bird detections</b-form-checkbox
+          >
+          <b-form-checkbox
+            v-model="dailyDigest.batteryReport"
+            data-cy="battery report"
+            >Include device battery status</b-form-checkbox
+          >
+        </div>
+        <b-form-checkbox
+          switch
+          v-model="weeklyDigest.enabled"
+          data-cy="weekly digest toggle"
           >I want to receive a weekly activity digest<b-spinner
             class="ms-1"
             v-if="savingWeeklyDigestSettings"
             variant="secondary"
             small
         /></b-form-checkbox>
+        <div
+          v-if="weeklyDigest.enabled"
+          class="ms-4 mb-2"
+          data-cy="weekly digest options"
+        >
+          <b-form-checkbox
+            v-model="weeklyDigest.visitsReport"
+            data-cy="visits report"
+            >Include thermal visits</b-form-checkbox
+          >
+          <b-form-checkbox
+            v-model="weeklyDigest.audioReport"
+            data-cy="audio report"
+            >Include bird detections</b-form-checkbox
+          >
+          <b-form-checkbox
+            v-model="weeklyDigest.batteryReport"
+            data-cy="battery report"
+            >Include device battery status</b-form-checkbox
+          >
+        </div>
       </section-card>
     </div>
   </div>

@@ -53,6 +53,8 @@ import {
   ApiDeviceHistorySettings,
   DeviceHistorySetBy,
 } from "@typedefs/api/device.js";
+import { DeviceAction } from "@models/DeviceAction.js";
+import { UUID } from "node:crypto";
 const Op = Sequelize.Op;
 
 const maxDate = (a?: Date, b?: Date): Date | undefined => {
@@ -128,16 +130,33 @@ export class Device extends ModelStaticCommon<Device> {
   // Fields that are directly settable by the API.
   static apiSettableFields = ["location", "newConfig"];
 
+  // A device name is free if no other device in the group has the same url-normalised name,
+  // i.e. names that differ only by case, surrounding whitespace or spaces vs hyphens clash.
   static async freeDeviceName(deviceName: string, groupId: GroupId) {
+    const normalisedName = deviceName.trim().replace(/ /g, "-").toLowerCase();
     const device = await this.findOne({
-      where: { deviceName, GroupId: groupId },
+      where: {
+        GroupId: groupId,
+        [Op.and]: Sequelize.where(
+          Sequelize.fn(
+            "lower",
+            Sequelize.fn(
+              "replace",
+              Sequelize.fn("trim", Sequelize.col("deviceName")),
+              " ",
+              "-",
+            ),
+          ),
+          normalisedName,
+        ),
+      },
     });
     return device === null;
   }
 
-  static async stoppedDevices() {
-    const oneDayAgo = new Date();
-    const twoDaysAgo = new Date();
+  static async stoppedDevices(now: Date = new Date()) {
+    const oneDayAgo = new Date(now);
+    const twoDaysAgo = new Date(now);
     const audioOnlyDeviceIds: { DeviceId: DeviceId }[] =
       await this.sequelize.query(
         `
@@ -490,6 +509,15 @@ where
               }
             } else {
               // Device is being reassigned to the same group it's currently in.
+
+              const oldId = this.id;
+              if (
+                conflictingDevice === null ||
+                conflictingDevice.id !== this.id
+              ) {
+                // The old device is superseded by the new/taken-over one.
+                await this.update({ active: false }, { transaction });
+              }
               if (conflictingDevice !== null) {
                 // Create a new device in the new group, which becomes the existing device, inheriting its history.
                 await conflictingDevice.update(
@@ -506,6 +534,30 @@ where
                   },
                   { transaction },
                 );
+                if (oldId !== conflictingDevice.id) {
+                  // Transfer the old device's recordings and events to the device that has taken over.
+                  await Recording.update(
+                    { DeviceId: conflictingDevice.id },
+                    { where: { DeviceId: oldId }, transaction },
+                  );
+                  await Event.update(
+                    { DeviceId: conflictingDevice.id },
+                    { where: { DeviceId: oldId }, transaction },
+                  );
+                  await Alert.update(
+                    { DeviceId: conflictingDevice.id },
+                    { where: { DeviceId: oldId }, transaction },
+                  );
+                  await DeviceHistory.update(
+                    { DeviceId: conflictingDevice.id },
+                    { where: { DeviceId: oldId }, transaction },
+                  );
+                  await DeviceAction.update(
+                    { DeviceId: conflictingDevice.id },
+                    { where: { DeviceId: oldId }, transaction },
+                  );
+                  await this.destroy({ transaction });
+                }
                 newDevice = conflictingDevice;
               } else {
                 newDevice = await Device.create(
@@ -609,6 +661,10 @@ where
     }
     return newDevice;
   }
+
+  async getUserActionRequest(uuid: UUID) {
+    return DeviceAction.getUserActionRequestForDevice(this.id, uuid);
+  }
 }
 
 export const init = (sequelizeInstance: Sequelize.Sequelize) => {
@@ -620,7 +676,6 @@ export const init = (sequelizeInstance: Sequelize.Sequelize) => {
     },
     createdAt: DataTypes.DATE,
     updatedAt: DataTypes.DATE,
-
     deviceName: {
       type: DataTypes.STRING,
       unique: true,

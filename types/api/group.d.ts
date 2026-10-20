@@ -37,6 +37,9 @@ export interface ApiGroupSettings {
   audioLabels?: RecordingLabel[];
   ignoredCameraDashboardTags?: string[];
   ignoredAudioDashboardTags?: string[];
+
+  regionInvalidThermalTags?: string[];
+  regionInvalidAudioTags?: string[];
   // Delete audio recordings with human voices
   filterHuman?: boolean;
   filteredAudioTags?: string[];
@@ -49,6 +52,11 @@ export interface ApiGroupUserSettings {
   displayMode?: "recordings" | "visits";
   tags?: string[];
   audioTags?: string[];
-  notificationPreferences?: Record<string, boolean>;
+  notificationPreferences?: {
+    trapActions?: boolean;
+    dailyDigest?: boolean | Record<string, boolean>;
+    weeklyDigest?: boolean | Record<string, boolean>;
+    reportStoppedDevices?: boolean;
+  };
   showFalseTriggers?: boolean;
 }

@@ -82,7 +82,9 @@ onMounted(async () => {
     >
   </div>
   <div v-else-if="alreadyPartOfProject">
-    <span>You're already a member of this project</span>
+    <span data-cy="user already member of project"
+      >This user is already a member of this project</span
+    >
   </div>
   <div v-else-if="!isValidValidateToken">
     <span>Error: Confirming request failed</span>

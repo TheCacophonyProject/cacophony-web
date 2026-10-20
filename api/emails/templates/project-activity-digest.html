@@ -1,53 +1,251 @@
 <tr>
-  <td class="container-padding content" align="left" style="border-radius:3px;padding-left:24px;padding-right:24px;padding-top:12px;padding-bottom:12px;background-color:#ffffff">
+  <td class="container-padding content" align="left" style="border-radius:8px;box-shadow:rgba(0, 0, 0, 0.075) 0px 2px 4px 0px;padding-left:24px;padding-right:24px;padding-top:12px;padding-bottom:12px;background-color:#ffffff">
     <br>
-    <div style="font-family:Helvetica, Arial, sans-serif;padding-bottom:12px;color:rgb(13, 115, 38);padding-right:24px">
-      <span style="font-size:26px;font-weight:bold;">Activity in '{{ projectName }}'</span>
+    <div style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:12px;font-weight:550;padding-bottom:2px;color:#777875;padding-right:24px">
+      <span style="text-transform: capitalize">{{ emailFrequency }}</span> activity digest
+    </div>
+    <div style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:21px;font-weight:650;padding-bottom:12px;color:#252921;padding-right:24px">
+     {{ projectName }}
     </div>
     <br>
-    <div class="body-text" style="font-family:Helvetica, Arial, sans-serif;font-size:14px;line-height:20px;text-align:left;color:#333333">
-      Hi! <br>Here's your <em><strong>{{ emailFrequency }}</strong></em> update of activity in '{{ projectName }}'.
-      <br><br>
-      {{#hasVisitsInPeriod}}
-      <table style="margin-left: 15px">
-      {{#visitsInfo}}
+
+    {{#hasVisitsReport}}
+    <!-- thermal activity starts -->
+    <div style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:18px;font-weight:600;padding-bottom:4px;color:#252921;padding-right:24px">
+      Thermal Visits
+    </div>
+    <br>
+    {{#hasVisitsInPeriod}}
+
+<!-- TODO: Visits graph over time   -->
+<!--    <div style="height: 172px; background: #eee;"></div>-->
+    <br>
+    <div class="body-text" style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;line-height:160%;text-align:left;color:#252921 !important;">
+
+      <table border="0" cellpadding="0" cellspacing="0" width="100%" id="templateColumns">
         <tr>
-          <td style="border-bottom: 15px solid transparent; width: 36px;">
-          {{#hasIcon}}
-          <img width="48" height="48" src="cid:{{species}}" style="margin-right: 15px;" />
-          {{/hasIcon}}
-          <td>
-          <td style="border-bottom: 15px solid transparent;">
-            <strong style="font-family:Helvetica, Arial, sans-serif;font-size:24px;line-height:36px;text-align:left;color:#333333;">{{ count }}</strong><br>
-            <span style="font-family:Helvetica, Arial, sans-serif;font-size:18px;line-height:20px;text-align:left;color:#333333">{{ speciesDisplayName }}</span>
+          <td align="center" valign="top" width="50%" class="templateColumnContainer">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+              <tr>
+                <td valign="top">
+                  <!-- Left column -->
+                  <table>
+                    {{#visitsInfoCol1}}
+                    <tr>
+                      <td valign="middle" style="width: 40px; height: 40px; border-right: 12px solid transparent; border-bottom: 12px solid transparent;">
+                        {{#hasIcon}}
+                        <div style="border-radius: 4px; background: {{iconColor}}; width: 40px; height: 40px; text-align: center">
+                          <img width="24" height="24" src="cid:{{species}}" style="width:24px;height:24px;border: 8px solid transparent"/>
+                        </div>
+                        {{/hasIcon}}
+                      <td>
+                      <td style="border-bottom: 12px solid transparent;">
+                        <strong style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:16px;line-height:120%;text-align:left;color:#252921;font-weight:600;">{{ count }}</strong>
+                        <div style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;line-height:120%;text-align:left;color:#777875;text-transform: capitalize">{{ speciesDisplayName }}</div>
+                      </td>
+                    </tr>
+                    {{/visitsInfoCol1}}
+                  </table>
+
+                </td>
+              </tr>
+            </table>
+          </td>
+          <td align="center" valign="top" width="50%" class="templateColumnContainer">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%">
+              <tr>
+                <td valign="top">
+                  <!-- Right column -->
+
+                  <table>
+                    {{#visitsInfoCol2}}
+                    <tr>
+                      <td valign="middle" style="width: 40px; height: 40px; border-right: 12px solid transparent; border-bottom: 12px solid transparent;">
+                        {{#hasIcon}}
+                        <div style="border-radius: 4px; background: {{ iconColor }}; width: 40px; height: 40px; text-align: center">
+                          <img alt="{{ speciesDisplayName }}" width="24" height="24" src="cid:{{species}}" style="width:24px;height:24px;border: 8px solid transparent"/>
+                        </div>
+                        {{/hasIcon}}
+                      <td>
+                      <td style="border-bottom: 12px solid transparent;">
+                        <strong style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:16px;line-height:120%;text-align:left;color:#252921;font-weight:600;">{{ count }}</strong>
+                        <div style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;line-height:120%;text-align:left;color:#777875;text-transform: capitalize">{{ speciesDisplayName }}</div>
+                      </td>
+                    </tr>
+                    {{/visitsInfoCol2}}
+                  </table>
+
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
-      {{/visitsInfo}}
       </table>
-      <br><br>
-      <a href="{{ activityUrl }}" style="background-color: #2f67f6;border:none;border-radius:3px;color:#ffffff;cursor:auto;padding:15px 25px;display: inline-block;font-family:'Helvetica Neue',Arial,sans-serif;font-size:15px;font-weight:normal;line-height:120%;margin:0;text-decoration:none;text-transform:none;">
-        View {{ emailFrequency }} activity
+
+      <br>
+      <a data-cy="view thermal activity" href="{{ thermalActivityUrl }}" style="background-color: #579e02;border:none;border-radius:4px;color:#ffffff;cursor:auto;padding:12px 20px;display: inline-block;font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;font-weight:normal;line-height:120%;margin:0;text-decoration:none;text-transform:none;">
+        View {{ emailFrequency }} thermal activity
       </a>
-      {{/hasVisitsInPeriod}}
-      {{#hasNoVisitsInPeriod}}
-      There was no activity in '{{ projectName }}' during this period.<br>You won't receive this email again until there is some new activity in this project.
-      {{/hasNoVisitsInPeriod}}
-      <br><br>
-      &ndash; The Cacophony Team.
       <br><br>
     </div>
+    {{/hasVisitsInPeriod}}
+    {{#hasNoVisitsInPeriod}}
+    <div class="body-text" style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;line-height:160%;text-align:left;color:#252921 !important;">
+      {{#frequencyIsDaily}}
+      There was no thermal activity during the last day.
+      {{/frequencyIsDaily}}
+      {{#frequencyIsWeekly}}
+      There was no thermal activity during the last week.
+      {{/frequencyIsWeekly}}
+      <br><br>
+     <!-- You won't receive this email again until there is some new activity in this project.-->
+    </div>
+    {{/hasNoVisitsInPeriod}}
+    <!-- thermal activity ends -->
+
+    <br>
+    <hr color="#eeeeee" style="background-color: #eeeeee; height: 1px; border: none" />
+    <br>
+    <br>
+    {{/hasVisitsReport}}
+    {{#hasAudioReport}}
+    <!-- Audio activity starts -->
+    <div style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:18px;font-weight:600;padding-bottom:4px;color:#252921;padding-right:24px">
+      Audio Detections
+    </div>
+    <br>
+    {{#hasBirdDetectionsInPeriod}}
+    <div class="body-text" style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;line-height:160%;text-align:left;color:#252921 !important;">
+      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px" id="audio-templateColumns">
+        <tr>
+          {{#birdDetectionTwo}}
+          <td align="center" valign="top" width="{{../topThreeTableItemWidth}}" class="templateColumnContainer" style="line-height: 1.3">
+            <strong style="text-transform: capitalize;font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size: 16px; font-weight:600;color:#252921;">{{ speciesDisplayName }}</strong><br>
+            <span style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#777875; line-height: 2;">{{ count }} detection{{#gt count 1}}s{{/gt}}</span>
+            <br><br>
+          </td>
+          {{/birdDetectionTwo}}
+          {{#birdDetectionOne}}
+          <td align="center" valign="top" width="{{../topThreeTableItemWidth}}" class="templateColumnContainer" style="line-height: 1.3">
+            <strong style="text-transform: capitalize;font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size: 16px; font-weight:600;color:#252921;">{{ speciesDisplayName }}</strong><br>
+            <div style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#777875;; line-height: 2;">{{ count }} detection{{#gt count 1}}s{{/gt}}</div>
+            <br><br>
+          </td>
+          {{/birdDetectionOne}}
+          {{#birdDetectionThree}}
+          <td align="center" valign="top" width="{{../topThreeTableItemWidth}}" class="templateColumnContainer" style="line-height: 1.3">
+            <strong style="text-transform: capitalize;font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size: 16px; font-weight:600;color:#252921; line-height: 1.3;">{{ speciesDisplayName }}</strong><br>
+            <div style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#777875; line-height: 2;">
+              {{ count }} detection{{#gt count 1}}s{{/gt}}</div>
+            <br><br>
+          </td>
+          {{/birdDetectionThree}}
+        </tr>
+      </table>
+      <br>
+
+      {{#hasExtendedBirdDetections}}
+      <table border="0" cellspacing="0" cellpadding="0" width="100%">
+        {{#extendedBirdDetections}}
+        <tr>
+            <td style="padding-top:10px;padding-bottom:10px;border-bottom: 1px solid #eeeeee;line-height: 1.3">
+            <strong style="text-transform: capitalize;font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-weight: 550;color:#252921;">{{ speciesDisplayName }}</strong>
+          </td>
+            <td style="padding-top:10px;padding-bottom:10px;border-bottom: 1px solid #eeeeee;line-height: 1.3">
+            <span style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#252921;">{{count}} detection{{#gt count 1}}s{{/gt}}</span>
+          </td>
+        </tr>
+        {{/extendedBirdDetections}}
+      </table>
+      <br>
+      {{/hasExtendedBirdDetections}}
+      <a data-cy="view audio activity" href="{{ audioActivityUrl }}" style="background-color: #579e02;border:none;border-radius:4px;color:#ffffff;cursor:auto;padding:12px 20px;display: inline-block;font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;font-weight:normal;line-height:120%;margin:0;text-decoration:none;text-transform:none;">
+        View {{ emailFrequency }} audio detections
+      </a>
+      <br><br>
+    </div>
+    {{/hasBirdDetectionsInPeriod}}
+    {{#hasNoBirdDetectionsInPeriod}}
+    <div class="body-text" style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;line-height:160%;text-align:left;color:#252921 !important;">
+      {{#frequencyIsDaily}}
+      There were no bird detections in the last day.
+      {{/frequencyIsDaily}}
+      {{#frequencyIsWeekly}}
+      There were no bird detections in the last week.
+      {{/frequencyIsWeekly}}
+      <br><br>
+      <!-- You won't receive this email again until there is some new activity in this project.-->
+    </div>
+    {{/hasNoBirdDetectionsInPeriod}}
+    <!-- Audio activity ends -->
+
+    <br>
+    <hr color="#eeeeee" style="background-color: #eeeeee; height: 1px; border: none" />
+    <br>
+    <br>
+    {{/hasAudioReport}}
+
+    {{#hasBatteryReport}}
+    <!-- Devices' status starts -->
+    <div style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:18px;font-weight:600;padding-bottom:4px;color:#252921;padding-right:24px">
+      Devices Status
+    </div>
+    <br>
+    {{#hasNoBatteryReadings}}
+    <div class="body-text" style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;line-height:160%;text-align:left;color:#252921 !important;">
+      No battery data available for active devices.
+      <br><br>
+    </div>
+    {{/hasNoBatteryReadings}}
+    {{#hasBatteryReadings}}
+    <div class="body-text" style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;line-height:160%;text-align:left;color:#252921 !important;">
+      <table border="0" cellspacing="0" cellpadding="0" width="100%">
+        <thead>
+          <tr>
+            <td style="padding-top:10px;padding-bottom:10px;border-bottom: 1px solid #eeeeee;line-height: 1.3">
+              <strong style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-weight: 550;color:#252921;">Device Name</strong>
+            </td>
+            <td class="battery-status-cell" style="padding-top:10px;padding-bottom:10px;border-bottom: 1px solid #eeeeee;line-height: 1.3">
+              <strong style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-weight: 550;color:#252921;">Battery Status</strong>
+            </td>
+          </tr>
+        </thead>
+        <tbody>
+          {{#batteryReport}}
+          <tr>
+            <td style="padding-top:10px;padding-bottom:10px;border-bottom: 1px solid #eeeeee;line-height: 1.3">
+              <strong style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-weight: 550;color:#252921;">{{deviceName}}</strong>
+            </td>
+            <td class="battery-status-cell" style="padding-top:10px;padding-bottom:10px;border-bottom: 1px solid #eeeeee;line-height: 1.3">
+              <span style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#252921;">{{batteryLevel}}%</span>
+              <span style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#777875;">&nbsp;({{recordedAgo}})</span>
+            </td>
+          </tr>
+          {{/batteryReport}}
+        </tbody>
+      </table>
+      <br><br>
+    </div>
+    {{/hasBatteryReadings}}
+
+    <!-- Devices' status ends -->
+    {{/hasBatteryReport}}
+
+    <div class="body-text" style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;line-height:160%;text-align:left;color:#252921 !important;">
+      <span style="color:#777875">&ndash; The Cacophony Team</span>
+      <br><br>
+    </div>
+
   </td>
 </tr>
 <tr>
-  <td class="container-padding footer-text" align="left" style="font-family:Helvetica, Arial, sans-serif;font-size:12px;line-height:16px;color:#aaaaaa;padding-left:24px;padding-right:24px">
+  <td class="container-padding footer-text" align="left" style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:12px;line-height:180%;text-align:center;color:#90908F;padding-left:24px;padding-right:24px">
     <br><br>
-    You are receiving this email because you are subscribed to {{ emailFrequency }} activity digests in the <strong>'{{ projectName }}'</strong> project. Update your <a href="{{ emailSettingsUrl }}" style="color:#aaaaaa">email digest preferences</a>.
+    You are receiving this email because you are subscribed to {{ emailFrequency }} activity digests for the project <strong style="font-weight: 600">{{ projectName }}</strong>.
+    You can <a href="{{ emailSettingsUrl }}" style="color:#90908F">update your email alert preferences</a> on the Cacophony Monitoring Platform.
     <br><br>
-    <strong>The Cacophony Project.</strong><br>
-    <span class="ios-footer">
-New Zealand.<br>
-</span>
-    <a href="{{ cacophonyBrowseUrl }}" style="color:#aaaaaa">{{ cacophonyDisplayUrl }}</a><br>
+    <strong style="font-weight: 500">The Cacophony Project</strong><br>
+    <a href="{{ cacophonyBrowseUrl }}" style="color:#90908f">{{ cacophonyDisplayUrl }}</a><br>
     <br><br>
   </td>
 </tr>

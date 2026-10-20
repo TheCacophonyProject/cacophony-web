@@ -3,6 +3,11 @@ export const addDays = (startDate: Date, days: number) => {
   result.setDate(result.getDate() + days);
   return result;
 };
+export const addHours = (startDate: Date, hours: number) => {
+  const result = new Date(startDate);
+  result.setHours(result.getHours() + hours);
+  return result;
+};
 
 export const addMinutes = (startDate: Date, mins: number) => {
   const result = new Date(startDate);

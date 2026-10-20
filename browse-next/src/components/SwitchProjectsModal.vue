@@ -28,7 +28,7 @@ import type { DeviceId, UserId } from "@typedefs/api/common";
 import type { ApiDeviceResponse } from "@typedefs/api/device";
 import DeviceName from "@/components/DeviceName.vue";
 import { ClientApi } from "@/api";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 
 const router = useRouter();
 const currentRoute = useRoute();

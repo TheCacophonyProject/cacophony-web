@@ -81,7 +81,7 @@ export class Event extends ModelStaticCommon<Event> {
       }
       if (endTime) {
         dateTime = {
-          ...(dateTime || {}),
+          ...dateTime,
           [Op.lt]: endTime,
         };
       }

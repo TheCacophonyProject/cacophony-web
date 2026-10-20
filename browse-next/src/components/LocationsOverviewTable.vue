@@ -10,7 +10,7 @@ import { DateTime, type ToRelativeOptions } from "luxon";
 import { ref } from "vue";
 import type { StationId as LocationId } from "@typedefs/api/common";
 import RenameableLocationName from "@/components/RenameableLocationName.vue";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import type { GenericCardTableValue } from "@/components/CardTableTypes.ts";
 import { BButton } from "bootstrap-vue-next";
 

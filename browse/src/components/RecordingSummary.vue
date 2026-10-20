@@ -409,7 +409,6 @@ export default {
       const state = this.item.processingState.toLowerCase();
       return (
         (state === RecordingProcessingState.Analyse ||
-          state === RecordingProcessingState.AnalyseThermal ||
           state === RecordingProcessingState.Tracking ||
           state === RecordingProcessingState.Reprocess) &&
         !this.item.processing

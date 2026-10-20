@@ -6,6 +6,7 @@ import type { FormInputValidationState } from "@/utils";
 import { computed, ref } from "vue";
 import {
   BForm,
+  BFormCheckbox,
   BFormCheckboxGroup,
   BFormInput,
   BFormInvalidFeedback,
@@ -60,8 +61,16 @@ const invitePendingUser = async () => {
 };
 
 const permissionsOptions = [
-  { value: "admin", text: "Invite as a project admin" },
-  { value: "owner", text: "Invite as a project owner" },
+  {
+    value: "admin",
+    text: "Invite as a project admin",
+    testId: "invite as project admin checkbox",
+  },
+  {
+    value: "owner",
+    text: "Invite as a project owner",
+    testId: "invite as project owner checkbox",
+  },
 ];
 
 const permissions = ref<string[]>([]);
@@ -100,10 +109,16 @@ const permissions = ref<string[]>([]);
         </b-form-invalid-feedback>
       </div>
       <div class="input-group">
-        <b-form-checkbox-group
-          v-model="permissions"
-          :options="permissionsOptions"
-        />
+        <b-form-checkbox-group v-model="permissions">
+          <b-form-checkbox
+            v-for="option in permissionsOptions"
+            :key="option.value"
+            :value="option.value"
+            :data-cy="option.testId"
+          >
+            {{ option.text }}
+          </b-form-checkbox>
+        </b-form-checkbox-group>
       </div>
     </b-form>
   </b-modal>

@@ -84,40 +84,40 @@ const updateAll = async (): Promise<void> => {
   }
 };
 
-(async () => {
-  await initSequelize();
+try {
+  await (async () => {
+    await initSequelize();
 
-  // For each group in the system, iterate over each device.
-  // For each device, get thermal recordings from earliest to latest in batches of 100 recordings.
-  // For each recording, get all tracks
-  // For each track, fetch the track data from the s3 storage ( Track.getTrackData(trackId) )
-  // If the track data has `thumbnail.score` update the `thumbnailScore` column in the `Tracks` table for that track
-  // with the score.
-  await updateAll();
+    // For each group in the system, iterate over each device.
+    // For each device, get thermal recordings from earliest to latest in batches of 100 recordings.
+    // For each recording, get all tracks
+    // For each track, fetch the track data from the s3 storage ( Track.getTrackData(trackId) )
+    // If the track data has `thumbnail.score` update the `thumbnailScore` column in the `Tracks` table for that track
+    // with the score.
+    await updateAll();
 
-  /*
-  const group = await Group.findOne({
-    where: {
-      groupName: "orton bradley park",
-    },
-  });
-  const devices = await Device.findAll({
-    where: {
-      GroupId: group.id,
-    },
-  });
-  for (const device of devices) {
-    console.log(
-      `updating track data for device ${device.id} (${device.deviceName}) in ${group.groupName}`,
-    );
-    await updateDevice(device);
-  }
-   */
-})()
-  .catch((e) => {
-    console.trace(e);
-    log.error(e);
-  })
-  .then(() => {
-    process.exit(0);
-  });
+    /*
+    const group = await Group.findOne({
+      where: {
+        groupName: "orton bradley park",
+      },
+    });
+    const devices = await Device.findAll({
+      where: {
+        GroupId: group.id,
+      },
+    });
+    for (const device of devices) {
+      console.log(
+        `updating track data for device ${device.id} (${device.deviceName}) in ${group.groupName}`,
+      );
+      await updateDevice(device);
+    }
+     */
+  })();
+} catch (e) {
+  console.trace(e);
+  log.error(e);
+} finally {
+  process.exit(0);
+}

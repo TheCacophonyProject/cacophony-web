@@ -17,7 +17,7 @@ import {
   BFormInvalidFeedback,
   BSpinner,
 } from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 
 const showPassword = ref(false);
 const togglePasswordVisibility = () => {

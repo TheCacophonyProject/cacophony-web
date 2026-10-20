@@ -41,7 +41,7 @@ import {
   CurrentProjectCameraLabels,
 } from "@/helpers/Project.ts";
 import { BButton, BFormCheckbox, BPopover } from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 
 const props = defineProps<{
   locations: Ref<LoadedResource<ApiLocationResponse[]>>;

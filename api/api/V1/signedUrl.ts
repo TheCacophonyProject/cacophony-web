@@ -292,14 +292,12 @@ export default function (app: Application, baseUrl: string) {
    * @apiName GetFile
    * @apiGroup SignedUrl
    *
-   * @apiDescription Gets a file. The JWT for authentication may be
-   * passed using a URL parameter or using the Authorization header
-   * (as for other API endpoints).
+   * @apiDescription Gets a file.  No Authorization header is needed: the file is identified and authorised
+   * by the JWT passed in the `jwt` URL parameter.  HTTP range requests are supported.
    *
-   * @apiParam {String} [jwt] the value of the downloadFileJWT field
+   * @apiQuery {String} jwt the value of the downloadFileJWT field
    * from a successful [GetRecording](#api-Recordings-GetRecording)
-   * request. Authentication using the Authorization header is also
-   * supported.
+   * request, or the `jwt` field from a [GetFile](#api-Files-GetFile) request.  These tokens expire after 10 minutes.
    *
    * @apiSuccess {file} file Raw data stream of the file.
    *

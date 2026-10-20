@@ -18,7 +18,7 @@ let decoder: Worker | undefined;
 
 export class CptvDecoder {
   constructor() {
-    this.free().then(() => {
+    void this.free().then(() => {
       messageQueue = {};
     });
   }

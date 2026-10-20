@@ -1,0 +1,27 @@
+{
+  "$schema": "./e2e-tests/node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "oxc"
+  ],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "prefer-const": "warn",
+    "no-debugger": "warn",
+    "no-prototype-builtins": "off",
+    "no-empty-pattern": "off",
+    "unicorn/no-empty-file": "off",
+    "typescript/no-explicit-any": "warn",
+    "typescript/no-non-null-assertion": "off",
+    "no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ]
+  }
+}

@@ -21,7 +21,7 @@ import {
   BModal,
   type BvTriggerableEvent,
 } from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 
 const currentUser = inject(currentUserInfo) as Ref<LoggedInUser | null>;
 

@@ -22,8 +22,10 @@ import {
   getClassifications,
 } from "@api/classificationsUtils.ts";
 import {
+  AUDIO_AI_OUTPUTS,
   DEFAULT_AUDIO_RECORDING_LABELS,
   DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS,
+  THERMAL_AI_OUTPUTS,
 } from "@/consts.ts";
 import HierarchicalTagSelect from "@/components/HierarchicalTagSelect.vue";
 import SectionCard from "@/components/SectionCard.vue";
@@ -33,7 +35,7 @@ import {
   BModal,
   BSpinner,
 } from "bootstrap-vue-next";
-import { MaterialSymbol } from "@dbetka/vue-material-symbols";
+import MaterialSymbol from "@/components/MaterialSymbol.vue";
 import TwoStepActionButton from "@/components/TwoStepActionButton.vue";
 
 const selectedProject = inject(currentSelectedProject) as Ref<SelectedProject>;
@@ -55,6 +57,7 @@ onMounted(async () => {
 });
 
 const pendingIgnoredTag = ref<string[]>([]);
+const pendingInvalidTag = ref<string[]>([]);
 
 const addPendingIgnoredTag = async (grouping: "camera" | "audio") => {
   if (pendingIgnoredTag.value.length) {
@@ -62,6 +65,21 @@ const addPendingIgnoredTag = async (grouping: "camera" | "audio") => {
     pendingIgnoredTag.value = [];
   }
 };
+
+const addPendingInvalidTag = async (grouping: "camera" | "audio") => {
+  if (pendingInvalidTag.value.length) {
+    await addInvalidTag(pendingInvalidTag.value[0], grouping);
+    pendingInvalidTag.value = [];
+  }
+};
+
+const knownAIOutputTags = computed(() => {
+  if (currentGrouping.value === "camera") {
+    return THERMAL_AI_OUTPUTS;
+  } else {
+    return AUDIO_AI_OUTPUTS;
+  }
+});
 
 watch(filterHumanVoices, async (next) => {
   if (initialised.value) {
@@ -74,6 +92,8 @@ watch(filterHumanVoices, async (next) => {
 });
 
 const showAddCameraIgnoredTagModal = ref<boolean>(false);
+const showAddInvalidTagModal = ref<boolean>(false);
+const currentGrouping = ref<"camera" | "audio">("camera");
 //const showAddAudioClassificationModal = ref<boolean>(false);
 
 const resetCameraIgnoredTags = async () => {
@@ -82,6 +102,19 @@ const resetCameraIgnoredTags = async () => {
     localDashboardIgnoredTags.value,
     "camera",
   );
+};
+
+const resetInvalidThermalTags = async () => {
+  localInvalidThermalTags.value = [];
+  await persistProjectInvalidTagSettings(
+    localInvalidThermalTags.value,
+    "camera",
+  );
+};
+
+const resetInvalidAudioTags = async () => {
+  localInvalidAudioTags.value = [];
+  await persistProjectInvalidTagSettings(localInvalidAudioTags.value, "audio");
 };
 
 //const resetAudioClassification = () => {};
@@ -97,11 +130,63 @@ const customIgnoredDashboardCameraTags = computed<string[]>(() => {
   }
   return DEFAULT_DASHBOARD_IGNORED_CAMERA_TAGS;
 });
+
+const customInvalidThermalTags = computed<string[]>(() => {
+  if (selectedProject.value) {
+    return (
+      (localInvalidThermalTags.value.length && localInvalidThermalTags.value) ||
+      selectedProject.value.settings?.regionInvalidThermalTags ||
+      []
+    );
+  }
+  return [];
+});
+
+const customInvalidAudioTags = computed<string[]>(() => {
+  if (selectedProject.value) {
+    return (
+      (localInvalidAudioTags.value.length && localInvalidAudioTags.value) ||
+      selectedProject.value.settings?.regionInvalidAudioTags ||
+      []
+    );
+  }
+  return [];
+});
+
 const localDashboardIgnoredTags = ref<string[]>([]);
 localDashboardIgnoredTags.value = [...customIgnoredDashboardCameraTags.value];
 
+const localInvalidThermalTags = ref<string[]>([]);
+localInvalidThermalTags.value = [...customInvalidThermalTags.value];
+const localInvalidAudioTags = ref<string[]>([]);
+localInvalidAudioTags.value = [...customInvalidAudioTags.value];
+
 const cameraIgnoredTagTableItems = computed<CardTableRows<string>>(() => {
   return customIgnoredDashboardCameraTags.value.map((tag: string) => ({
+    tag: {
+      value: capitalize(displayLabelForClassificationLabel(tag)),
+      cellClasses: ["w-100"],
+    },
+    _deleteAction: {
+      value: tag,
+    },
+  }));
+});
+
+const invalidThermalTagTableItems = computed<CardTableRows<string>>(() => {
+  return customInvalidThermalTags.value.map((tag: string) => ({
+    tag: {
+      value: capitalize(displayLabelForClassificationLabel(tag)),
+      cellClasses: ["w-100"],
+    },
+    _deleteAction: {
+      value: tag,
+    },
+  }));
+});
+
+const invalidAudioTagTableItems = computed<CardTableRows<string>>(() => {
+  return customInvalidAudioTags.value.map((tag: string) => ({
     tag: {
       value: capitalize(displayLabelForClassificationLabel(tag)),
       cellClasses: ["w-100"],
@@ -123,6 +208,21 @@ const persistProjectDashboardIgnoredTagSettings = async (
     payload.ignoredAudioDashboardTags = update;
   } else {
     payload.ignoredCameraDashboardTags = update;
+  }
+  return persistProjectSettings(payload);
+};
+
+const persistProjectInvalidTagSettings = async (
+  update: string[],
+  grouping: "audio" | "camera",
+) => {
+  const payload = {
+    ...currentProjectSettings.value,
+  };
+  if (grouping === "audio") {
+    payload.regionInvalidAudioTags = update;
+  } else {
+    payload.regionInvalidThermalTags = update;
   }
   return persistProjectSettings(payload);
 };
@@ -153,6 +253,34 @@ const removeIgnoredTag = async (
   );
 };
 
+const removeInvalidTag = async (
+  classification: string,
+  grouping: "camera" | "audio",
+) => {
+  let collection;
+  if (grouping === "camera") {
+    collection = customInvalidThermalTags.value;
+  } else {
+    collection = customInvalidAudioTags.value;
+  }
+  const currentTags = [...collection];
+  const currentIndexOfTag = currentTags.indexOf(classification);
+  currentTags.splice(currentIndexOfTag, 1);
+  if (grouping === "camera") {
+    localInvalidThermalTags.value = currentTags;
+    await persistProjectInvalidTagSettings(
+      localInvalidThermalTags.value,
+      grouping,
+    );
+  } else {
+    localInvalidAudioTags.value = currentTags;
+    await persistProjectInvalidTagSettings(
+      localInvalidAudioTags.value,
+      grouping,
+    );
+  }
+};
+
 const addIgnoredTag = async (tag: string, grouping: "camera" | "audio") => {
   let collection;
   if (grouping === "camera") {
@@ -167,16 +295,50 @@ const addIgnoredTag = async (tag: string, grouping: "camera" | "audio") => {
   }
 };
 
-const reset = () => {
+const addInvalidTag = async (tag: string, grouping: "camera" | "audio") => {
+  let collection;
+  if (grouping === "camera") {
+    collection = localInvalidThermalTags.value;
+  } else {
+    collection = localInvalidAudioTags.value;
+  }
+  if (!collection.includes(tag)) {
+    collection.push(tag);
+    await persistProjectInvalidTagSettings(collection, grouping);
+  }
+};
+
+const resetPendingIgnoredTag = () => {
   pendingIgnoredTag.value = [];
 };
 
-const pendingTagIsValid = computed<boolean>(() => {
+const resetPendingInvalidTag = () => {
+  pendingInvalidTag.value = [];
+};
+
+const pendingIgnoredTagIsValid = computed<boolean>(() => {
   return (
     pendingIgnoredTag.value.length !== 0 &&
     pendingIgnoredTag.value[0].trim().length !== 0
   );
 });
+
+const pendingInvalidTagIsValid = computed<boolean>(() => {
+  return (
+    pendingInvalidTag.value.length !== 0 &&
+    pendingInvalidTag.value[0].trim().length !== 0
+  );
+});
+
+const addInvalidAudioTag = () => {
+  showAddInvalidTagModal.value = true;
+  currentGrouping.value = "audio";
+};
+
+const addInvalidThermalTag = () => {
+  showAddInvalidTagModal.value = true;
+  currentGrouping.value = "camera";
+};
 </script>
 <template>
   <div class="row mb-4 pb-2 pb-sm-0 mb-sm-4 mb-lg-5">
@@ -189,7 +351,7 @@ const pendingTagIsValid = computed<boolean>(() => {
     </div>
     <div class="col-lg-9">
       <section-card>
-        <template #header-title> Audio filtering </template>
+        <template #header-title>Audio filtering</template>
         <b-form-group
           description="Turn this option on if the recording is in a public place to protect peoples' privacy."
         >
@@ -217,7 +379,7 @@ const pendingTagIsValid = computed<boolean>(() => {
     </div>
     <div class="col-lg-9">
       <section-card>
-        <template #header-title> Tags </template>
+        <template #header-title>Tags</template>
         <template #header-action>
           <div class="d-inline-flex gap-2 ms-2">
             <two-step-action-button
@@ -255,14 +417,120 @@ const pendingTagIsValid = computed<boolean>(() => {
     </div>
   </div>
 
+  <div class="row mb-3 mb-sm-4 mb-lg-5">
+    <div class="col-lg-3">
+      <h3 class="section-card-heading">Invalid regional thermal tags</h3>
+      <p class="text-secondary pb-1">
+        Our thermal AI model is currently trained on NZ predators. If your
+        project is in a region where you know some of these predators do not
+        occur, you can opt to have them tagged as "unidentified" when the AI
+        would incorrectly pick the wrong tag.
+      </p>
+    </div>
+    <div class="col-lg-9">
+      <section-card>
+        <template #header-title>Invalid thermal tags</template>
+        <template #header-action>
+          <div class="d-inline-flex gap-2 ms-2">
+            <two-step-action-button
+              :action="resetInvalidThermalTags"
+              :btn-variant-class="`btn-outline-secondary`"
+              :icon="null"
+              :confirmation-label="`Reset ignored tags`"
+              :label="`Reset`"
+              :placement="`bottom`"
+            />
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-cy="add invalid thermal tag"
+              @click.stop.prevent="addInvalidThermalTag"
+            >
+              Add
+            </button>
+          </div>
+        </template>
+        <card-table
+          :items="invalidThermalTagTableItems"
+          compact
+          :max-card-width="0"
+        >
+          <template #_deleteAction="{ cell }">
+            <span :data-cy="`invalid thermal tag ${cell.value}`">
+              <two-step-action-button
+                :action="() => removeInvalidTag(cell.value, 'camera')"
+                icon="delete"
+                :confirmation-label="`Remove tag`"
+                tooltip-label="Remove"
+              />
+            </span>
+          </template>
+        </card-table>
+      </section-card>
+    </div>
+  </div>
+
+  <div class="row mb-3 mb-sm-4 mb-lg-5">
+    <div class="col-lg-3">
+      <h3 class="section-card-heading">Invalid regional audio tags</h3>
+      <p class="text-secondary pb-1">
+        Our audio AI model is currently trained on NZ birds. If your project is
+        in a region where you know some of these birds do not occur, you can opt
+        to have them tagged as "unidentified" when the AI would incorrectly pick
+        the wrong tag.
+      </p>
+    </div>
+    <div class="col-lg-9">
+      <section-card>
+        <template #header-title>Invalid audio tags</template>
+        <template #header-action>
+          <div class="d-inline-flex gap-2 ms-2">
+            <two-step-action-button
+              :action="resetInvalidAudioTags"
+              :btn-variant-class="`btn-outline-secondary`"
+              :icon="null"
+              :confirmation-label="`Reset ignored tags`"
+              :label="`Reset`"
+              :placement="`bottom`"
+            />
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-cy="add invalid audio tag"
+              @click.stop.prevent="addInvalidAudioTag"
+            >
+              Add
+            </button>
+          </div>
+        </template>
+        <card-table
+          :items="invalidAudioTagTableItems"
+          compact
+          :max-card-width="0"
+        >
+          <template #_deleteAction="{ cell }">
+            <span :data-cy="`invalid audio tag ${cell.value}`">
+              <two-step-action-button
+                :action="() => removeInvalidTag(cell.value, 'audio')"
+                icon="delete"
+                :confirmation-label="`Remove tag`"
+                tooltip-label="Remove"
+              />
+            </span>
+          </template>
+        </card-table>
+      </section-card>
+    </div>
+  </div>
+
   <b-modal
     v-model="showAddCameraIgnoredTagModal"
     title="Add project dashboard ignored tag"
-    @cancel="reset"
-    @close="reset"
-    @esc="reset"
+    @cancel="resetPendingIgnoredTag"
+    @close="resetPendingIgnoredTag"
+    @esc="resetPendingIgnoredTag"
     @ok="() => addPendingIgnoredTag('camera')"
-    :ok-disabled="!pendingTagIsValid"
+    :ok-disabled="!pendingIgnoredTagIsValid"
     ok-title="Add ignored tag"
     ok-variant="secondary"
     cancel-variant="outline-secondary"
@@ -275,28 +543,49 @@ const pendingTagIsValid = computed<boolean>(() => {
       :disabled-tags="customIgnoredDashboardCameraTags"
     />
   </b-modal>
-  <!--  <div class="mt-4">-->
-  <!--    <hr />-->
-  <!--    <div-->
-  <!--      class="d-flex flex-column flex-md-row justify-content-md-between mb-3 align-items-center"-->
-  <!--    >-->
-  <!--      <h2 class="h6">Bird recording dashboard classifications</h2>-->
-  <!--      <div class="d-flex align-items-end justify-content-end ms-md-5">-->
-  <!--        <button-->
-  <!--          type="button"-->
-  <!--          class="btn btn-outline-secondary ms-2"-->
-  <!--          @click.stop.prevent="showAddAudioClassificationModal = true"-->
-  <!--        >-->
-  <!--          Add-->
-  <!--        </button>-->
-  <!--        <button-->
-  <!--          type="button"-->
-  <!--          class="btn btn-outline-danger ms-2"-->
-  <!--          @click.stop.prevent="resetAudioClassification"-->
-  <!--        >-->
-  <!--          Reset-->
-  <!--        </button>-->
-  <!--      </div>-->
-  <!--    </div>-->
-  <!--  </div>-->
+
+  <b-modal
+    v-model="showAddInvalidTagModal"
+    title="Add project regionally invalid tag"
+    @cancel="resetPendingInvalidTag"
+    @close="resetPendingInvalidTag"
+    @esc="resetPendingInvalidTag"
+    @ok="() => addPendingInvalidTag(currentGrouping)"
+    centered
+  >
+    <!-- NOTE: Keyed on the grouping, since the tag select only applies `include` when it mounts. -->
+    <div data-cy="invalid tag select">
+      <hierarchical-tag-select
+        :key="currentGrouping"
+        class="flex-grow-1"
+        :include="knownAIOutputTags"
+        v-model="pendingInvalidTag"
+        :open-on-mount="false"
+        :disabled-tags="
+          currentGrouping === 'camera'
+            ? customInvalidThermalTags
+            : customInvalidAudioTags
+        "
+      />
+    </div>
+    <template #footer="{ ok, cancel }">
+      <button
+        type="button"
+        class="btn btn-outline-secondary"
+        data-cy="cancel add invalid tag"
+        @click="cancel()"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        class="btn btn-secondary"
+        data-cy="confirm add invalid tag"
+        :disabled="!pendingInvalidTagIsValid"
+        @click="ok()"
+      >
+        Add invalid tag
+      </button>
+    </template>
+  </b-modal>
 </template>

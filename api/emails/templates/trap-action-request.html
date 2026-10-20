@@ -1,0 +1,38 @@
+<tr>
+    <td class="container-padding content" align="left" style="border-radius:8px;box-shadow:rgba(0, 0, 0, 0.075) 0px 2px 4px 0px;padding-left:24px;padding-right:24px;padding-top:12px;padding-bottom:12px;background-color:#ffffff">
+        <br>
+        <div style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:21px;font-weight:650;padding-bottom:12px;color:#252921;padding-right:24px">
+            Trap triggered for {{ targetTag }} at <a style="color: inherit" href="{{ stationUrl }}">'{{ stationName }}'</a>
+        </div>
+        <br>
+        {{#if thumbnail}}
+        <div style="text-align: center;">
+            <a href="{{ actionUrl }}" style="border: 0 !important; text-decoration: none !important;">
+                <img alt="alert thumbnail for {{ targetTag }}" width="128" height="128" style="border-radius: 5px; background: blue;width:128px !important;height:128px !important;" src="cid:thumbnail" />
+            </a>
+        </div>
+        <br>
+        {{/if}}
+        <div class="body-text" style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;line-height:160%;text-align:left;color:#252921 !important;">
+            Your thermal camera <strong>'{{ deviceName }}'</strong> identified a <strong>{{ targetTag }}</strong> at <strong>{{ recordingTime }}</strong>, and the attached trap was triggered.
+            <br><br>
+            <a data-cy="take trap action" href="{{ actionUrl }}" style="background-color: #579e02;border:none;border-radius:4px;color:#ffffff;cursor:auto;padding:12px 20px;display: inline-block;font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:14px;font-weight:normal;line-height:120%;margin:0;text-decoration:none;text-transform:none;">
+                Take action
+            </a>
+            <br><br>
+            <span style="color:#777875">&ndash; The Cacophony Team</span>
+            <br><br>
+        </div>
+    </td>
+</tr>
+<tr>
+    <td class="container-padding footer-text" align="left" style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;font-size:12px;line-height:180%;text-align:center;color:#90908F;padding-left:24px;padding-right:24px">
+        <br><br>
+        <span>You are receiving this email because you are subscribed to trap action requests for <strong>'{{ groupName }}'</strong>. You can <a href="{{ emailSettingsUrl }}" style="color:#90908F">update your email preferences</a> on the Cacophony Monitoring Platform.</span>
+        <br><br>
+
+        <strong style="font-weight: 500">The Cacophony Project</strong><br>
+        <a href="{{ cacophonyBrowseUrl }}" style="color:#aaaaaa">{{ cacophonyDisplayUrl }}</a><br>
+        <br><br>
+    </td>
+</tr>

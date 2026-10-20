@@ -25,7 +25,6 @@ import {
   Circle,
   CircleMarker,
 } from "leaflet";
-import { rafFps } from "@models/LoggedInUser";
 import type { NamedPoint } from "@models/mapUtils";
 import { BSpinner } from "bootstrap-vue-next";
 import type { LatLng } from "@typedefs/api/common";
@@ -134,15 +133,18 @@ const updateMarkerRadius = (marker: CircleMarkerGroup, radius: number) => {
 };
 
 const markerAnimationFrames: Record<string, number> = {};
-const highlightMarker = (marker: CircleMarkerGroup, key: string) => {
-  const currentRadius = marker.foregroundMarker.getRadius();
-  const numFrames = Math.ceil(rafFps.value * 0.3);
+const highlightMarker = (
+  marker: CircleMarkerGroup,
+  key: string,
+  startTimeMs: number,
+) => {
+  const durationMs = 300;
+  const now = performance.now();
+  const progress = Math.min((now - startTimeMs) / durationMs, 1);
   const initialRadius = 5;
   const enlargeBy = 5;
-  if (currentRadius < initialRadius + enlargeBy) {
-    const progress = iLerp(enlargeBy, currentRadius - initialRadius);
-    const newRadius =
-      initialRadius + lerp(enlargeBy, Math.min(1, progress + 1 / numFrames));
+  if (progress <= 1) {
+    const newRadius = initialRadius + lerp(enlargeBy, Math.min(1, progress));
     cancelAnimationFrame(markerAnimationFrames[key]);
     markerAnimationFrames[key] = requestAnimationFrame(() => {
       const rawMarker =
@@ -151,7 +153,9 @@ const highlightMarker = (marker: CircleMarkerGroup, key: string) => {
         rawMarker._path.classList.add("pulse");
       }
       updateMarkerRadius(marker, newRadius);
-      highlightMarker(marker, key);
+      if (progress < 1) {
+        highlightMarker(marker, key, startTimeMs);
+      }
     });
   }
 };
@@ -191,7 +195,8 @@ watch(
         if (key === markerKey) {
           // If the highlighted point is outside the current map bounds, pan to it and center it, or fit the bounds.
           pointMarker.foregroundMarker.bringToFront();
-          highlightMarker(pointMarker, markerKey);
+          const startTimeMs = performance.now();
+          highlightMarker(pointMarker, markerKey, startTimeMs);
           if (props.centerOnHighlighted) {
             pointMarker.foregroundMarker.openTooltip();
             (
