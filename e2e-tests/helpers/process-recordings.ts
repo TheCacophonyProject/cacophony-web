@@ -40,11 +40,7 @@ export const processRecordingWithTracksAndTags = async (
   overDurationSeconds: number,
 ): Promise<TrackId[]> => {
   return await test.step(`Processing recording #${recordingId}`, async () => {
-    const superUserHandle = await loginSuperAdminUser(
-      "admin_test",
-      "admin@email.com",
-      "admin_test",
-    );
+    const superUserHandle = await loginSuperAdminUser();
     const SuperUser = TestApiImpl.withAuth(superUserHandle.testId);
     const processingJobResponse = await SuperUser.Recordings.getOneRecordingForProcessing(
       RecordingType.ThermalRaw,

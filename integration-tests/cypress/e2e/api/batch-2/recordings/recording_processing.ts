@@ -1373,7 +1373,7 @@ describe("Recordings - processing tests", () => {
 
     it("Recording not reprocessed automatically (not stale) if processing time <30 minutes", () => {
       cy.log(
-        "Add recording with processing=true, processinmgState='analyse' and processingStartTime=29.minutes.ago",
+        "Add recording with processing=true, processingState='analyse' and processingStartTime=29.minutes.ago",
       );
       const recording22 = TestCreateRecordingData(templateRecording);
       recording22.processingState = RecordingProcessingState.Analyse;
@@ -1389,8 +1389,7 @@ describe("Recordings - processing tests", () => {
           "rpRecording22",
           recording22,
         );
-        expectedProcessing22.processingState =
-          RecordingProcessingState.Analyse;
+        expectedProcessing22.processingState = RecordingProcessingState.Analyse;
         const expectedRecording22 = TestCreateExpectedRecordingData(
           templateExpectedThermalRecording,
           "rpRecording22",
@@ -1400,14 +1399,13 @@ describe("Recordings - processing tests", () => {
           recording22,
         );
         expectedRecording22.processing = true;
-        expectedRecording22.processingState =
-          RecordingProcessingState.Analyse;
+        expectedRecording22.processingState = RecordingProcessingState.Analyse;
 
         cy.log("Call getOneForProcessing to pick up this recording");
         cy.processingApiCheck(
           superuser,
           RecordingType.ThermalRaw,
-          RecordingProcessingState.Analyses,
+          RecordingProcessingState.Analyse,
           "rpRecording22",
           expectedProcessing22,
           EXCLUDE_KEYS,
@@ -1470,8 +1468,7 @@ describe("Recordings - processing tests", () => {
           "rpRecording23",
           recording23,
         );
-        expectedProcessing23.processingState =
-          RecordingProcessingState.Analyse;
+        expectedProcessing23.processingState = RecordingProcessingState.Analyse;
         const expectedRecording23 = TestCreateExpectedRecordingData(
           templateExpectedThermalRecording,
           "rpRecording23",
@@ -1481,8 +1478,7 @@ describe("Recordings - processing tests", () => {
           recording23,
         );
         expectedRecording23.processing = true;
-        expectedRecording23.processingState =
-          RecordingProcessingState.Analyse;
+        expectedRecording23.processingState = RecordingProcessingState.Analyse;
 
         cy.log("Call getOneForProcessing to pick up this recording");
         cy.processingApiCheck(
@@ -1584,8 +1580,7 @@ describe("Recordings - processing tests", () => {
           "rpRecording24",
           recording24,
         );
-        expectedProcessing24.processingState =
-          RecordingProcessingState.Analyse;
+        expectedProcessing24.processingState = RecordingProcessingState.Analyse;
         const expectedRecording24 = TestCreateExpectedRecordingData(
           templateExpectedThermalRecording,
           "rpRecording24",
@@ -1595,8 +1590,7 @@ describe("Recordings - processing tests", () => {
           recording24,
         );
         expectedRecording24.processing = true;
-        expectedRecording24.processingState =
-          RecordingProcessingState.Analyse;
+        expectedRecording24.processingState = RecordingProcessingState.Analyse;
 
         cy.log("Call getOneForProcessing to pick up this recording");
         cy.processingApiCheck(
@@ -1694,8 +1688,7 @@ describe("Recordings - processing tests", () => {
           "rpRecording25",
           recording25,
         );
-        expectedProcessing25.processingState =
-          RecordingProcessingState.Analyse;
+        expectedProcessing25.processingState = RecordingProcessingState.Analyse;
 
         cy.log("Call getOneForProcessing to pick up this recording");
         cy.processingApiCheck(
@@ -1730,8 +1723,7 @@ describe("Recordings - processing tests", () => {
           // Step 2 ===============================
           cy.log("Add new recording with more recent timestamp");
           const recording25b = TestCreateRecordingData(templateRecording);
-          recording25b.processingState =
-            RecordingProcessingState.Analyse;
+          recording25b.processingState = RecordingProcessingState.Analyse;
           recording25b.recordingDateTime = "2022-02-02T00:00:00.000Z";
 
           cy.apiRecordingAdd(
