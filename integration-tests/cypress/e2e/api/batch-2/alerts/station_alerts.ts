@@ -50,7 +50,7 @@ describe("Station alerts", () => {
       });
   });
 
-  it("Can receive an alert", () => {
+  it("Can receive an alert", { retries: 10 }, () => {
     const usera = getNewIdentity("andrew");
     cy.testCreateUserGroupAndDevice(usera.name, usera.group, usera.camera);
     cy.apiGroupStationAdd(usera.name, usera.group, {

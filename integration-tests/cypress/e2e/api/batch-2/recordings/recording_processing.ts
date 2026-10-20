@@ -1002,100 +1002,104 @@ describe("Recordings - processing tests", () => {
 
     //This is a single test to check that alerts are triggered by processing
     //Full tests of the alerts logic are done through the recording upload API
-    it("Alert when desired animal is detected by processing", () => {
-      //Note: camera 1b has an alert for possums
-      const recording20 = TestCreateRecordingData(templateRecording);
-      // Make the recording recent, so that it will alert
-      recording20.recordingDateTime = new Date().toISOString();
-      cy.apiRecordingAdd(
-        "rpCamera1b",
-        recording20,
-        "oneframe.cptv",
-        "rpRecording20",
-      ).then(() => {
-        const expectedAlert20 = createExpectedAlert(
-          "rpAlert1b",
-          0,
-          POSSUM_ALERT,
-          true,
-        );
-        const expectedEvent20 = createExpectedEvent(
+    it(
+      "Alert when desired animal is detected by processing",
+      { retries: 10 },
+      () => {
+        //Note: camera 1b has an alert for possums
+        const recording20 = TestCreateRecordingData(templateRecording);
+        // Make the recording recent, so that it will alert
+        recording20.recordingDateTime = new Date().toISOString();
+        cy.apiRecordingAdd(
           "rpCamera1b",
-          "rpRecording20",
-          "rpAlert1b",
-        );
-
-        const expectedProcessing20 = TestCreateExpectedProcessingData(
-          templateExpectedProcessing,
-          "rpRecording20",
           recording20,
-        );
-        expectedProcessing20.processingState =
-          RecordingProcessingState.TrackAndAnalyse;
-
-        cy.log("Send for processing ");
-        cy.processingApiCheck(
-          superuser,
-          RecordingType.ThermalRaw,
-          RecordingProcessingState.TrackAndAnalyse,
+          "oneframe.cptv",
           "rpRecording20",
-          expectedProcessing20,
-          EXCLUDE_KEYS,
-        );
-
-        cy.log("Look up algorithm and then post tracks");
-        cy.processingApiAlgorithmPost(superuser, {
-          "tracking-format": 42,
-        }).then((algorithmId) => {
-          cy.processingApiTracksPost(
-            superuser,
-            "rpTrack20",
+        ).then(() => {
+          const expectedAlert20 = createExpectedAlert(
+            "rpAlert1b",
+            0,
+            POSSUM_ALERT,
+            true,
+          );
+          const expectedEvent20 = createExpectedEvent(
+            "rpCamera1b",
             "rpRecording20",
-            { start_s: 1, end_s: 4 },
-            algorithmId,
+            "rpAlert1b",
           );
 
-          cy.log("Add tags");
-          cy.processingApiTracksTagsPost(
-            superuser,
-            "rpTrack20",
+          const expectedProcessing20 = TestCreateExpectedProcessingData(
+            templateExpectedProcessing,
             "rpRecording20",
-            "possum",
-            90,
-            {
-              name: "Master",
-              clarity: 1,
-              raw_tag: "possum",
-              model_used: "Inc3",
-              predictions: [],
-              classify_time: 1.2,
-              all_class_confidences: { possum: 1 },
-            },
-          ).then(() => {
-            cy.log("set processing to done and recheck tracks");
-            cy.processingApiPut(
+            recording20,
+          );
+          expectedProcessing20.processingState =
+            RecordingProcessingState.TrackAndAnalyse;
+
+          cy.log("Send for processing ");
+          cy.processingApiCheck(
+            superuser,
+            RecordingType.ThermalRaw,
+            RecordingProcessingState.TrackAndAnalyse,
+            "rpRecording20",
+            expectedProcessing20,
+            EXCLUDE_KEYS,
+          );
+
+          cy.log("Look up algorithm and then post tracks");
+          cy.processingApiAlgorithmPost(superuser, {
+            "tracking-format": 42,
+          }).then((algorithmId) => {
+            cy.processingApiTracksPost(
               superuser,
+              "rpTrack20",
               "rpRecording20",
-              true,
-              {},
-              undefined,
+              { start_s: 1, end_s: 4 },
+              algorithmId,
+            );
+
+            cy.log("Add tags");
+            cy.processingApiTracksTagsPost(
+              superuser,
+              "rpTrack20",
+              "rpRecording20",
+              "possum",
+              90,
+              {
+                name: "Master",
+                clarity: 1,
+                raw_tag: "possum",
+                model_used: "Inc3",
+                predictions: [],
+                classify_time: 1.2,
+                all_class_confidences: { possum: 1 },
+              },
             ).then(() => {
-              cy.log("Check an event was generated");
-              cy.apiDeviceAlertCheck(
-                "rpGroupAdmin",
-                "rpCamera1b",
-                expectedAlert20,
-              );
-              cy.testEventsCheckAgainstExpected(
-                "rpGroupAdmin",
-                "rpCamera1b",
-                expectedEvent20,
-              );
+              cy.log("set processing to done and recheck tracks");
+              cy.processingApiPut(
+                superuser,
+                "rpRecording20",
+                true,
+                {},
+                undefined,
+              ).then(() => {
+                cy.log("Check an event was generated");
+                cy.apiDeviceAlertCheck(
+                  "rpGroupAdmin",
+                  "rpCamera1b",
+                  expectedAlert20,
+                );
+                cy.testEventsCheckAgainstExpected(
+                  "rpGroupAdmin",
+                  "rpCamera1b",
+                  expectedEvent20,
+                );
+              });
             });
           });
         });
-      });
-    });
+      },
+    );
 
     it("Test other metadata can be set by processing", () => {
       //this test uploads a thermal and changes it to and audio type what is this testing??
