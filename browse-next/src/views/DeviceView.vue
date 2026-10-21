@@ -115,6 +115,7 @@ const navLinkClasses = ["nav-item", "nav-link"];
           { active: activeTabPath.includes('device-events') },
         ]"
         title="Events"
+        data-cy="device events"
         :to="{
           name: 'device-events',
         }"

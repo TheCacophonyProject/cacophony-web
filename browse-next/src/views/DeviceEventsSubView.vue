@@ -228,25 +228,29 @@ const lagTimeForUpload = (event: DeviceEvent): string => {
   <div class="d-flex flex-column">
     <div class="filters sticky-sm-top py-3 d-flex align-items-center">
       <div class="me-2">Filter&nbsp;events&nbsp;</div>
-      <multiselect
-        v-model="selectedEventTypes"
-        :options="knownEventTypesOptions"
-        placeholder="all"
-        searchable
-        mode="tags"
-        :can-clear="false"
-        @change="reloadEvents"
-      ></multiselect>
+      <div class="flex-fill" data-cy="device events filter">
+        <multiselect
+          v-model="selectedEventTypes"
+          :options="knownEventTypesOptions"
+          placeholder="all"
+          searchable
+          mode="tags"
+          :can-clear="false"
+          @change="reloadEvents"
+        ></multiselect>
+      </div>
     </div>
     <div v-if="loadedDeviceEvents && deviceEvents.length">
       <div
         v-for="(event, index) in deviceEvents"
         :key="index"
         class="event-item my-2 rounded-1 d-flex flex-column"
+        data-cy="device event"
       >
         <div class="d-flex flex-column">
           <div
             class="d-flex justify-content-between flex-fill event-title p-2 rounded-top-1 bg-secondary"
+            data-cy="device event title"
           >
             <div class="me-2 text-capitalize">
               <strong>{{ homogeniseLabel(event.EventDetail.type) }}</strong>

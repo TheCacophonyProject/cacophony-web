@@ -504,6 +504,23 @@ const parseDateTimeFromFilename = (
   } else {
     // Reference: "/var/spool/cptv/failed-uploads/2026-01-21--06-12-45.cptv"
     const filename = filePath.split("/").pop().split(".").shift();
+    // Reference: "21580622-015407.986773-snap.cptv" or "21580622-015407.986773.cptv"
+    // (yyyymmdd-hhmmss, followed by sub-second digits which we ignore).
+    // Corrupt files from devices can have wildly incorrect dates in the far future,
+    // which get clamped to the upload time later on.
+    const compact = filename.match(
+      /^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})$/,
+    );
+    if (compact) {
+      if (!device.location) {
+        return null;
+      }
+      const [_fullMatch, year, month, day, hour, mins, secs] = compact;
+      const deviceTimezone = tzLookup(device.location.lat, device.location.lng);
+      const offset = getTimezoneOffset(deviceTimezone);
+      const dateTime = `${year}-${month}-${day}T${hour}:${mins}:${secs}${offset}`;
+      return isNaN(Date.parse(dateTime)) ? null : dateTime;
+    }
     const parts = filename.split("--");
     if (parts.length === 2 && device.location) {
       const deviceTimezone = tzLookup(device.location.lat, device.location.lng);
