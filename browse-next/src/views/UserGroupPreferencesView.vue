@@ -531,66 +531,73 @@ const alertItems = computed<AlertItem[]>(() => {
         <template #header-title> Project activity email preferences </template>
         <b-form-checkbox
           switch
+          size="md"
           v-model="dailyDigest.enabled"
           data-cy="daily digest toggle"
-          >I want to receive a daily activity digest<b-spinner
+          class="mb-2"
+          >Send daily activity digest<span v-if="dailyDigest.enabled">
+            for:
+          </span><b-spinner
             class="ms-1"
             v-if="savingDailyDigestSettings"
             variant="secondary"
             small
         /></b-form-checkbox>
-        <div
+        <fieldset
           v-if="dailyDigest.enabled"
-          class="ms-4 mb-2"
+          class="ps-3 mb-3 border border-light-subtle border-start border-top-0 border-bottom-0 border-end-0"
           data-cy="daily digest options"
         >
           <b-form-checkbox
             v-model="dailyDigest.visitsReport"
             data-cy="visits report"
-            >Include thermal visits</b-form-checkbox
+            >Thermal activity</b-form-checkbox
           >
           <b-form-checkbox
             v-model="dailyDigest.audioReport"
             data-cy="audio report"
-            >Include bird detections</b-form-checkbox
+            >Audio detections</b-form-checkbox
           >
           <b-form-checkbox
             v-model="dailyDigest.batteryReport"
             data-cy="battery report"
-            >Include device battery status</b-form-checkbox
+            >Devices battery</b-form-checkbox
           >
-        </div>
+        </fieldset>
         <b-form-checkbox
           switch
+          size="md"
           v-model="weeklyDigest.enabled"
           data-cy="weekly digest toggle"
-          >I want to receive a weekly activity digest<b-spinner
+          >Send weekly activity digest<span v-if="weeklyDigest.enabled">
+            for:
+          </span><b-spinner
             class="ms-1"
             v-if="savingWeeklyDigestSettings"
             variant="secondary"
             small
         /></b-form-checkbox>
-        <div
-          v-if="weeklyDigest.enabled"
-          class="ms-4 mb-2"
+        <fieldset
+            v-if="weeklyDigest.enabled"
+            class="ps-3 border border-light-subtle border-start border-top-0 border-bottom-0 border-end-0"
           data-cy="weekly digest options"
         >
           <b-form-checkbox
             v-model="weeklyDigest.visitsReport"
             data-cy="visits report"
-            >Include thermal visits</b-form-checkbox
+            >Thermal activity</b-form-checkbox
           >
           <b-form-checkbox
             v-model="weeklyDigest.audioReport"
             data-cy="audio report"
-            >Include bird detections</b-form-checkbox
+            >Audio detections</b-form-checkbox
           >
           <b-form-checkbox
             v-model="weeklyDigest.batteryReport"
             data-cy="battery report"
-            >Include device battery status</b-form-checkbox
+            >Devices battery</b-form-checkbox
           >
-        </div>
+        </fieldset>
       </section-card>
     </div>
   </div>
@@ -623,6 +630,7 @@ const alertItems = computed<AlertItem[]>(() => {
     @ok="saveAlert"
     title="Create email alert"
     ok-title="Save alert"
+    cancel-variant="outline-secondary"
     :ok-disabled="!formIsValid"
     @cancel="resetFormFields"
   >

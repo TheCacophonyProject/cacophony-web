@@ -5,7 +5,7 @@
     :key="day.dateTime.day"
   >
     <div
-      class="day-header fw-medium pb-2 pb-sm-3"
+      class="day-header fw-medium"
       v-if="
         day.items.filter((r) => !r.data.hasOwnProperty('tombstoned')).length !==
         0
@@ -281,7 +281,7 @@ import type {
   StationId as LocationId,
 } from "@typedefs/api/common";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import { onBeforeMount, onMounted, ref } from "vue";
+import {onBeforeMount, onMounted, ref} from "vue";
 import ImageLoader from "@/components/ImageLoader.vue";
 import {
   DeviceType,
@@ -473,10 +473,21 @@ const removeMarginBottom = (
   margin-right: -4px;
   padding-left: 4px;
   padding-right: 4px;
+  margin-bottom: var(--cp-spacing-xxxs);
+  &.sticky {
+    background: color-mix(in srgb, var(--app-bg-color), transparent 15%);
+    backdrop-filter: blur(8px);
+  }
   @media (max-width: @breakpoint-xs-max) {
     top: calc(
       var(--cp-mobile-header-height) + var(--cp-mobile-search-trigger-height)
     );
+    margin-top: var(--cp-spacing-xxxs);
+    padding-bottom: calc(var(--cp-spacing-xxs) + var(--cp-spacing-xxxs));
+    padding-top: calc(var(--cp-spacing-xxs) + var(--cp-spacing-xxxs));
+  }
+  @media (min-width: @breakpoint-sm) {
+    padding-bottom: calc(var(--cp-spacing-sm) + var(--cp-spacing-xxxs));
   }
   @media (min-width: @breakpoint-sm) and (max-width: @breakpoint-sm-max) {
     top: var(--cp-mobile-header-height);
@@ -496,9 +507,6 @@ const removeMarginBottom = (
 }
 .list-item {
   transition: background-color linear 0.2s;
-  > * {
-    //pointer-events: none;
-  }
   .visit-time-duration {
     width: calc(var(--cp-grid-base) * 13); // 64px
     text-align: right;
@@ -541,7 +549,7 @@ const removeMarginBottom = (
       }
     }
   }
-  &:first-child,
+  &:nth-child(2), // why the second and not first?
   &:last-child {
     .visit-timeline {
       position: relative;
@@ -553,6 +561,14 @@ const removeMarginBottom = (
         width: 2px;
         left: -2px;
         border-left: 2px dashed var(--app-bg-color);
+      }
+    }
+  }
+  &:nth-child(2) {
+    .visit-timeline {
+      &::before {
+        top: 0;
+        height: var(--cp-spacing-md);
       }
     }
   }

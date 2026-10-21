@@ -362,7 +362,6 @@ const reset = () => {
     @esc="reset"
     @ok="addPendingCameraLabel"
     ok-title="Add label"
-    ok-variant="secondary"
     :ok-disabled="!pendingLabel.length"
     cancel-variant="outline-secondary"
     centered
@@ -392,7 +391,6 @@ const reset = () => {
     @ok="addPendingAudioLabel"
     ok-title="Add label"
     :ok-disabled="!pendingLabel.length"
-    ok-variant="secondary"
     cancel-variant="outline-secondary"
     centered
   >

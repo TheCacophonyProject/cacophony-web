@@ -501,7 +501,7 @@ watch(
       v-model="selfIntersectingError"
       @hidden="removePoint"
       ok-title="Remove last point"
-      ok-variant="primary"
+      ok-variant="secondary"
       ok-only
       centered
     >

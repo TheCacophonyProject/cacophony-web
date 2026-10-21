@@ -102,6 +102,7 @@
           highlighted: eq(card, highlightedItem),
           'py-3 px-3 py-md-4 px-md-4': standalone,
           standalone: standalone,
+          'clickable': cardOrRowClickable,
         }"
       >
         <slot name="card" v-bind="{ card }">
@@ -160,6 +161,7 @@ const props = withDefaults(
     highlightedItem?: CardTableRow<any> | null;
     compact?: boolean;
     standalone?: boolean;
+    cardOrRowClickable?: boolean;
   }>(),
   {
     maxCardWidth: 575,
@@ -167,6 +169,7 @@ const props = withDefaults(
     sortDimensions: () => ({}),
     compact: false,
     standalone: false,
+    cardOrRowClickable: false,
     items: () => [],
   },
 );
@@ -394,6 +397,7 @@ const displayedItems = computed<{
     background: var(--bs-white);
     transition: background-color 0.3s linear;
     position: relative;
+    cursor: default;
     &:not(.standalone) {
       // might be able to do this in a less hacky way in the future with row-rule
       // https://developer.chrome.com/blog/gap-decorations
@@ -417,7 +421,9 @@ const displayedItems = computed<{
     &.highlighted {
       background: var(--bs-gray-200);
     }
-    cursor: default;
+    &.clickable {
+      cursor: pointer;
+    }
   }
 }
 </style>

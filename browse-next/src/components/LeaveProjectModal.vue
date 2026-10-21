@@ -19,6 +19,7 @@ const projectName = computed(() => {
     @ok="leaveProject"
     ok-variant="danger"
     ok-title="Yes, leave this project"
+    cancel-variant="outline-secondary"
   >
     <template #title>
       <div class="d-flex align-items-center">

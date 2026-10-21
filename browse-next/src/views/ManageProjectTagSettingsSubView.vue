@@ -384,7 +384,6 @@ const pendingTagIsValid = computed<boolean>(() => {
     @ok="addPendingCameraTag"
     :ok-disabled="!pendingTagIsValid"
     ok-title="Add tag"
-    ok-variant="secondary"
     cancel-variant="outline-secondary"
     centered
   >
@@ -404,7 +403,6 @@ const pendingTagIsValid = computed<boolean>(() => {
     @ok="addPendingAudioTag"
     :ok-disabled="!pendingTagIsValid"
     ok-title="Add tag"
-    ok-variant="secondary"
     cancel-variant="outline-secondary"
     centered
   >

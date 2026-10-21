@@ -532,7 +532,6 @@ const addInvalidThermalTag = () => {
     @ok="() => addPendingIgnoredTag('camera')"
     :ok-disabled="!pendingIgnoredTagIsValid"
     ok-title="Add ignored tag"
-    ok-variant="secondary"
     cancel-variant="outline-secondary"
     centered
   >

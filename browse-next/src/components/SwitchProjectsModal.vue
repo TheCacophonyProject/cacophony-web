@@ -305,6 +305,7 @@ watch(userToFilterProjects, (userId) => {
     centered
     no-footer
     @hidden="showSwitchProject.enabled = false"
+    :size="currentUser && currentUser.globalPermission !== 'off' ? 'lg' : 'md'"
   >
     <div
       v-if="currentUser && currentUser.globalPermission !== 'off'"
