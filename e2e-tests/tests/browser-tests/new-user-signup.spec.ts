@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@/helpers/upload-tests";
 import {
   clearMailServerLog,
   openResetPasswordRequestEmail,

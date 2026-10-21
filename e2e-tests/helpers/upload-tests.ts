@@ -31,6 +31,12 @@ export const test = base.extend<FileFixtures & { globalHooks: void }>({
     // Automatically navigate to the base url before the test blocks execute
     if (baseURL) {
       await page.goto(baseURL);
+      // The icon font is fetched lazily by the browser, only once something on the page uses it, so
+      // explicitly wait for it, otherwise early screenshots/traces show icon names as plain text.
+      await page.evaluate(async () => {
+        await document.fonts.load('1em "Material Symbols Outlined"');
+        await document.fonts.ready;
+      });
     }
 
     // Hand the pre-navigated page off to your test case
