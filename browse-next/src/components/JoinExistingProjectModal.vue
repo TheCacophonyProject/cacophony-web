@@ -170,8 +170,12 @@ const disabledState = computed<boolean>(() => {
     :cancel-disabled="submittingJoinRequest"
     centered
     @hidden="resetFormValues"
+    scrollable
   >
-    <b-form data-cy="join existing project form">
+    <b-form
+      data-cy="join existing project form"
+      @submit.prevent.stop="okayButtonAction"
+    >
       <p>
         You need to know the email address of the project administrator to join
         an existing project.

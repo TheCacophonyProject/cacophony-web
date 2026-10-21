@@ -169,6 +169,7 @@ const doAddNote = async () => {
       centered
       title="Add a note to this recording"
       ok-title="Add note"
+      cancel-variant="outline-secondary"
       :ok-disabled="!noteFieldIsValid"
       @cancel="reset"
       @close="reset"

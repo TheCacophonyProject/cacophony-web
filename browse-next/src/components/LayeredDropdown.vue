@@ -433,6 +433,7 @@ defineExpose({
           </div>
           <button
             id="child-button"
+            :data-cy="`tag children ${option.label}`"
             class="options-list-child align-items-center d-flex justify-content-center btn"
             v-if="option.children"
             @click="() => setToPath(option.label)"

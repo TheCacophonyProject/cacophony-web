@@ -630,6 +630,7 @@ const singleSelectionIsPinned = computed<boolean>(
     ></div>
     <div
       class="class-selection-popover main"
+      data-cy="custom tag selection"
       v-if="showCustomTagSelection"
       ref="selectionPopover"
     >
@@ -924,6 +925,7 @@ const singleSelectionIsPinned = computed<boolean>(
         <button
           type="button"
           class="btn btn-classification add d-flex flex-column gap-1 align-items-center justify-content-evenly"
+          data-cy="add custom tag"
           @click="addCustomTag"
         >
           <material-symbol name="add" size="2rem" />

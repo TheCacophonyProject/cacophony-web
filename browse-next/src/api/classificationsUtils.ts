@@ -36,7 +36,9 @@ const flattenNodes = (
     if (child.status) {
       childInfo.status = child.status;
     }
+    // Register under both the dash-stripped key (legacy lookups) and the real label.
     acc[child.label.replaceAll("-", "").replaceAll(" ", "_")] = childInfo;
+    acc[child.label] = childInfo;
     if (child.aliases) {
       for (const alias of child.aliases) {
         acc[alias] = childInfo;

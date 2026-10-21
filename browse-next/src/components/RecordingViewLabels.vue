@@ -326,7 +326,7 @@ const recentlyUsedLabels = (): RecordingLabel[] => {
             >Manage labels</router-link
           >
         </b-button>
-        <b-button variant="secondary" @click="addingLabel = false">
+        <b-button variant="outline-secondary" @click="addingLabel = false">
           Cancel
         </b-button>
         <b-button

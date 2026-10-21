@@ -188,6 +188,7 @@ const tableItems = computed<CardTableRows<ApiProjectUserResponse>>(() => {
         },
         _actions: {
           value,
+          cellClasses: ["d-flex justify-content-end"],
         },
       };
       return item;
@@ -357,7 +358,6 @@ const permissionsOptions = computed(() => [
               class="mt-2"
               placement="top"
               :confirmation-btn-variant-class="`btn-secondary`"
-              :classes="['ms-auto']"
             />
           </template>
           <template #user="{ cell }">
@@ -479,6 +479,7 @@ const permissionsOptions = computed(() => [
     centered
     title="Edit user permissions"
     ok-title="Update permissions"
+    cancel-variant="outline-secondary"
     @hidden="permissions = []"
     @ok="updateUserPermissions"
   >

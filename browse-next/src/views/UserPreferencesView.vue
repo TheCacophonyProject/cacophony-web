@@ -352,6 +352,7 @@ const changePassword = async (e: BvTriggerableEvent) => {
     v-model="changeDisplayNameModal"
     title="Change name"
     id="change-display-name"
+    cancel-variant="outline-secondary"
     @ok="updateUserDisplayName"
     @hidden="resetFormFields"
     ok-title="Save"
@@ -406,6 +407,7 @@ const changePassword = async (e: BvTriggerableEvent) => {
   <b-modal
     v-model="changeEmailModal"
     title="Change email address"
+    cancel-variant="outline-secondary"
     @ok="updateUserEmailAddress"
     id="change-email-address"
     @hidden="resetFormFields"
@@ -453,6 +455,7 @@ const changePassword = async (e: BvTriggerableEvent) => {
     v-model="changePasswordModal"
     title="Change your password"
     id="change-password"
+    cancel-variant="outline-secondary"
     @ok="changePassword"
     @hidden="resetFormFields"
     ok-title="Save"
