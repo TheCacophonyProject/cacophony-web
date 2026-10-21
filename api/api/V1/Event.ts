@@ -65,7 +65,7 @@ import {
 import tzLookup from "tz-lookup-oss";
 
 const sequelize = await initSequelize();
-const EVENT_TYPE_REGEXP = /^[A-Z0-9/-]+$/i;
+const EVENT_TYPE_REGEXP = /^[A-Z0-9/ -]+$/i;
 
 // Email users who have opted in to trap notifications about trap-related device events.
 const notifyTrapEvent = async (
@@ -389,7 +389,12 @@ const commonEventFields = [
         (description: EventDescription) =>
           description.type.match(EVENT_TYPE_REGEXP) !== null,
       )
-      .withMessage("description type contains invalid characters"),
+      .withMessage(
+        (_value, { req }) =>
+          `description type contains invalid characters: ${JSON.stringify(
+            req.body?.description?.type,
+          )}`,
+      ),
   ),
   body("dateTimes")
     .exists()
