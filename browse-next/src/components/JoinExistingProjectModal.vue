@@ -172,7 +172,10 @@ const disabledState = computed<boolean>(() => {
     @hidden="resetFormValues"
     scrollable
   >
-    <b-form data-cy="join existing project form" @submit.prevent.stop="okayButtonAction">
+    <b-form
+      data-cy="join existing project form"
+      @submit.prevent.stop="okayButtonAction"
+    >
       <p>
         You need to know the email address of the project administrator to join
         an existing project.

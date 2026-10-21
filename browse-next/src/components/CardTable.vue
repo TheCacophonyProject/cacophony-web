@@ -102,7 +102,7 @@
           highlighted: eq(card, highlightedItem),
           'py-3 px-3 py-md-4 px-md-4': standalone,
           standalone: standalone,
-          'clickable': cardOrRowClickable,
+          clickable: cardOrRowClickable,
         }"
       >
         <slot name="card" v-bind="{ card }">

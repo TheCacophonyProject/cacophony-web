@@ -313,7 +313,8 @@ const router = createRouter({
         if (to.query["display-mode"] === ActivitySearchDisplayMode.Recordings) {
           if (
             to.query["recording-mode"] === ActivitySearchRecordingMode.Audio &&
-            !someLocationsHaveAudioRecordings.value
+            !someLocationsHaveAudioRecordings.value &&
+            someLocationsHaveThermalRecordings.value
           ) {
             return next({
               ...to,
@@ -325,7 +326,8 @@ const router = createRouter({
           } else if (
             to.query["recording-mode"] ===
               ActivitySearchRecordingMode.Cameras &&
-            !someLocationsHaveThermalRecordings.value
+            !someLocationsHaveThermalRecordings.value &&
+            someLocationsHaveAudioRecordings.value
           ) {
             return next({
               ...to,

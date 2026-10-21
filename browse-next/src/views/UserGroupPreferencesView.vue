@@ -536,8 +536,8 @@ const alertItems = computed<AlertItem[]>(() => {
           data-cy="daily digest toggle"
           class="mb-2"
           >Send daily activity digest<span v-if="dailyDigest.enabled">
-            for:
-          </span><b-spinner
+            for: </span
+          ><b-spinner
             class="ms-1"
             v-if="savingDailyDigestSettings"
             variant="secondary"
@@ -570,16 +570,16 @@ const alertItems = computed<AlertItem[]>(() => {
           v-model="weeklyDigest.enabled"
           data-cy="weekly digest toggle"
           >Send weekly activity digest<span v-if="weeklyDigest.enabled">
-            for:
-          </span><b-spinner
+            for: </span
+          ><b-spinner
             class="ms-1"
             v-if="savingWeeklyDigestSettings"
             variant="secondary"
             small
         /></b-form-checkbox>
         <fieldset
-            v-if="weeklyDigest.enabled"
-            class="ps-3 border border-light-subtle border-start border-top-0 border-bottom-0 border-end-0"
+          v-if="weeklyDigest.enabled"
+          class="ps-3 border border-light-subtle border-start border-top-0 border-bottom-0 border-end-0"
           data-cy="weekly digest options"
         >
           <b-form-checkbox

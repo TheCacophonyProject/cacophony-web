@@ -281,7 +281,7 @@ import type {
   StationId as LocationId,
 } from "@typedefs/api/common";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
-import {onBeforeMount, onMounted, ref} from "vue";
+import { onBeforeMount, onMounted, ref } from "vue";
 import ImageLoader from "@/components/ImageLoader.vue";
 import {
   DeviceType,

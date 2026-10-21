@@ -26,8 +26,8 @@ test("Initial user notification preferences visually match the default notificat
   });
 
   await test.step("Default notification preferences match project admin defaults", async () => {
-    await expect(page.getByLabel("I want to receive a daily activity digest")).not.toBeChecked();
-    await expect(page.getByLabel("I want to receive a weekly activity digest")).not.toBeChecked();
+    await expect(page.getByLabel("Send daily activity digest")).not.toBeChecked();
+    await expect(page.getByLabel("Send weekly activity digest")).not.toBeChecked();
     // Admins default to opted-in for stopped device notifications, since
     // reportStoppedDevices hasn't been explicitly set yet.
     await expect(
