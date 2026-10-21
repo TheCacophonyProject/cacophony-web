@@ -29,6 +29,10 @@ export interface BatteryInfoMapContainer extends Window {
   (window as unknown as BatteryInfoMapContainer).deviceBatteryInfoMap ||
   ({} as BatteryInfoMapContainer);
 const loadInfo = async () => {
+  if (!props.device.active) {
+    // The API always returns 403 for battery info of inactive devices.
+    return;
+  }
   if (
     (
       window as unknown as BatteryInfoMapContainer
@@ -75,7 +79,8 @@ watch(
 </script>
 
 <template>
-  <div v-if="loading" class="d-flex align-items-center">
+  <div v-if="!device.active">&ndash;</div>
+  <div v-else-if="loading" class="d-flex align-items-center">
     <b-spinner small />
   </div>
   <div v-else-if="loadingFailed">&ndash;</div>
