@@ -32,6 +32,7 @@ interface BatteryReport {
   deviceName: string;
   batteryLevel: number;
   recordedAgo: string;
+  recordedAt: Date;
 }
 
 // A short, human readable description of how long before `now` something happened,
@@ -127,6 +128,8 @@ const lastBatteryReportsForActiveDevicesInProject = async (
   // `types/client/Device.ts`, which `DeviceBatteryLevel.vue` uses to display this value.
   const stoppedDeviceIds = (await Device.stoppedDevices(now)).map((d) => d.id);
   const events = await Event.findAll({
+    // Only consider readings up to `now`, so that this can be evaluated for earlier periods.
+    where: { dateTime: { [Op.lte]: now } },
     include: [
       {
         model: DetailSnapshot,
@@ -171,6 +174,7 @@ const lastBatteryReportsForActiveDevicesInProject = async (
       deviceName: event.Device.deviceName,
       batteryLevel: details.battery,
       recordedAgo: timeAgo(event.dateTime, now),
+      recordedAt: event.dateTime,
     });
   }
   return batteryReports;
@@ -291,16 +295,20 @@ interface ActivityLists {
   thermalVisitsList: SpeciesCount[];
   birdSpeciesList: SpeciesCount[];
   batteryReportsList: BatteryReport[];
+  // The battery list always contains the latest reading for each non-stopped device, so its
+  // length says nothing about whether anything happened.  This is true only if at least one of
+  // those readings was recorded within the digest period.
+  hasNewBatteryActivity: boolean;
 }
 
 // Activity is anything in the categories the recipient has opted into.
 const recipientHasActivity = (
   recipient: Recipient,
-  { thermalVisitsList, birdSpeciesList, batteryReportsList }: ActivityLists,
+  { thermalVisitsList, birdSpeciesList, hasNewBatteryActivity }: ActivityLists,
 ): boolean =>
   (recipient.visitsReport && thermalVisitsList.length !== 0) ||
   (recipient.audioReport && birdSpeciesList.length !== 0) ||
-  (recipient.batteryReport && batteryReportsList.length !== 0);
+  (recipient.batteryReport && hasNewBatteryActivity);
 
 const currentHourInTimezone = (timeZone: string, now: Date): number => {
   const formatter = new Intl.DateTimeFormat("en-NZ", {
@@ -434,22 +442,30 @@ try {
         from: Date,
         until: Date,
         forRecipients: Recipient[],
-      ): Promise<ActivityLists> => ({
-        thermalVisitsList: forRecipients.some((r) => r.visitsReport)
-          ? await allVisitsForProjectInTimespan(group.id, from, until)
-          : [],
-        birdSpeciesList: forRecipients.some((r) => r.audioReport)
-          ? await allBirdSpeciesDetectionsForProjectInTimespan(
-              sequelize,
-              group.id,
-              from,
-              until,
-            )
-          : [],
-        batteryReportsList: forRecipients.some((r) => r.batteryReport)
+      ): Promise<ActivityLists> => {
+        const batteryReportsList = forRecipients.some((r) => r.batteryReport)
           ? await lastBatteryReportsForActiveDevicesInProject(group.id, until)
-          : [],
-      });
+          : [];
+        return {
+          batteryReportsList,
+          // The latest reading per device is the most likely to be in the period, so if any
+          // reading is, one of these is.
+          hasNewBatteryActivity: batteryReportsList.some(
+            ({ recordedAt }) => recordedAt >= from && recordedAt <= until,
+          ),
+          thermalVisitsList: forRecipients.some((r) => r.visitsReport)
+            ? await allVisitsForProjectInTimespan(group.id, from, until)
+            : [],
+          birdSpeciesList: forRecipients.some((r) => r.audioReport)
+            ? await allBirdSpeciesDetectionsForProjectInTimespan(
+                sequelize,
+                group.id,
+                from,
+                until,
+              )
+            : [],
+        };
+      };
 
       const currentActivity = await loadActivity(
         startOfPeriod,

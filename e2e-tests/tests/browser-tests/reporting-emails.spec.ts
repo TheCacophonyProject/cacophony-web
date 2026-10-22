@@ -542,7 +542,7 @@ test("No activity digest email is sent if the user has opted out of all digest c
   expect(email.error, "no digest sent when opted out of everything").toBeDefined();
 });
 
-test("Battery status digest emails are always sent when there is battery activity, for users only opted into battery status", async ({
+test("Battery status digest emails are only sent when there is new battery activity in the period, for users only opted into battery status", async ({
   smallCptv,
   page,
 }) => {
@@ -612,9 +612,10 @@ test("Battery status digest emails are always sent when there is battery activit
     );
   }
 
-  // Period 3: only thermal activity, which the user isn't opted into.  The device is still
-  // connected though, so its last battery reading (from period 2) is always included, even though
-  // it's older than the digest window.
+  // Period 3: only thermal activity, which the user isn't opted into.  There's no new battery
+  // activity in the period, so this counts as a period without activity, and we get a single "no
+  // activity" email.  The device is still connected though, so its last battery reading (from
+  // period 2) is still shown, even though it's older than the digest window.
   await uploadThermalRecordingsFromDeviceWithTimesAndDurations(
     [{ tracks: ["rodent"], recordingDateTime: withinPeriod(3) }],
     deviceHandle,
@@ -627,17 +628,11 @@ test("Battery status digest emails are always sent when there is battery activit
     "42% (26 hours ago)",
   );
 
-  // Period 4: the device hasn't connected for over 25 hours, so is considered stopped and its
-  // battery reading is no longer included.  Period 3 had activity, so we get a single "no
-  // activity" email.
+  // Period 4: still no new battery activity, and we've already said so.
   await runDigest(4);
-  const noActivityEmail = await renderDigest();
-  expect(
-    noActivityEmail.html,
-    "no battery readings listed in the 'no activity' email",
-  ).not.toContain(deviceHandle.testId);
+  await expectNoDigest("no repeated 'no activity' email");
 
-  // Period 5: still nothing, and we've already said so.
+  // Period 5: the device has now stopped, and there's still nothing new to report.
   await runDigest(5);
   await expectNoDigest("no repeated 'no activity' email");
 
@@ -647,6 +642,72 @@ test("Battery status digest emails are always sent when there is battery activit
   await renderDigest();
   await expect(page.locator("tr", { hasText: deviceHandle.testId }).last()).toContainText(
     "30% (2 hours ago)",
+  );
+});
+
+test("Battery status digest includes older battery readings when other activity triggers the email", async ({
+  standardAudio,
+  page,
+}) => {
+  const initialDateTime = new Date("2026-05-01T10:00:00Z");
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const adminUserHandle = project.getAdminUser();
+  await confirmEmailAddressViaApi(adminUserHandle);
+  const deviceHandle = project.getDevice();
+
+  await project.api().Projects.saveProjectUserSettings(project.projectHandle.id, {
+    notificationPreferences: {
+      dailyDigest: { visitsReport: false, audioReport: true, batteryReport: true },
+    },
+  });
+  const runTimeForPeriod = (period: number) => {
+    const runTime = addDays(initialDateTime, period);
+    runTime.setHours(9);
+    return runTime;
+  };
+  const runDigest = (period: number) =>
+    dockerExecNodeScript("project-activity-digest.js", [
+      "--force",
+      `--group-id=${project.projectHandle.id}`,
+      `--at-time=${runTimeForPeriod(period).toISOString()}`,
+    ]);
+
+  // Period 1: a battery reading, which is new activity in its own right.
+  await submitBatteryEventFromDevice(deviceHandle, 55, 3.8, addHours(runTimeForPeriod(1), -2));
+  await runDigest(1);
+  await waitForEmailAndRenderEmailHtml(
+    page,
+    adminUserHandle.testId,
+    "project daily activity digest",
+    undefined,
+    "Daily activity report",
+  );
+
+  // Period 2: bird detections, but no battery events in the period.  The email is sent because of
+  // the bird detections, and still lists the device's last battery reading from period 1.
+  await uploadAudioRecordingsFromDeviceWithTimesAndDurations(
+    [
+      {
+        tracks: ["kea"],
+        durationSeconds: 40,
+        recordingDateTime: addHours(runTimeForPeriod(2), -2),
+      },
+    ],
+    deviceHandle,
+    project.locationBase,
+    standardAudio,
+  );
+  await runDigest(2);
+  const email = await waitForEmailAndRenderEmailHtml(
+    page,
+    adminUserHandle.testId,
+    "project daily activity digest",
+    undefined,
+    "Daily activity report",
+  );
+  expect(email.html).toContain("Battery Status");
+  await expect(page.locator("tr", { hasText: deviceHandle.testId }).last()).toContainText(
+    "55% (26 hours ago)",
   );
 });
 
@@ -782,19 +843,19 @@ test("No activity is worked out per recipient, based on the categories each of t
   expect(await digestFor(userA)).toContain(noThermalText);
   expect(await digestFor(userB)).toContain(deviceHandle.testId);
 
-  // Period 3: only thermal activity.  A gets a digest.  The device is still connected, so B gets
-  // a digest with its last battery reading (from period 2).
+  // Period 3: only thermal activity.  A gets a digest.  B has no new battery activity, but had
+  // some in period 2, so gets a single "no activity" email.  The device is still connected though,
+  // so its last battery reading (from period 2) is still listed.
   await thermalActivity(3);
   await runDigest(3);
   expect(await digestFor(userA)).not.toContain(noThermalText);
   expect(await digestFor(userB)).toContain(deviceHandle.testId);
 
-  // Period 4: no activity at all, and the device is now considered stopped, so there are no
-  // battery readings.  A had some activity in period 3, so gets a "no activity" email.  B had
-  // some in period 3 too, so also gets a single "no activity" email, without any battery readings.
+  // Period 4: no activity at all.  A had some activity in period 3, so gets a "no activity"
+  // email.  B has already been told about the lack of battery activity, so isn't sent another.
   await runDigest(4);
   expect(await digestFor(userA)).toContain(noThermalText);
-  expect(await digestFor(userB)).not.toContain(deviceHandle.testId);
+  await noDigestFor(userB, "B isn't sent a second 'no activity' email");
 
   // Period 5: still nothing, so no emails for anyone.
   await runDigest(5);
@@ -926,7 +987,9 @@ test("The activity buttons in the daily digest email lead to matching activity s
         ),
       );
       await ensureMainNavIsAvailable(page);
-      await expect(page.getByTestId("no results")).not.toBeVisible();
+      // The "no results" test id is also used for the end-of-list footer ("...before this time")
+      // shown beneath results, so look for the empty-search message specifically.
+      await expect(page.getByText("No results for the current search.")).not.toBeVisible();
       // Visits are listed for the thermal link, and a recordings count for the audio one.
       await expect(
         page
