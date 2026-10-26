@@ -937,7 +937,10 @@ const closedModal = () => {
       </div>
     </div>
   </div>
-  <div v-if="recordingMode === 'Thermal'" class="d-flex flex-fill flex-column">
+  <div
+    v-if="recordingMode === 'Thermal'"
+    class="d-flex flex-fill flex-column dashboard-thermal"
+  >
     <h2 class="dashboard-subhead" v-if="hasVisitsForSelectedTimePeriod">
       Species summary
     </h2>
@@ -1383,6 +1386,11 @@ const closedModal = () => {
   @media screen and (min-width: @breakpoint-sm) {
     position: relative;
   }
+}
+.dashboard-thermal {
+  // There's no sticky search-settings trigger on the dashboard, so sticky
+  // visit headers shouldn't leave room for one.
+  --cp-mobile-search-trigger-height: 0px;
 }
 .dashboard-scope-type {
   @media screen and (min-width: @breakpoint-md) {
