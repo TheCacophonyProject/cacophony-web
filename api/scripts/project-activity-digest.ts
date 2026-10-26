@@ -124,7 +124,8 @@ const lastBatteryReportsForActiveDevicesInProject = async (
   // The device firmware already computes a 0-100 percentage and sends it as part of the
   // "rpiBattery" event details - there's no voltage/chemistry conversion to do here, we just
   // need the last recorded one per active, non-stopped device, regardless of when it was
-  // recorded (so it's always included in the digest).  Mirrors `getLastKnownDeviceBatteryLevel` in
+  // recorded (so it's always included in the digest).  Devices with no lastConnectionTime are
+  // treated as offline and excluded.  Mirrors `getLastKnownDeviceBatteryLevel` in
   // `types/client/Device.ts`, which `DeviceBatteryLevel.vue` uses to display this value.
   const stoppedDeviceIds = (await Device.stoppedDevices(now)).map((d) => d.id);
   const events = await Event.findAll({
@@ -144,6 +145,9 @@ const lastBatteryReportsForActiveDevicesInProject = async (
         where: {
           GroupId: projectId,
           active: true,
+          // A null lastConnectionTime means the device is offline (e.g. its recordings were
+          // uploaded via sidekick), or has never connected, so it isn't reporting battery levels.
+          lastConnectionTime: { [Op.ne]: null },
           id: { [Op.notIn]: stoppedDeviceIds },
         },
         required: true,
