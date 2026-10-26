@@ -24,6 +24,9 @@ import {
   waitToNavigateToProject,
 } from "@/helpers/browse-helpers";
 import { ApiGroupResponse as ApiProjectResponse } from "@shared/api/group";
+import { ApiDeviceResponse } from "@shared/api/device";
+import { SidekickSim } from "@/helpers/sidekick-sim";
+import { DeviceSim } from "@/helpers/device-sim";
 
 // Battery events are submitted by the device itself (rather than on its behalf), as that's what
 // updates its lastConnectionTime.  Digests only report on devices that aren't considered stopped.
@@ -648,6 +651,79 @@ test("Battery status digest emails are always sent when there is battery activit
   await expect(page.locator("tr", { hasText: deviceHandle.testId }).last()).toContainText(
     "30% (2 hours ago)",
   );
+});
+
+test("Battery status digest excludes devices with no lastConnectionTime", async ({ page }) => {
+  const initialDateTime = new Date("2026-05-01T10:00:00Z");
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const adminUserHandle = project.getAdminUser();
+  await confirmEmailAddressViaApi(adminUserHandle);
+  const deviceHandle = project.getDevice();
+  const subject = "Daily activity report";
+
+  await project.api().Projects.saveProjectUserSettings(project.projectHandle.id, {
+    notificationPreferences: {
+      dailyDigest: { visitsReport: false, audioReport: false, batteryReport: true },
+    },
+  });
+  const runTimeForPeriod = (period: number) => {
+    const runTime = addDays(initialDateTime, period);
+    runTime.setHours(9);
+    return runTime;
+  };
+  const runDigest = (period: number) =>
+    dockerExecNodeScript("project-activity-digest.js", [
+      "--force",
+      `--group-id=${project.projectHandle.id}`,
+      `--at-time=${runTimeForPeriod(period).toISOString()}`,
+    ]);
+  const renderDigest = () =>
+    waitForEmailAndRenderEmailHtml(
+      page,
+      adminUserHandle.testId,
+      "project daily activity digest",
+      undefined,
+      subject,
+    );
+
+  // Period 1: the device reports its battery level directly, which sets its lastConnectionTime.
+  await submitBatteryEventFromDevice(deviceHandle, 55, 3.8, addHours(runTimeForPeriod(1), -2));
+  await runDigest(1);
+  await renderDigest();
+  await expect(page.locator("tr", { hasText: deviceHandle.testId }).last()).toContainText(
+    "55% (2 hours ago)",
+  );
+
+  // A later recording is uploaded via sidekick, more than 25 hours after the device last connected,
+  // which clears lastConnectionTime and marks the device as "offline".
+  const device = new DeviceSim(deviceHandle, false);
+  const sidekick = new SidekickSim(adminUserHandle);
+  sidekick.connectToDevice(device);
+  sidekick.addLocation(project.locationBase, "home", addHours(runTimeForPeriod(1), -3));
+  sidekick.disconnectFromDevice();
+  await device.makeThermalRecording(new ArrayBuffer(100), addHours(runTimeForPeriod(2), -2));
+  sidekick.connectToDevice(device);
+  sidekick.userRequestsOffloadFromDevice();
+  sidekick.disconnectFromDevice();
+  await sidekick.syncWithApi();
+  const deviceResponse = (await project
+    .api()
+    .Devices.getDeviceById(deviceHandle.id)) as ApiDeviceResponse;
+  expect(deviceResponse.lastConnectionTime, "device is now treated as offline").toBeUndefined();
+
+  // Period 2: the last battery reading is only 26 hours old and the device isn't "stopped", but with
+  // no lastConnectionTime it's left out of the battery report.  That leaves no battery activity in
+  // either period (the previous period is evaluated against the device's current state), so no email
+  // is sent.  Before the exclusion, this email would have listed the device.
+  await runDigest(2);
+  const email = await waitForEmail(
+    adminUserHandle.testId,
+    "project daily activity digest",
+    500,
+    false,
+    subject,
+  );
+  expect(email.error, "offline device is not listed in a battery report").toBeDefined();
 });
 
 test("Battery status digest says when there is no battery data for active devices", async ({

@@ -607,7 +607,7 @@ export default function (app: Application, baseUrl: string) {
       if (!device) {
         return next(
           new ClientError(
-            `Could not find a device an id of '${request.params.deviceId}`,
+            `Could not find a device an id of '${request.params.deviceId}'`,
             HttpStatusCode.Forbidden,
           ),
         );

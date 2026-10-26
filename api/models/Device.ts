@@ -201,7 +201,7 @@ export class Device extends ModelStaticCommon<Device> {
         lastConnectionTime: {
           [Op.and]: [{ [Op.lt]: twoDaysAgo }, { [Op.ne]: null }],
         },
-        id: { [Op.in]: audioOnlyDeviceIds.map((d) => d["DeviceId"]) },
+        id: { [Op.in]: audioOnlyDeviceIds.map((d) => d.DeviceId) },
       },
       include: [
         {
