@@ -839,6 +839,7 @@ export const sendProjectActivityDigestEmail = async (
     deviceName: string;
     batteryLevel: number;
     recordedAgo: string;
+    stopped: boolean;
   }[],
 ) => {
   const common = commonInterpolants();
