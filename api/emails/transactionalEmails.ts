@@ -346,7 +346,11 @@ export const sendGroupMembershipRequestEmail = async (
 
 export const sendStoppedDevicesReportEmail = async (
   groupName: string,
-  stoppedDevicesList: string[],
+  stoppedDevicesList: {
+    deviceName: string;
+    batteryLevel?: number;
+    hasBatteryLevel: boolean;
+  }[],
   recipients: { email: string; emailConfirmed: boolean }[],
 ) => {
   const sendPromises = [];
