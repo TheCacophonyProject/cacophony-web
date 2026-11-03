@@ -10,6 +10,8 @@ import type { User } from "@models/User.js";
 import type { Group } from "@models/Group.js";
 import os from "os";
 import { DetailSnapshot } from "@models/DetailSnapshot.js";
+import SequelizeStatic from "sequelize";
+import type { BatteryInfoEventDetail } from "@typedefs/api/event.js";
 
 const sequelize = await initSequelize();
 
@@ -29,6 +31,45 @@ type GroupUserDevices = Record<
     users: User[];
   }
 >;
+
+// The last recorded battery percentage for each of the given devices, if there is one.
+const lastBatteryLevels = async (
+  devices: Device[],
+): Promise<Record<number, number>> => {
+  const events = await Event.findAll({
+    where: { DeviceId: { [Op.in]: devices.map((d) => d.id) } },
+    include: [
+      {
+        model: DetailSnapshot,
+        as: "EventDetail",
+        attributes: ["details"],
+        where: { type: "rpiBattery" },
+        required: true,
+      },
+    ],
+    attributes: [
+      [
+        SequelizeStatic.literal('DISTINCT ON("Event"."DeviceId") 1'),
+        "device_id",
+      ],
+      "id",
+      "dateTime",
+      "DeviceId",
+    ],
+    order: [
+      ["DeviceId", "DESC"],
+      ["dateTime", "DESC"],
+    ],
+  });
+  const levels: Record<number, number> = {};
+  for (const event of events) {
+    const details = event.EventDetail.details as BatteryInfoEventDetail;
+    if (typeof details.battery === "number") {
+      levels[event.DeviceId] = details.battery;
+    }
+  }
+  return levels;
+};
 
 const getUserEvents = async (devices: Device[]): Promise<GroupUserDevices> => {
   const recipientUsers: Record<GroupId, User[]> = {};
@@ -107,6 +148,7 @@ async function main() {
     }
 
     const userEvents = await getUserEvents(devices);
+    const batteryLevels = await lastBatteryLevels(devices);
     const failedEmails = [];
     for (const { group, stoppedDevices, users } of Object.values(userEvents)) {
       const userEmails = users.map(({ email, emailConfirmed }) => ({
@@ -115,7 +157,15 @@ async function main() {
       }));
       const successes = await sendStoppedDevicesReportEmail(
         group.groupName,
-        stoppedDevices.map((device) => device.deviceName),
+        stoppedDevices.map((device) => ({
+          deviceName: device.deviceName,
+          batteryLevel:
+            batteryLevels[device.id] !== undefined
+              ? Math.round(batteryLevels[device.id])
+              : undefined,
+          // A 0% reading is falsy, so the template needs an explicit flag.
+          hasBatteryLevel: batteryLevels[device.id] !== undefined,
+        })),
         userEmails,
       );
       for (let i = 0; i < successes.length; i++) {

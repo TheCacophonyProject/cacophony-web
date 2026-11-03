@@ -24,39 +24,27 @@ const setupProjectWithConfirmedAdmin = async () => {
   return { project, device: new DeviceSim(project.getDevice()) };
 };
 
-for (const [eventType, subject, reason] of [
-  [
-    "trapEnableCommand",
-    "Trap enabled",
-    "Found an possum of confidence 83 that needs to be trapped",
-  ],
-  [
-    "trapDisableCommand",
-    "Trap disabled",
-    "Found an kiwi of confidence 80 that needs to be protected",
-  ],
-] as const) {
-  test(`Opted-in users are emailed about a '${eventType}' event, including the reason`, async ({
-    page,
-  }) => {
-    const { project, device } = await setupProjectWithConfirmedAdmin();
-    const eventTime = eventBaseTime();
-    device.addEvent({ type: eventType, details: JSON.stringify({ reason }) }, eventTime);
-    await device.uploadEvents(addSeconds(eventTime, 30));
+test("Opted-in users are emailed about a 'trapTriggered' event, including the reason", async ({
+  page,
+}) => {
+  const reason = "Found an possum of confidence 83 that needs to be trapped";
+  const { project, device } = await setupProjectWithConfirmedAdmin();
+  const eventTime = eventBaseTime();
+  device.addEvent({ type: "trapTriggered", details: JSON.stringify({ reason }) }, eventTime);
+  await device.uploadEvents(addSeconds(eventTime, 30));
 
-    const email = await waitForEmailAndRenderEmailHtml(
-      page,
-      project.getAdminUser().testId,
-      `${eventType} notification`,
-      undefined,
-      subject,
-    );
-    expect(email.headers.subject).toContain(subject);
-    // The reason is device-supplied, so it must be shown as text rather than interpreted as HTML.
-    await expect(page.getByTestId("trap event reason")).toHaveText(reason);
-    await expect(page.getByTestId("trap event time")).toHaveCount(1);
-  });
-}
+  const email = await waitForEmailAndRenderEmailHtml(
+    page,
+    project.getAdminUser().testId,
+    "trapTriggered notification",
+    undefined,
+    "Trap triggered",
+  );
+  expect(email.headers.subject).toContain("Trap triggered");
+  // The reason is device-supplied, so it must be shown as text rather than interpreted as HTML.
+  await expect(page.getByTestId("trap event reason")).toHaveText(reason);
+  await expect(page.getByTestId("trap event time")).toHaveCount(1);
+});
 
 test("A 'trapTriggered' event without a reason is emailed without a reason section", async ({
   page,

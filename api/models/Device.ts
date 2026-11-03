@@ -43,7 +43,7 @@ import {
   tryToMatchLocationToStationInGroup,
 } from "@models/util/locationUtils.js";
 import { locationField } from "@models/util/util.js";
-import { ClientError, CustomError } from "@api/customErrors.js";
+import { CustomError } from "@api/customErrors.js";
 import { Recording } from "@models/Recording.js";
 import { DeviceHistory } from "@models/DeviceHistory.js";
 import { Event } from "@models/Event.js";
@@ -55,6 +55,7 @@ import {
 } from "@typedefs/api/device.js";
 import { DeviceAction } from "@models/DeviceAction.js";
 import { UUID } from "node:crypto";
+import { DeviceUuidsById } from "@/Globals.js";
 const Op = Sequelize.Op;
 
 const maxDate = (a?: Date, b?: Date): Date | undefined => {
@@ -376,6 +377,7 @@ where
   getJwtDataValues() {
     return {
       id: this.id,
+      uuid: this.uuid,
       _type: "device",
     };
   }
@@ -418,20 +420,38 @@ where
     });
   }
 
-  // Will register as a new device
+  // Re-registers this device with a new name and/or group.
+  //
+  // If a device named `newName` already exists in `newGroup` (active or not), this device
+  // *becomes* that device: it takes over its id, recordings, history and settings.  This covers
+  // replacing a broken device, and moving a loaned device back to the group it came from.
+  // If renaming within the same group, the old device's recordings etc. are transferred to the device
+  // that was taken over, and the old device is deleted.  When moving between groups, recordings
+  // never change group, so the old device is just set inactive and keeps its recordings.
+  //
+  // Otherwise, a new device is created in `newGroup`, and the old device is set inactive.
+  //
+  // NOTE: We have explicitly decided to accept the following risks:
+  //  - Taking over an existing device is also allowed via the device-only (unauthorized)
+  //    /reregister endpoint used by the management interface, so a device can take over any
+  //    device in any group just by knowing its name.
+  //  - Taking over an *active* device is allowed, so that a pre-named replacement can be moved
+  //    into the group of the device it replaces.  This means a loaned device moving back to its
+  //    original group will take over a replacement device that has since been put there, rather
+  //    than reactivating its own original inactive device.
+  //  - If replaced hardware isn't actually retired, it can keep using its existing JWT to act as
+  //    the device that has taken over its identity.
   async reRegister(
     newName: string,
     newGroup: Group,
     newPassword: string,
-    reassign = false,
     fromDateTime?: Date,
   ): Promise<Device | false> {
     let newDevice: Device;
     const now = fromDateTime || new Date();
     let stationToAssign: Station;
-    // NOTE: As far as we're aware this API is only called directly
-    //  from the device, and assumes the device is connected, so we will set the
-    //  lastConnectionTime on the device we create/update.
+    // This API is only called directly from the device, and assumes the device is connected,
+    // so we will set the lastConnectionTime on the device we create/update.
     const deviceIsMovingBetweenGroups = newGroup.id !== this.GroupId;
 
     const latestHistory = await DeviceHistory.latestWithAnyLocationAtTime(
@@ -458,135 +478,16 @@ where
             Sequelize.Transaction.ISOLATION_LEVELS.REPEATABLE_READ,
         },
         async (transaction: Transaction) => {
-          const conflictingDevice = await Device.findOne({
+          const existingDevice = await Device.findOne({
             where: {
               deviceName: newName,
               GroupId: newGroup.id,
             },
             transaction,
           });
-          // NOTE: If we're moving a device back into the same group as a conflicting device,
-          //  we really want to *become* that device, and inherit all its recording history.
-          if (reassign) {
-            if (deviceIsMovingBetweenGroups) {
-              await this.update({ active: false }, { transaction });
-              if (
-                conflictingDevice !== null &&
-                conflictingDevice.id !== this.id &&
-                !conflictingDevice.active
-              ) {
-                // There's an inactive device in the destination group with the same name.
-                // We want to *become* that device and set it active.
-                await conflictingDevice.update(
-                  {
-                    password: newPassword,
-                    // This could be a replacement device, so overwrite the old saltId and uuid
-                    saltId: this.saltId,
-                    uuid: this.uuid,
-                    lastConnectionTime: now,
-                    location: this.location,
-                    active: true,
-                  },
-                  { transaction },
-                );
-                newDevice = conflictingDevice;
-              } else {
-                // Just create the new device in the destination group.
-                newDevice = await Device.create(
-                  {
-                    deviceName: newName,
-                    GroupId: newGroup.id,
-                    password: newPassword,
-                    saltId: this.saltId,
-                    uuid: this.uuid,
-                    lastConnectionTime: now,
-                    location: this.location,
-                  },
-                  {
-                    transaction,
-                  },
-                );
-              }
-            } else {
-              // Device is being reassigned to the same group it's currently in.
-
-              const oldId = this.id;
-              if (
-                conflictingDevice === null ||
-                conflictingDevice.id !== this.id
-              ) {
-                // The old device is superseded by the new/taken-over one.
-                await this.update({ active: false }, { transaction });
-              }
-              if (conflictingDevice !== null) {
-                // Create a new device in the new group, which becomes the existing device, inheriting its history.
-                await conflictingDevice.update(
-                  {
-                    password: newPassword,
-                    // This could be a replacement device, so overwrite the old saltId and uuid
-                    saltId: this.saltId,
-                    uuid: this.uuid,
-                    // NOTE: As far as we're aware this API is only called directly
-                    //  from the device, and assumes the device is connected.
-                    lastConnectionTime: now,
-                    location: this.location,
-                    active: true,
-                  },
-                  { transaction },
-                );
-                if (oldId !== conflictingDevice.id) {
-                  // Transfer the old device's recordings and events to the device that has taken over.
-                  await Recording.update(
-                    { DeviceId: conflictingDevice.id },
-                    { where: { DeviceId: oldId }, transaction },
-                  );
-                  await Event.update(
-                    { DeviceId: conflictingDevice.id },
-                    { where: { DeviceId: oldId }, transaction },
-                  );
-                  await Alert.update(
-                    { DeviceId: conflictingDevice.id },
-                    { where: { DeviceId: oldId }, transaction },
-                  );
-                  await DeviceHistory.update(
-                    { DeviceId: conflictingDevice.id },
-                    { where: { DeviceId: oldId }, transaction },
-                  );
-                  await DeviceAction.update(
-                    { DeviceId: conflictingDevice.id },
-                    { where: { DeviceId: oldId }, transaction },
-                  );
-                  await this.destroy({ transaction });
-                }
-                newDevice = conflictingDevice;
-              } else {
-                newDevice = await Device.create(
-                  {
-                    deviceName: newName,
-                    GroupId: newGroup.id,
-                    password: newPassword,
-                    saltId: this.saltId,
-                    uuid: this.uuid,
-                    // NOTE: As far as we're aware this API is only called directly
-                    //  from the device, and assumes the device is connected.
-                    lastConnectionTime: now,
-                    location: this.location,
-                  },
-                  {
-                    transaction,
-                  },
-                );
-              }
-            }
-          } else {
-            if (conflictingDevice !== null) {
-              throw new ClientError(
-                `A device with the name '${newName}' already exists in '${newGroup.groupName}'`,
-              );
-            }
+          let settings: ApiDeviceHistorySettings | null = null;
+          if (existingDevice === null) {
             await this.update({ active: false }, { transaction });
-            // We need to either find an existing station for this DeviceHistory entry, or create a new one:
-            // NOTE: When a device is re-registered it keeps the last known location.
             newDevice = await Device.create(
               {
                 deviceName: newName,
@@ -594,8 +495,6 @@ where
                 password: newPassword,
                 saltId: this.saltId,
                 uuid: this.uuid,
-                // NOTE: As far as we're aware this API is only called directly
-                //  from the device, and assumes the device is connected.
                 lastConnectionTime: now,
                 location: this.location,
               },
@@ -603,16 +502,74 @@ where
                 transaction,
               },
             );
-          }
-
-          let settings: ApiDeviceHistorySettings | null = null;
-          if (!conflictingDevice) {
             if (deviceIsMovingBetweenGroups) {
               settings = removeLocationSpecificSettings(originalSettings);
             } else {
               settings = originalSettings;
             }
+          } else if (existingDevice.id === this.id) {
+            // Same name in the same group, so just update this device.
+            await existingDevice.update(
+              {
+                password: newPassword,
+                lastConnectionTime: now,
+                active: true,
+              },
+              { transaction },
+            );
+            newDevice = existingDevice;
+            settings = originalSettings;
+          } else {
+            // Keep the settings of the device being taken over.
+            const existingDeviceHistory =
+              await DeviceHistory.latestWithAnyLocationAtTime(
+                existingDevice.id,
+                newGroup.id,
+              );
+            if (existingDeviceHistory && existingDeviceHistory.settings) {
+              settings = existingDeviceHistory.settings;
+            }
+            await this.update({ active: false }, { transaction });
+            await existingDevice.update(
+              {
+                password: newPassword,
+                // This could be a replacement device, so overwrite the old saltId and uuid
+                saltId: this.saltId,
+                uuid: this.uuid,
+                lastConnectionTime: now,
+                location: this.location,
+                active: true,
+              },
+              { transaction },
+            );
+            if (!deviceIsMovingBetweenGroups) {
+              // Transfer the old device's recordings and events to the device that has taken over.
+              const oldId = this.id;
+              await Recording.update(
+                { DeviceId: existingDevice.id },
+                { where: { DeviceId: oldId }, transaction },
+              );
+              await Event.update(
+                { DeviceId: existingDevice.id },
+                { where: { DeviceId: oldId }, transaction },
+              );
+              await Alert.update(
+                { DeviceId: existingDevice.id },
+                { where: { DeviceId: oldId }, transaction },
+              );
+              await DeviceHistory.update(
+                { DeviceId: existingDevice.id },
+                { where: { DeviceId: oldId }, transaction },
+              );
+              await DeviceAction.update(
+                { DeviceId: existingDevice.id },
+                { where: { DeviceId: oldId }, transaction },
+              );
+              await this.destroy({ transaction });
+            }
+            newDevice = existingDevice;
           }
+
           const newDeviceHistoryEntry: Partial<Attributes<DeviceHistory>> = {
             GroupId: newGroup.id,
             DeviceId: newDevice.id,
@@ -658,6 +615,11 @@ where
         );
       }
       return false;
+    }
+    // The device we've become may have a new uuid, and this device may have been deleted.
+    DeviceUuidsById.set(newDevice.id, newDevice.uuid);
+    if (newDevice.id !== this.id) {
+      DeviceUuidsById.delete(this.id);
     }
     return newDevice;
   }

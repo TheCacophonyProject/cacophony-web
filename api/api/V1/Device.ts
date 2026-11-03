@@ -352,6 +352,9 @@ export default function (app: Application, baseUrl: string) {
    * The user must have access to the group the device is moving to, and, if the group is changing,
    * be an admin of the group the device is moving from.  At least one of `newName` and `newGroup` must be supplied.
    *
+   * If a device with the same name already exists in the destination group, this move is considered to be a replacement
+   * device, so this device takes it over. See `Device.reRegister` for details.
+   *
    * @apiUse V1DeviceAuthorizationHeader
    *
    * @apiBody {String} authorizedToken JWT of the user authorizing the change.
@@ -416,7 +419,6 @@ export default function (app: Application, baseUrl: string) {
           (response.locals.requestDevice as Device).deviceName,
         response.locals.group,
         request.body.newPassword,
-        true,
         request.body.fromDateTime,
       );
       if (newDevice === false) {
@@ -434,12 +436,13 @@ export default function (app: Application, baseUrl: string) {
     },
   );
 
-  // FIXME: Is this still used?
   /**
    * @api {post} /api/v1/devices/reregister Reregister the device.
    * @apiName Reregister
    * @apiGroup Device
-   * @apiDescription This call is to reregister a device to change the name and/or group
+   * @apiDescription This call is to reregister a device to change the name and/or group.
+   * If a device with the same name already exists in the destination group, this device takes it over.
+   * See `Device.reRegister` for details.
    *
    * @apiUse V1DeviceAuthorizationHeader
    *
@@ -463,8 +466,6 @@ export default function (app: Application, baseUrl: string) {
       // NOTE: Primarily used in testing, allows us to backdate the creation of a device
       optionalDateOf(body("fromDateTime")),
     ]),
-    // FIXME: Should you really be allowed to move a device into a group you aren't an admin of?
-    //  At least you need physical access to the device to do this.
     fetchUnauthorizedRequiredGroupByNameOrId(body("newGroup")),
     async function (request: Request, response: Response, next: NextFunction) {
       const requestDevice: Device = await Device.findByPk(
@@ -475,6 +476,7 @@ export default function (app: Application, baseUrl: string) {
         request.body.newName,
         response.locals.group,
         request.body.newPassword,
+        request.body.fromDateTime,
       );
       if (device === false) {
         return next(

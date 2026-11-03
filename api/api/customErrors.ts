@@ -58,7 +58,10 @@ function errorHandler(
       log.warning(err.toString());
     }
     const error = err.toJson();
-    if (!request.headers["user-agent"].includes("okhttp")) {
+    if (
+      request.headers["user-agent"] &&
+      !request.headers["user-agent"].includes("okhttp")
+    ) {
       // FIXME - leave this in for sidekick etc, since currently it expects a 'message' error response.
       delete error.message;
     }

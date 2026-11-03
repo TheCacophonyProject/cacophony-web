@@ -9,7 +9,7 @@
       The battery of some devices in the project <strong style="font-weight: 600">{{ groupName }}</strong> may be flat. Those devices are listed below:<br/><br/>
       <ul style="margin: 0; padding: 0; padding-left: 20px; line-height: 160%; font-weight: 600">
         {{#stoppedDevicesList}}
-        <li>{{.}}</li>
+        <li>{{deviceName}}{{#hasBatteryLevel}}<span style="font-weight: 400; color:#777875"> &ndash; last battery level {{batteryLevel}}%</span>{{/hasBatteryLevel}}</li>
         {{/stoppedDevicesList}}
       </ul>
       <br/>

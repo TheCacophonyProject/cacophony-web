@@ -216,7 +216,7 @@
             </td>
             <td class="battery-status-cell" style="padding-top:10px;padding-bottom:10px;border-bottom: 1px solid #eeeeee;line-height: 1.3">
               <span style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#252921;">{{batteryLevel}}%</span>
-              <span style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#777875;">&nbsp;({{recordedAgo}})</span>
+              <span style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#777875;">&nbsp;({{recordedAgo}}</span>{{#stopped}}<span style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#c0392b;"> <span style="color:#777875;">-</span> stopped or offline</span>{{/stopped}}<span style="font-family:Lexend, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;color:#777875;">)</span>
             </td>
           </tr>
           {{/batteryReport}}

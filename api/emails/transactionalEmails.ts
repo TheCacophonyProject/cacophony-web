@@ -346,7 +346,11 @@ export const sendGroupMembershipRequestEmail = async (
 
 export const sendStoppedDevicesReportEmail = async (
   groupName: string,
-  stoppedDevicesList: string[],
+  stoppedDevicesList: {
+    deviceName: string;
+    batteryLevel?: number;
+    hasBatteryLevel: boolean;
+  }[],
   recipients: { email: string; emailConfirmed: boolean }[],
 ) => {
   const sendPromises = [];
@@ -561,27 +565,13 @@ export const sendTrapActionRequestEmail = async (
   );
 };
 
-export const TRAP_EVENT_TYPES = [
-  "trapEnableCommand",
-  "trapDisableCommand",
-  "trapTriggered",
-];
+export const TRAP_EVENT_TYPES = ["trapTriggered"];
 export type TrapEventType = (typeof TRAP_EVENT_TYPES)[number];
 
 const trapEventSummaries: Record<
   TrapEventType,
   { subject: (deviceName: string) => string; heading: string; body: string }
 > = {
-  trapEnableCommand: {
-    subject: (deviceName) => `🪤 Trap enabled at ${deviceName}`,
-    heading: "Trap enabled",
-    body: "sent a command to <strong>enable</strong> its trap",
-  },
-  trapDisableCommand: {
-    subject: (deviceName) => `🪤 Trap disabled at ${deviceName}`,
-    heading: "Trap disabled",
-    body: "sent a command to <strong>disable</strong> its trap",
-  },
   trapTriggered: {
     subject: (deviceName) => `🪤 Trap triggered at ${deviceName}`,
     heading: "Trap triggered",
@@ -593,6 +583,7 @@ export const sendTrapEventEmail = async (
   eventType: TrapEventType,
   groupName: string,
   deviceName: string,
+  stationId: StationId | undefined,
   eventDateTimes: Date[],
   reason: string | undefined,
   userEmailAddresses: string[],
@@ -604,6 +595,9 @@ export const sendTrapEventEmail = async (
   )}`;
   const emailSettingsUrl = `${projectRoot}/my-settings`;
   const summary = trapEventSummaries[eventType];
+  const visitsActivityUrl = `${projectRoot}/activity?display-mode=visits&recording-mode=cameras&locations=${
+    stationId || "any"
+  }&from=24-hours-ago&tag-mode=any`;
   const eventTimes = eventDateTimes.map((eventDateTime) =>
     eventDateTime.toLocaleDateString("en-NZ", {
       month: "short",
@@ -621,6 +615,7 @@ export const sendTrapEventEmail = async (
       heading: summary.heading,
       eventDescription: summary.body,
       emailSettingsUrl,
+      visitsActivityUrl,
       groupName,
       deviceName,
       eventTimes,
@@ -839,6 +834,7 @@ export const sendProjectActivityDigestEmail = async (
     deviceName: string;
     batteryLevel: number;
     recordedAgo: string;
+    stopped: boolean;
   }[],
 ) => {
   const common = commonInterpolants();

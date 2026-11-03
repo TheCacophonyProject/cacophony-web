@@ -33,6 +33,7 @@ interface BatteryReport {
   batteryLevel: number;
   recordedAgo: string;
   recordedAt: Date;
+  stopped: boolean;
 }
 
 // A short, human readable description of how long before `now` something happened,
@@ -125,9 +126,20 @@ const lastBatteryReportsForActiveDevicesInProject = async (
   // "rpiBattery" event details - there's no voltage/chemistry conversion to do here, we just
   // need the last recorded one per active, non-stopped device, regardless of when it was
   // recorded (so it's always included in the digest).  Devices with no lastConnectionTime are
-  // treated as offline and excluded.  Mirrors `getLastKnownDeviceBatteryLevel` in
+  // treated as offline and excluded.  Devices that stopped within the last week of `now` are
+  // still included, and flagged as stopped.  Mirrors `getLastKnownDeviceBatteryLevel` in
   // `types/client/Device.ts`, which `DeviceBatteryLevel.vue` uses to display this value.
-  const stoppedDeviceIds = (await Device.stoppedDevices(now)).map((d) => d.id);
+  const oneWeekAgo = new Date(now);
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  const stoppedDevices = await Device.stoppedDevices(now);
+  const recentlyStoppedDeviceIds = new Set(
+    stoppedDevices
+      .filter((d) => d.lastConnectionTime >= oneWeekAgo)
+      .map((d) => d.id),
+  );
+  const longStoppedDeviceIds = stoppedDevices
+    .filter((d) => d.lastConnectionTime < oneWeekAgo)
+    .map((d) => d.id);
   const events = await Event.findAll({
     // Only consider readings up to `now`, so that this can be evaluated for earlier periods.
     where: { dateTime: { [Op.lte]: now } },
@@ -148,7 +160,7 @@ const lastBatteryReportsForActiveDevicesInProject = async (
           // A null lastConnectionTime means the device is offline (e.g. its recordings were
           // uploaded via sidekick), or has never connected, so it isn't reporting battery levels.
           lastConnectionTime: { [Op.ne]: null },
-          id: { [Op.notIn]: stoppedDeviceIds },
+          id: { [Op.notIn]: longStoppedDeviceIds },
         },
         required: true,
       },
@@ -179,6 +191,7 @@ const lastBatteryReportsForActiveDevicesInProject = async (
       batteryLevel: details.battery,
       recordedAgo: timeAgo(event.dateTime, now),
       recordedAt: event.dateTime,
+      stopped: recentlyStoppedDeviceIds.has(event.DeviceId),
     });
   }
   return batteryReports;
@@ -299,7 +312,7 @@ interface ActivityLists {
   thermalVisitsList: SpeciesCount[];
   birdSpeciesList: SpeciesCount[];
   batteryReportsList: BatteryReport[];
-  // The battery list always contains the latest reading for each non-stopped device, so its
+  // The battery list always contains the latest reading for each device that hasn't been stopped for over a week, so its
   // length says nothing about whether anything happened.  This is true only if at least one of
   // those readings was recorded within the digest period.
   hasNewBatteryActivity: boolean;

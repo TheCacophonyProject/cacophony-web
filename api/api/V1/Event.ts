@@ -116,10 +116,24 @@ const notifyTrapEvent = async (
     const deviceTimezone = eventDevice.location
       ? tzLookup(eventDevice.location.lat, eventDevice.location.lng)
       : null;
+    // The station the device was at when the (latest) event occurred, to filter activity by location.
+    const latestEventTime = new Date(
+      Math.max(...dateTimes.map((dateTime) => dateTime.getTime())),
+    );
+    const deviceHistoryEntry = await DeviceHistory.findOne({
+      where: {
+        DeviceId: deviceId,
+        stationId: { [Op.ne]: null },
+        fromDateTime: { [Op.lte]: latestEventTime },
+      },
+      order: [["fromDateTime", "DESC"]],
+      attributes: ["stationId"],
+    });
     await sendTrapEventEmail(
       eventType,
       group.groupName,
       eventDevice.deviceName,
+      deviceHistoryEntry?.stationId,
       dateTimes,
       typeof details?.reason === "string" ? details.reason : undefined,
       users.map((user) => user.email),

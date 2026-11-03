@@ -1,5 +1,6 @@
 import { expect, test } from "@/helpers/upload-tests";
 import {
+  addDeviceToProject,
   addUserToProject,
   createProjectWithUserAndDevice,
   createUser,
@@ -787,6 +788,73 @@ test("Battery status digest includes older battery readings when other activity 
   );
 });
 
+test("Battery status digest lists devices that stopped within the last week, flagged as stopped", async ({
+  page,
+}) => {
+  const initialDateTime = new Date("2026-05-01T10:00:00Z");
+  const project = await createProjectWithUserAndDevice({ initialDateTime });
+  const adminUserHandle = project.getAdminUser();
+  await confirmEmailAddressViaApi(adminUserHandle);
+  // The first device stops reporting after period 1, the second keeps on reporting.
+  const stoppingDevice = project.getDevice();
+  const activeDevice = await addDeviceToProject("active", project.projectHandle, initialDateTime);
+
+  await project.api().Projects.saveProjectUserSettings(project.projectHandle.id, {
+    notificationPreferences: {
+      dailyDigest: { visitsReport: false, audioReport: false, batteryReport: true },
+    },
+  });
+  const runTimeForPeriod = (period: number) => {
+    const runTime = addDays(initialDateTime, period);
+    runTime.setHours(9);
+    return runTime;
+  };
+  const withinPeriod = (period: number) => addHours(runTimeForPeriod(period), -2);
+  const runDigest = (period: number) =>
+    dockerExecNodeScript("project-activity-digest.js", [
+      "--force",
+      `--group-id=${project.projectHandle.id}`,
+      `--at-time=${runTimeForPeriod(period).toISOString()}`,
+    ]);
+  const renderDigest = () =>
+    waitForEmailAndRenderEmailHtml(
+      page,
+      adminUserHandle.testId,
+      "project daily activity digest",
+      undefined,
+      "Daily activity report",
+    );
+  const rowFor = (device: TestDeviceHandle) =>
+    page.locator("tr", { hasText: device.testId }).last();
+
+  // Period 1: both devices are connected and report a battery level.
+  await submitBatteryEventFromDevice(stoppingDevice, 55, 3.8, withinPeriod(1));
+  await submitBatteryEventFromDevice(activeDevice, 80, 4.0, withinPeriod(1));
+  await runDigest(1);
+  await renderDigest();
+  await expect(rowFor(stoppingDevice)).toContainText("55% (2 hours ago)");
+  await expect(rowFor(stoppingDevice)).not.toContainText("stopped or offline");
+
+  // Period 3: the first device hasn't been heard from for two days, so it has stopped.  It stopped
+  // recently though, so it's still listed with its last reading.  The email is sent because the
+  // other device has reported a new battery level.
+  await submitBatteryEventFromDevice(activeDevice, 70, 3.9, withinPeriod(3));
+  await runDigest(3);
+  await renderDigest();
+  await expect(rowFor(stoppingDevice)).toContainText("55% (2 days ago - stopped or offline)");
+  await expect(rowFor(stoppingDevice)).toContainText("stopped or offline");
+  await expect(rowFor(activeDevice)).toContainText("70% (2 hours ago)");
+  await expect(rowFor(activeDevice)).not.toContainText("stopped or offline");
+
+  // Period 9: the first device stopped over a week ago, so it's no longer listed.
+  await submitBatteryEventFromDevice(activeDevice, 60, 3.8, withinPeriod(9));
+  await runDigest(9);
+  const email = await renderDigest();
+  expect(email.html).not.toContain(stoppingDevice.testId);
+  expect(email.html).not.toContain("stopped or offline");
+  await expect(rowFor(activeDevice)).toContainText("60% (2 hours ago)");
+});
+
 test("Battery status digest says when there is no battery data for active devices", async ({
   standardAudio,
   page,
@@ -947,14 +1015,45 @@ test("Stopped devices emails are sent and render correctly", async ({ page }) =>
   await dockerExecNodeTestScript("test-stopped-devices.js", ["--deviceId", device.id.toString()]);
   await dockerExecNodeScript("report-stopped-devices.js", ["--force"]);
 
-  const _email = await waitForEmailAndRenderEmailHtml(
+  await waitForEmailAndRenderEmailHtml(
     page,
     project.getAdminUser().testId,
     "stopped devices report",
     undefined,
     "stopped or offline device",
   );
+  // The device has never reported a battery level, so none should be shown.
+  const item = page.locator("li", { hasText: device.testId });
+  await expect(item).toBeVisible();
+  await expect(item).not.toContainText("battery");
 });
+
+for (const battery of [42, 0]) {
+  test(`Stopped devices emails show the last recorded battery level (${battery}%)`, async ({
+    page,
+  }) => {
+    const project = await createProjectWithUserAndDevice();
+    const device = project.getDevice();
+    await confirmEmailAddressViaApi(project.getAdminUser());
+
+    // An older reading, which should be superseded by the latest one.
+    await submitBatteryEventFromDevice(device, 90, 4.1, addHours(new Date(), -6));
+    await submitBatteryEventFromDevice(device, battery, 3.5, addHours(new Date(), -3));
+    await dockerExecNodeTestScript("test-stopped-devices.js", ["--deviceId", device.id.toString()]);
+    await dockerExecNodeScript("report-stopped-devices.js", ["--force"]);
+
+    await waitForEmailAndRenderEmailHtml(
+      page,
+      project.getAdminUser().testId,
+      "stopped devices report",
+      undefined,
+      "stopped or offline device",
+    );
+    await expect(page.locator("li", { hasText: device.testId })).toContainText(
+      `last battery level ${battery}%`,
+    );
+  });
+}
 
 test("Animal alert emails are sent and render correctly", async ({ page, smallCptv }) => {
   // Alerts are only sent for recordings less than 24 hours old, but recordings also need to be older than now

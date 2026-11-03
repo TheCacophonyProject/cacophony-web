@@ -10,7 +10,7 @@ import {
 import { uploadThermalRecordingFromDevice } from "@/helpers/recording-uploads";
 import { TestApiImpl } from "@shared/client";
 import { JwtToken, TestDeviceHandle, TestUserHandle } from "@shared/client/types";
-import { ProjectId, UserId } from "@shared/api/common";
+import { DeviceId, ProjectId, UserId } from "@shared/api/common";
 import { DeviceType, HttpStatusCode } from "@shared/api/consts";
 import { ApiRecordingResponse } from "@shared/api/recording";
 import { addSeconds } from "@/helpers/date-helpers";
@@ -229,27 +229,72 @@ test.describe("Device re-register", () => {
     });
   });
 
-  test("Cannot re-register a device in same group with same name as another device", async () => {
+  // NOTE: We've explicitly decided to allow taking over an existing device without user authorization,
+  //  since this endpoint is mostly for internal use by the management interface.  See `Device.reRegister`.
+  test("Re-registering in same group with the name of another device takes over that device", async () => {
     const project = await createProjectWithUserAndDevice();
     const projectHandle = project.projectHandle;
     const device = project.getDevice();
     const otherDevice = await addDeviceToProject("other", projectHandle);
 
     const response = await reRegister(device, projectHandle.id, otherDevice.testId);
-    expect(response.success, "re-registering with a duplicate name failed").toBe(false);
-    expect(response.status).toBe(HttpStatusCode.Unprocessable);
+    expect(response.success, "re-register device").toBe(true);
+    if (!response.success) {
+      return;
+    }
+    expect(response.result.id, "became the device with the conflicting name").toEqual(
+      otherDevice.id,
+    );
 
     const activeDevices = await getActiveDevicesForUser(project.getAdminUser());
     expect(
-      activeDevices.map(({ id }) => id).sort((a, b) => a - b),
-      "both devices are unaltered",
-    ).toEqual([device.id, otherDevice.id].sort((a, b) => a - b));
-    expect(activeDevices.find(({ id }) => id === device.id)).toMatchObject({
-      deviceName: device.testId,
+      activeDevices.map(({ id }) => id),
+      "old device was removed",
+    ).toEqual([otherDevice.id]);
+    expect(activeDevices[0]).toMatchObject({
+      deviceName: otherDevice.testId,
       saltId: device.id,
       active: true,
       groupId: projectHandle.id,
     });
+  });
+
+  test("Replaced hardware can't keep using its old token once its device has been taken over", async () => {
+    const project = await createProjectWithUserAndDevice();
+    const projectHandle = project.projectHandle;
+    const device = project.getDevice();
+    const otherDevice = await addDeviceToProject("other", projectHandle);
+
+    // Keep the replaced hardware's token around under a different handle, since taking over
+    // the device registers the replacement's credentials under the replaced device's handle.
+    const replacedHardware: TestDeviceHandle = {
+      id: otherDevice.id,
+      testId: getDeviceTestName("replaced-hardware"),
+      type: "device",
+    };
+    TestApiImpl.registerCredentials(replacedHardware.testId, {
+      id: otherDevice.id,
+      saltId: otherDevice.id,
+      token: (await TestApiImpl.getCredentials(otherDevice.testId)) as JwtToken<DeviceId>,
+    });
+
+    // An invalid password means these requests fail validation if the token is accepted, so nothing changes.
+    const beforeTakeover = await reRegister(replacedHardware, projectHandle.id, "unused", " ");
+    expect(beforeTakeover.status, "token accepted before takeover").toBe(
+      HttpStatusCode.Unprocessable,
+    );
+
+    const response = await reRegister(device, projectHandle.id, otherDevice.testId);
+    expect(response.success, "re-register device").toBe(true);
+
+    const afterTakeover = await reRegister(replacedHardware, projectHandle.id, "unused", " ");
+    expect(afterTakeover.status, "old token rejected after takeover").toBe(
+      HttpStatusCode.AuthorizationError,
+    );
+    const replacement = await reRegister(otherDevice, projectHandle.id, "unused", " ");
+    expect(replacement.status, "replacement's token is accepted").toBe(
+      HttpStatusCode.Unprocessable,
+    );
   });
 
   test("Should not be able to create a device name that doesn't have any letters", async () => {
@@ -451,6 +496,78 @@ test.describe("Device re-register (user authorized)", () => {
     });
   });
 
+  test("Moving a device into another project with the name of an active device takes over that device, without moving recordings between projects", async ({
+    oneFrameCptv,
+  }) => {
+    const project = await createProjectWithUserAndDevice();
+    const projectHandle = project.projectHandle;
+    const adminUser = project.getAdminUser();
+    const AdminUser = project.api();
+    const replacedDevice = project.getDevice();
+    const stagingProject = await createProject("staging", adminUser);
+    const replacementDevice = await addDeviceToProject("replacement", stagingProject);
+
+    const replacedDeviceRecordingId = await uploadThermalRecordingFromDevice({
+      file: oneFrameCptv,
+      location: { lat: -42, lng: 170 },
+      deviceHandle: replacedDevice,
+      recordingDateTime: new Date(),
+    });
+    const replacementDeviceRecordingId = await uploadThermalRecordingFromDevice({
+      file: oneFrameCptv,
+      location: { lat: -42, lng: 170 },
+      deviceHandle: replacementDevice,
+      recordingDateTime: new Date(),
+    });
+
+    const response = await reRegisterAuthorized(
+      adminUser,
+      replacementDevice,
+      projectHandle.id,
+      replacedDevice.testId,
+    );
+    expect(response.success, "re-register device").toBe(true);
+    if (!response.success) {
+      return;
+    }
+    expect(response.result.id, "became the active device with the same name").toEqual(
+      replacedDevice.id,
+    );
+
+    expect(
+      await AdminUser.Devices.getDeviceById(replacedDevice.id),
+      "replaced device is active with the replacement's identity",
+    ).toMatchObject({
+      active: true,
+      saltId: replacementDevice.id,
+      groupId: projectHandle.id,
+    });
+    expect(
+      await AdminUser.Devices.getDeviceById(replacementDevice.id),
+      "replacement device is kept in the staging project as inactive",
+    ).toMatchObject({
+      active: false,
+      groupId: stagingProject.id,
+    });
+
+    const replacedDeviceRecordings = (await AdminUser.Recordings.getRecordingsForDeviceInProject(
+      replacedDevice.id,
+      projectHandle.id,
+    )) as ApiRecordingResponse[];
+    expect(
+      replacedDeviceRecordings.map(({ id }) => id),
+      "replaced device only has its own recording",
+    ).toEqual([replacedDeviceRecordingId]);
+    const replacementDeviceRecordings = (await AdminUser.Recordings.getRecordingsForDeviceInProject(
+      replacementDevice.id,
+      stagingProject.id,
+    )) as ApiRecordingResponse[];
+    expect(
+      replacementDeviceRecordings.map(({ id }) => id),
+      "replacement device's recording stays in the staging project",
+    ).toEqual([replacementDeviceRecordingId]);
+  });
+
   test("Re-registering within the same project with the name of an existing device takes over that device", async () => {
     const project = await createProjectWithUserAndDevice();
     const projectHandle = project.projectHandle;
@@ -482,6 +599,12 @@ test.describe("Device re-register (user authorized)", () => {
     const device = project.getDevice();
     const otherDevice = await addDeviceToProject("other", projectHandle);
 
+    const otherDeviceRecordingId = await uploadThermalRecordingFromDevice({
+      file: oneFrameCptv,
+      location: { lat: -42, lng: 170 },
+      deviceHandle: otherDevice,
+      recordingDateTime: new Date(),
+    });
     const recordingId = await uploadThermalRecordingFromDevice({
       file: oneFrameCptv,
       location: { lat: -42, lng: 170 },
@@ -512,10 +635,12 @@ test.describe("Device re-register (user authorized)", () => {
       projectHandle.id,
     )) as ApiRecordingResponse[];
     expect(
-      recordings.map(({ id }) => id),
-      "recording moved to the taken-over device",
-    ).toEqual([recordingId]);
-    expect(recordings[0].deviceId).toEqual(otherDevice.id);
+      recordings.map(({ id }) => id).sort((a, b) => a - b),
+      "taken-over device keeps its own recording, and the old device's recording is moved to it",
+    ).toEqual([otherDeviceRecordingId, recordingId].sort((a, b) => a - b));
+    for (const recording of recordings) {
+      expect(recording.deviceId).toEqual(otherDevice.id);
+    }
 
     const events = await AdminUser.Devices.getLatestEventsByDeviceId(otherDevice.id, {
       type: "rpi-power-on",

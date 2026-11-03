@@ -305,11 +305,13 @@ describe("Devices deleted, inactive, and reassigned", () => {
     },
   );
 
-  it("Reassigning a device where there's an active device in the destination group with the same name fails", () => {
+  it("Reassigning a device where there's an active device in the destination group with the same name takes over that device", () => {
+    let originalDeviceId;
     const deviceDest = "A008";
     const deviceSource = "A008a";
     cy.apiDeviceAdd(deviceDest, group2).then((deviceId) => {
       cy.log("Created device in destination group", deviceId);
+      originalDeviceId = deviceId;
       cy.apiRecordingAdd(
         deviceDest,
         { type: RecordingType.ThermalRaw, location: [-42, 170] },
@@ -327,17 +329,31 @@ describe("Devices deleted, inactive, and reassigned", () => {
                 { type: RecordingType.ThermalRaw, location: [-42, 170] },
                 "oneframe.cptv",
               ).then(() => {
-                cy.log(
-                  "Attempt to move device from source group to destination",
-                );
+                cy.log("Move device from source group to destination");
                 cy.apiDeviceReregisterAuthorized(
                   deviceSource,
                   deviceDest,
                   group2,
                   adminUser,
-                  null,
-                  HttpStatusCode.Unprocessable,
-                );
+                ).then((response) => {
+                  expect(response.body.id).to.equal(originalDeviceId);
+                  cy.apiDevice(
+                    adminUser,
+                    deviceSource,
+                    true,
+                    HttpStatusCode.Ok,
+                  ).then((response) => {
+                    expect(
+                      response.body.device.active,
+                      "Source device should be inactive.",
+                    ).to.be.false;
+                  });
+                  cy.log(
+                    "Recordings don't move between groups, so the dest device only has its own recording",
+                  );
+                  cy.testCheckDeviceHasRecordings(adminUser, deviceDest, 1);
+                  cy.testCheckDeviceHasRecordings(adminUser, deviceSource, 1);
+                });
               });
             });
           },
