@@ -27,5 +27,7 @@ export const UserNamesById = new Map<UserId, string>();
 export const UserGroupNamesById = new Map<UserId, string>();
 export const DeviceNamesById = new Map<DeviceId, string>();
 export const DeviceGroupNamesByDeviceId = new Map<DeviceId, string>();
+// Used to check device JWTs. Must be updated whenever a device's uuid changes (see `Device.reRegister`).
+export const DeviceUuidsById = new Map<DeviceId, number | null>();
 export const RequesterStore = new Map<string, SessionTimingInfo[]>();
 export const RouteStore = new Map<string, SessionTimingInfo[]>();

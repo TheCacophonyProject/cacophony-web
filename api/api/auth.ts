@@ -64,6 +64,7 @@ export interface DecodedJWTToken {
   _type: string;
   activated?: boolean;
   id: number;
+  uuid?: number;
 }
 
 export interface ResetInfo {

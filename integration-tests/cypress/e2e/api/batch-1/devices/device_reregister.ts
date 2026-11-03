@@ -211,39 +211,216 @@ describe("Device reregister", () => {
     });
   });
 
-  it("But cannot re-register a device in same group with same name as another device", () => {
-    let expectedDevice5a: ApiDeviceResponse;
+  it("Re-registering with the name of another device in the same group takes over that device", () => {
+    let replacedDeviceId: number;
+    let replacementSaltId: number;
 
-    cy.log("register camera & store device details");
+    cy.log("register replacement camera & store device details");
     cy.testCreateUserGroupAndDevice("RR_user5", "RR_group5", "RR_cam5a").then(
       () => {
-        expectedDevice5a = {
-          id: getCreds("RR_cam5a").id,
-          saltId: getCreds("RR_cam5a").id,
-          deviceName: getTestName("RR_cam5a"),
-          active: true,
-          admin: true,
-          type: DeviceType.Thermal,
-          groupName: getTestName("RR_group5"),
-          groupId: getCreds("RR_group5").id,
-        };
+        replacementSaltId = getCreds("RR_cam5a").id;
       },
     );
 
-    cy.log("another pre-existing camera");
-    cy.apiDeviceAdd("RR_cam5", "RR_group5");
+    cy.log("pre-existing camera being replaced");
+    cy.apiDeviceAdd("RR_cam5", "RR_group5").then(() => {
+      replacedDeviceId = getCreds("RR_cam5").id;
+    });
 
-    cy.log("attempt to rename camera with duplicate name rejected");
+    cy.log("Add a recording to the camera being replaced");
+    cy.apiRecordingAdd(
+      "RR_cam5",
+      { type: RecordingType.ThermalRaw, location: [-42, 170] },
+      "oneframe.cptv",
+      "raRecording5b",
+    );
+
+    cy.log("Add a recording to the replacement camera");
+    cy.apiRecordingAdd(
+      "RR_cam5a",
+      { type: RecordingType.ThermalRaw, location: [-42, 170] },
+      "oneframe.cptv",
+      "raRecording5",
+    );
+
+    cy.log("rename replacement camera to the name of the camera it replaces");
     cy.apiDeviceReregister(
       "RR_cam5a",
       "RR_cam5",
       "RR_group5",
       GENERATE_PASSWORD,
       GENERATE_UNIQUE_NAME,
-      HttpStatusCode.Unprocessable,
     ).then(() => {
-      cy.log("check old device unaltered");
-      cy.apiDevicesCheckContains("RR_user5", [expectedDevice5a]);
+      expect(getCreds("RR_cam5").id).to.equal(replacedDeviceId);
+      cy.log(
+        "check replaced device is active with the replacement's identity, and the replacement device is deleted",
+      );
+      cy.apiDevicesCheck(
+        "RR_user5",
+        [
+          {
+            id: replacedDeviceId,
+            saltId: replacementSaltId,
+            deviceName: getTestName("RR_cam5"),
+            active: true,
+            admin: true,
+            type: DeviceType.Thermal,
+            groupName: getTestName("RR_group5"),
+            groupId: getCreds("RR_group5").id,
+          },
+        ],
+        { onlyActive: false },
+      );
+      cy.log(
+        "check replaced device keeps its own recording and inherits the replacement's recording",
+      );
+      cy.testCheckDeviceHasRecordings("RR_user5", "RR_cam5", 2);
+    });
+  });
+
+  it("Re-registering with the name of an active device in a different group takes over that device", () => {
+    let replacedDeviceId: number;
+    let replacementId: number;
+
+    cy.log("active camera being replaced");
+    cy.testCreateUserGroupAndDevice(
+      "RR_user_takeover",
+      "RR_group_takeover",
+      "RR_cam_takeover",
+    ).then(() => {
+      replacedDeviceId = getCreds("RR_cam_takeover").id;
+    });
+
+    cy.log("replacement camera in a staging group");
+    cy.testCreateUserGroupAndDevice(
+      "RR_user_takeoverb",
+      "RR_group_takeoverb",
+      "RR_cam_takeover_new",
+    ).then(() => {
+      replacementId = getCreds("RR_cam_takeover_new").id;
+    });
+
+    cy.log("move replacement camera into the group of the camera it replaces");
+    cy.apiDeviceReregister(
+      "RR_cam_takeover_new",
+      "RR_cam_takeover",
+      "RR_group_takeover",
+      GENERATE_PASSWORD,
+      GENERATE_UNIQUE_NAME,
+    ).then(() => {
+      expect(getCreds("RR_cam_takeover").id).to.equal(replacedDeviceId);
+      cy.log("check replaced device is active with the replacement's identity");
+      cy.apiDevicesCheck("RR_user_takeover", [
+        {
+          id: replacedDeviceId,
+          saltId: replacementId,
+          deviceName: getTestName("RR_cam_takeover"),
+          active: true,
+          admin: true,
+          type: DeviceType.Thermal,
+          groupName: getTestName("RR_group_takeover"),
+          groupId: getCreds("RR_group_takeover").id,
+        },
+      ]);
+      cy.log("check replacement device is kept in staging group as inactive");
+      cy.apiDevicesCheck(
+        "RR_user_takeoverb",
+        [
+          {
+            id: replacementId,
+            saltId: replacementId,
+            deviceName: getTestName("RR_cam_takeover_new"),
+            active: false,
+            admin: true,
+            type: DeviceType.Thermal,
+            groupName: getTestName("RR_group_takeoverb"),
+            groupId: getCreds("RR_group_takeoverb").id,
+          },
+        ],
+        { onlyActive: false },
+      );
+    });
+  });
+
+  it("Moving a device back and forth between groups reactivates the device in the destination group", () => {
+    let homeId: number;
+    let awayId: number;
+    const expectedDevice = (
+      id: number,
+      groupName: string,
+      active: boolean,
+    ): ApiDeviceResponse => ({
+      id,
+      saltId: homeId,
+      deviceName: getTestName("RR_cam_loan"),
+      active,
+      admin: true,
+      type: DeviceType.Thermal,
+      groupName: getTestName(groupName),
+      groupId: getCreds(groupName).id,
+    });
+
+    cy.testCreateUserGroupAndDevice(
+      "RR_user_loan",
+      "RR_group_loan",
+      "RR_cam_loan",
+    ).then(() => {
+      homeId = getCreds("RR_cam_loan").id;
+    });
+    cy.testCreateUserAndGroup("RR_user_loanb", "RR_group_loanb");
+
+    cy.log("loan device out");
+    cy.apiDeviceReregister(
+      "RR_cam_loan",
+      "RR_cam_loan",
+      "RR_group_loanb",
+      GENERATE_PASSWORD,
+      GENERATE_UNIQUE_NAME,
+    ).then(() => {
+      awayId = getCreds("RR_cam_loan").id;
+      expect(awayId).to.not.equal(homeId);
+    });
+
+    cy.log("move device back home");
+    cy.apiDeviceReregister(
+      "RR_cam_loan",
+      "RR_cam_loan",
+      "RR_group_loan",
+      GENERATE_PASSWORD,
+      GENERATE_UNIQUE_NAME,
+    ).then(() => {
+      expect(getCreds("RR_cam_loan").id).to.equal(homeId);
+      cy.apiDevicesCheck(
+        "RR_user_loan",
+        [expectedDevice(homeId, "RR_group_loan", true)],
+        { onlyActive: false },
+      );
+      cy.apiDevicesCheck(
+        "RR_user_loanb",
+        [expectedDevice(awayId, "RR_group_loanb", false)],
+        { onlyActive: false },
+      );
+    });
+
+    cy.log("loan device out again");
+    cy.apiDeviceReregister(
+      "RR_cam_loan",
+      "RR_cam_loan",
+      "RR_group_loanb",
+      GENERATE_PASSWORD,
+      GENERATE_UNIQUE_NAME,
+    ).then(() => {
+      expect(getCreds("RR_cam_loan").id).to.equal(awayId);
+      cy.apiDevicesCheck(
+        "RR_user_loan",
+        [expectedDevice(homeId, "RR_group_loan", false)],
+        { onlyActive: false },
+      );
+      cy.apiDevicesCheck(
+        "RR_user_loanb",
+        [expectedDevice(awayId, "RR_group_loanb", true)],
+        { onlyActive: false },
+      );
     });
   });
 

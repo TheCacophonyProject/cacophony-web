@@ -29,7 +29,7 @@ import { Station } from "@models/Station.js";
 import { Schedule } from "@models/Schedule.js";
 import { UserGlobalPermission } from "@typedefs/api/consts.js";
 import { urlNormaliseName } from "@/emails/htmlEmailUtils.js";
-import { SuperUsers } from "@/Globals.js";
+import { DeviceUuidsById, SuperUsers } from "@/Globals.js";
 import { Alert } from "@models/Alert.js";
 import { Event } from "@models/Event.js";
 import { delayMs, userShouldBeRateLimited } from "@/Server.js";
@@ -137,6 +137,29 @@ const extractJwtAuthenticatedEntityCommon = async (
         await delayMs(3000 + Math.floor(Math.random() * 4000));
       }
     } else if (type === "device") {
+      // When a device takes over another device's identity (see `Device.reRegister`), the taken-over
+      // device's uuid changes, so if the replaced hardware is still around it can no longer use its old token.
+      // NOTE: Tokens issued before uuid was added to the payload don't have it, and aren't checked.
+      if ("uuid" in jwtDecoded) {
+        if (!DeviceUuidsById.has(jwtDecoded.id)) {
+          const device = await Device.findByPk(jwtDecoded.id, {
+            attributes: ["uuid"],
+          });
+          // NOTE: Don't overwrite an entry set while we were waiting, since it may be newer than what we read.
+          if (device && !DeviceUuidsById.has(jwtDecoded.id)) {
+            DeviceUuidsById.set(jwtDecoded.id, device.uuid);
+          }
+        }
+        if (
+          !DeviceUuidsById.has(jwtDecoded.id) ||
+          DeviceUuidsById.get(jwtDecoded.id) !== jwtDecoded.uuid
+        ) {
+          // NOTE: Thrown rather than passed to next(), since our callers call next() after we return.
+          throw new AuthenticationError(
+            "Device token is no longer valid for this device, please re-authenticate.",
+          );
+        }
+      }
       response.locals.requestDevice = { id: jwtDecoded.id };
     }
   } else {
