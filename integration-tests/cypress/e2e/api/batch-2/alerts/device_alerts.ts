@@ -3,6 +3,7 @@ import { getNewIdentity } from "@commands/names";
 import { ApiAlertCondition } from "@typedefs/api/alerts";
 import { createExpectedAlert } from "@commands/api/alerts";
 import { createExpectedEvent } from "@commands/api/events";
+import { startMailServerStub } from "@commands/emailUtils";
 
 import { HttpStatusCode, RecordingProcessingState } from "@typedefs/api/consts";
 
@@ -13,6 +14,9 @@ describe("Devices alerts", () => {
   const POSSUM_ALERT: ApiAlertCondition[] = [
     { tag: "possum", automatic: true },
   ];
+
+  // Alert events are only recorded if the alert email sends successfully.
+  before(startMailServerStub);
 
   it("Cannot create alert without access permissions", () => {
     const usera = getNewIdentity("alice");
