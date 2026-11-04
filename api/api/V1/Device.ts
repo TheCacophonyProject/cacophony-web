@@ -36,7 +36,6 @@ import {
   fetchAuthorizedRequiredDeviceInGroup,
   fetchAuthorizedRequiredDevices,
   fetchAuthorizedRequiredGroupById,
-  fetchAuthorizedRequiredGroupByNameOrId,
   fetchUnauthorizedRequiredGroupByNameOrId,
   fetchUnauthorizedRequiredScheduleById,
 } from "../extract-middleware.js";
@@ -349,8 +348,8 @@ export default function (app: Application, baseUrl: string) {
    * @apiName ReregisterAuthorized
    * @apiGroup Device
    * @apiDescription This call is to reregister a device, authorized by a user, to change the name and/or group.
-   * The user must have access to the group the device is moving to, and, if the group is changing,
-   * be an admin of the group the device is moving from.  At least one of `newName` and `newGroup` must be supplied.
+   * The user must be an admin of the group the device is moving to (or the device's current group, if `newGroup`
+   * isn't supplied).  At least one of `newName` and `newGroup` must be supplied.
    *
    * If a device with the same name already exists in the destination group, this move is considered to be a replacement
    * device, so this device takes it over. See `Device.reRegister` for details.
@@ -381,8 +380,8 @@ export default function (app: Application, baseUrl: string) {
     ]),
     async (request: Request, response: Response, next: NextFunction) => {
       if (request.body.newGroup) {
-        // The user should control the group the device is moving into
-        await fetchAuthorizedRequiredGroupByNameOrId(body("newGroup"))(
+        // The user should be an admin of the group the device is moving into
+        await fetchAdminAuthorizedRequiredGroupByNameOrId(body("newGroup"))(
           request,
           response,
           next,

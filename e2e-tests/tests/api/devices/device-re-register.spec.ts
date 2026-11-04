@@ -1,6 +1,7 @@
 import { expect, test } from "@/helpers/upload-tests";
 import {
   addDeviceToProject,
+  addUserToProject,
   createProject,
   createProjectWithUserAndDevice,
   createUser,
@@ -720,6 +721,19 @@ test.describe("Device re-register (user authorized)", () => {
     const devices = await getActiveDevicesForUser(adminUser);
     expect(devices, "device is unaltered").toHaveLength(1);
     expect(devices[0]).toMatchObject({ active: true, groupId: project.projectHandle.id });
+  });
+
+  test("Cannot move a device to a project the authorizing user is only a member of", async () => {
+    const project = await createProjectWithUserAndDevice();
+    const otherOwner = await createUser("other");
+    const otherProject = await createProjectWithUserAndDevice();
+    await addUserToProject(otherProject, otherOwner);
+
+    const response = await reRegisterAuthorized(otherOwner, project.getDevice(), otherProject.projectHandle.id);
+    expect(response.success, "re-registering without admin on destination project failed").toBe(
+      false,
+    );
+    expect(response.status).toBe(HttpStatusCode.Forbidden);
   });
 
   test("Cannot re-register with an invalid password", async () => {
