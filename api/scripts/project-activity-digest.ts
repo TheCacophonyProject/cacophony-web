@@ -408,7 +408,10 @@ try {
         order: [["recordingDateTime", "DESC"]],
         limit: 1,
       });
-      if (groupTimezoneRecording) {
+      if (!groupTimezoneRecording) {
+        // No recordings for project yet, can't determine timezone, and no activity
+        continue;
+      } else {
         const timeZone = tzLookup(
           groupTimezoneRecording.location.lat,
           groupTimezoneRecording.location.lng,
