@@ -46,6 +46,30 @@ export enum DeviceThermalModelOutputLabel {
   wallaby = "wallaby",
 }
 
+// The confidence from 0 to 100 that the device's classifier needs for each species
+// to trap or protect. They are tuned for the classifier, so aren't set by users.
+export const TrapSpeciesConfidence: Record<
+  DeviceThermalModelOutputLabel,
+  number
+> = {
+  bird: 80,
+  cat: 80,
+  deer: 80,
+  dog: 80,
+  "false-positive": 80,
+  hedgehog: 80,
+  human: 80,
+  kiwi: 80,
+  leporidae: 80,
+  mustelid: 80,
+  penguin: 80,
+  possum: 80,
+  rodent: 80,
+  sheep: 80,
+  vehicle: 80,
+  wallaby: 80,
+};
+
 export enum ServerThermalModelOutputLabel {
   bird = "bird",
   cat = "cat",
