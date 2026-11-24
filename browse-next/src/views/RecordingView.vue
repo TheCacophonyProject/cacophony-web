@@ -607,8 +607,12 @@ interface Timespan {
 const deviceSettingsMap = new Map<DeviceId, Timespan[]>();
 
 const deviceHasReferencePhotoAtRecordingTime = ref<boolean>(false);
+// Start of the validity period of the reference photo for the current recording,
+// used by the player to cache photos.
+const referencePhotoValidFrom = ref<string | null>(null);
 const checkReferencePhotoAtTime = async (deviceId: DeviceId, atTime: Date) => {
   deviceHasReferencePhotoAtRecordingTime.value = false;
+  referencePhotoValidFrom.value = null;
   if (deviceSettingsMap.has(deviceId)) {
     const validTimespans = deviceSettingsMap.get(deviceId);
     const matchingTimespan = (validTimespans as Timespan[]).find(
@@ -617,6 +621,8 @@ const checkReferencePhotoAtTime = async (deviceId: DeviceId, atTime: Date) => {
         (!timespan.untilDateTime || timespan.untilDateTime > atTime),
     );
     if (matchingTimespan) {
+      referencePhotoValidFrom.value =
+        matchingTimespan.fromDateTime.toISOString();
       deviceHasReferencePhotoAtRecordingTime.value = true;
       return;
     }
@@ -650,6 +656,8 @@ const checkReferencePhotoAtTime = async (deviceId: DeviceId, atTime: Date) => {
         fromDateTime: Date;
       }[]
     ).push(photoValidityTimespan);
+    referencePhotoValidFrom.value =
+      photoValidityTimespan.fromDateTime.toISOString();
     deviceHasReferencePhotoAtRecordingTime.value = true;
   }
 };
@@ -1323,6 +1331,7 @@ const getLocationName = (
             :export-requested="exportRequested"
             :display-header-info="showHeaderInfo"
             :has-reference-photo="deviceHasReferencePhotoAtRecordingTime"
+            :reference-photo-valid-from="referencePhotoValidFrom"
             @export-completed="exportCompleted"
             @request-next-recording="gotoNextRecordingOrVisit"
             @request-prev-recording="gotoPreviousRecordingOrVisit"

@@ -31,7 +31,9 @@ import type {
   DeviceModelOutput,
   TrapMode,
   TrapSettings,
+  TrapSpeciesConfidences,
 } from "@typedefs/api/device";
+import { TrapSpeciesConfidence } from "@typedefs/api/consts.ts";
 import { recordingWindowDescriptionForSettings } from "@/components/recordingWindowUtils.ts";
 import { currentSelectedProject } from "@models/provides.ts";
 import {
@@ -85,9 +87,8 @@ const deviceId = Number(route.params.deviceId) as DeviceId;
 
 const defaultTrapState = (): TrapSettings => ({
   enabled: false,
-  target: [],
-  hasKillMechanism: false,
-  protect: [],
+  target: {},
+  protect: {},
   defaultState: "armed",
   updated: new Date().toISOString(),
 });
@@ -130,15 +131,19 @@ watch(trapMode, (nextMode: TrapMode, prevMode: TrapMode) => {
   }
 });
 
+// Users choose the species, and each gets the confidence tuned for it.
+const withConfidences = (tags: DeviceModelOutput[]): TrapSpeciesConfidences =>
+  Object.fromEntries(tags.map((tag) => [tag, TrapSpeciesConfidence[tag]]));
+
 const saveCaptureTargetTags = (tags: DeviceModelOutput[]) => {
   settings.value!.trap = settings.value!.trap || defaultTrapState();
-  settings.value!.trap.target = tags;
+  settings.value!.trap.target = withConfidences(tags);
   settings.value!.trap.updated = new Date().toISOString();
 };
 
 const saveProtectTargetTags = (tags: DeviceModelOutput[]) => {
   settings.value!.trap = settings.value!.trap || defaultTrapState();
-  settings.value!.trap.protect = tags;
+  settings.value!.trap.protect = withConfidences(tags);
   settings.value!.trap.updated = new Date().toISOString();
 };
 
@@ -159,10 +164,12 @@ const recordingWindow = computed<string | null>(() => {
 });
 
 const captureTargetTags = computed<DeviceModelOutput[]>(() => {
-  return settings.value?.trap?.target || [];
+  return Object.keys(settings.value?.trap?.target || {}) as DeviceModelOutput[];
 });
 const protectTags = computed<DeviceModelOutput[]>(() => {
-  return settings.value?.trap?.protect || [];
+  return Object.keys(
+    settings.value?.trap?.protect || {},
+  ) as DeviceModelOutput[];
 });
 
 const settingsUpdated = async (

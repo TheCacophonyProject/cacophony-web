@@ -28,10 +28,9 @@ test("A user sets trap configuration", async () => {
   const device = new DeviceSim(deviceHandle);
 
   const trapSettings: TrapSettings = {
-    protect: [],
-    target: [],
+    protect: {},
+    target: {},
     defaultState: "armed",
-    hasKillMechanism: true,
     updated: addMinutes(initialDateTime, 1).toISOString(),
     enabled: true,
   };
@@ -66,7 +65,7 @@ test("A user sets trap configuration", async () => {
   await AdminUser.Devices.updateDeviceSettings(deviceHandle.id, {
     trap: {
       ...trapSettings,
-      protect: ["bird"],
+      protect: { bird: 80 },
       updated: addMinutes(initialDateTime, 2).toISOString(),
     },
   });
@@ -92,10 +91,9 @@ test("A device polls for actions", async ({ smallCptv }) => {
   const device = new DeviceSim(deviceHandle);
   await confirmEmailAddressViaApi(userHandle);
   const trapSettings: TrapSettings = {
-    protect: ["bird"],
-    target: ["possum", "cat"],
+    protect: { bird: 80 },
+    target: { possum: 80, cat: 80 },
     defaultState: "armed",
-    hasKillMechanism: true,
     updated: addMinutes(initialDateTime, 1).toISOString(),
     enabled: true,
   };
@@ -304,10 +302,9 @@ test("A user gets a notification email if there is a trap action pending, unless
   const deviceHandle = project.getDevice();
   const device = new DeviceSim(deviceHandle);
   const trapSettings: TrapSettings = {
-    protect: ["bird"],
-    target: ["possum", "cat"],
+    protect: { bird: 80 },
+    target: { possum: 80, cat: 80 },
     defaultState: "armed",
-    hasKillMechanism: true,
     updated: addMinutes(initialDateTime, 1).toISOString(),
     enabled: true,
   };

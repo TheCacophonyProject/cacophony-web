@@ -729,7 +729,11 @@ test.describe("Device re-register (user authorized)", () => {
     const otherProject = await createProjectWithUserAndDevice();
     await addUserToProject(otherProject, otherOwner);
 
-    const response = await reRegisterAuthorized(otherOwner, project.getDevice(), otherProject.projectHandle.id);
+    const response = await reRegisterAuthorized(
+      otherOwner,
+      project.getDevice(),
+      otherProject.projectHandle.id,
+    );
     expect(response.success, "re-registering without admin on destination project failed").toBe(
       false,
     );

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import TracksScrubber from "@/components/TracksScrubber.vue";
 import type { ApiRecordingResponse } from "@typedefs/api/recording";
+import type { DeviceId } from "@typedefs/api/common";
 import {
   computed,
   type ComputedRef,
@@ -97,6 +98,7 @@ const props = withDefaults(
     hasNext?: boolean;
     hasPrev?: boolean;
     hasReferencePhoto?: boolean;
+    referencePhotoValidFrom?: string | null;
     displayHeaderInfo?: boolean;
     exportRequested?: boolean | "advanced" | "download";
     downloadProgress?: number;
@@ -108,6 +110,7 @@ const props = withDefaults(
     hasNext: false,
     hasPrev: false,
     hasReferencePhoto: false,
+    referencePhotoValidFrom: null,
     displayHeaderInfo: false,
     inTextEditMode: false,
   },
@@ -1375,8 +1378,30 @@ const togglePlayback = async (): Promise<void> => {
 const referenceImageURL = ref<string | null>(null);
 const showingReferencePhoto = ref<boolean>(true);
 const referenceOpacity = ref<number>(0.3);
+// Per-device LRU cache of reference image object URLs, keyed by the start of the
+// photo's validity period (a device may have different photos over time).
+const MAX_CACHED_REFERENCE_IMAGES_PER_DEVICE = 5;
+const referenceImageCache = new Map<DeviceId, Map<string, string>>();
+let uncachedReferenceImageURL: string | null = null;
+const clearReferenceImageUrl = () => {
+  // Cached URLs are revoked on eviction/unmount, not here.
+  referenceImageURL.value = null;
+};
 const loadReferenceImageUrl = async () => {
   const rec = props.recording as ApiRecordingResponse;
+  if (!rec) {
+    return;
+  }
+  const validFrom = props.referencePhotoValidFrom;
+  let deviceCache = referenceImageCache.get(rec.deviceId);
+  if (validFrom && deviceCache?.has(validFrom)) {
+    // Re-insert to mark as most recently used.
+    const url = deviceCache.get(validFrom) as string;
+    deviceCache.delete(validFrom);
+    deviceCache.set(validFrom, url);
+    referenceImageURL.value = url;
+    return;
+  }
   // Load the reference photo.
   const referenceImageResponse =
     await ClientApi.Devices.getReferenceImageForDeviceAtTime(
@@ -1384,10 +1409,34 @@ const loadReferenceImageUrl = async () => {
       new Date(rec.recordingDateTime),
       true,
     );
+  // Ignore stale responses if we've navigated to a different recording meanwhile.
+  if (
+    (props.recording as ApiRecordingResponse | null)?.id !== rec.id ||
+    !showingReferencePhoto.value
+  ) {
+    return;
+  }
   if (referenceImageResponse.success) {
-    referenceImageURL.value = URL.createObjectURL(
-      referenceImageResponse.result,
-    );
+    const url = URL.createObjectURL(referenceImageResponse.result);
+    if (validFrom) {
+      if (!deviceCache) {
+        deviceCache = new Map();
+        referenceImageCache.set(rec.deviceId, deviceCache);
+      }
+      deviceCache.set(validFrom, url);
+      while (deviceCache.size > MAX_CACHED_REFERENCE_IMAGES_PER_DEVICE) {
+        const oldest = deviceCache.keys().next().value as string;
+        URL.revokeObjectURL(deviceCache.get(oldest) as string);
+        deviceCache.delete(oldest);
+      }
+    } else {
+      // Not cacheable without a validity period, so we own this URL directly.
+      if (uncachedReferenceImageURL) {
+        URL.revokeObjectURL(uncachedReferenceImageURL);
+      }
+      uncachedReferenceImageURL = url;
+    }
+    referenceImageURL.value = url;
   }
 };
 
@@ -1744,6 +1793,15 @@ onMounted(async () => {
   pollFrameTimes();
 });
 onBeforeUnmount(() => {
+  for (const deviceCache of referenceImageCache.values()) {
+    for (const url of deviceCache.values()) {
+      URL.revokeObjectURL(url);
+    }
+  }
+  referenceImageCache.clear();
+  if (uncachedReferenceImageURL) {
+    URL.revokeObjectURL(uncachedReferenceImageURL);
+  }
   window.removeEventListener("keydown", handleKeyboardControls);
 });
 
@@ -2040,8 +2098,18 @@ const moveRevealHandle = (event: PointerEvent) => {
   }
 };
 watch(
-  () => props.hasReferencePhoto,
-  async (hasRef) => {
+  () => [
+    props.hasReferencePhoto,
+    props.recording?.id,
+    props.recording?.deviceId,
+    props.recording?.recordingDateTime,
+    props.referencePhotoValidFrom,
+  ],
+  async ([hasRef], [_prevHasRef, prevId]) => {
+    if (props.recording?.id !== prevId) {
+      // Never keep showing the previous recording's reference photo.
+      clearReferenceImageUrl();
+    }
     if (!hasRef && showingReferencePhoto.value) {
       showingReferencePhoto.value = false;
     } else if (hasRef) {
