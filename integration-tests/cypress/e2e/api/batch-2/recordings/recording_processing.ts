@@ -122,7 +122,7 @@ describe("Recordings - processing tests", () => {
       );
     });
 
-    it("Recordings with old format", () => {
+    it("Recordings uploaded with tracks in metadata (old format) do not get tracks created", () => {
       const templateWithTrack = JSON.parse(
         JSON.stringify(TEMPLATE_THERMAL_RECORDING),
       );
@@ -140,6 +140,7 @@ describe("Recordings - processing tests", () => {
         "oneframe.cptv",
         "rpRecording18",
       ).then(() => {
+        // NOTE: Expected data is built as if metadata.tracks were deleted.
         const expectedRecording18 = TestCreateExpectedRecordingData(
           templateExpectedThermalRecording,
           "rpRecording18",
@@ -148,20 +149,8 @@ describe("Recordings - processing tests", () => {
           null,
           recording18,
         );
-        expectedRecording18.tracks[0].filtered = false;
-        expectedRecording18.tracks[0].tags = [
-          {
-            what: "cat",
-            automatic: true,
-            confidence: 97,
-            model: "Master",
-            trackId: -99,
-            id: -99,
-            path: "all",
-          },
-        ];
         expectedRecording18.processingState = RecordingProcessingState.Finished;
-        cy.log("Check track has been made with tag");
+        cy.log("Check no tracks have been made from the uploaded metadata");
         cy.apiRecordingCheck(
           "rpGroupAdmin",
           "rpRecording18",

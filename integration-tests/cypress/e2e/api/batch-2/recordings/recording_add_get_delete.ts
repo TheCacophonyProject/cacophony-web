@@ -747,4 +747,34 @@ describe("Recordings (thermal): add, get, delete", () => {
       200,
     );
   });
+
+  it("Uploading a thermal recording with tracks in metadata does not create tracks", () => {
+    const recordingWithTracks: ApiRecordingSet = TestCreateRecordingData(
+      JSON.parse(JSON.stringify(TEMPLATE_THERMAL_RECORDING)),
+    );
+    // Let the API choose the initial processing state.
+    delete recordingWithTracks.processingState;
+    expect(recordingWithTracks.metadata.tracks).to.have.length.greaterThan(0);
+    expect(recordingWithTracks.metadata.metadata_source).to.exist;
+
+    cy.apiRecordingAdd(
+      "raCamera1",
+      recordingWithTracks,
+      // NOTE: Needs a valid file, otherwise it is marked as corrupt when no processingState is supplied.
+      "oneframe.cptv",
+      "raRecordingWithTracks",
+    ).then((recordingId) => {
+      cy.apiRecordingGet("raGroupAdmin", recordingId).then((response) => {
+        const recording = response.body.recording;
+        expect(
+          recording.tracks,
+          "no tracks created from metadata",
+        ).to.deep.equal([]);
+        expect(
+          recording.processingState,
+          "thermal recording with metadata still needs tracking",
+        ).to.equal(RecordingProcessingState.TrackAndAnalyse);
+      });
+    });
+  });
 });

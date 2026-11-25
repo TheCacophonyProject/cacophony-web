@@ -5,7 +5,7 @@ import {
   ApiAutomaticTrackTagResponse,
 } from "@typedefs/api/trackTag";
 
-import { TestCreateExpectedRecordingData } from "@commands/api/recording-tests";
+import { TestCreateExpectedRecordingDataWithTracks } from "@commands/api/recording-tests";
 import { getCreds } from "@commands/server";
 import {
   NOT_NULL,
@@ -92,27 +92,30 @@ describe("Recording filtering", () => {
     recording2.metadata.tracks[0].predictions = [];
 
     let expectedRecording2: ApiThermalRecordingResponse;
-    cy.apiRecordingAdd("rfCamera1", recording2, undefined, "rfRecording2").then(
-      () => {
-        expectedRecording2 = TestCreateExpectedRecordingData(
-          TEMPLATE_THERMAL_RECORDING_RESPONSE,
-          "rfRecording2",
-          "rfCamera1",
-          "rfGroup",
-          null,
-          recording2,
-        );
-        expectedRecording2.tracks[0].filtered = true;
+    cy.apiRecordingAddWithMetadataTracks(
+      "rfCamera1",
+      recording2,
+      undefined,
+      "rfRecording2",
+    ).then(() => {
+      expectedRecording2 = TestCreateExpectedRecordingDataWithTracks(
+        TEMPLATE_THERMAL_RECORDING_RESPONSE,
+        "rfRecording2",
+        "rfCamera1",
+        "rfGroup",
+        null,
+        recording2,
+      );
+      expectedRecording2.tracks[0].filtered = true;
 
-        cy.log("Check recording filtered");
-        cy.apiRecordingCheck(
-          "rfGroupAdmin",
-          "rfRecording2",
-          expectedRecording2,
-          EXCLUDE_IDS,
-        );
-      },
-    );
+      cy.log("Check recording filtered");
+      cy.apiRecordingCheck(
+        "rfGroupAdmin",
+        "rfRecording2",
+        expectedRecording2,
+        EXCLUDE_IDS,
+      );
+    });
   });
 
   it("Recording upload with track and false-positive tag filtered", () => {
@@ -123,27 +126,30 @@ describe("Recording filtering", () => {
     recording3.metadata.tracks[0].predictions[0].tag = "false-positive";
 
     let expectedRecording3: ApiThermalRecordingResponse;
-    cy.apiRecordingAdd("rfCamera1", recording3, undefined, "rfRecording3").then(
-      () => {
-        expectedRecording3 = TestCreateExpectedRecordingData(
-          TEMPLATE_THERMAL_RECORDING_RESPONSE,
-          "rfRecording3",
-          "rfCamera1",
-          "rfGroup",
-          null,
-          recording3,
-        );
-        expectedRecording3.tracks[0].filtered = true;
+    cy.apiRecordingAddWithMetadataTracks(
+      "rfCamera1",
+      recording3,
+      undefined,
+      "rfRecording3",
+    ).then(() => {
+      expectedRecording3 = TestCreateExpectedRecordingDataWithTracks(
+        TEMPLATE_THERMAL_RECORDING_RESPONSE,
+        "rfRecording3",
+        "rfCamera1",
+        "rfGroup",
+        null,
+        recording3,
+      );
+      expectedRecording3.tracks[0].filtered = true;
 
-        cy.log("Check recording filtered");
-        cy.apiRecordingCheck(
-          "rfGroupAdmin",
-          "rfRecording3",
-          expectedRecording3,
-          EXCLUDE_IDS,
-        );
-      },
-    );
+      cy.log("Check recording filtered");
+      cy.apiRecordingCheck(
+        "rfGroupAdmin",
+        "rfRecording3",
+        expectedRecording3,
+        EXCLUDE_IDS,
+      );
+    });
   });
 
   it("Recording upload with track and animal tag not filtered", () => {
@@ -154,27 +160,30 @@ describe("Recording filtering", () => {
     recording4.metadata.tracks[0].predictions[0].confident_tag = "cat";
 
     let expectedRecording4: ApiThermalRecordingResponse;
-    cy.apiRecordingAdd("rfCamera1", recording4, undefined, "rfRecording4").then(
-      () => {
-        expectedRecording4 = TestCreateExpectedRecordingData(
-          TEMPLATE_THERMAL_RECORDING_RESPONSE,
-          "rfRecording4",
-          "rfCamera1",
-          "rfGroup",
-          null,
-          recording4,
-        );
-        expectedRecording4.tracks[0].filtered = false;
+    cy.apiRecordingAddWithMetadataTracks(
+      "rfCamera1",
+      recording4,
+      undefined,
+      "rfRecording4",
+    ).then(() => {
+      expectedRecording4 = TestCreateExpectedRecordingDataWithTracks(
+        TEMPLATE_THERMAL_RECORDING_RESPONSE,
+        "rfRecording4",
+        "rfCamera1",
+        "rfGroup",
+        null,
+        recording4,
+      );
+      expectedRecording4.tracks[0].filtered = false;
 
-        cy.log("Check recording NOT filtered");
-        cy.apiRecordingCheck(
-          "rfGroupAdmin",
-          "rfRecording4",
-          expectedRecording4,
-          EXCLUDE_IDS,
-        );
-      },
-    );
+      cy.log("Check recording NOT filtered");
+      cy.apiRecordingCheck(
+        "rfGroupAdmin",
+        "rfRecording4",
+        expectedRecording4,
+        EXCLUDE_IDS,
+      );
+    });
   });
 
   //******************************************************************************************
@@ -192,7 +201,12 @@ describe("Recording filtering", () => {
     );
 
     let expectedRecording5: ApiThermalRecordingResponse;
-    cy.apiRecordingAdd("rfCamera1", recording5, undefined, "rfRecording5");
+    cy.apiRecordingAddWithMetadataTracks(
+      "rfCamera1",
+      recording5,
+      undefined,
+      "rfRecording5",
+    );
 
     cy.apiTrackAdd(
       "rfGroupAdmin",
@@ -202,7 +216,7 @@ describe("Recording filtering", () => {
       track5,
       algorithm1,
     ).then(() => {
-      expectedRecording5 = TestCreateExpectedRecordingData(
+      expectedRecording5 = TestCreateExpectedRecordingDataWithTracks(
         TEMPLATE_THERMAL_RECORDING_RESPONSE,
         "rfRecording5",
         "rfCamera1",
@@ -239,7 +253,12 @@ describe("Recording filtering", () => {
       );
 
       let expectedRecording5b: ApiThermalRecordingResponse;
-      cy.apiRecordingAdd("rfCamera1", recording5b, undefined, "rfRecording5b");
+      cy.apiRecordingAddWithMetadataTracks(
+        "rfCamera1",
+        recording5b,
+        undefined,
+        "rfRecording5b",
+      );
 
       cy.processingApiAlgorithmPost(superuser, {
         "tracking-format": 42,
@@ -252,7 +271,7 @@ describe("Recording filtering", () => {
           track5b,
           algorithmId,
         ).then(() => {
-          expectedRecording5b = TestCreateExpectedRecordingData(
+          expectedRecording5b = TestCreateExpectedRecordingDataWithTracks(
             TEMPLATE_THERMAL_RECORDING_RESPONSE,
             "rfRecording5b",
             "rfCamera1",
@@ -302,7 +321,12 @@ describe("Recording filtering", () => {
     let expectedRecording6: ApiThermalRecordingResponse;
 
     cy.log("Add recording, track and tag");
-    cy.apiRecordingAdd("rfCamera1", recording6, undefined, "rfRecording6");
+    cy.apiRecordingAddWithMetadataTracks(
+      "rfCamera1",
+      recording6,
+      undefined,
+      "rfRecording6",
+    );
     cy.apiTrackAdd(
       "rfGroupAdmin",
       "rfRecording6",
@@ -318,7 +342,7 @@ describe("Recording filtering", () => {
       "rfTag6.1.1",
       tag6,
     ).then(() => {
-      expectedRecording6 = TestCreateExpectedRecordingData(
+      expectedRecording6 = TestCreateExpectedRecordingDataWithTracks(
         TEMPLATE_THERMAL_RECORDING_RESPONSE,
         "rfRecording6",
         "rfCamera1",
@@ -358,7 +382,12 @@ describe("Recording filtering", () => {
     let expectedRecording7: ApiThermalRecordingResponse;
 
     cy.log("Add recording, track and tag");
-    cy.apiRecordingAdd("rfCamera1", recording7, undefined, "rfRecording7");
+    cy.apiRecordingAddWithMetadataTracks(
+      "rfCamera1",
+      recording7,
+      undefined,
+      "rfRecording7",
+    );
     cy.apiTrackAdd(
       "rfGroupAdmin",
       "rfRecording7",
@@ -374,7 +403,7 @@ describe("Recording filtering", () => {
       "rfTag7.1.1",
       tag7,
     ).then(() => {
-      expectedRecording7 = TestCreateExpectedRecordingData(
+      expectedRecording7 = TestCreateExpectedRecordingDataWithTracks(
         TEMPLATE_THERMAL_RECORDING_RESPONSE,
         "rfRecording7",
         "rfCamera1",
@@ -417,7 +446,12 @@ describe("Recording filtering", () => {
       expectedTag8.what = "false-positive";
 
       cy.log("Add recording, track and tag");
-      cy.apiRecordingAdd("rfCamera1", recording8, undefined, "rfRecording8");
+      cy.apiRecordingAddWithMetadataTracks(
+        "rfCamera1",
+        recording8,
+        undefined,
+        "rfRecording8",
+      );
       cy.apiTrackAdd(
         "rfGroupAdmin",
         "rfRecording8",
@@ -426,7 +460,7 @@ describe("Recording filtering", () => {
         track8,
         algorithm1,
       ).then(() => {
-        const expectedRecording8 = TestCreateExpectedRecordingData(
+        const expectedRecording8 = TestCreateExpectedRecordingDataWithTracks(
           TEMPLATE_THERMAL_RECORDING_RESPONSE,
           "rfRecording8",
           "rfCamera1",
@@ -480,7 +514,12 @@ describe("Recording filtering", () => {
       expectedTag9.what = "possum";
 
       cy.log("Add recording, track and tag");
-      cy.apiRecordingAdd("rfCamera1", recording9, undefined, "rfRecording9");
+      cy.apiRecordingAddWithMetadataTracks(
+        "rfCamera1",
+        recording9,
+        undefined,
+        "rfRecording9",
+      );
       cy.apiTrackAdd(
         "rfGroupAdmin",
         "rfRecording9",
@@ -489,7 +528,7 @@ describe("Recording filtering", () => {
         track9,
         algorithm1,
       ).then(() => {
-        const expectedRecording9 = TestCreateExpectedRecordingData(
+        const expectedRecording9 = TestCreateExpectedRecordingDataWithTracks(
           TEMPLATE_THERMAL_RECORDING_RESPONSE,
           "rfRecording9",
           "rfCamera1",
@@ -547,7 +586,12 @@ describe("Recording filtering", () => {
       expectedTag10.what = "possum";
 
       let expectedRecording10: ApiThermalRecordingResponse;
-      cy.apiRecordingAdd("rfCamera1", recording10, undefined, "rfRecording10");
+      cy.apiRecordingAddWithMetadataTracks(
+        "rfCamera1",
+        recording10,
+        undefined,
+        "rfRecording10",
+      );
       cy.apiTrackAdd(
         "rfGroupAdmin",
         "rfRecording10",
@@ -564,7 +608,7 @@ describe("Recording filtering", () => {
         95,
         { name: "Master" },
       ).then(() => {
-        expectedRecording10 = TestCreateExpectedRecordingData(
+        expectedRecording10 = TestCreateExpectedRecordingDataWithTracks(
           TEMPLATE_THERMAL_RECORDING_RESPONSE,
           "rfRecording10",
           "rfCamera1",
@@ -636,7 +680,12 @@ describe("Recording filtering", () => {
       expectedTag11.what = "false-positive";
 
       let expectedRecording11: ApiThermalRecordingResponse;
-      cy.apiRecordingAdd("rfCamera1", recording11, undefined, "rfRecording11");
+      cy.apiRecordingAddWithMetadataTracks(
+        "rfCamera1",
+        recording11,
+        undefined,
+        "rfRecording11",
+      );
       cy.apiTrackAdd(
         "rfGroupAdmin",
         "rfRecording11",
@@ -653,7 +702,7 @@ describe("Recording filtering", () => {
         95,
         { name: "Master" },
       ).then(() => {
-        expectedRecording11 = TestCreateExpectedRecordingData(
+        expectedRecording11 = TestCreateExpectedRecordingDataWithTracks(
           TEMPLATE_THERMAL_RECORDING_RESPONSE,
           "rfRecording11",
           "rfCamera1",
@@ -726,7 +775,12 @@ describe("Recording filtering", () => {
     expectedTag18.what = "cat";
 
     cy.log("Add recording, track and tag");
-    cy.apiRecordingAdd("rfCamera1", recording18, undefined, "rfRecording18");
+    cy.apiRecordingAddWithMetadataTracks(
+      "rfCamera1",
+      recording18,
+      undefined,
+      "rfRecording18",
+    );
     cy.apiTrackAdd(
       "rfGroupAdmin",
       "rfRecording18",
@@ -742,7 +796,7 @@ describe("Recording filtering", () => {
       "rfTag18.1.1",
       tag18,
     ).then(() => {
-      expectedRecording18 = TestCreateExpectedRecordingData(
+      expectedRecording18 = TestCreateExpectedRecordingDataWithTracks(
         TEMPLATE_THERMAL_RECORDING_RESPONSE,
         "rfRecording18",
         "rfCamera1",
@@ -800,13 +854,13 @@ describe("Recording filtering", () => {
       recording19.metadata.tracks[0].predictions[0].tag = thistag;
 
       let expectedRecording19: ApiThermalRecordingResponse;
-      cy.apiRecordingAdd(
+      cy.apiRecordingAddWithMetadataTracks(
         "rfCamera1",
         recording19,
         undefined,
         "rfRecording19",
       ).then(() => {
-        expectedRecording19 = TestCreateExpectedRecordingData(
+        expectedRecording19 = TestCreateExpectedRecordingDataWithTracks(
           TEMPLATE_THERMAL_RECORDING_RESPONSE,
           "rfRecording19",
           "rfCamera1",
@@ -836,7 +890,7 @@ describe("Recording filtering", () => {
       return recording;
     });
     const expectedRecordings = recordings.map((recording) => {
-      const expected = TestCreateExpectedRecordingData(
+      const expected = TestCreateExpectedRecordingDataWithTracks(
         TEMPLATE_THERMAL_RECORDING_RESPONSE,
         "rfRecording19",
         "rfCamera1",
@@ -850,7 +904,7 @@ describe("Recording filtering", () => {
     for (let i = 0; i < recordings.length; i++) {
       const recording = recordings[i];
       const expectedRecording = expectedRecordings[i];
-      cy.apiRecordingAdd(
+      cy.apiRecordingAddWithMetadataTracks(
         "rfCamera1",
         recording,
         undefined,
@@ -895,7 +949,12 @@ describe("Recording filtering", () => {
       tag20_2.what = "possum";
 
       cy.log("Add recording, track and automatic tag (false-positive)");
-      cy.apiRecordingAdd("rfCamera1", recording20, undefined, "rfRecording20");
+      cy.apiRecordingAddWithMetadataTracks(
+        "rfCamera1",
+        recording20,
+        undefined,
+        "rfRecording20",
+      );
       cy.apiTrackAdd(
         "rfGroupAdmin",
         "rfRecording20",
@@ -912,7 +971,7 @@ describe("Recording filtering", () => {
         95,
         { name: "Master" },
       ).then(() => {
-        const expectedRecording20 = TestCreateExpectedRecordingData(
+        const expectedRecording20 = TestCreateExpectedRecordingDataWithTracks(
           TEMPLATE_THERMAL_RECORDING_RESPONSE,
           "rfRecording20",
           "rfCamera1",
@@ -983,7 +1042,12 @@ describe("Recording filtering", () => {
       tag21.what = "false-positive";
 
       cy.log("Add recording, track and automatic tag (possum)");
-      cy.apiRecordingAdd("rfCamera1", recording21, undefined, "rfRecording21");
+      cy.apiRecordingAddWithMetadataTracks(
+        "rfCamera1",
+        recording21,
+        undefined,
+        "rfRecording21",
+      );
       cy.apiTrackAdd(
         "rfGroupAdmin",
         "rfRecording21",
@@ -1000,7 +1064,7 @@ describe("Recording filtering", () => {
         95,
         { name: "Master" },
       ).then(() => {
-        const expectedRecording21 = TestCreateExpectedRecordingData(
+        const expectedRecording21 = TestCreateExpectedRecordingDataWithTracks(
           TEMPLATE_THERMAL_RECORDING_RESPONSE,
           "rfRecording21",
           "rfCamera1",

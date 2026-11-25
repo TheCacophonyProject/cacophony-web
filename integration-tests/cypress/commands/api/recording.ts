@@ -30,6 +30,11 @@ import {
 } from "@commands/dataTemplate";
 import { TestCreateRecordingData } from "@commands/api/recording-tests";
 import { TestGetLocationArray } from "@commands/api/station";
+import {
+  hasMetadataTracks,
+  metadataTracksToProcessingTracks,
+  withoutMetadataTracks,
+} from "@/helpers/metadata-tracks";
 
 // 1,thermalRaw,cy_rreGroup_4b6009cc,cy_rreCamera1_4b6009cc,,2021-07-18,08:13:17,-45.29115,169.30845,15.6666666666667,,,1,cat,,,http://test.site/recording/1,,"
 
@@ -106,6 +111,30 @@ declare global {
         algorithmId: number,
         statusCode?: HttpStatusCode,
       ): Chainable<void>;
+
+      /** Recordings uploaded with metadata.tracks no longer get tracks created at upload time.
+       * Signs in as the test superuser (if needed) and posts the tracks in `metadata` using
+       * processingApiTracksAndTagsPost, as the processing pipeline would.
+       * Tracks are saved as `${recordingName}-track` (or `-track-N` when there are several).
+       * If recordingName is null, the id is saved under a generated name first.
+       * Yields the recordingId.
+       */
+      /** Push a recording through the end of the processing pipeline, as the processing service would:
+       * as the test superuser, request that specific recording for processing (saving its jobKey), then
+       * mark the job as successfully done.  For a thermal recording in `trackAndAnalyse` this moves it to
+       * `finished`, which is when the API sends any alerts.
+       */
+      processingApiFinishRecording(
+        recordingName: string,
+        type?: RecordingType,
+        states?: RecordingProcessingState[],
+      ): Chainable<void>;
+
+      processingApiAddTracksFromMetadata(
+        recordingId: RecordingId,
+        recordingName: string | null,
+        metadata: unknown,
+      ): Chainable<RecordingId>;
 
       /** Post to /api/fileProcessing/:id/tracks/:trackId/tagsBulk
        * recordingId is looked up using recordingName
@@ -185,6 +214,20 @@ declare global {
        * Optionally, check for a non-200 return statusCode
        */
       apiRecordingAdd(
+        deviceName: string,
+        data: ApiRecordingSet,
+        fileName?: string | { filename: string; key: string }[],
+        recordingName?: string,
+        statusCode?: number,
+        additionalChecks?: { message?: string },
+        filenameToUse?: string,
+      ): Cypress.Chainable<RecordingId>;
+
+      /** Like apiRecordingAdd, but afterwards adds any tracks in data.metadata via
+       * processingApiAddTracksFromMetadata, since the API no longer creates tracks from uploaded metadata.
+       * Use with TestCreateExpectedRecordingDataWithTracks.
+       */
+      apiRecordingAddWithMetadataTracks(
         deviceName: string,
         data: ApiRecordingSet,
         fileName?: string | { filename: string; key: string }[],
@@ -776,6 +819,38 @@ Cypress.Commands.add(
 );
 
 Cypress.Commands.add(
+  "apiRecordingAddWithMetadataTracks",
+  (
+    deviceName: string,
+    data: ApiRecordingSet,
+    fileName: string | { filename: string; key: string }[] = "invalid.cptv",
+    recordingName = "recording1",
+    statusCode = 200,
+    additionalChecks: { message?: string } = {},
+    filenameToUse?: string,
+  ) => {
+    cy.apiRecordingAdd(
+      deviceName,
+      withoutMetadataTracks(data),
+      fileName,
+      recordingName,
+      statusCode,
+      additionalChecks,
+      filenameToUse,
+    ).then((recordingId) => {
+      if (statusCode !== HttpStatusCode.Ok || !recordingId) {
+        return cy.wrap(recordingId);
+      }
+      return cy.processingApiAddTracksFromMetadata(
+        recordingId,
+        recordingName,
+        data.metadata,
+      );
+    });
+  },
+);
+
+Cypress.Commands.add(
   "processingApiTracksAndTagsPost",
   (
     userName: string,
@@ -818,6 +893,90 @@ Cypress.Commands.add(
         }
         saveIdOnly(name, trackId);
       }
+    });
+  },
+);
+
+const signInAsSuperuserIfNeeded = (): Cypress.Chainable<string> => {
+  const { email, password } = getCreds("superuser");
+  const existing = Cypress.env("testCreds")[email];
+  if (existing && existing.headers && existing.headers.authorization) {
+    return cy.wrap(email);
+  }
+  return cy.apiSignInAs(null, email, password).then(() => email);
+};
+
+Cypress.Commands.add(
+  "processingApiAddTracksFromMetadata",
+  (
+    recordingId: RecordingId,
+    recordingName: string | null,
+    metadata: unknown,
+  ) => {
+    const meta = metadata as { algorithm?: object; tracks?: unknown[] };
+    if (!recordingId || !hasMetadataTracks(meta)) {
+      return cy.wrap(recordingId);
+    }
+    // processingApiTracksAndTagsPost looks the recording up by name, so make sure it has one.
+    const name = recordingName ?? `metadataTracksRecording-${recordingId}`;
+    if (recordingName === null) {
+      saveIdOnly(name, recordingId);
+    }
+    return signInAsSuperuserIfNeeded().then((superuser) =>
+      cy
+        .processingApiAlgorithmPost(superuser, meta.algorithm || {})
+        .then((algorithmId) =>
+          cy.processingApiTracksAndTagsPost(
+            superuser,
+            `${name}-track`,
+            name,
+            metadataTracksToProcessingTracks(meta),
+            algorithmId,
+          ),
+        )
+        .then(() => recordingId),
+    );
+  },
+);
+
+Cypress.Commands.add(
+  "processingApiFinishRecording",
+  (
+    recordingName: string,
+    type: RecordingType = RecordingType.ThermalRaw,
+    states: RecordingProcessingState[] = [
+      RecordingProcessingState.TrackAndAnalyse,
+    ],
+  ) => {
+    const recordingId = getCreds(recordingName).id;
+    logTestDescription(`Finish processing recording ${recordingName}`, {
+      recordingId,
+      type,
+      states,
+    });
+    signInAsSuperuserIfNeeded().then((superuser) => {
+      const url = v1ApiPath("processing", {
+        type,
+        state: states,
+        id: recordingId,
+      });
+      makeAuthorizedRequestWithStatus({ method: "GET", url }, superuser, 200)
+        .then(
+          (
+            response: Cypress.Response<{
+              recording: ApiRecordingProcessingJob;
+            }>,
+          ) => {
+            expect(
+              response.body.recording && response.body.recording.id,
+              "got requested recording for processing",
+            ).to.equal(recordingId);
+            saveJobKeyByName(recordingName, response.body.recording.jobKey);
+          },
+        )
+        .then(() => {
+          cy.processingApiPut(superuser, recordingName, true, {}, undefined);
+        });
     });
   },
 );
@@ -873,12 +1032,16 @@ Cypress.Commands.add(
       deviceName,
       "invalid.cptv",
       "thermalRaw",
-      data,
+      withoutMetadataTracks(data),
       "@addRecording",
       200,
     ).then((p) => {
       const response = p as unknown as { recordingId: RecordingId };
-      cy.wrap(response.recordingId);
+      cy.processingApiAddTracksFromMetadata(
+        response.recordingId,
+        null,
+        data.metadata,
+      );
     });
   },
 );

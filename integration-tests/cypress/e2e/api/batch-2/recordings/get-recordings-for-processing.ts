@@ -41,7 +41,8 @@ describe("Get recordings for processing", () => {
         uploadThermalRecordingFromDeviceForProject({
           project,
           recordingDateTime: new Date(),
-          // NOTE: Adding supplied metadata_source should put this recording into "analyse" state.
+          // NOTE: Thermal recordings are always tracked server-side, so even with supplied metadata
+          //  this recording should be in the "trackAndAnalyse" state.
           metadata: {
             algorithm: { name: "testAlgorithm" },
             metadata_source: "test",
@@ -60,8 +61,8 @@ describe("Get recordings for processing", () => {
       ).to.equal(RecordingProcessingState.TrackAndAnalyse);
       expect(
         recordingB.processingState,
-        "recording is in `analyse` state upon upload",
-      ).to.equal(RecordingProcessingState.Analyse);
+        "recording with supplied metadata is in `trackAndAnalyse` state upon upload",
+      ).to.equal(RecordingProcessingState.TrackAndAnalyse);
       // Two subsequent calls to Processing.get should return both recordings.
       const processing1 =
         await SuperAdminUser.Recordings.getOneRecordingForProcessing(
@@ -97,10 +98,9 @@ describe("Get recordings for processing", () => {
         recording: ApiRecordingResponse;
         rawJWT: JwtToken<RecordingId>;
       };
-      expect(
-        rec1.recording.processingState,
-        "prioritise 'analyse' state",
-      ).to.equal(RecordingProcessingState.Analyse);
+      expect(rec1.recording.processingState).to.equal(
+        RecordingProcessingState.TrackAndAnalyse,
+      );
       expect(rec2.recording.processingState).to.equal(
         RecordingProcessingState.TrackAndAnalyse,
       );

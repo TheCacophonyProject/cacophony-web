@@ -12,7 +12,7 @@ import { getCreds } from "@commands/server";
 import { getTestName } from "@commands/names";
 
 import {
-  TestCreateExpectedRecordingData,
+  TestCreateExpectedRecordingDataWithTracks,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import {
@@ -175,9 +175,14 @@ describe("Recordings query using improved query API", () => {
     createGroup1.then(() => {
       // SETUP group1
       //add some recordings to query
-      cy.apiRecordingAdd(group1Device1, recording1, undefined, "rqRecording1")
+      cy.apiRecordingAddWithMetadataTracks(
+        group1Device1,
+        recording1,
+        undefined,
+        "rqRecording1",
+      )
         .then(() => {
-          expectedRecording1 = TestCreateExpectedRecordingData(
+          expectedRecording1 = TestCreateExpectedRecordingDataWithTracks(
             templateExpectedRecording,
             "rqRecording1",
             group1Device1,
@@ -202,14 +207,14 @@ describe("Recordings query using improved query API", () => {
         })
         .then(() =>
           cy
-            .apiRecordingAdd(
+            .apiRecordingAddWithMetadataTracks(
               group1Device1,
               recording2,
               undefined,
               "rqRecording2",
             )
             .then(() => {
-              expectedRecording2 = TestCreateExpectedRecordingData(
+              expectedRecording2 = TestCreateExpectedRecordingDataWithTracks(
                 templateExpectedRecording,
                 "rqRecording2",
                 group1Device1,
@@ -245,14 +250,14 @@ describe("Recordings query using improved query API", () => {
         )
         .then(() =>
           cy
-            .apiRecordingAdd(
+            .apiRecordingAddWithMetadataTracks(
               group1Device2,
               recording3,
               undefined,
               "rqRecording3",
             )
             .then(() => {
-              expectedRecording3 = TestCreateExpectedRecordingData(
+              expectedRecording3 = TestCreateExpectedRecordingDataWithTracks(
                 templateExpectedAudioRecording,
                 "rqRecording3",
                 group1Device2,
@@ -287,14 +292,14 @@ describe("Recordings query using improved query API", () => {
         )
         .then(() =>
           cy
-            .apiRecordingAdd(
+            .apiRecordingAddWithMetadataTracks(
               group1Device2,
               recording4,
               undefined,
               "rqRecording4",
             )
             .then((id) => {
-              expectedRecording4 = TestCreateExpectedRecordingData(
+              expectedRecording4 = TestCreateExpectedRecordingDataWithTracks(
                 templateExpectedRecording,
                 "rqRecording4",
                 group1Device2,

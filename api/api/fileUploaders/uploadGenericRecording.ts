@@ -35,7 +35,6 @@ import type {
 import {
   createThumbnail,
   guessMimeType,
-  sendAlerts,
   ThumbnailData,
   updateRecordingTimeBookkeeping,
 } from "@api/V1/recordingUtil.js";
@@ -892,26 +891,6 @@ export const uploadGenericRecording =
         .catch((_err) => {
           // Do nothing
         });
-    }
-
-    const recordingHasFinishedProcessing =
-      recording.processingState === RecordingProcessingState.Finished;
-    if (recordingHasFinishedProcessing) {
-      // NOTE: Should only occur during testing?  Do devices with AI on board submit tracks with tags
-      // and set the finished state?
-      const twentyFourHoursMs = 24 * 60 * 60 * 1000;
-      const recordingAgeMs =
-        new Date().getTime() - recording.recordingDateTime.getTime();
-      if (
-        uploader === "device" &&
-        recording.type === RecordingType.ThermalRaw &&
-        recordingAgeMs < twentyFourHoursMs
-      ) {
-        // Alerts should only be sent for uploading devices.
-        // FIXME: Alerts should really be added to a queue table, and processed out of band, rather than
-        //  blocking the upload request.
-        await sendAlerts(recording);
-      }
     }
 
     if (recording.type === RecordingType.ThermalRaw) {

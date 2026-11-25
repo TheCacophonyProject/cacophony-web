@@ -28,6 +28,7 @@ import {
   RecordingType,
 } from "@typedefs/api/consts";
 import { LatLng, RecordingId } from "@typedefs/api/common";
+import { withoutMetadataTracks } from "@/helpers/metadata-tracks";
 
 const BASE_URL = Cypress.env("base-url-returned-in-links");
 
@@ -215,11 +216,13 @@ Cypress.Commands.add(
     const data = makeRecordingDataFromDetails(details);
     cy.apiRecordingAdd(
       deviceName,
-      data,
+      uploadDataFor(data),
       fileName,
       recordingName,
       statusCode,
       additionalChecks,
+    ).then((recordingId) =>
+      completeTestUpload(recordingId, recordingName, data, statusCode),
     );
   },
 );
@@ -245,11 +248,13 @@ Cypress.Commands.add(
       userName,
       deviceName,
       groupName,
-      data,
+      uploadDataFor(data),
       recordingName,
       fileName,
       statusCode,
       additionalChecks,
+    ).then((recordingId) =>
+      completeTestUpload(recordingId, recordingName, data, statusCode),
     );
   },
 );
@@ -273,11 +278,13 @@ Cypress.Commands.add(
     cy.apiRecordingAddOnBehalfUsingDevice(
       userName,
       deviceName,
-      data,
+      uploadDataFor(data),
       recordingName,
       fileName,
       statusCode,
       additionalChecks,
+    ).then((recordingId) =>
+      completeTestUpload(recordingId, recordingName, data, statusCode),
     );
   },
 );
@@ -383,6 +390,46 @@ Cypress.Commands.add(
     });
   },
 );
+
+// NOTE: The API no longer creates tracks from uploaded metadata, and only sends alerts once processing has
+//  finished.  So test uploads are sent without tracks, and in "trackAndAnalyse" instead of "finished"; then
+//  `completeTestUpload` adds the tracks and, if a finished recording was asked for, takes it through the end
+//  of the processing pipeline as the processing service would.
+const wantsFinishedProcessing = (data: ApiRecordingSet) =>
+  data.processingState === RecordingProcessingState.Finished;
+
+const uploadDataFor = (data: ApiRecordingSet): ApiRecordingSet => {
+  const uploadData = { ...withoutMetadataTracks(data) };
+  if (wantsFinishedProcessing(data)) {
+    // NOTE: Supplying a processingState stops the API marking our invalid test files as corrupt, and
+    //  trackAndAnalyse is where a newly uploaded thermal recording would start.
+    uploadData.processingState = RecordingProcessingState.TrackAndAnalyse;
+  }
+  return uploadData;
+};
+
+const completeTestUpload = (
+  recordingId: unknown,
+  recordingName: string | null,
+  data: ApiRecordingSet,
+  statusCode: number,
+) => {
+  if (statusCode !== 200 || !recordingId) {
+    return cy.wrap(recordingId);
+  }
+  return cy
+    .processingApiAddTracksFromMetadata(
+      recordingId as RecordingId,
+      recordingName,
+      data.metadata,
+    )
+    .then(() => {
+      if (wantsFinishedProcessing(data) && recordingName !== null) {
+        cy.processingApiFinishRecording(recordingName);
+      }
+    })
+    .then(() => recordingId);
+};
 
 function makeRecordingDataFromDetails(
   details: TestThermalRecordingInfo,
@@ -601,7 +648,9 @@ export function TestCreateExpectedRecordingColumns(
   stationName: string,
   inputRecording: ApiRecordingSet,
 ): ApiRecordingColumns {
-  const inputTrackData = inputRecording.metadata;
+  // NOTE: The API no longer creates tracks from uploaded metadata, so expect the recording as if
+  //  metadata.tracks had been deleted.
+  const inputTrackData = withoutMetadataTracks(inputRecording).metadata;
   const expected: ApiRecordingColumns = {};
 
   expected.Id = getCreds(recordingName).id.toString();
@@ -660,6 +709,56 @@ export function TestCreateExpectedRecordingData<T extends ApiRecordingResponse>(
   inputRecording: ApiRecordingSet,
   includePositions = true,
   minimal = false,
+): T {
+  // NOTE: The API no longer creates tracks from uploaded metadata, so expect the recording as if
+  //  metadata.tracks had been deleted.
+  return createExpectedRecordingData(
+    template,
+    recordingName,
+    deviceName,
+    groupName,
+    stationName,
+    withoutMetadataTracks(inputRecording),
+    includePositions,
+    minimal,
+  );
+}
+
+// For recordings uploaded with apiRecordingAddWithMetadataTracks, where the tracks in metadata are added
+// separately after upload: expect the tracks from the input metadata.
+export function TestCreateExpectedRecordingDataWithTracks<
+  T extends ApiRecordingResponse,
+>(
+  template: T,
+  recordingName: string,
+  deviceName: string,
+  groupName: string,
+  stationName: string,
+  inputRecording: ApiRecordingSet,
+  includePositions = true,
+  minimal = false,
+): T {
+  return createExpectedRecordingData(
+    template,
+    recordingName,
+    deviceName,
+    groupName,
+    stationName,
+    inputRecording,
+    includePositions,
+    minimal,
+  );
+}
+
+function createExpectedRecordingData<T extends ApiRecordingResponse>(
+  template: T,
+  recordingName: string,
+  deviceName: string,
+  groupName: string,
+  stationName: string,
+  inputRecording: ApiRecordingSet,
+  includePositions: boolean,
+  minimal: boolean,
 ): T {
   const inputTrackData = inputRecording.metadata;
   const expected = JSON.parse(JSON.stringify(template));
