@@ -723,6 +723,7 @@ const helpInfo = ref(true);
                   type="button"
                   class="btn btn-primary"
                   @click="saveReferenceImage"
+                  :disabled="!singleFrame"
                   data-cy="save reference image"
                 >
                   Save

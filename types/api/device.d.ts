@@ -1,6 +1,7 @@
 import type {
   DeviceId,
   GroupId,
+  integer,
   IsoFormattedDateString,
   LatLng,
   RecordingId,
@@ -83,13 +84,15 @@ export type BatterySettings = {
 export type DeviceModelOutput = keyof typeof DeviceThermalModelOutputLabel;
 
 export type TrapMode = "armed" | "safe";
+// Species for a trap, each with the confidence from 0 to 100 that the device's
+// classifier needs to act on it (see TrapSpeciesConfidence).
+export type TrapSpeciesConfidences = Partial<Record<DeviceModelOutput, integer>>;
 export type TrapSettings = {
-  protect: DeviceModelOutput[];
-  target: DeviceModelOutput[];
+  protect: TrapSpeciesConfidences;
+  target: TrapSpeciesConfidences;
   // This setting is about whether the trap will trigger before there is any
   // AI classification, or if it waits for a positive classification before triggering.
   defaultState: TrapMode;
-  hasKillMechanism: boolean;
   enabled: boolean;
 } & SettingsBase;
 
