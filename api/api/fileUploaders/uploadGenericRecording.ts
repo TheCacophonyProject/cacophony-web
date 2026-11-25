@@ -37,7 +37,6 @@ import {
   guessMimeType,
   sendAlerts,
   ThumbnailData,
-  tracksFromMeta,
   updateRecordingTimeBookkeeping,
 } from "@api/V1/recordingUtil.js";
 import { Group } from "@models/Group.js";
@@ -855,13 +854,6 @@ export const uploadGenericRecording =
       metadataSupplied,
     );
 
-    if (metadataSupplied && recordingData.type === RecordingType.ThermalRaw) {
-      recordingTemplate.additionalMetadata = {
-        ...recordingTemplate.additionalMetadata,
-        metadataSource: recordingData.metadata.metadata_source,
-      };
-    }
-
     // Actually create the recording in the database
     let recording: Recording;
     await Recording.sequelize.transaction(async (transaction) => {
@@ -900,12 +892,6 @@ export const uploadGenericRecording =
         .catch((_err) => {
           // Do nothing
         });
-    }
-
-    if (wouldHaveSuppliedTracks) {
-      // TODO: If tracks are supplied, we need to recalculate the Visits
-      // Now that we have a recording saved to the DB, we can create any associated track items
-      await tracksFromMeta(recording, recordingData.metadata);
     }
 
     const recordingHasFinishedProcessing =
@@ -1000,8 +986,7 @@ const setInitialProcessingState = (
     ) {
       if (
         hasSuppliedMetadata &&
-        (recordingTemplate.type === RecordingType.ThermalRaw ||
-          recordingTemplate.type === RecordingType.InfraredVideo)
+        recordingTemplate.type === RecordingType.InfraredVideo
       ) {
         recordingTemplate.processingState = RecordingProcessingState.Analyse;
       } else {
