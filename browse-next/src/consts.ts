@@ -191,5 +191,6 @@ export const THERMAL_AI_OUTPUTS = [
   "sheep",
   "vehicle",
   "wallaby",
+  "macropod",
   "weka",
 ];

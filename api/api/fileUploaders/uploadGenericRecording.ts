@@ -35,9 +35,7 @@ import type {
 import {
   createThumbnail,
   guessMimeType,
-  sendAlerts,
   ThumbnailData,
-  tracksFromMeta,
   updateRecordingTimeBookkeeping,
 } from "@api/V1/recordingUtil.js";
 import { Group } from "@models/Group.js";
@@ -855,13 +853,6 @@ export const uploadGenericRecording =
       metadataSupplied,
     );
 
-    if (metadataSupplied && recordingData.type === RecordingType.ThermalRaw) {
-      recordingTemplate.additionalMetadata = {
-        ...recordingTemplate.additionalMetadata,
-        metadataSource: recordingData.metadata.metadata_source,
-      };
-    }
-
     // Actually create the recording in the database
     let recording: Recording;
     await Recording.sequelize.transaction(async (transaction) => {
@@ -900,32 +891,6 @@ export const uploadGenericRecording =
         .catch((_err) => {
           // Do nothing
         });
-    }
-
-    if (wouldHaveSuppliedTracks) {
-      // TODO: If tracks are supplied, we need to recalculate the Visits
-      // Now that we have a recording saved to the DB, we can create any associated track items
-      await tracksFromMeta(recording, recordingData.metadata);
-    }
-
-    const recordingHasFinishedProcessing =
-      recording.processingState === RecordingProcessingState.Finished;
-    if (recordingHasFinishedProcessing) {
-      // NOTE: Should only occur during testing?  Do devices with AI on board submit tracks with tags
-      // and set the finished state?
-      const twentyFourHoursMs = 24 * 60 * 60 * 1000;
-      const recordingAgeMs =
-        new Date().getTime() - recording.recordingDateTime.getTime();
-      if (
-        uploader === "device" &&
-        recording.type === RecordingType.ThermalRaw &&
-        recordingAgeMs < twentyFourHoursMs
-      ) {
-        // Alerts should only be sent for uploading devices.
-        // FIXME: Alerts should really be added to a queue table, and processed out of band, rather than
-        //  blocking the upload request.
-        await sendAlerts(recording);
-      }
     }
 
     if (recording.type === RecordingType.ThermalRaw) {
@@ -1000,8 +965,7 @@ const setInitialProcessingState = (
     ) {
       if (
         hasSuppliedMetadata &&
-        (recordingTemplate.type === RecordingType.ThermalRaw ||
-          recordingTemplate.type === RecordingType.InfraredVideo)
+        recordingTemplate.type === RecordingType.InfraredVideo
       ) {
         recordingTemplate.processingState = RecordingProcessingState.Analyse;
       } else {

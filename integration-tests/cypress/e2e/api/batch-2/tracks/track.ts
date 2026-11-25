@@ -1,21 +1,12 @@
-import { NOT_NULL_STRING } from "@commands/constants";
-
 import { ApiRecordingSet } from "@commands/types";
-import {
-  TestCreateRecordingData,
-  positionResponseFromSet,
-} from "@commands/api/recording-tests";
+import { TestCreateRecordingData } from "@commands/api/recording-tests";
 import {
   ApiTrackDataRequest,
   ApiTrackResponse,
   ApiTrackPosition,
 } from "@typedefs/api/track";
 
-import {
-  TEMPLATE_THERMAL_RECORDING,
-  TEMPLATE_TRACK,
-  TEMPLATE_EXPECTED_TRACK,
-} from "@commands/dataTemplate";
+import { TEMPLATE_THERMAL_RECORDING } from "@commands/dataTemplate";
 import { HttpStatusCode } from "@typedefs/api/consts";
 
 const EXCLUDE_TRACK_IDS = ["[].id", "[].data", "[].tags[].data"];
@@ -377,35 +368,6 @@ describe("Tracks: add, check, delete", () => {
       algorithm1,
       HttpStatusCode.Forbidden,
       { useRawRecordingId: true },
-    );
-  });
-
-  it("Can retrieve track and tag data uploaded by device", () => {
-    const recording1 = TestCreateRecordingData(templateRecording);
-    recording1.metadata.tracks = [JSON.parse(JSON.stringify(TEMPLATE_TRACK))];
-
-    const expectedTrack = JSON.parse(JSON.stringify(TEMPLATE_EXPECTED_TRACK));
-    expectedTrack.tags[0]["createdAt"] = NOT_NULL_STRING;
-    expectedTrack.tags[0]["updatedAt"] = NOT_NULL_STRING;
-    expectedTrack.tags[0]["path"] = "all.mammal.cat";
-    // expectedTrack.tags[0]["data"] = predictionResponseFromSet(
-    //   recording1.metadata.tracks[0].predictions,
-    //   recording1.metadata.models
-    // )[0];
-    expectedTrack.positions = positionResponseFromSet(
-      recording1.metadata.tracks[0].positions,
-    );
-    //TODO enable after merge
-
-    cy.log("Add recording as device");
-    cy.apiRecordingAdd("trkCamera1", recording1, undefined, "trkRecording9");
-
-    cy.log("Check recording tracks tag can be viewed correctly");
-    cy.apiTracksCheck(
-      "trkGroupAdmin",
-      "trkRecording9",
-      [expectedTrack],
-      EXCLUDE_TRACK_IDS,
     );
   });
 });

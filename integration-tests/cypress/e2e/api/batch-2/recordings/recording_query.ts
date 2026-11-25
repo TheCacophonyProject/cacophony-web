@@ -16,7 +16,7 @@ import {
 import { getTestName } from "@commands/names";
 
 import {
-  TestCreateExpectedRecordingData,
+  TestCreateExpectedRecordingDataWithTracks,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import {
@@ -128,150 +128,152 @@ describe("Recordings query using where", () => {
     cy.intercept("POST", "recordings").as("addRecording");
 
     //add some recordings to query
-    cy.apiRecordingAdd("rqCamera1", recording1, undefined, "rqRecording1").then(
-      () => {
-        expectedRecording1 = TestCreateExpectedRecordingData(
+    cy.apiRecordingAddWithMetadataTracks(
+      "rqCamera1",
+      recording1,
+      undefined,
+      "rqRecording1",
+    ).then(() => {
+      expectedRecording1 = TestCreateExpectedRecordingDataWithTracks(
+        templateExpectedRecording,
+        "rqRecording1",
+        "rqCamera1",
+        "rqGroup",
+        null,
+        recording1,
+        false,
+      );
+      cy.apiRecordingAddWithMetadataTracks(
+        "rqCamera1",
+        recording2,
+        undefined,
+        "rqRecording2",
+      ).then(() => {
+        expectedRecording2 = TestCreateExpectedRecordingDataWithTracks(
           templateExpectedRecording,
-          "rqRecording1",
+          "rqRecording2",
           "rqCamera1",
           "rqGroup",
           null,
-          recording1,
+          recording2,
           false,
         );
-        cy.apiRecordingAdd(
-          "rqCamera1",
-          recording2,
+        expectedRecording2.processingState = RecordingProcessingState.Corrupt;
+
+        cy.apiRecordingAddWithMetadataTracks(
+          "rqCamera1b",
+          recording3,
           undefined,
-          "rqRecording2",
+          "rqRecording3",
         ).then(() => {
-          expectedRecording2 = TestCreateExpectedRecordingData(
-            templateExpectedRecording,
-            "rqRecording2",
-            "rqCamera1",
+          expectedRecording3 = TestCreateExpectedRecordingDataWithTracks(
+            templateExpectedAudioRecording,
+            "rqRecording3",
+            "rqCamera1b",
             "rqGroup",
             null,
-            recording2,
+            recording3,
             false,
           );
-          expectedRecording2.processingState = RecordingProcessingState.Corrupt;
+          // TODO Issue 103:These parameters missing from result. If we
+          // never return them, why do we have them?
+          // Workaround: remove parameters not returned by where
+          delete expectedRecording3.version;
+          delete expectedRecording3.batteryCharging;
+          delete expectedRecording3.airplaneModeOn;
+          delete expectedRecording3.relativeToDawn;
+          delete expectedRecording3.relativeToDusk;
 
-          cy.apiRecordingAdd(
+          expectedRecording3.processingState = RecordingProcessingState.Analyse;
+
+          cy.apiRecordingAddWithMetadataTracks(
             "rqCamera1b",
-            recording3,
+            recording4,
             undefined,
-            "rqRecording3",
+            "rqRecording4",
           ).then(() => {
-            expectedRecording3 = TestCreateExpectedRecordingData(
-              templateExpectedAudioRecording,
-              "rqRecording3",
+            expectedRecording4 = TestCreateExpectedRecordingDataWithTracks(
+              templateExpectedRecording,
+              "rqRecording4",
               "rqCamera1b",
               "rqGroup",
               null,
-              recording3,
+              recording4,
               false,
             );
-            // TODO Issue 103:These parameters missing from result. If we
-            // never return them, why do we have them?
-            // Workaround: remove parameters not returned by where
-            delete expectedRecording3.version;
-            delete expectedRecording3.batteryCharging;
-            delete expectedRecording3.airplaneModeOn;
-            delete expectedRecording3.relativeToDawn;
-            delete expectedRecording3.relativeToDusk;
 
-            expectedRecording3.processingState =
-              RecordingProcessingState.Analyse;
+            expectedRecording4.processingState =
+              RecordingProcessingState.Finished;
+            cy.testUserTagRecording(
+              getCreds("rqRecording4").id,
+              0,
+              "rqGroupAdmin",
+              "possum",
+            );
 
-            cy.apiRecordingAdd(
-              "rqCamera1b",
-              recording4,
-              undefined,
-              "rqRecording4",
-            ).then(() => {
-              expectedRecording4 = TestCreateExpectedRecordingData(
-                templateExpectedRecording,
-                "rqRecording4",
-                "rqCamera1b",
-                "rqGroup",
-                null,
-                recording4,
-                false,
-              );
+            expectedRecording4.tracks[0].tags = [
+              {
+                what: "possum",
+                automatic: false,
+                confidence: 70,
+                model: null,
+                trackId: -99,
+                path: "all",
+                id: -1,
+                userName: getTestName("rqGroupAdmin"),
+                userId: getCreds("rqGroupAdmin").id,
+              },
+            ];
+            expectedRecording4.tracks[0].filtered = false;
 
-              expectedRecording4.processingState =
-                RecordingProcessingState.Finished;
-              cy.testUserTagRecording(
-                getCreds("rqRecording4").id,
-                0,
-                "rqGroupAdmin",
-                "possum",
-              );
+            // TODO Issue 104:  positions returned as [] blank even
+            // where they exist.  If we don't support this parameter, do
+            // not return it at all
+            // TODO enable after merge
+            //expectedRecording1.tracks[0].positions = [];
+            //expectedRecording2.tracks[0].positions = [];
+            //expectedRecording4.tracks[0].positions = [];
 
-              expectedRecording4.tracks[0].tags = [
-                {
-                  what: "possum",
-                  automatic: false,
-                  confidence: 70,
-                  model: null,
-                  trackId: -99,
-                  path: "all",
-                  id: -1,
-                  userName: getTestName("rqGroupAdmin"),
-                  userId: getCreds("rqGroupAdmin").id,
-                },
-              ];
-              expectedRecording4.tracks[0].filtered = false;
-
-              // TODO Issue 104:  positions returned as [] blank even
-              // where they exist.  If we don't support this parameter, do
-              // not return it at all
-              // TODO enable after merge
-              //expectedRecording1.tracks[0].positions = [];
-              //expectedRecording2.tracks[0].positions = [];
-              //expectedRecording4.tracks[0].positions = [];
-
-              cy.apiRecordingsQueryCheck(
-                "rqGroupAdmin",
-                { where: { id: getCreds("rqRecording1").id } },
-                [expectedRecording1],
-                EXCLUDE_PARAMS,
-              );
-              cy.apiRecordingsQueryCheck(
-                "rqGroupAdmin",
-                { where: { id: getCreds("rqRecording2").id } },
-                [expectedRecording2],
-                EXCLUDE_PARAMS,
-              );
-              cy.apiRecordingsQueryCheck(
-                "rqGroupAdmin",
-                { where: { id: getCreds("rqRecording3").id } },
-                [expectedRecording3],
-                EXCLUDE_PARAMS,
-              );
-              cy.apiRecordingsQueryCheck(
-                "rqGroupAdmin",
-                { where: { id: getCreds("rqRecording4").id } },
-                [expectedRecording4],
-                EXCLUDE_PARAMS,
-              );
-            });
+            cy.apiRecordingsQueryCheck(
+              "rqGroupAdmin",
+              { where: { id: getCreds("rqRecording1").id } },
+              [expectedRecording1],
+              EXCLUDE_PARAMS,
+            );
+            cy.apiRecordingsQueryCheck(
+              "rqGroupAdmin",
+              { where: { id: getCreds("rqRecording2").id } },
+              [expectedRecording2],
+              EXCLUDE_PARAMS,
+            );
+            cy.apiRecordingsQueryCheck(
+              "rqGroupAdmin",
+              { where: { id: getCreds("rqRecording3").id } },
+              [expectedRecording3],
+              EXCLUDE_PARAMS,
+            );
+            cy.apiRecordingsQueryCheck(
+              "rqGroupAdmin",
+              { where: { id: getCreds("rqRecording4").id } },
+              [expectedRecording4],
+              EXCLUDE_PARAMS,
+            );
           });
         });
-      },
-    );
+      });
+    });
     for (let count = 0; count < 20; count++) {
       const tempRecording = JSON.parse(JSON.stringify(recording1));
       //recordingDateTime order different to id order to test sort on different parameters
       tempRecording.recordingDateTime =
         "2021-07-17T20:13:00." + (900 - count).toString() + "Z";
-      cy.apiRecordingAdd(
+      cy.apiRecordingAddWithMetadataTracks(
         "rqCamera2",
         tempRecording,
         undefined,
         "rqRecordingB" + count.toString(),
       ).then(() => {
-        expectedRecording[count] = TestCreateExpectedRecordingData(
+        expectedRecording[count] = TestCreateExpectedRecordingDataWithTracks(
           templateExpectedRecording,
           "rqRecordingB" + count.toString(),
           "rqCamera2",
@@ -940,7 +942,7 @@ describe("Recordings query using where", () => {
           200,
         );
       });
-      cy.apiRecordingAdd(
+      cy.apiRecordingAddWithMetadataTracks(
         "secret-camera",
         recording1,
         undefined,

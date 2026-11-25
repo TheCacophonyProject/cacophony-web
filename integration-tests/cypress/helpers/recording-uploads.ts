@@ -1,4 +1,9 @@
-import { LatLng, RecordingId } from "@shared/api/common";
+import { LatLng, RecordingId, TrackId } from "@shared/api/common";
+import {
+  hasMetadataTracks,
+  metadataTracksToProcessingTracks,
+  withoutMetadataTracks,
+} from "@/helpers/metadata-tracks";
 import { ProjectBundle } from "@/helpers/create-test-entities";
 import { ApiRecordingUploadData } from "@shared/api/recording";
 import { RecordingType } from "@shared/api/consts";
@@ -91,7 +96,10 @@ export const uploadRecording = async (
     data.duration = recordingOptions.duration;
   }
   if (recordingOptions.metadata) {
-    data.metadata = recordingOptions.metadata;
+    // NOTE: The API no longer creates tracks from uploaded metadata, so they're posted separately below.
+    data.metadata = withoutMetadataTracks({
+      metadata: recordingOptions.metadata,
+    }).metadata;
   }
   if (
     recordingOptions.type === RecordingType.ThermalRaw &&
@@ -118,8 +126,38 @@ export const uploadRecording = async (
   }
   const response = await upload!;
   expect(response.success, "uploaded recording").to.be.true;
-  return (response.result as { recordingId: RecordingId })
+  const recordingId = (response.result as { recordingId: RecordingId })
     .recordingId as RecordingId;
+  if (hasMetadataTracks(recordingOptions.metadata)) {
+    await addMetadataTracksToRecording(
+      recordingOptions.project,
+      recordingId,
+      recordingOptions.metadata,
+    );
+  }
+  return recordingId;
+};
+
+// Post tracks from upload metadata via the processing tracks-and-tags endpoint, as the processing
+// pipeline would, since the API no longer creates them at upload time.
+export const addMetadataTracksToRecording = async (
+  project: ProjectBundle,
+  recordingId: RecordingId,
+  metadata: RecordingDataSuppliedMetadata,
+): Promise<TrackId[]> => {
+  const superUser = TestApiImpl.Recordings.withAuth(
+    project.getTestSuperUser().testId,
+  );
+  const algorithm = await superUser.getAlgorithmId(metadata.algorithm || {});
+  expect(algorithm.success, "got algorithm id").to.be.true;
+  const algorithmId = (algorithm.result as { algorithmId: number }).algorithmId;
+  const trackIds = await superUser.submitProcessingTracksAndTags(
+    recordingId,
+    metadataTracksToProcessingTracks(metadata),
+    algorithmId,
+  );
+  expect(trackIds, "added tracks from metadata").to.not.equal(false);
+  return trackIds as TrackId[];
 };
 
 export const uploadRecordingFromDeviceForProject = async (options: {

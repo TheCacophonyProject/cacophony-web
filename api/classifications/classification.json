@@ -1,10 +1,13 @@
 {
   "label": "all",
-  "version": "a06febdf-cffc-49e8-a2c1-8b99174b433b",
+  "version": "550da0be-0688-4f5e-b269-19ee8488b5c2",
   "children": [
     {
       "label": "mammal",
       "children": [
+        {
+          "label": "bandicoot"
+        },
         {
           "label": "bat",
           "children": [
@@ -63,14 +66,6 @@
           "displayAudio": "human speech"
         },
         {
-          "label": "kangaroo",
-          "children": [
-            {
-              "label": "grey kangaroo"
-            }
-          ]
-        },
-        {
           "label": "glider",
           "children": [
             {
@@ -98,6 +93,23 @@
         },
         {
           "label": "long-nosed potoroo"
+        },
+        {
+          "label": "macropod",
+          "display": "kangaroo or wallaby",
+          "children": [
+            {
+              "label": "kangaroo",
+              "children": [
+                {
+                  "label": "grey kangaroo"
+                }
+              ]
+            },
+            {
+              "label": "wallaby"
+            }
+          ]
         },
         {
           "label": "mustelid",
@@ -169,9 +181,6 @@
         },
         {
           "label": "sheep"
-        },
-        {
-          "label": "wallaby"
         },
         {
           "label": "wombat"
@@ -302,9 +311,6 @@
               "label": "red-necked avocet"
             }
           ]
-        },
-        {
-          "label": "bandicoot"
         },
         {
           "label": "bellbird",

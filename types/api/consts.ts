@@ -44,6 +44,7 @@ export enum DeviceThermalModelOutputLabel {
   sheep = "sheep",
   vehicle = "vehicle",
   wallaby = "wallaby",
+  macropod = "macropod",
 }
 
 // The confidence from 0 to 100 that the device's classifier needs for each species
@@ -68,6 +69,7 @@ export const TrapSpeciesConfidence: Record<
   sheep: 80,
   vehicle: 80,
   wallaby: 80,
+  macropod: 80,
 };
 
 export enum ServerThermalModelOutputLabel {
@@ -88,6 +90,7 @@ export enum ServerThermalModelOutputLabel {
   sheep = "sheep",
   vehicle = "vehicle",
   wallaby = "wallaby",
+  macropod = "macropod",
   weka = "weka",
 }
 

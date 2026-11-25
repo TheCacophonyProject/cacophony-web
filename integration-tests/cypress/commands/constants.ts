@@ -65,6 +65,7 @@ export const unfiltered_tags = [
   "hedgehog",
   "other",
   "wallaby",
+  "macropod",
   "mustelid",
 ];
 

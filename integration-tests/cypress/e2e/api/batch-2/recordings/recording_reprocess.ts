@@ -10,7 +10,7 @@ import {
 
 import {
   TestCreateExpectedProcessingData,
-  TestCreateExpectedRecordingData,
+  TestCreateExpectedRecordingDataWithTracks,
   TestCreateRecordingData,
 } from "@commands/api/recording-tests";
 import {
@@ -143,13 +143,13 @@ describe("Recordings - reprocessing tests", () => {
       let expectedRecording4: ApiThermalRecordingResponse;
       let expectedProcessing1: ApiRecordingForProcessing;
       cy.log("Add recording as device");
-      cy.apiRecordingAdd(
+      cy.apiRecordingAddWithMetadataTracks(
         "rrpCamera1",
         recording1,
         "oneframe.cptv",
         "rrpRecording1",
       ).then(() => {
-        expectedRecording1 = TestCreateExpectedRecordingData(
+        expectedRecording1 = TestCreateExpectedRecordingDataWithTracks(
           templateExpectedRecording,
           "rrpRecording1",
           "rrpCamera1",
@@ -171,7 +171,7 @@ describe("Recordings - reprocessing tests", () => {
         cy.apiReprocess("rrpGroupAdmin", [getCreds("rrpRecording1").id]);
 
         cy.log("Check recording status - original tags deleted");
-        expectedRecording2 = TestCreateExpectedRecordingData(
+        expectedRecording2 = TestCreateExpectedRecordingDataWithTracks(
           templateExpectedRecording,
           "rrpRecording1",
           "rrpCamera1",
@@ -209,7 +209,7 @@ describe("Recordings - reprocessing tests", () => {
         );
 
         cy.log("Check recording status is now 'reprocess'");
-        expectedRecording3 = TestCreateExpectedRecordingData(
+        expectedRecording3 = TestCreateExpectedRecordingDataWithTracks(
           templateExpectedRecording,
           "rrpRecording1",
           "rrpCamera1",
@@ -232,7 +232,7 @@ describe("Recordings - reprocessing tests", () => {
         cy.processingApiPut(superuser, "rrpRecording1", true, {}, undefined);
 
         cy.log("Check recording status is now FINISHED");
-        expectedRecording4 = TestCreateExpectedRecordingData(
+        expectedRecording4 = TestCreateExpectedRecordingDataWithTracks(
           templateExpectedRecording,
           "rrpRecording1",
           "rrpCamera1",
@@ -259,13 +259,13 @@ describe("Recordings - reprocessing tests", () => {
       let expectedRecording5: ApiThermalRecordingResponse;
 
       cy.log("Add recording as device");
-      cy.apiRecordingAdd(
+      cy.apiRecordingAddWithMetadataTracks(
         "rrpCamera1",
         recording5,
         "oneframe.cptv",
         "rrpRecording5",
       ).then(() => {
-        expectedRecording5 = TestCreateExpectedRecordingData(
+        expectedRecording5 = TestCreateExpectedRecordingDataWithTracks(
           templateExpectedRecording,
           "rrpRecording5",
           "rrpCamera1",
@@ -297,13 +297,13 @@ describe("Recordings - reprocessing tests", () => {
       let expectedRecording6: ApiThermalRecordingResponse;
 
       cy.log("Add recording as device");
-      cy.apiRecordingAdd(
+      cy.apiRecordingAddWithMetadataTracks(
         "rrpCamera1",
         recording6,
         "oneframe.cptv",
         "rrpRecording6",
       ).then(() => {
-        expectedRecording6 = TestCreateExpectedRecordingData(
+        expectedRecording6 = TestCreateExpectedRecordingDataWithTracks(
           templateExpectedRecording,
           "rrpRecording6",
           "rrpCamera1",
@@ -335,13 +335,13 @@ describe("Recordings - reprocessing tests", () => {
       let expectedRecording9: ApiThermalRecordingResponse;
 
       cy.log("Add recording as device");
-      cy.apiRecordingAdd(
+      cy.apiRecordingAddWithMetadataTracks(
         "rrpCamera1",
         recording9,
         "oneframe.cptv",
         "rrpRecording9",
       ).then(() => {
-        expectedRecording9 = TestCreateExpectedRecordingData(
+        expectedRecording9 = TestCreateExpectedRecordingDataWithTracks(
           templateExpectedRecording,
           "rrpRecording9",
           "rrpCamera1",
@@ -374,13 +374,13 @@ describe("Recordings - reprocessing tests", () => {
       let expectedRecording10: ApiThermalRecordingResponse;
 
       cy.log("Add recording as device");
-      cy.apiRecordingAdd(
+      cy.apiRecordingAddWithMetadataTracks(
         "rrpCamera1",
         recording10,
         "oneframe.cptv",
         "rrpRecording10",
       ).then(() => {
-        expectedRecording10 = TestCreateExpectedRecordingData(
+        expectedRecording10 = TestCreateExpectedRecordingDataWithTracks(
           templateExpectedRecording,
           "rrpRecording10",
           "rrpCamera1",
@@ -434,13 +434,13 @@ describe("Recordings - reprocessing tests", () => {
       let expectedRecording4: ApiAudioRecordingResponse;
       let expectedProcessing1: ApiRecordingForProcessing;
       cy.log("Add recording as device");
-      cy.apiRecordingAdd(
+      cy.apiRecordingAddWithMetadataTracks(
         "rrpCamera1",
         recording1,
         "60sec-audio.m4a",
         "rrpRecording11",
       ).then(() => {
-        expectedRecording1 = TestCreateExpectedRecordingData(
+        expectedRecording1 = TestCreateExpectedRecordingDataWithTracks(
           templateExpectedAudioRecording,
           "rrpRecording11",
           "rrpCamera1",
@@ -463,7 +463,7 @@ describe("Recordings - reprocessing tests", () => {
         cy.apiReprocess("rrpGroupAdmin", [getCreds("rrpRecording11").id]);
 
         cy.log("Check recording status - original track, tags deleted");
-        expectedRecording2 = TestCreateExpectedRecordingData(
+        expectedRecording2 = TestCreateExpectedRecordingDataWithTracks(
           templateExpectedAudioRecording,
           "rrpRecording11",
           "rrpCamera1",
@@ -498,7 +498,7 @@ describe("Recordings - reprocessing tests", () => {
         );
 
         cy.log("Check recording status is now 'reprocess'");
-        expectedRecording3 = TestCreateExpectedRecordingData(
+        expectedRecording3 = TestCreateExpectedRecordingDataWithTracks(
           templateExpectedAudioRecording,
           "rrpRecording11",
           "rrpCamera1",
@@ -519,7 +519,7 @@ describe("Recordings - reprocessing tests", () => {
         cy.processingApiPut(superuser, "rrpRecording11", true, {}, undefined);
 
         cy.log("Check recording status is now FINISHED");
-        expectedRecording4 = TestCreateExpectedRecordingData(
+        expectedRecording4 = TestCreateExpectedRecordingDataWithTracks(
           templateExpectedAudioRecording,
           "rrpRecording11",
           "rrpCamera1",
@@ -547,13 +547,13 @@ describe("Recordings - reprocessing tests", () => {
       let expectedProcessing18: ApiRecordingForProcessing;
 
       cy.log("Add recording as device");
-      cy.apiRecordingAdd(
+      cy.apiRecordingAddWithMetadataTracks(
         "rrpCamera1",
         recording18,
         "oneframe.cptv",
         "rrpRecording18",
       ).then(() => {
-        expectedRecording18 = TestCreateExpectedRecordingData(
+        expectedRecording18 = TestCreateExpectedRecordingDataWithTracks(
           templateExpectedRecording,
           "rrpRecording18",
           "rrpCamera1",
@@ -680,7 +680,7 @@ describe("Recordings - reprocessing tests", () => {
       //Note: camera 1b has an alert for possums
       const recording20 = TestCreateRecordingData(templateRecording);
       recording20.processingState = RecordingProcessingState.Finished;
-      cy.apiRecordingAdd(
+      cy.apiRecordingAddWithMetadataTracks(
         "rrpCamera1b",
         recording20,
         "oneframe.cptv",
@@ -783,19 +783,19 @@ describe("Recordings - reprocessing tests", () => {
       let expectedRecording1: ApiThermalRecordingResponse;
       let expectedRecording2: ApiThermalRecordingResponse;
       cy.log("Add 2 recordings as device");
-      cy.apiRecordingAdd(
+      cy.apiRecordingAddWithMetadataTracks(
         "rrpCamera1",
         recording21,
         "oneframe.cptv",
         "rrpRecording21",
       ).then(() => {
-        cy.apiRecordingAdd(
+        cy.apiRecordingAddWithMetadataTracks(
           "rrpCamera1",
           recording22,
           "oneframe.cptv",
           "rrpRecording22",
         );
-        expectedRecording1 = TestCreateExpectedRecordingData(
+        expectedRecording1 = TestCreateExpectedRecordingDataWithTracks(
           templateExpectedRecording,
           "rrpRecording21",
           "rrpCamera1",
@@ -818,7 +818,7 @@ describe("Recordings - reprocessing tests", () => {
         cy.apiReprocess(superuser, [getCreds("rrpRecording21").id]);
 
         cy.log("Check recording status - original tags deleted");
-        expectedRecording2 = TestCreateExpectedRecordingData(
+        expectedRecording2 = TestCreateExpectedRecordingDataWithTracks(
           templateExpectedRecording,
           "rrpRecording21",
           "rrpCamera1",

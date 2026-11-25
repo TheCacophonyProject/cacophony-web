@@ -96,6 +96,7 @@
     "apidoc": "apidoc -c ./apidoc.json -f \".*\\.ts$\" -i api/V1 -o apidoc/",
     "db-migrate": "sequelize db:migrate",
     "new-migration": "sequelize migration:generate --name",
+    "generate-label-paths": "node scripts/generate-label-paths.mjs",
     "dev": "docker compose build && docker compose up --force-recreate --no-log-prefix",
     "dev:bash": "docker compose exec server bash",
     "clean": "tsc --build --clean"
