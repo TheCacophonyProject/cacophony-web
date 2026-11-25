@@ -44,7 +44,7 @@ export enum DeviceThermalModelOutputLabel {
   sheep = "sheep",
   vehicle = "vehicle",
   wallaby = "wallaby",
-  macropod = "macropod"
+  macropod = "macropod",
 }
 
 export enum ServerThermalModelOutputLabel {

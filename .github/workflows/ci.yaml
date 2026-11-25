@@ -28,10 +28,10 @@ jobs:
 
       - name: Run linting checks
         run: |
-          cd types && npm ci --loglevel=error && npm run lint && cd ..
-          cd browse && npm ci --loglevel=error && npm run lint && cd ..
-          cd api && npm ci --loglevel=error && npm run lint && cd ..
-          cd integration-tests && npm ci --loglevel=error && npm run lint && cd ..
+          (cd types && npm ci --loglevel=error && npm run lint)
+          (cd browse && npm ci --loglevel=error && npm run lint)
+          (cd api && npm ci --loglevel=error && npm run lint)
+          (cd integration-tests && npm ci --loglevel=error && npm run lint)
 
       - name: Check label_paths.json is up to date with classification.json
         run: |
