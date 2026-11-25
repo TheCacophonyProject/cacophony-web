@@ -69,6 +69,7 @@ export const TrapSpeciesConfidence: Record<
   sheep: 80,
   vehicle: 80,
   wallaby: 80,
+  macropod: 80,
 };
 
 export enum ServerThermalModelOutputLabel {
