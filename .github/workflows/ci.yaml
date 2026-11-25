@@ -33,6 +33,14 @@ jobs:
           cd api && npm ci --loglevel=error && npm run lint && cd ..
           cd integration-tests && npm ci --loglevel=error && npm run lint && cd ..
 
+      - name: Check label_paths.json is up to date with classification.json
+        run: |
+          node api/scripts/generate-label-paths.mjs
+          if ! git diff --exit-code -- api/classifications/label_paths.json; then
+            echo "::error file=api/classifications/label_paths.json::label_paths.json is out of date with classification.json. Run 'npm run generate-label-paths' in api/ and commit the result."
+            exit 1
+          fi
+
   test:
     runs-on: ubuntu-24.04
     strategy:
